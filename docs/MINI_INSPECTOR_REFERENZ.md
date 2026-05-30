@@ -82,3 +82,29 @@ Nach K3 ist als naechster Schritt fachneutral sinnvoll:
 - oder eine Host-/Demo-Integration vorbereiten
 
 Auch dieser naechste Schritt bleibt ohne Speichern und ohne Layout-Anwendung.
+
+## K4.0 Demo-/Host-Schale
+
+Die fachneutrale Demo-/Host-Schale unter `scripts/mini-inspector-demo-host.cjs` verbindet den vorhandenen lesenden Mini-Inspector-Einstieg mit einer kleinen Mock-Zielstruktur und einem separaten Inspector-Container.
+
+Oeffentliche Einstiege:
+
+- `createMiniInspectorDemoHost(options)`: erzeugt Root-/Mock-Struktur und Inspector-Container oder nutzt uebergebene Objekte.
+- `updateMiniInspectorDemoHost(host, options)`: liest den Mini-Inspector-Status und rendert ihn ausschliesslich in den Inspector-Container.
+- `runMiniInspectorDemoHost(options)`: erzeugt einen Host und fuehrt einmalig die lesende Aktualisierung aus.
+
+Die Demo-/Host-Schale zeigt nur:
+
+- neutrale `data-ui-*` Metadaten in einer Beispielstruktur
+- einen getrennten Inspector-Container
+- lesendes Erzeugen des Mini-Inspector-Status
+- neutrale Statusausgabe mit `ok`, `itemCount`, `errorCount`, `scope`, `version` und optionalen Fehlern
+
+Grenzen:
+
+- nur der Inspector-Container wird aktualisiert
+- keine Speicherung
+- keine Layout-Anwendung
+- keine Ziel-UI-Mutation
+- keine Fachlogik
+- keine neuen Runtime-Abhaengigkeiten
