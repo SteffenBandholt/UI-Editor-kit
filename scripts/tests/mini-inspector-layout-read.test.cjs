@@ -45,6 +45,7 @@ function run() {
   assert.equal(validStatus.errorCount, 0);
   assert.equal(validStatus.scope, "mini-inspector.scope");
   assert.equal(validStatus.version, 1);
+  assert.equal(Array.isArray(validStatus.errors), true);
 
   // 3) Elemente ohne data-ui-* bleiben fachneutral ignoriert
   const mixedRoot = createNode({}, [
@@ -75,6 +76,10 @@ function run() {
 
   // 7) keine Fachbegriffe benoetigt
   assert.equal(typeof validStatus.ok, "boolean");
+  assert.equal(typeof validStatus.itemCount, "number");
+  assert.equal(typeof validStatus.errorCount, "number");
+  assert.equal(typeof validStatus.scope, "string");
+  assert.equal(typeof validStatus.version, "number");
 
   console.log("TESTS OK: mini-inspector-layout-read");
 }

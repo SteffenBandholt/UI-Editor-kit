@@ -18,6 +18,7 @@
 - K1.9: Layoutdaten-API dokumentiert und Stabilitaetsvertrag festgelegt.
 - K1.10: Layoutdaten-Kern als Referenzstand dokumentiert und abgesichert.
 - K2.0: Mini-Inspector nutzt Layoutdaten-API erstmals lesend.
+- K2.1: Mini-Inspector-Statusausgabe als neutraler Lesestatus abgesichert.
 
 ## 0.1.0
 
