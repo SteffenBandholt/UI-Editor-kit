@@ -82,6 +82,10 @@ start examples\mini-inspector\index.html
 
 Das fachneutrale Zusammenspiel zwischen App-UI und spaeterem Editor steht in `docs/APP_INTEGRATION_MODELL.md`.
 
+## Layoutdaten-Modell (K1.2)
+
+Das fachneutrale Modell fuer spaetere Layoutdaten steht in `docs/LAYOUTDATEN_MODELL.md`.
+
 ## Trockenlauf
 
 Ein dokumentierter Uebernahme-Trockenlauf fuer neue Ziel-Apps steht in `docs/UEBERNAHME_TROCKENLAUF.md`.

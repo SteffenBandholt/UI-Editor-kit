@@ -7,6 +7,7 @@
 - `v0.1.1` ist der erste Referenzstand inklusive Bootstrap-Auftrag.
 - K1.0: Mini-Inspector als erste sichtbare Demo ergaenzt.
 - K1.1: App-Integration-Modell dokumentiert.
+- K1.2: Layoutdaten-Modell dokumentiert.
 
 ## 0.1.0
 
