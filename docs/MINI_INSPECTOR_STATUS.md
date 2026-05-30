@@ -27,6 +27,24 @@ Die Funktion liefert einen neutralen Status mit:
 
 Die Statusanzeige ist sichtbar/renderbar vorbereitet ueber das View-Modell aus `formatMiniInspectorLayoutStatus(...)` bzw. `createMiniInspectorStatusViewModel(...)`.
 
+Der DOM-/Markup-Adapter wird ueber `createMiniInspectorStatusMarkup(...)` und `renderMiniInspectorStatus(container, statusViewModel)` bereitgestellt.
+
+Zweck des Adapters:
+
+- neutrale Statusanzeige fuer einen Inspector-Container vorbereiten
+- vorhandenes Status-/View-Modell renderbar machen
+
+Erlaubte Eingaben:
+
+- `statusViewModel` mit neutralen Statuszeilen
+- ein uebergebener Inspector-Container fuer `renderMiniInspectorStatus(...)`
+
+Erlaubte Ausgabe:
+
+- neutrales Markup
+- neutrale Statuszeilen
+- neutrale Fehlerausgabe
+
 Renderbare Felder:
 
 - `ok` (gueltig/ungueltig)
@@ -47,6 +65,8 @@ Die Statusdaten stammen aus `data-ui-*` Metadaten und werden ueber die zentrale 
 - kein Speichern
 - keine Layout-Anwendung
 - kein Drag & Drop
+- nur Inspector-Container aktualisieren
+- keine Ziel-UI-Mutation
 - keine DOM-Mutation
 - keine Fachlogik
 
