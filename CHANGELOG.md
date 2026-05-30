@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Bootstrap-Auftrag fuer Ziel-Apps enthalten.
+- Neue Apps koennen das Kit kontrolliert vor dem ersten UI-/PDF-Bau uebernehmen.
+- `v0.1.1` ist der erste Referenzstand inklusive Bootstrap-Auftrag.
+
 ## 0.1.0
 
 - Erste nutzbare fachneutrale Kit-Version.

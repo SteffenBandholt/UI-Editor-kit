@@ -14,9 +14,11 @@ Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor
 
 ## Aktueller Stand
 
-`0.1.0`
+`0.1.1`
 
-Diese Version kann als erster Referenzstand in neue Apps uebernommen werden.
+`v0.1.0` bleibt der historische Erststand.
+
+`v0.1.1` ist der empfohlene Referenzstand fuer neue Apps, weil er den Bootstrap-Auftrag enthaelt.
 
 ## Grundsatz
 
