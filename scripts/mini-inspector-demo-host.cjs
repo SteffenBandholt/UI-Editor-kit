@@ -15,6 +15,7 @@ function parseMiniInspectorDemoHostCliArgs(argv) {
   const args = Array.isArray(argv) ? argv : [];
   return {
     invalid: args.includes("--invalid"),
+    json: args.includes("--json"),
   };
 }
 
@@ -150,14 +151,63 @@ function formatMiniInspectorDemoHostResult(result) {
   };
 }
 
+function formatMiniInspectorDemoHostJson(result, options) {
+  const safeResult = result || {
+    ok: false,
+    status: {
+      ok: false,
+      itemCount: 0,
+      errorCount: 0,
+      scope: DEFAULT_SCOPE,
+      version: 1,
+      errors: [],
+    },
+    host: {
+      inspectorContainer: {
+        innerHTML: "",
+      },
+    },
+  };
+  const opts = options || {};
+
+  return {
+    ok: Boolean(safeResult.ok),
+    mode: opts.invalid === true ? "invalid" : "default",
+    invalid: opts.invalid === true,
+    status: {
+      ok: Boolean(safeResult.status && safeResult.status.ok),
+      itemCount: Number((safeResult.status && safeResult.status.itemCount) || 0),
+      errorCount: Number((safeResult.status && safeResult.status.errorCount) || 0),
+      scope:
+        safeResult.status && typeof safeResult.status.scope === "string"
+          ? safeResult.status.scope
+          : DEFAULT_SCOPE,
+      version: Number((safeResult.status && safeResult.status.version) || 1),
+      errors:
+        safeResult.status && Array.isArray(safeResult.status.errors)
+          ? safeResult.status.errors.slice()
+          : [],
+    },
+    inspectorContainer:
+      safeResult.host &&
+      safeResult.host.inspectorContainer &&
+      typeof safeResult.host.inspectorContainer.innerHTML === "string"
+        ? safeResult.host.inspectorContainer.innerHTML
+        : "",
+  };
+}
+
 function runMiniInspectorDemoHostCli(options) {
   try {
-    const result = runMiniInspectorDemoHost(options);
-    const output = formatMiniInspectorDemoHostResult(result);
+    const opts = options || {};
+    const result = runMiniInspectorDemoHost(opts);
+    const output = opts.json === true
+      ? JSON.stringify(formatMiniInspectorDemoHostJson(result, opts), null, 2)
+      : formatMiniInspectorDemoHostResult(result).text;
     return {
       ok: result.ok,
       exitCode: 0,
-      text: output.text,
+      text: output,
       result,
     };
   } catch (error) {
@@ -180,6 +230,7 @@ module.exports = {
   updateMiniInspectorDemoHost,
   runMiniInspectorDemoHost,
   formatMiniInspectorDemoHostResult,
+  formatMiniInspectorDemoHostJson,
   runMiniInspectorDemoHostCli,
 };
 

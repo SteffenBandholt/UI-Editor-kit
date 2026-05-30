@@ -67,14 +67,19 @@ Damit ist der aktuelle Stand klar getrennt:
 - Diagnosebefehl: `npm run layout:diagnose`
 - Demo-/Host-Befehl: `npm run mini-inspector:demo`
 - Demo-/Host-Fehlerfall: `npm run mini-inspector:demo -- --invalid`
+- Demo-/Host-JSON: `npm run mini-inspector:demo -- --json`
+- Demo-/Host-Fehlerfall-JSON: `npm run mini-inspector:demo -- --invalid --json`
 
 Mit `npm run mini-inspector:demo` wird die vorhandene Demo-/Host-Schale einmal neutral auf stdout ausgefuehrt.
 
 Mit `npm run mini-inspector:demo -- --invalid` wird derselbe Ablauf mit bewusst ungueltigen, aber fachneutralen `data-ui-*` Metadaten ausgefuehrt. Der Lauf bleibt technisch erfolgreich, berichtet aber neutral `ok: false`.
 
+Mit `npm run mini-inspector:demo -- --json` und `npm run mini-inspector:demo -- --invalid --json` wird dieselbe Demo-/Host-Schale neutral und maschinenlesbar fuer Automatisierung auf stdout ausgegeben.
+
 Der Befehl zeigt nur:
 
 - `ok`
+- `status`
 - `itemCount`
 - `errorCount`
 - `scope`

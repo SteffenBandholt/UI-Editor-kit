@@ -14,6 +14,7 @@ const {
   updateMiniInspectorDemoHost,
   runMiniInspectorDemoHost,
   formatMiniInspectorDemoHostResult,
+  formatMiniInspectorDemoHostJson,
   runMiniInspectorDemoHostCli,
 } = require("../mini-inspector-demo-host.cjs");
 
@@ -44,6 +45,7 @@ function run() {
   assert.equal(typeof updateMiniInspectorDemoHost, "function");
   assert.equal(typeof runMiniInspectorDemoHost, "function");
   assert.equal(typeof formatMiniInspectorDemoHostResult, "function");
+  assert.equal(typeof formatMiniInspectorDemoHostJson, "function");
   assert.equal(typeof runMiniInspectorDemoHostCli, "function");
   assert.equal(typeof parseMiniInspectorDemoHostCliArgs, "function");
   assert.equal(DEFAULT_SCOPE, "mini-inspector-demo.scope");
@@ -55,8 +57,13 @@ function run() {
     packageJson.scripts["mini-inspector:demo"],
     "node scripts/mini-inspector-demo-host.cjs"
   );
-  assert.deepEqual(parseMiniInspectorDemoHostCliArgs([]), { invalid: false });
-  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid"]), { invalid: true });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs([]), { invalid: false, json: false });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid"]), { invalid: true, json: false });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--json"]), { invalid: false, json: true });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid", "--json"]), {
+    invalid: true,
+    json: true,
+  });
 
   // 2) Neutrale Beispiel-UI mit data-ui-* Metadaten erzeugt Status ok: true
   const rootElement = createMiniInspectorDemoTargetRoot();
@@ -153,7 +160,40 @@ function run() {
   assert.equal(invalidCliResult.text.includes("Layoutdaten Status: ungueltig"), true);
   assertNoForbiddenTerms(invalidCliResult.text);
 
-  // 13) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
+  // 13) JSON-Ausgabe ist valide und fachneutral
+  const jsonResult = runMiniInspectorDemoHostCli({ json: true });
+  const jsonPayload = JSON.parse(jsonResult.text);
+  assert.equal(jsonResult.exitCode, 0);
+  assert.equal(jsonPayload.ok, true);
+  assert.equal(jsonPayload.mode, "default");
+  assert.equal(jsonPayload.invalid, false);
+  assert.equal(jsonPayload.status.ok, true);
+  assert.equal(jsonPayload.status.itemCount, 2);
+  assert.equal(jsonPayload.status.errorCount, 0);
+  assert.equal(jsonPayload.status.scope, DEFAULT_SCOPE);
+  assert.equal(jsonPayload.status.version, 1);
+  assert.equal(Array.isArray(jsonPayload.status.errors), true);
+  assert.equal(typeof jsonPayload.inspectorContainer, "string");
+  assertNoForbiddenTerms(jsonResult.text);
+
+  // 14) Invalid-JSON-Ausgabe bleibt valide und berichtet ok: false
+  const invalidJsonResult = runMiniInspectorDemoHostCli({ invalid: true, json: true });
+  const invalidJsonPayload = JSON.parse(invalidJsonResult.text);
+  assert.equal(invalidJsonResult.exitCode, 0);
+  assert.equal(invalidJsonPayload.ok, false);
+  assert.equal(invalidJsonPayload.mode, "invalid");
+  assert.equal(invalidJsonPayload.invalid, true);
+  assert.equal(invalidJsonPayload.status.ok, false);
+  assert.equal(invalidJsonPayload.status.itemCount, 2);
+  assert.equal(invalidJsonPayload.status.errorCount > 0, true);
+  assert.equal(invalidJsonPayload.status.scope, DEFAULT_SCOPE);
+  assert.equal(invalidJsonPayload.status.version, 1);
+  assert.equal(Array.isArray(invalidJsonPayload.status.errors), true);
+  assert.equal(invalidJsonPayload.status.errors.length > 0, true);
+  assert.equal(typeof invalidJsonPayload.inspectorContainer, "string");
+  assertNoForbiddenTerms(invalidJsonResult.text);
+
+  // 15) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
   const scriptRun = spawnSync(process.execPath, [path.resolve(__dirname, "../mini-inspector-demo-host.cjs")], {
     encoding: "utf8",
   });
@@ -167,7 +207,7 @@ function run() {
   assert.equal(scriptRun.stderr, "");
   assertNoForbiddenTerms(scriptRun.stdout);
 
-  // 14) Invalid-Skriptlauf bleibt Exit-Code 0 und gibt neutralen Fehlerstatus aus
+  // 16) Invalid-Skriptlauf bleibt Exit-Code 0 und gibt neutralen Fehlerstatus aus
   const invalidScriptRun = spawnSync(
     process.execPath,
     [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--invalid"],
@@ -180,6 +220,40 @@ function run() {
   assert.equal(invalidScriptRun.stdout.includes("Layoutdaten Status: ungueltig"), true);
   assert.equal(invalidScriptRun.stderr, "");
   assertNoForbiddenTerms(invalidScriptRun.stdout);
+
+  // 17) JSON-Skriptlauf gibt nur valides JSON auf stdout aus
+  const jsonScriptRun = spawnSync(
+    process.execPath,
+    [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--json"],
+    { encoding: "utf8" }
+  );
+  const jsonScriptPayload = JSON.parse(jsonScriptRun.stdout);
+  assert.equal(jsonScriptRun.status, 0);
+  assert.equal(jsonScriptPayload.ok, true);
+  assert.equal(jsonScriptPayload.mode, "default");
+  assert.equal(jsonScriptPayload.status.itemCount, 2);
+  assert.equal(jsonScriptPayload.status.errorCount, 0);
+  assert.equal(jsonScriptPayload.status.scope, DEFAULT_SCOPE);
+  assert.equal(jsonScriptPayload.status.version, 1);
+  assert.equal(typeof jsonScriptPayload.inspectorContainer, "string");
+  assert.equal(jsonScriptRun.stderr, "");
+  assertNoForbiddenTerms(jsonScriptRun.stdout);
+
+  // 18) Invalid-JSON-Skriptlauf gibt valides JSON mit ok: false aus
+  const invalidJsonScriptRun = spawnSync(
+    process.execPath,
+    [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--invalid", "--json"],
+    { encoding: "utf8" }
+  );
+  const invalidJsonScriptPayload = JSON.parse(invalidJsonScriptRun.stdout);
+  assert.equal(invalidJsonScriptRun.status, 0);
+  assert.equal(invalidJsonScriptPayload.ok, false);
+  assert.equal(invalidJsonScriptPayload.mode, "invalid");
+  assert.equal(invalidJsonScriptPayload.invalid, true);
+  assert.equal(invalidJsonScriptPayload.status.errorCount > 0, true);
+  assert.equal(typeof invalidJsonScriptPayload.inspectorContainer, "string");
+  assert.equal(invalidJsonScriptRun.stderr, "");
+  assertNoForbiddenTerms(invalidJsonScriptRun.stdout);
 
   console.log("TESTS OK: mini-inspector-demo-host");
 }
