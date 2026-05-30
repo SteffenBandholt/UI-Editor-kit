@@ -78,6 +78,10 @@ Erste sichtbare, fachneutrale Demo zum Lesen und Anzeigen von `data-ui-*` Metada
 start examples\mini-inspector\index.html
 ```
 
+## App-Integration-Modell (K1.1)
+
+Das fachneutrale Zusammenspiel zwischen App-UI und spaeterem Editor steht in `docs/APP_INTEGRATION_MODELL.md`.
+
 ## Trockenlauf
 
 Ein dokumentierter Uebernahme-Trockenlauf fuer neue Ziel-Apps steht in `docs/UEBERNAHME_TROCKENLAUF.md`.

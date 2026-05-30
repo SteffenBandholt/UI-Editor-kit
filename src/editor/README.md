@@ -10,6 +10,12 @@ K1.0 ist nur ein Mini-Inspector als sichtbare Demo.
 
 K1.0 enthaelt kein Speichern, keine Layoutbearbeitung und keine Fachlogik.
 
+Der Editor-Core wird spaeter gegen die bestehende App-UI laufen.
+
+Der Editor-Core liest `data-ui-*` aus der App-UI.
+
+Layoutdaten bleiben getrennt von Fachdaten.
+
 ## Spaetere Bausteine
 
 - Metadaten-Leser

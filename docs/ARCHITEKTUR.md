@@ -21,3 +21,9 @@ Fachdaten und Fachaktionen bleiben ausserhalb des Editors.
 Dieses Repository ist die Quelle der Wahrheit fuer das UI-Editor-Kit.
 
 Andere Apps uebernehmen die jeweils freigegebene Version dieses Kits.
+
+## App-Integration
+
+Das fachneutrale App-Integrationsmodell steht in `docs/APP_INTEGRATION_MODELL.md`.
+
+Die App-Integration trennt Editor/Layoutdaten klar von Fachlogik/Fachdaten.
