@@ -2,7 +2,7 @@
   "name": "ui-editor-kit",
   "private": true,
   "scripts": {
-    "test": "node scripts/tests/layout-data-validator.test.cjs && node scripts/tests/layout-data-extractor.test.cjs && node scripts/tests/layout-data-diagnostics.test.cjs && node scripts/tests/layout-data-diagnostics-cli.test.cjs && node scripts/tests/layout-data-api.test.cjs",
+    "test": "node scripts/tests/layout-data-validator.test.cjs && node scripts/tests/layout-data-extractor.test.cjs && node scripts/tests/layout-data-diagnostics.test.cjs && node scripts/tests/layout-data-diagnostics-cli.test.cjs && node scripts/tests/layout-data-api.test.cjs && node scripts/tests/mini-inspector-layout-read.test.cjs",
     "layout:diagnose": "node scripts/layout-data-diagnostics-cli.cjs"
   }
 }
