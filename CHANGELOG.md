@@ -32,6 +32,7 @@
 - K3.6: K3-Mini-Inspector-Referenzstand als rein lesender Status-/Render-Stand dokumentiert.
 - K4.0: Fachneutrale Mini-Inspector Demo-/Host-Schale fuer lesenden Status und Inspector-Container-Rendering vorbereitet.
 - K4.1: Demo-/Host-Schale ueber `npm run mini-inspector:demo` neutral ausfuehrbar gemacht.
+- K4.2: Demo-/Host-Befehl um kontrollierten ungueltigen Demo-Fall per `--invalid` erweitert.
 
 ## 0.1.0
 

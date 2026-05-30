@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const {
   DEFAULT_SCOPE,
+  parseMiniInspectorDemoHostCliArgs,
   createMiniInspectorDemoTargetRoot,
   createMiniInspectorDemoInspectorContainer,
   createMiniInspectorDemoHost,
@@ -44,6 +45,7 @@ function run() {
   assert.equal(typeof runMiniInspectorDemoHost, "function");
   assert.equal(typeof formatMiniInspectorDemoHostResult, "function");
   assert.equal(typeof runMiniInspectorDemoHostCli, "function");
+  assert.equal(typeof parseMiniInspectorDemoHostCliArgs, "function");
   assert.equal(DEFAULT_SCOPE, "mini-inspector-demo.scope");
 
   const packageJson = JSON.parse(
@@ -53,6 +55,8 @@ function run() {
     packageJson.scripts["mini-inspector:demo"],
     "node scripts/mini-inspector-demo-host.cjs"
   );
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs([]), { invalid: false });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid"]), { invalid: true });
 
   // 2) Neutrale Beispiel-UI mit data-ui-* Metadaten erzeugt Status ok: true
   const rootElement = createMiniInspectorDemoTargetRoot();
@@ -138,7 +142,18 @@ function run() {
   assert.equal(cliResult.text.includes("inspectorContainer:"), true);
   assertNoForbiddenTerms(cliResult.text);
 
-  // 12) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
+  // 12) Invalid-CLI-Ausgabe bleibt kontrolliert und berichtet ok: false ohne Runner-Fehler
+  const invalidCliResult = runMiniInspectorDemoHostCli({ invalid: true });
+  assert.equal(invalidCliResult.exitCode, 0);
+  assert.equal(invalidCliResult.ok, false);
+  assert.equal(invalidCliResult.text.includes("ok: false"), true);
+  assert.equal(invalidCliResult.text.includes("errorCount: "), true);
+  assert.equal(invalidCliResult.text.includes("errors:"), true);
+  assert.equal(invalidCliResult.text.includes("inspectorContainer:"), true);
+  assert.equal(invalidCliResult.text.includes("Layoutdaten Status: ungueltig"), true);
+  assertNoForbiddenTerms(invalidCliResult.text);
+
+  // 13) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
   const scriptRun = spawnSync(process.execPath, [path.resolve(__dirname, "../mini-inspector-demo-host.cjs")], {
     encoding: "utf8",
   });
@@ -151,6 +166,20 @@ function run() {
   assert.equal(scriptRun.stdout.includes("inspectorContainer:"), true);
   assert.equal(scriptRun.stderr, "");
   assertNoForbiddenTerms(scriptRun.stdout);
+
+  // 14) Invalid-Skriptlauf bleibt Exit-Code 0 und gibt neutralen Fehlerstatus aus
+  const invalidScriptRun = spawnSync(
+    process.execPath,
+    [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--invalid"],
+    { encoding: "utf8" }
+  );
+  assert.equal(invalidScriptRun.status, 0);
+  assert.equal(invalidScriptRun.stdout.includes("ok: false"), true);
+  assert.equal(invalidScriptRun.stdout.includes("errorCount: "), true);
+  assert.equal(invalidScriptRun.stdout.includes("errors:"), true);
+  assert.equal(invalidScriptRun.stdout.includes("Layoutdaten Status: ungueltig"), true);
+  assert.equal(invalidScriptRun.stderr, "");
+  assertNoForbiddenTerms(invalidScriptRun.stdout);
 
   console.log("TESTS OK: mini-inspector-demo-host");
 }

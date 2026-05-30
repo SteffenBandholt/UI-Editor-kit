@@ -11,6 +11,13 @@ const { mountMiniInspectorStatus } = require("./mini-inspector-layout-read.cjs")
 
 const DEFAULT_SCOPE = "mini-inspector-demo.scope";
 
+function parseMiniInspectorDemoHostCliArgs(argv) {
+  const args = Array.isArray(argv) ? argv : [];
+  return {
+    invalid: args.includes("--invalid"),
+  };
+}
+
 function createMiniInspectorDemoTargetRoot(options) {
   const opts = options || {};
   const invalid = opts.invalid === true;
@@ -166,6 +173,7 @@ function runMiniInspectorDemoHostCli(options) {
 
 module.exports = {
   DEFAULT_SCOPE,
+  parseMiniInspectorDemoHostCliArgs,
   createMiniInspectorDemoTargetRoot,
   createMiniInspectorDemoInspectorContainer,
   createMiniInspectorDemoHost,
@@ -176,7 +184,8 @@ module.exports = {
 };
 
 if (require.main === module) {
-  const cliResult = runMiniInspectorDemoHostCli();
+  const cliOptions = parseMiniInspectorDemoHostCliArgs(process.argv.slice(2));
+  const cliResult = runMiniInspectorDemoHostCli(cliOptions);
 
   if (cliResult.exitCode === 0) {
     process.stdout.write(`${cliResult.text}\n`);
