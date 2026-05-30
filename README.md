@@ -70,6 +70,14 @@ node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
 
 Fuer die kontrollierte Uebernahme in neue Ziel-Apps steht ein kopierbarer Auftrag in `codex/CODEX_BOOTSTRAP_ZIEL_APP.md`.
 
+## Mini-Inspector Demo (K1.0)
+
+Erste sichtbare, fachneutrale Demo zum Lesen und Anzeigen von `data-ui-*` Metadaten:
+
+```powershell
+start examples\mini-inspector\index.html
+```
+
 ## Trockenlauf
 
 Ein dokumentierter Uebernahme-Trockenlauf fuer neue Ziel-Apps steht in `docs/UEBERNAHME_TROCKENLAUF.md`.

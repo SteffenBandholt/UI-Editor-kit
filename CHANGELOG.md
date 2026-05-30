@@ -5,6 +5,7 @@
 - Bootstrap-Auftrag fuer Ziel-Apps enthalten.
 - Neue Apps koennen das Kit kontrolliert vor dem ersten UI-/PDF-Bau uebernehmen.
 - `v0.1.1` ist der erste Referenzstand inklusive Bootstrap-Auftrag.
+- K1.0: Mini-Inspector als erste sichtbare Demo ergaenzt.
 
 ## 0.1.0
 
