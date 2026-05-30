@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0
+
+- Erste nutzbare fachneutrale Kit-Version.
+- UI-Editor-Vertrag enthalten.
+- Codex-Uebernahmeblock enthalten.
+- Einbauanleitung enthalten.
+- Uebernahme-Checkliste enthalten.
+- Vertragscheck enthalten.
+- Beispiel-HTML enthalten.
+- Uebernahme-Trockenlauf enthalten.
+
 ## 0.1.0-draft
 
 - Startstruktur fuer ein fachneutrales UI-/PDF-Editor-Kit angelegt.
