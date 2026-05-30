@@ -8,6 +8,8 @@
 - K1.0: Mini-Inspector als erste sichtbare Demo ergaenzt.
 - K1.1: App-Integration-Modell dokumentiert.
 - K1.2: Layoutdaten-Modell dokumentiert.
+- K1.3: Layoutdaten-Validator vorbereitet.
+- K1.3-Pruefung standardisiert ueber `npm test`.
 
 ## 0.1.0
 

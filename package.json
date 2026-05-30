@@ -1,0 +1,7 @@
+{
+  "name": "ui-editor-kit",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/tests/layout-data-validator.test.cjs"
+  }
+}
