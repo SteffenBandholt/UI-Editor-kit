@@ -31,6 +31,7 @@
 - K3.5: Vorhandene Mini-Inspector-Demo und vorbereiteter Integrationspunkt fachneutral als Bestandsaufnahme dokumentiert.
 - K3.6: K3-Mini-Inspector-Referenzstand als rein lesender Status-/Render-Stand dokumentiert.
 - K4.0: Fachneutrale Mini-Inspector Demo-/Host-Schale fuer lesenden Status und Inspector-Container-Rendering vorbereitet.
+- K4.1: Demo-/Host-Schale ueber `npm run mini-inspector:demo` neutral ausfuehrbar gemacht.
 
 ## 0.1.0
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const {
   DEFAULT_SCOPE,
@@ -9,6 +12,8 @@ const {
   createMiniInspectorDemoHost,
   updateMiniInspectorDemoHost,
   runMiniInspectorDemoHost,
+  formatMiniInspectorDemoHostResult,
+  runMiniInspectorDemoHostCli,
 } = require("../mini-inspector-demo-host.cjs");
 
 const FORBIDDEN_TERMS = ["Protokoll", "TOP", "Bauvorhaben", "Restarbeiten"];
@@ -37,7 +42,17 @@ function run() {
   assert.equal(typeof createMiniInspectorDemoHost, "function");
   assert.equal(typeof updateMiniInspectorDemoHost, "function");
   assert.equal(typeof runMiniInspectorDemoHost, "function");
+  assert.equal(typeof formatMiniInspectorDemoHostResult, "function");
+  assert.equal(typeof runMiniInspectorDemoHostCli, "function");
   assert.equal(DEFAULT_SCOPE, "mini-inspector-demo.scope");
+
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
+  );
+  assert.equal(
+    packageJson.scripts["mini-inspector:demo"],
+    "node scripts/mini-inspector-demo-host.cjs"
+  );
 
   // 2) Neutrale Beispiel-UI mit data-ui-* Metadaten erzeugt Status ok: true
   const rootElement = createMiniInspectorDemoTargetRoot();
@@ -111,6 +126,31 @@ function run() {
   assert.equal(directResult.ok, true);
   assert.equal(directResult.host.inspectorContainer.innerHTML.includes("Layoutdaten Status"), true);
   assert.deepEqual(directResult.host.rootElement, snapshot(directResult.host.rootElement));
+
+  // 11) CLI-Ausgabe bleibt neutral und enthaelt die Kernfelder
+  const cliResult = runMiniInspectorDemoHostCli();
+  assert.equal(cliResult.exitCode, 0);
+  assert.equal(cliResult.text.includes("ok: true"), true);
+  assert.equal(cliResult.text.includes("itemCount: 2"), true);
+  assert.equal(cliResult.text.includes("errorCount: 0"), true);
+  assert.equal(cliResult.text.includes(`scope: ${DEFAULT_SCOPE}`), true);
+  assert.equal(cliResult.text.includes("version: 1"), true);
+  assert.equal(cliResult.text.includes("inspectorContainer:"), true);
+  assertNoForbiddenTerms(cliResult.text);
+
+  // 12) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
+  const scriptRun = spawnSync(process.execPath, [path.resolve(__dirname, "../mini-inspector-demo-host.cjs")], {
+    encoding: "utf8",
+  });
+  assert.equal(scriptRun.status, 0);
+  assert.equal(scriptRun.stdout.includes("ok: true"), true);
+  assert.equal(scriptRun.stdout.includes("itemCount: 2"), true);
+  assert.equal(scriptRun.stdout.includes("errorCount: 0"), true);
+  assert.equal(scriptRun.stdout.includes(`scope: ${DEFAULT_SCOPE}`), true);
+  assert.equal(scriptRun.stdout.includes("version: 1"), true);
+  assert.equal(scriptRun.stdout.includes("inspectorContainer:"), true);
+  assert.equal(scriptRun.stderr, "");
+  assertNoForbiddenTerms(scriptRun.stdout);
 
   console.log("TESTS OK: mini-inspector-demo-host");
 }

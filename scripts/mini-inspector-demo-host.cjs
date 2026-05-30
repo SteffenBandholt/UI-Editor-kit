@@ -88,6 +88,82 @@ function runMiniInspectorDemoHost(options) {
   return updateMiniInspectorDemoHost(host, options);
 }
 
+function formatMiniInspectorDemoHostResult(result) {
+  const safeResult = result || {
+    ok: false,
+    status: {
+      ok: false,
+      itemCount: 0,
+      errorCount: 0,
+      scope: DEFAULT_SCOPE,
+      version: 1,
+      errors: [],
+    },
+    host: {
+      inspectorContainer: {
+        innerHTML: "",
+      },
+    },
+  };
+
+  const status = safeResult.status || {};
+  const lines = [
+    `ok: ${Boolean(safeResult.ok)}`,
+    `itemCount: ${Number(status.itemCount || 0)}`,
+    `errorCount: ${Number(status.errorCount || 0)}`,
+    `scope: ${typeof status.scope === "string" ? status.scope : DEFAULT_SCOPE}`,
+    `version: ${Number(status.version || 1)}`,
+  ];
+
+  if (Array.isArray(status.errors) && status.errors.length > 0) {
+    lines.push("errors:");
+    status.errors.forEach((error, index) => {
+      const pathValue = error && error.path ? error.path : "<unbekannt>";
+      const codeValue = error && error.code ? error.code : "UNKNOWN";
+      const messageValue = error && error.message ? error.message : "Kein Fehlertext";
+      lines.push(`${index + 1}. ${pathValue} | ${codeValue} | ${messageValue}`);
+    });
+  }
+
+  const inspectorMarkup =
+    safeResult.host &&
+    safeResult.host.inspectorContainer &&
+    typeof safeResult.host.inspectorContainer.innerHTML === "string"
+      ? safeResult.host.inspectorContainer.innerHTML
+      : "";
+
+  if (inspectorMarkup) {
+    lines.push("inspectorContainer:");
+    lines.push(inspectorMarkup);
+  }
+
+  return {
+    ok: Boolean(safeResult.ok),
+    text: lines.join("\n"),
+  };
+}
+
+function runMiniInspectorDemoHostCli(options) {
+  try {
+    const result = runMiniInspectorDemoHost(options);
+    const output = formatMiniInspectorDemoHostResult(result);
+    return {
+      ok: result.ok,
+      exitCode: 0,
+      text: output.text,
+      result,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      exitCode: 1,
+      text: `runnerError: ${message}`,
+      error,
+    };
+  }
+}
+
 module.exports = {
   DEFAULT_SCOPE,
   createMiniInspectorDemoTargetRoot,
@@ -95,4 +171,18 @@ module.exports = {
   createMiniInspectorDemoHost,
   updateMiniInspectorDemoHost,
   runMiniInspectorDemoHost,
+  formatMiniInspectorDemoHostResult,
+  runMiniInspectorDemoHostCli,
 };
+
+if (require.main === module) {
+  const cliResult = runMiniInspectorDemoHostCli();
+
+  if (cliResult.exitCode === 0) {
+    process.stdout.write(`${cliResult.text}\n`);
+  } else {
+    process.stderr.write(`${cliResult.text}\n`);
+  }
+
+  process.exitCode = cliResult.exitCode;
+}

@@ -65,6 +65,26 @@ Damit ist der aktuelle Stand klar getrennt:
 
 - Testbefehl: `npm test`
 - Diagnosebefehl: `npm run layout:diagnose`
+- Demo-/Host-Befehl: `npm run mini-inspector:demo`
+
+Mit `npm run mini-inspector:demo` wird die vorhandene Demo-/Host-Schale einmal neutral auf stdout ausgefuehrt.
+
+Der Befehl zeigt nur:
+
+- `ok`
+- `itemCount`
+- `errorCount`
+- `scope`
+- `version`
+- `errors` falls vorhanden
+- optional den neutralen Inspector-Container-Inhalt
+
+Grenzen des Befehls:
+
+- keine Speicherung
+- keine Layout-Anwendung
+- keine Ziel-UI-Mutation
+- keine Fachlogik
 
 ## Referenzstand-Aussage
 
