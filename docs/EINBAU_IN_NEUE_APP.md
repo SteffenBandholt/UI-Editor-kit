@@ -6,6 +6,8 @@ Dieses Kit wird in eine neue App uebernommen, bevor dort UI- oder PDF-Strukturen
 
 Fuer einen dokumentierten Trockenlauf ohne echte Ziel-App siehe `docs/UEBERNAHME_TROCKENLAUF.md`.
 
+Fuer neue Apps zuerst den Bootstrap-Auftrag aus `codex/CODEX_BOOTSTRAP_ZIEL_APP.md` verwenden.
+
 ## Verbindliche Reihenfolge vor dem ersten UI-/PDF-Auftrag
 
 1. Kit in neues App-Repository uebernehmen.

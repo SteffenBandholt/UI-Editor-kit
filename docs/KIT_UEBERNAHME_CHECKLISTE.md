@@ -4,6 +4,8 @@ Diese Checkliste hilft beim Uebernehmen des UI-Editor-Kits in eine neue App.
 
 Vor echter App-Uebernahme kann der Trockenlauf aus `docs/UEBERNAHME_TROCKENLAUF.md` genutzt werden.
 
+Vor manueller Uebernahme bevorzugt den Bootstrap-Auftrag aus `codex/CODEX_BOOTSTRAP_ZIEL_APP.md` verwenden.
+
 ## Abhakliste
 
 - [ ] Vertrag uebernommen
@@ -11,6 +13,7 @@ Vor echter App-Uebernahme kann der Trockenlauf aus `docs/UEBERNAHME_TROCKENLAUF.
 - [ ] Entwurfsentscheidungspflicht aktiv
 - [ ] Vertragscheck uebernommen
 - [ ] Vertragscheck lauffaehig
+- [ ] Bootstrap-Auftrag vorhanden und nutzbar
 - [ ] erste UI-/PDF-Aufgabe noch nicht ohne Entwurfsentscheidung gestartet
 - [ ] Fachaktionen nicht als Editor-Ziele geplant
 
