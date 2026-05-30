@@ -9,6 +9,7 @@ const {
   createMiniInspectorStatusDisplayModel,
   createMiniInspectorStatusMarkup,
   renderMiniInspectorStatus,
+  mountMiniInspectorStatus,
   readMiniInspectorLayoutStatus,
   createMiniInspectorStatusViewModel,
 } = require("../mini-inspector-layout-read.cjs");
@@ -39,6 +40,7 @@ function run() {
   assert.equal(typeof createMiniInspectorStatusDisplayModel, "function");
   assert.equal(typeof createMiniInspectorStatusMarkup, "function");
   assert.equal(typeof renderMiniInspectorStatus, "function");
+  assert.equal(typeof mountMiniInspectorStatus, "function");
 
   // 1) neue Lesefunktion nutzt die oeffentliche Layoutdaten-API
   const source = fs.readFileSync(path.resolve(__dirname, "../mini-inspector-layout-read.cjs"), "utf8");
@@ -141,6 +143,22 @@ function run() {
   const renderResult = renderMiniInspectorStatus(inspectorContainer, validView);
   assert.equal(renderResult.ok, true);
   assert.equal(inspectorContainer.innerHTML.includes("Layoutdaten Status"), true);
+  assert.equal(targetUi.innerHTML, targetBefore);
+
+  // 9) lesende Einhaengefunktion rendert nur in den Inspector-Container
+  const mountContainer = { innerHTML: "" };
+  const mountRootBefore = snapshotTree(validRoot);
+  const mountResult = mountMiniInspectorStatus(mountContainer, validRoot, {
+    scope: "mini-inspector.scope",
+  });
+  assert.equal(mountResult.ok, true);
+  assert.equal(typeof mountResult.status, "object");
+  assert.equal(typeof mountResult.view, "object");
+  assert.equal(typeof mountResult.render, "object");
+  assert.equal(mountResult.view.text.includes("Layoutdaten gueltig: ja"), true);
+  assert.equal(mountResult.view.text.includes("Layout-Items: 2"), true);
+  assert.equal(mountContainer.innerHTML.includes("Layoutdaten Status: gueltig"), true);
+  assert.deepEqual(snapshotTree(validRoot), mountRootBefore);
   assert.equal(targetUi.innerHTML, targetBefore);
 
   console.log("TESTS OK: mini-inspector-layout-read");

@@ -112,12 +112,24 @@ function renderMiniInspectorStatus(container, statusViewModel) {
   throw new Error("Inspector-Container kann nicht aktualisiert werden.");
 }
 
+function mountMiniInspectorStatus(container, rootElement, options) {
+  const display = createMiniInspectorStatusDisplayModel(rootElement, options);
+  const renderResult = renderMiniInspectorStatus(container, display.view);
+  return {
+    ok: display.status.ok,
+    status: display.status,
+    view: display.view,
+    render: renderResult,
+  };
+}
+
 module.exports = {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
   createMiniInspectorStatusDisplayModel,
   createMiniInspectorStatusMarkup,
   renderMiniInspectorStatus,
+  mountMiniInspectorStatus,
   readMiniInspectorLayoutStatus: createMiniInspectorLayoutStatus,
   createMiniInspectorStatusViewModel: formatMiniInspectorLayoutStatus,
 };
