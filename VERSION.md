@@ -3,12 +3,12 @@
 Aktuelle Startversion:
 
 ```text
-0.1.0-draft
+0.1.0
 ```
 
 ## Bedeutung
 
-- `0.1.0-draft`: erste fachneutrale Startstruktur des UI-Editor-Kits.
+- `0.1.0`: erste nutzbare fachneutrale Kit-Version.
 
 ## Versionsregel
 

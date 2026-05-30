@@ -12,6 +12,12 @@ Dieses Repository ist die zentrale Quelle fuer:
 
 Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor.
 
+## Aktueller Stand
+
+`0.1.0`
+
+Diese Version kann als erster Referenzstand in neue Apps uebernommen werden.
+
 ## Grundsatz
 
 Der Editor kennt keine Fachmodule.
