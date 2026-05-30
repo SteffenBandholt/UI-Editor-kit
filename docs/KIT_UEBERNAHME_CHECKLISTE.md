@@ -2,6 +2,8 @@
 
 Diese Checkliste hilft beim Uebernehmen des UI-Editor-Kits in eine neue App.
 
+Vor echter App-Uebernahme kann der Trockenlauf aus `docs/UEBERNAHME_TROCKENLAUF.md` genutzt werden.
+
 ## Abhakliste
 
 - [ ] Vertrag uebernommen

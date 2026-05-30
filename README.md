@@ -58,6 +58,10 @@ Beispiel:
 node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
 ```
 
+## Trockenlauf
+
+Ein dokumentierter Uebernahme-Trockenlauf fuer neue Ziel-Apps steht in `docs/UEBERNAHME_TROCKENLAUF.md`.
+
 ## Einstieg fuer neue Apps
 
 Siehe:
