@@ -25,6 +25,7 @@
 - K2.5: Mini-Inspector-Einstieg als Referenzstand dokumentiert.
 - K3.0: Mini-Inspector-Status als renderbares Anzeige-Modell integriert.
 - K3.1: Sichtbarer/renderbarer Mini-Inspector-Status dokumentiert.
+- K3.2: Mini-Inspector DOM-/Markup-Adapter fuer neutrale Statusanzeige vorbereitet.
 
 ## 0.1.0
 

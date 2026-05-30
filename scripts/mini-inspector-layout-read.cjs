@@ -67,10 +67,57 @@ function createMiniInspectorStatusDisplayModel(rootElement, options) {
   };
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function createMiniInspectorStatusMarkup(statusViewModel) {
+  const view = statusViewModel || { ok: false, lines: [] };
+  const lines = Array.isArray(view.lines) ? view.lines : [];
+  const title = view.ok ? "Layoutdaten Status: gueltig" : "Layoutdaten Status: ungueltig";
+
+  const items = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  return `<section data-mini-inspector-status="true"><h3>${escapeHtml(title)}</h3><ul>${items}</ul></section>`;
+}
+
+function renderMiniInspectorStatus(container, statusViewModel) {
+  if (!container || typeof container !== "object") {
+    throw new Error("Inspector-Container fehlt oder ist ungueltig.");
+  }
+
+  const markup = createMiniInspectorStatusMarkup(statusViewModel);
+
+  if ("innerHTML" in container) {
+    container.innerHTML = markup;
+    return { ok: true, mode: "innerHTML" };
+  }
+
+  if ("textContent" in container) {
+    const view = statusViewModel || { text: "" };
+    container.textContent = typeof view.text === "string" ? view.text : "";
+    return { ok: true, mode: "textContent" };
+  }
+
+  if (Array.isArray(container.children)) {
+    container.children.length = 0;
+    container.children.push({ type: "markup", value: markup });
+    return { ok: true, mode: "children" };
+  }
+
+  throw new Error("Inspector-Container kann nicht aktualisiert werden.");
+}
+
 module.exports = {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
   createMiniInspectorStatusDisplayModel,
+  createMiniInspectorStatusMarkup,
+  renderMiniInspectorStatus,
   readMiniInspectorLayoutStatus: createMiniInspectorLayoutStatus,
   createMiniInspectorStatusViewModel: formatMiniInspectorLayoutStatus,
 };

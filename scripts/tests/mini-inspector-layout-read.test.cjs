@@ -7,6 +7,8 @@ const {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
   createMiniInspectorStatusDisplayModel,
+  createMiniInspectorStatusMarkup,
+  renderMiniInspectorStatus,
   readMiniInspectorLayoutStatus,
   createMiniInspectorStatusViewModel,
 } = require("../mini-inspector-layout-read.cjs");
@@ -35,6 +37,8 @@ function run() {
   assert.equal(typeof readMiniInspectorLayoutStatus, "function");
   assert.equal(typeof createMiniInspectorStatusViewModel, "function");
   assert.equal(typeof createMiniInspectorStatusDisplayModel, "function");
+  assert.equal(typeof createMiniInspectorStatusMarkup, "function");
+  assert.equal(typeof renderMiniInspectorStatus, "function");
 
   // 1) neue Lesefunktion nutzt die oeffentliche Layoutdaten-API
   const source = fs.readFileSync(path.resolve(__dirname, "../mini-inspector-layout-read.cjs"), "utf8");
@@ -76,6 +80,10 @@ function run() {
   assert.equal(validView.lines.some((line) => line.includes("Fehler: 0")), true);
   assert.equal(validView.lines.some((line) => line.includes("Scope: mini-inspector.scope")), true);
   assert.equal(validView.lines.some((line) => line.includes("Version: 1")), true);
+  const validMarkup = createMiniInspectorStatusMarkup(validView);
+  assert.equal(typeof validMarkup, "string");
+  assert.equal(validMarkup.includes("Layoutdaten Status: gueltig"), true);
+  assert.equal(validMarkup.includes("Layout-Items: 2"), true);
 
   // 3) Elemente ohne data-ui-* bleiben fachneutral ignoriert
   const mixedRoot = createNode({}, [
@@ -104,6 +112,8 @@ function run() {
   assert.equal(invalidView.ok, false);
   assert.equal(invalidView.lines.some((line) => line.includes("Layoutdaten gueltig: nein")), true);
   assert.equal(invalidView.lines.some((line) => line.includes("Fehlerdetails:")), true);
+  const invalidMarkup = createMiniInspectorStatusMarkup(invalidView);
+  assert.equal(invalidMarkup.includes("Layoutdaten Status: ungueltig"), true);
   const invalidDisplay = createMiniInspectorStatusDisplayModel(invalidRoot);
   assert.equal(invalidDisplay.status.ok, false);
   assert.equal(invalidDisplay.view.ok, false);
@@ -123,6 +133,15 @@ function run() {
   assert.equal(validView.text.includes("Bauvorhaben"), false);
   assert.equal(validView.text.includes("Restarbeiten"), false);
   assert.deepEqual(snapshotTree(validRoot), validBefore);
+
+  // 8) nur uebergebener Inspector-Container wird veraendert, Ziel-UI bleibt unberuehrt
+  const inspectorContainer = { innerHTML: "<p>alt</p>" };
+  const targetUi = { innerHTML: "<div>ziel</div>" };
+  const targetBefore = targetUi.innerHTML;
+  const renderResult = renderMiniInspectorStatus(inspectorContainer, validView);
+  assert.equal(renderResult.ok, true);
+  assert.equal(inspectorContainer.innerHTML.includes("Layoutdaten Status"), true);
+  assert.equal(targetUi.innerHTML, targetBefore);
 
   console.log("TESTS OK: mini-inspector-layout-read");
 }
