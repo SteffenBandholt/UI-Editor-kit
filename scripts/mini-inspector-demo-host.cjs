@@ -1,0 +1,98 @@
+#!/usr/bin/env node
+
+/*
+ * Mini-Inspector Demo-Host (K4.0)
+ *
+ * Fachneutrale Demo-/Host-Schale fuer den rein lesenden Mini-Inspector.
+ * Keine Speicherung, keine Layout-Anwendung, keine Ziel-UI-Mutation.
+ */
+
+const { mountMiniInspectorStatus } = require("./mini-inspector-layout-read.cjs");
+
+const DEFAULT_SCOPE = "mini-inspector-demo.scope";
+
+function createMiniInspectorDemoTargetRoot(options) {
+  const opts = options || {};
+  const invalid = opts.invalid === true;
+
+  return {
+    type: "root",
+    attributes: {
+      "data-ui-demo-root": "true",
+    },
+    children: [
+      {
+        type: "section",
+        attributes: {
+          "data-ui-inspector-id": "demo.header",
+          "data-ui-editor-editable": "true",
+          "data-ui-editor-ops": "read,inspect",
+          "data-ui-layout-order": "1",
+        },
+        children: [],
+      },
+      {
+        type: "section",
+        attributes: {
+          "data-ui-inspector-id": "demo.content",
+          "data-ui-editor-editable": "false",
+          "data-ui-editor-ops": "read",
+          "data-ui-layout-order": "2",
+          "data-ui-layout-width": invalid ? "-1" : "0",
+        },
+        children: [],
+      },
+    ],
+  };
+}
+
+function createMiniInspectorDemoInspectorContainer() {
+  return {
+    innerHTML: "",
+  };
+}
+
+function createMiniInspectorDemoHost(options) {
+  const opts = options || {};
+  const rootElement = opts.rootElement || createMiniInspectorDemoTargetRoot(opts);
+  const inspectorContainer = opts.inspectorContainer || createMiniInspectorDemoInspectorContainer();
+  const scope = typeof opts.scope === "string" ? opts.scope : DEFAULT_SCOPE;
+
+  return {
+    rootElement,
+    inspectorContainer,
+    scope,
+  };
+}
+
+function updateMiniInspectorDemoHost(host, options) {
+  if (!host || typeof host !== "object") {
+    throw new Error("Demo-Host fehlt oder ist ungueltig.");
+  }
+
+  const opts = options || {};
+  const scope = typeof opts.scope === "string" ? opts.scope : host.scope || DEFAULT_SCOPE;
+  const result = mountMiniInspectorStatus(host.inspectorContainer, host.rootElement, { scope });
+
+  return {
+    ok: result.ok,
+    status: result.status,
+    view: result.view,
+    render: result.render,
+    host,
+  };
+}
+
+function runMiniInspectorDemoHost(options) {
+  const host = createMiniInspectorDemoHost(options);
+  return updateMiniInspectorDemoHost(host, options);
+}
+
+module.exports = {
+  DEFAULT_SCOPE,
+  createMiniInspectorDemoTargetRoot,
+  createMiniInspectorDemoInspectorContainer,
+  createMiniInspectorDemoHost,
+  updateMiniInspectorDemoHost,
+  runMiniInspectorDemoHost,
+};
