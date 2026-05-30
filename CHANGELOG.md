@@ -16,6 +16,7 @@
 - K1.7: JSON-Datei-Eingabe fuer Layoutdaten-Diagnose per CLI abgesichert.
 - K1.8: Zentrale Layoutdaten-API zur Buendelung vorhandener Bausteine ergaenzt.
 - K1.9: Layoutdaten-API dokumentiert und Stabilitaetsvertrag festgelegt.
+- K1.10: Layoutdaten-Kern als Referenzstand dokumentiert und abgesichert.
 
 ## 0.1.0
 
