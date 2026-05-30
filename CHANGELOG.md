@@ -28,6 +28,7 @@
 - K3.2: Mini-Inspector DOM-/Markup-Adapter fuer neutrale Statusanzeige vorbereitet.
 - K3.3: Mini-Inspector DOM-/Markup-Adapter dokumentiert und per Smoke-Test abgesichert.
 - K3.4: Lesender Mini-Inspector-Einstieg zum Rendern in Inspector-Container vorbereitet.
+- K3.5: Vorhandene Mini-Inspector-Demo und vorbereiteter Integrationspunkt fachneutral als Bestandsaufnahme dokumentiert.
 
 ## 0.1.0
 
