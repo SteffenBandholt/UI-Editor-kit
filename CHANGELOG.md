@@ -12,6 +12,7 @@
 - K1.3-Pruefung standardisiert ueber `npm test`.
 - K1.4: Fachneutraler Layoutdaten-Extractor aus `data-ui-*` vorbereitet.
 - K1.5: Fachneutraler Layoutdaten-Diagnosebericht (Extractor + Validator) vorbereitet.
+- K1.6: CLI-Pruefbefehl fuer Layoutdaten-Diagnose vorbereitet.
 
 ## 0.1.0
 
