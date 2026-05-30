@@ -10,6 +10,7 @@
 - K1.2: Layoutdaten-Modell dokumentiert.
 - K1.3: Layoutdaten-Validator vorbereitet.
 - K1.3-Pruefung standardisiert ueber `npm test`.
+- K1.4: Fachneutraler Layoutdaten-Extractor aus `data-ui-*` vorbereitet.
 
 ## 0.1.0
 
