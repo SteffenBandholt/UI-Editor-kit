@@ -11,7 +11,7 @@ const path = require("path");
 const {
   createLayoutDataDiagnostics,
   createLayoutDataDiagnosticsFromLayoutData,
-} = require("./layout-data-diagnostics.cjs");
+} = require("./layout-data-api.cjs");
 
 function createNode(attributes, children) {
   const attrs = attributes || {};
