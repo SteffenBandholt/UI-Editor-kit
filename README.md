@@ -64,6 +64,10 @@ Beispiel:
 node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
 ```
 
+## Bootstrap-Auftrag fuer neue Apps
+
+Fuer die kontrollierte Uebernahme in neue Ziel-Apps steht ein kopierbarer Auftrag in `codex/CODEX_BOOTSTRAP_ZIEL_APP.md`.
+
 ## Trockenlauf
 
 Ein dokumentierter Uebernahme-Trockenlauf fuer neue Ziel-Apps steht in `docs/UEBERNAHME_TROCKENLAUF.md`.

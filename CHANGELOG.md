@@ -10,6 +10,7 @@
 - Vertragscheck enthalten.
 - Beispiel-HTML enthalten.
 - Uebernahme-Trockenlauf enthalten.
+- K0.6: Bootstrap-Auftrag fuer Ziel-App ergaenzt.
 
 ## 0.1.0-draft
 
