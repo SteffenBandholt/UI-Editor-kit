@@ -6,6 +6,7 @@ const path = require("path");
 const {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
+  createMiniInspectorStatusDisplayModel,
   readMiniInspectorLayoutStatus,
   createMiniInspectorStatusViewModel,
 } = require("../mini-inspector-layout-read.cjs");
@@ -33,6 +34,7 @@ function run() {
   // 0) oeffentlicher Mini-Inspector-Einstieg ist importierbar
   assert.equal(typeof readMiniInspectorLayoutStatus, "function");
   assert.equal(typeof createMiniInspectorStatusViewModel, "function");
+  assert.equal(typeof createMiniInspectorStatusDisplayModel, "function");
 
   // 1) neue Lesefunktion nutzt die oeffentliche Layoutdaten-API
   const source = fs.readFileSync(path.resolve(__dirname, "../mini-inspector-layout-read.cjs"), "utf8");
@@ -60,6 +62,13 @@ function run() {
   const validView = formatMiniInspectorLayoutStatus(validStatus);
   const validViewAlias = createMiniInspectorStatusViewModel(validStatus);
   assert.deepEqual(validViewAlias, validView);
+  const validDisplay = createMiniInspectorStatusDisplayModel(validRoot, { scope: "mini-inspector.scope" });
+  assert.equal(typeof validDisplay, "object");
+  assert.equal(typeof validDisplay.status, "object");
+  assert.equal(typeof validDisplay.view, "object");
+  assert.equal(validDisplay.status.ok, true);
+  assert.equal(validDisplay.view.ok, true);
+  assert.equal(validDisplay.view.lines.some((line) => line.includes("Layout-Items: 2")), true);
   assert.equal(validView.ok, true);
   assert.equal(Array.isArray(validView.lines), true);
   assert.equal(validView.lines.some((line) => line.includes("Layoutdaten gueltig: ja")), true);
@@ -95,6 +104,10 @@ function run() {
   assert.equal(invalidView.ok, false);
   assert.equal(invalidView.lines.some((line) => line.includes("Layoutdaten gueltig: nein")), true);
   assert.equal(invalidView.lines.some((line) => line.includes("Fehlerdetails:")), true);
+  const invalidDisplay = createMiniInspectorStatusDisplayModel(invalidRoot);
+  assert.equal(invalidDisplay.status.ok, false);
+  assert.equal(invalidDisplay.view.ok, false);
+  assert.equal(invalidDisplay.status.errorCount > 0, true);
 
   // 5/6) keine Speicherung und keine Layout-Anwendung: keine Mutation der Eingabe
   assert.deepEqual(snapshotTree(validRoot), validBefore);
@@ -109,6 +122,7 @@ function run() {
   assert.equal(validView.text.includes("TOP"), false);
   assert.equal(validView.text.includes("Bauvorhaben"), false);
   assert.equal(validView.text.includes("Restarbeiten"), false);
+  assert.deepEqual(snapshotTree(validRoot), validBefore);
 
   console.log("TESTS OK: mini-inspector-layout-read");
 }

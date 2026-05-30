@@ -23,6 +23,7 @@
 - K2.3: Mini-Inspector-Statusanzeige als neutrales View-Modell vorbereitet.
 - K2.4: Oeffentlicher Mini-Inspector-Einstieg als lesende API abgesichert.
 - K2.5: Mini-Inspector-Einstieg als Referenzstand dokumentiert.
+- K3.0: Mini-Inspector-Status als renderbares Anzeige-Modell integriert.
 
 ## 0.1.0
 

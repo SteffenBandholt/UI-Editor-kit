@@ -58,9 +58,19 @@ function formatMiniInspectorLayoutStatus(status) {
   };
 }
 
+function createMiniInspectorStatusDisplayModel(rootElement, options) {
+  const status = createMiniInspectorLayoutStatus(rootElement, options);
+  const view = formatMiniInspectorLayoutStatus(status);
+  return {
+    status,
+    view,
+  };
+}
+
 module.exports = {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
+  createMiniInspectorStatusDisplayModel,
   readMiniInspectorLayoutStatus: createMiniInspectorLayoutStatus,
   createMiniInspectorStatusViewModel: formatMiniInspectorLayoutStatus,
 };
