@@ -3,7 +3,10 @@
 const assert = require("assert/strict");
 const fs = require("fs");
 const path = require("path");
-const { createMiniInspectorLayoutStatus } = require("../mini-inspector-layout-read.cjs");
+const {
+  createMiniInspectorLayoutStatus,
+  formatMiniInspectorLayoutStatus,
+} = require("../mini-inspector-layout-read.cjs");
 
 function createNode(attributes, children) {
   const attrs = attributes || {};
@@ -46,6 +49,14 @@ function run() {
   assert.equal(validStatus.scope, "mini-inspector.scope");
   assert.equal(validStatus.version, 1);
   assert.equal(Array.isArray(validStatus.errors), true);
+  const validView = formatMiniInspectorLayoutStatus(validStatus);
+  assert.equal(validView.ok, true);
+  assert.equal(Array.isArray(validView.lines), true);
+  assert.equal(validView.lines.some((line) => line.includes("Layoutdaten gueltig: ja")), true);
+  assert.equal(validView.lines.some((line) => line.includes("Layout-Items: 2")), true);
+  assert.equal(validView.lines.some((line) => line.includes("Fehler: 0")), true);
+  assert.equal(validView.lines.some((line) => line.includes("Scope: mini-inspector.scope")), true);
+  assert.equal(validView.lines.some((line) => line.includes("Version: 1")), true);
 
   // 3) Elemente ohne data-ui-* bleiben fachneutral ignoriert
   const mixedRoot = createNode({}, [
@@ -70,6 +81,10 @@ function run() {
   assert.equal(invalidStatus.ok, false);
   assert.equal(invalidStatus.errorCount > 0, true);
   assert.equal(Array.isArray(invalidStatus.errors), true);
+  const invalidView = formatMiniInspectorLayoutStatus(invalidStatus);
+  assert.equal(invalidView.ok, false);
+  assert.equal(invalidView.lines.some((line) => line.includes("Layoutdaten gueltig: nein")), true);
+  assert.equal(invalidView.lines.some((line) => line.includes("Fehlerdetails:")), true);
 
   // 5/6) keine Speicherung und keine Layout-Anwendung: keine Mutation der Eingabe
   assert.deepEqual(snapshotTree(validRoot), validBefore);
@@ -80,6 +95,10 @@ function run() {
   assert.equal(typeof validStatus.errorCount, "number");
   assert.equal(typeof validStatus.scope, "string");
   assert.equal(typeof validStatus.version, "number");
+  assert.equal(validView.text.includes("Protokoll"), false);
+  assert.equal(validView.text.includes("TOP"), false);
+  assert.equal(validView.text.includes("Bauvorhaben"), false);
+  assert.equal(validView.text.includes("Restarbeiten"), false);
 
   console.log("TESTS OK: mini-inspector-layout-read");
 }

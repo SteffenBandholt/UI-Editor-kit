@@ -20,6 +20,7 @@
 - K2.0: Mini-Inspector nutzt Layoutdaten-API erstmals lesend.
 - K2.1: Mini-Inspector-Statusausgabe als neutraler Lesestatus abgesichert.
 - K2.2: Mini-Inspector-Status als lesender Stand dokumentiert.
+- K2.3: Mini-Inspector-Statusanzeige als neutrales View-Modell vorbereitet.
 
 ## 0.1.0
 

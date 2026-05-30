@@ -23,6 +23,42 @@ function createMiniInspectorLayoutStatus(rootElement, options) {
   };
 }
 
+function formatMiniInspectorLayoutStatus(status) {
+  const s = status || {
+    ok: false,
+    itemCount: 0,
+    errorCount: 0,
+    scope: "app-or-screen-scope",
+    version: 1,
+    errors: [],
+  };
+
+  const lines = [
+    `Layoutdaten gueltig: ${s.ok ? "ja" : "nein"}`,
+    `Layout-Items: ${s.itemCount}`,
+    `Fehler: ${s.errorCount}`,
+    `Scope: ${s.scope}`,
+    `Version: ${s.version}`,
+  ];
+
+  if (Array.isArray(s.errors) && s.errors.length > 0) {
+    lines.push("Fehlerdetails:");
+    s.errors.forEach((error, index) => {
+      const pathValue = error && error.path ? error.path : "<unbekannt>";
+      const codeValue = error && error.code ? error.code : "UNKNOWN";
+      const messageValue = error && error.message ? error.message : "Kein Fehlertext";
+      lines.push(`${index + 1}. ${pathValue} | ${codeValue} | ${messageValue}`);
+    });
+  }
+
+  return {
+    ok: Boolean(s.ok),
+    lines,
+    text: lines.join("\n"),
+  };
+}
+
 module.exports = {
   createMiniInspectorLayoutStatus,
+  formatMiniInspectorLayoutStatus,
 };
