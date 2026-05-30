@@ -11,3 +11,4 @@
 - KIT-Uebernahme-Checkliste fuer neue Apps ergaenzt.
 - K0.2: Vertragscheck technisch als erster fachneutraler Kit-Baustein vorbereitet.
 - K0.3: Uebernahmeblock und Einbauanleitung praxisfest gemacht.
+- K0.4: Uebernahme-Trockenlauf dokumentiert.
