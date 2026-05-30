@@ -1,19 +1,42 @@
 # AGENTS-Block UI-Editor
 
-Diesen Block in die `AGENTS.md` einer App uebernehmen.
+Diesen Block unveraendert in die `AGENTS.md` einer Ziel-App uebernehmen.
 
-## Regel
+## Verbindliche Regel fuer UI/PDF-Aufgaben
 
-Vor jeder UI- oder PDF-Aufgabe wird zuerst eine Entwurfsentscheidung erstellt.
+Vor jeder UI- oder PDF-Umsetzung muss zuerst eine UI-/PDF-Entwurfsentscheidung vorliegen.
 
-Die Entwurfsentscheidung nennt:
+Die Entwurfsentscheidung muss enthalten:
 
 - Art der Ausgabe: UI, PDF, beides oder nicht editorrelevant
-- editorfaehig: ja oder nein
-- editorfaehige Elemente
-- Pflichtattribute aus `docs/UI_EDITOR_VERTRAG.md`
-- nicht editorfaehige fachliche Aktionen
+- Editorfaehig: ja oder nein
+- Editorfaehige Elemente
+- Pflichtattribute je editorrelevantem Element:
+  - `data-ui-inspector-id`
+  - `data-ui-editor-kind`
+  - `data-ui-editor-label`
+  - `data-ui-editor-parent`
+  - `data-ui-editor-editable`
+  - optional: `data-ui-editor-ops`
+- Nicht editorfaehige fachliche Aktionen
 - Parent-Struktur
-- vorhandene Pruefung oder Hinweis auf fehlende Pruefung
+- Pruefung mit `scripts/ui-editor-contract-check.cjs` oder klarer Hinweis, falls die Pruefung noch fehlt
 
-Ohne vollstaendige Entwurfsentscheidung wird keine UI oder PDF-Struktur umgesetzt.
+## Ausschluss fachlicher Aktionen als Editor-Ziele
+
+Nicht editorfaehig sind insbesondere:
+
+- Fachaktionen
+- Speichern
+- Anlegen
+- Loeschen
+- Upload
+- Import
+- Autosave
+- fachliche IPC-/Datenaktionen
+
+## Stop-Regel
+
+Wenn die Entwurfsentscheidung fehlt oder unvollstaendig ist: STOPP.
+
+In diesem Fall darf keine UI- oder PDF-Struktur umgesetzt werden.

@@ -1,4 +1,4 @@
-﻿# UI-Editor-Kit
+# UI-Editor-Kit
 
 Wiederverwendbares, fachneutrales UI-/PDF-Editor-Kit.
 

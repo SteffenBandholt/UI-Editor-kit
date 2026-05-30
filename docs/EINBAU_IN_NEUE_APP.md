@@ -4,23 +4,38 @@
 
 Dieses Kit wird in eine neue App uebernommen, bevor dort UI- oder PDF-Strukturen gebaut werden.
 
-## Schritte
+## Verbindliche Reihenfolge vor dem ersten UI-/PDF-Auftrag
 
-1. Neues App-Repository anlegen.
-2. Dieses UI-Editor-Kit als Quelle verwenden.
-3. `docs/UI_EDITOR_VERTRAG.md` in die neue App uebernehmen.
-4. Den Inhalt aus `codex/AGENTS_UI_EDITOR_BLOCK.md` in die `AGENTS.md` der neuen App uebernehmen.
-5. Vor jeder UI-/PDF-Aufgabe eine UI-/PDF-Entwurfsentscheidung erstellen lassen.
-6. UI/PDF nur mit den im Vertrag festgelegten Metadaten bauen lassen.
-7. Erst danach den Editor verwenden.
+1. Kit in neues App-Repository uebernehmen.
+2. AGENTS-Block aus `codex/AGENTS_UI_EDITOR_BLOCK.md` in `AGENTS.md` der Ziel-App einfuegen.
+3. `docs/UI_EDITOR_VERTRAG.md` in der Ziel-App verfuegbar machen.
+4. `scripts/ui-editor-contract-check.cjs` in der Ziel-App verfuegbar machen.
+5. Vertragscheck einmal mit Beispiel oder Ziel-UI ausfuehren.
+6. Erst danach die erste UI-/PDF-Aufgabe an Codex geben.
+7. Codex muss vor jeder Umsetzung eine vollstaendige UI-/PDF-Entwurfsentscheidung liefern.
+
+## Beispiel fuer den Vertragscheck
+
+```bash
+node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
+```
 
 ## Minimal zu uebernehmende Dateien
 
 - `docs/UI_EDITOR_VERTRAG.md`
 - `docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md`
 - `codex/AGENTS_UI_EDITOR_BLOCK.md`
-- spaeter: `src/editor/`
-- spaeter: `scripts/ui-editor-contract-check.cjs`
+- `codex/CODEX_STARTREGEL_UI_PDF.md`
+- `scripts/ui-editor-contract-check.cjs`
+- `docs/EINBAU_IN_NEUE_APP.md`
+- `docs/KIT_UEBERNAHME_CHECKLISTE.md`
+
+## Was ausdruecklich nicht passieren darf
+
+- Keine UI-/PDF-Umsetzung ohne Entwurfsentscheidung.
+- Keine Fachaktionen als Editor-Ziele planen.
+- Keine Ableitung von Fachlogik durch den Editor.
+- Kein Raten ueber Metadaten oder Parent-Strukturen.
 
 ## Grundsatz
 
