@@ -24,6 +24,7 @@
 - K2.4: Oeffentlicher Mini-Inspector-Einstieg als lesende API abgesichert.
 - K2.5: Mini-Inspector-Einstieg als Referenzstand dokumentiert.
 - K3.0: Mini-Inspector-Status als renderbares Anzeige-Modell integriert.
+- K3.1: Sichtbarer/renderbarer Mini-Inspector-Status dokumentiert.
 
 ## 0.1.0
 

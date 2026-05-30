@@ -25,6 +25,17 @@ Die Funktion liefert einen neutralen Status mit:
 - `version`
 - `errors`
 
+Die Statusanzeige ist sichtbar/renderbar vorbereitet ueber das View-Modell aus `formatMiniInspectorLayoutStatus(...)` bzw. `createMiniInspectorStatusViewModel(...)`.
+
+Renderbare Felder:
+
+- `ok` (gueltig/ungueltig)
+- `itemCount`
+- `errorCount`
+- `scope`
+- `version`
+- `errors` (falls vorhanden)
+
 ## Quelle der Daten
 
 Die Statusdaten stammen aus `data-ui-*` Metadaten und werden ueber die zentrale Layoutdaten-API verarbeitet:
@@ -35,6 +46,7 @@ Die Statusdaten stammen aus `data-ui-*` Metadaten und werden ueber die zentrale 
 
 - kein Speichern
 - keine Layout-Anwendung
+- kein Drag & Drop
 - keine DOM-Mutation
 - keine Fachlogik
 
