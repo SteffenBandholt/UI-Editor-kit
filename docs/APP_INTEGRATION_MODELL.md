@@ -2,6 +2,10 @@
 
 Dieses Dokument beschreibt fachneutral, wie der UI-Editor spaeter mit einer echten App-UI zusammenspielt.
 
+Ergaenzend dazu beschreibt `docs/LAYOUTDATEN_MODELL.md` das Layoutdaten-Modell.
+
+K1.2 beschreibt nur das Modell und implementiert noch kein Speichern.
+
 ## A) Grundidee
 
 - Die App baut ihre normale UI.

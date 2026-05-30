@@ -16,6 +16,10 @@ Der Editor-Core liest `data-ui-*` aus der App-UI.
 
 Layoutdaten bleiben getrennt von Fachdaten.
 
+Das Layoutdaten-Modell ist in `docs/LAYOUTDATEN_MODELL.md` dokumentiert.
+
+Es gibt noch keine Layout-Anwendung und kein Speichern.
+
 ## Spaetere Bausteine
 
 - Metadaten-Leser

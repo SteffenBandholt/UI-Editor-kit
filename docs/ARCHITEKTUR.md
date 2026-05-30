@@ -27,3 +27,7 @@ Andere Apps uebernehmen die jeweils freigegebene Version dieses Kits.
 Das fachneutrale App-Integrationsmodell steht in `docs/APP_INTEGRATION_MODELL.md`.
 
 Die App-Integration trennt Editor/Layoutdaten klar von Fachlogik/Fachdaten.
+
+Das Layoutdaten-Modell steht in `docs/LAYOUTDATEN_MODELL.md`.
+
+Layoutdaten bleiben getrennt von Fachdaten.
