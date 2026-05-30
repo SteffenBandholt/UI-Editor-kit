@@ -24,8 +24,12 @@ Dieses Kit wird in eine neue App uebernommen, bevor dort UI- oder PDF-Strukturen
 
 ## Grundsatz
 
+Die Dateien dieses Kits sind die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor in neuen Apps.
+
 Der Editor ist fachneutral.
 
 Die Fach-App liefert editorfaehige Elemente ueber Metadaten.
 
 Der Editor liest nur diese Metadaten und bearbeitet Darstellungseigenschaften.
+
+Der Editor raet nicht und scannt keine Fachlogik.

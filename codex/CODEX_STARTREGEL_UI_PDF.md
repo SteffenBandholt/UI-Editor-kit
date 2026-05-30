@@ -16,3 +16,5 @@ Vor UI- oder PDF-Arbeiten muss Codex eine Startentscheidung ausgeben.
 Erst entscheiden, dann bauen.
 
 Der Editor liest spaeter nur die fertigen Metadaten.
+
+Der Editor raet nicht und scannt keine Fachlogik.

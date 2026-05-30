@@ -7,3 +7,5 @@
 - Codex-Regelblock fuer UI-/PDF-Entwurfsentscheidungen aufgenommen.
 - Einbauanleitung fuer neue Apps aufgenommen.
 - Platzhalter fuer Editor-Core und Beispiele angelegt.
+- Klarstellungen zu Quelle-der-Wahrheit, Nicht-Raten und Kein-Fachlogik-Scan ergaenzt.
+- KIT-Uebernahme-Checkliste fuer neue Apps ergaenzt.
