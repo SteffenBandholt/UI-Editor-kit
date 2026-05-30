@@ -13,6 +13,7 @@
 - K1.4: Fachneutraler Layoutdaten-Extractor aus `data-ui-*` vorbereitet.
 - K1.5: Fachneutraler Layoutdaten-Diagnosebericht (Extractor + Validator) vorbereitet.
 - K1.6: CLI-Pruefbefehl fuer Layoutdaten-Diagnose vorbereitet.
+- K1.7: JSON-Datei-Eingabe fuer Layoutdaten-Diagnose per CLI abgesichert.
 
 ## 0.1.0
 
