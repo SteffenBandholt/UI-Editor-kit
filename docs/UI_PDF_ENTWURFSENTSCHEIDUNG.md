@@ -2,6 +2,8 @@
 
 Diese Datei beschreibt den Pflichtschritt vor dem Bau einer editorfaehigen UI oder PDF-Struktur.
 
+Dieses Repository ist die Quelle der Wahrheit fuer diesen Pflichtschritt.
+
 Vor der Umsetzung muss festgelegt werden:
 
 - Art der Ausgabe: UI, PDF, beides oder nicht editorrelevant
@@ -25,3 +27,5 @@ Vor der Umsetzung muss festgelegt werden:
 Ohne vollstaendige Entwurfsentscheidung wird die UI oder PDF-Struktur nicht gebaut.
 
 Der Editor selbst entscheidet spaeter nichts fachlich. Er liest nur vorhandene Metadaten.
+
+Der Editor raet nicht und scannt keine Fachlogik.

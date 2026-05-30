@@ -10,6 +10,8 @@ Dieses Repository ist die zentrale Quelle fuer:
 - spaetere Editor-Core-Dateien,
 - generische Vertragspruefungen.
 
+Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor.
+
 ## Grundsatz
 
 Der Editor kennt keine Fachmodule.
@@ -31,6 +33,8 @@ Er kennt nur editorfaehige Elemente mit expliziten Metadaten:
 - `data-ui-editor-parent`
 - `data-ui-editor-editable`
 - `data-ui-editor-ops`
+
+Der Editor scannt keine Fachlogik und leitet keine Fachbeziehungen her.
 
 ## Ziel
 
