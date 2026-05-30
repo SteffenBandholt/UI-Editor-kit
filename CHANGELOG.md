@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 ## 0.1.0-draft
 
@@ -10,3 +10,4 @@
 - Klarstellungen zu Quelle-der-Wahrheit, Nicht-Raten und Kein-Fachlogik-Scan ergaenzt.
 - KIT-Uebernahme-Checkliste fuer neue Apps ergaenzt.
 - K0.2: Vertragscheck technisch als erster fachneutraler Kit-Baustein vorbereitet.
+- K0.3: Uebernahmeblock und Einbauanleitung praxisfest gemacht.
