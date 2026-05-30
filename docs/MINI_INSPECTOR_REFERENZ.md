@@ -1,10 +1,10 @@
-# Mini-Inspector Referenz (K2)
+# Mini-Inspector Referenz (K2/K3)
 
 ## Zweck
 
-Dieses Dokument haelt den aktuellen K2-Mini-Inspector-Stand als Referenz fest.
+Dieses Dokument haelt den aktuellen Mini-Inspector-Referenzstand aus K2 und K3 fest.
 
-K2 bleibt bis hier ein rein lesender Stand.
+K2 und K3 bleiben bis hier ein rein lesender Stand.
 
 ## Oeffentlicher Einstieg
 
@@ -28,6 +28,14 @@ Der Mini-Inspector stellt neutral bereit:
 - `version`
 - `errors`
 
+Der Mini-Inspector kann damit aktuell:
+
+- Layoutdaten rein lesend auswerten
+- einen neutralen Status erzeugen
+- ein neutrales Status-/View-Modell vorbereiten
+- neutrales Markup fuer einen Inspector-Container erzeugen
+- den Status ausschliesslich in einen uebergebenen Inspector-Container rendern
+
 ## Repo-Bestandsaufnahme
 
 Aktueller Befund im Repository:
@@ -48,6 +56,7 @@ Damit ist der aktuelle Stand klar getrennt:
 
 - kein Speichern
 - keine Layout-Anwendung
+- keine Bearbeitung von Layoutdaten
 - kein Drag & Drop
 - keine Ziel-UI-Mutation
 - keine Fachlogik
@@ -62,3 +71,14 @@ Damit ist der aktuelle Stand klar getrennt:
 K2.0 bis K2.4 bilden den lesenden Mini-Inspector-Referenzstand.
 
 K3.0 bis K3.5 halten zusaetzlich fest, wie der sichtbare bzw. renderbare Status spaeter neutral an einen Inspector-Container angeschlossen werden soll, ohne Speichern, Layout-Anwendung oder Ziel-UI-Mutation hineinzumischen.
+
+K3.0 bis K3.5 bilden damit den aktuellen Mini-Inspector-Referenzstand.
+
+## Naechster sinnvoller Schritt
+
+Nach K3 ist als naechster Schritt fachneutral sinnvoll:
+
+- entweder eine echte Mini-Inspector-UI-Schale vorbereiten
+- oder eine Host-/Demo-Integration vorbereiten
+
+Auch dieser naechste Schritt bleibt ohne Speichern und ohne Layout-Anwendung.
