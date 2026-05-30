@@ -1,0 +1,9 @@
+# Changelog
+
+## 0.1.0-draft
+
+- Startstruktur fuer ein fachneutrales UI-/PDF-Editor-Kit angelegt.
+- UI-Editor-Vertrag aufgenommen.
+- Codex-Regelblock fuer UI-/PDF-Entwurfsentscheidungen aufgenommen.
+- Einbauanleitung fuer neue Apps aufgenommen.
+- Platzhalter fuer Editor-Core und Beispiele angelegt.
