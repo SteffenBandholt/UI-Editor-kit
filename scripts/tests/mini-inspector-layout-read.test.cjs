@@ -6,6 +6,8 @@ const path = require("path");
 const {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
+  readMiniInspectorLayoutStatus,
+  createMiniInspectorStatusViewModel,
 } = require("../mini-inspector-layout-read.cjs");
 
 function createNode(attributes, children) {
@@ -28,6 +30,10 @@ function snapshotTree(node) {
 }
 
 function run() {
+  // 0) oeffentlicher Mini-Inspector-Einstieg ist importierbar
+  assert.equal(typeof readMiniInspectorLayoutStatus, "function");
+  assert.equal(typeof createMiniInspectorStatusViewModel, "function");
+
   // 1) neue Lesefunktion nutzt die oeffentliche Layoutdaten-API
   const source = fs.readFileSync(path.resolve(__dirname, "../mini-inspector-layout-read.cjs"), "utf8");
   assert.equal(source.includes("./layout-data-api.cjs"), true);
@@ -43,6 +49,8 @@ function run() {
   ]);
   const validBefore = snapshotTree(validRoot);
   const validStatus = createMiniInspectorLayoutStatus(validRoot, { scope: "mini-inspector.scope" });
+  const validStatusAlias = readMiniInspectorLayoutStatus(validRoot, { scope: "mini-inspector.scope" });
+  assert.deepEqual(validStatusAlias, validStatus);
   assert.equal(validStatus.ok, true);
   assert.equal(validStatus.itemCount, 2);
   assert.equal(validStatus.errorCount, 0);
@@ -50,6 +58,8 @@ function run() {
   assert.equal(validStatus.version, 1);
   assert.equal(Array.isArray(validStatus.errors), true);
   const validView = formatMiniInspectorLayoutStatus(validStatus);
+  const validViewAlias = createMiniInspectorStatusViewModel(validStatus);
+  assert.deepEqual(validViewAlias, validView);
   assert.equal(validView.ok, true);
   assert.equal(Array.isArray(validView.lines), true);
   assert.equal(validView.lines.some((line) => line.includes("Layoutdaten gueltig: ja")), true);

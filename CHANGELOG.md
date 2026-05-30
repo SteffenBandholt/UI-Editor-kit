@@ -21,6 +21,7 @@
 - K2.1: Mini-Inspector-Statusausgabe als neutraler Lesestatus abgesichert.
 - K2.2: Mini-Inspector-Status als lesender Stand dokumentiert.
 - K2.3: Mini-Inspector-Statusanzeige als neutrales View-Modell vorbereitet.
+- K2.4: Oeffentlicher Mini-Inspector-Einstieg als lesende API abgesichert.
 
 ## 0.1.0
 

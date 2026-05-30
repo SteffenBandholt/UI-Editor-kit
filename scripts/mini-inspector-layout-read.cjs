@@ -61,4 +61,6 @@ function formatMiniInspectorLayoutStatus(status) {
 module.exports = {
   createMiniInspectorLayoutStatus,
   formatMiniInspectorLayoutStatus,
+  readMiniInspectorLayoutStatus: createMiniInspectorLayoutStatus,
+  createMiniInspectorStatusViewModel: formatMiniInspectorLayoutStatus,
 };

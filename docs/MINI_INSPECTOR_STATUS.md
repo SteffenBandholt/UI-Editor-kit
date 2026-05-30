@@ -10,6 +10,9 @@ Der Mini-Inspector liefert einen neutralen Layoutdaten-Status auf Basis vorhande
 
 - Datei: `scripts/mini-inspector-layout-read.cjs`
 - Funktion: `createMiniInspectorLayoutStatus(rootElement, options)`
+- Oeffentliche Alias-Namen:
+  - `readMiniInspectorLayoutStatus(rootElement, options)`
+  - `createMiniInspectorStatusViewModel(status)`
 
 ## Statusfelder (Rueckgabe)
 
