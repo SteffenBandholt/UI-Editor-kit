@@ -8,6 +8,7 @@ const { spawnSync } = require("node:child_process");
 const {
   DEFAULT_SCOPE,
   parseMiniInspectorDemoHostCliArgs,
+  formatMiniInspectorDemoHostHelp,
   createMiniInspectorDemoTargetRoot,
   createMiniInspectorDemoInspectorContainer,
   createMiniInspectorDemoHost,
@@ -48,6 +49,7 @@ function run() {
   assert.equal(typeof formatMiniInspectorDemoHostJson, "function");
   assert.equal(typeof runMiniInspectorDemoHostCli, "function");
   assert.equal(typeof parseMiniInspectorDemoHostCliArgs, "function");
+  assert.equal(typeof formatMiniInspectorDemoHostHelp, "function");
   assert.equal(DEFAULT_SCOPE, "mini-inspector-demo.scope");
 
   const packageJson = JSON.parse(
@@ -57,15 +59,73 @@ function run() {
     packageJson.scripts["mini-inspector:demo"],
     "node scripts/mini-inspector-demo-host.cjs"
   );
-  assert.deepEqual(parseMiniInspectorDemoHostCliArgs([]), { invalid: false, json: false });
-  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid"]), { invalid: true, json: false });
-  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--json"]), { invalid: false, json: true });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs([]), {
+    invalid: false,
+    json: false,
+    help: false,
+    unknownArgs: [],
+  });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid"]), {
+    invalid: true,
+    json: false,
+    help: false,
+    unknownArgs: [],
+  });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--json"]), {
+    invalid: false,
+    json: true,
+    help: false,
+    unknownArgs: [],
+  });
   assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--invalid", "--json"]), {
     invalid: true,
     json: true,
+    help: false,
+    unknownArgs: [],
   });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--help"]), {
+    invalid: false,
+    json: false,
+    help: true,
+    unknownArgs: [],
+  });
+  assert.deepEqual(parseMiniInspectorDemoHostCliArgs(["--kaputt"]), {
+    invalid: false,
+    json: false,
+    help: false,
+    unknownArgs: ["--kaputt"],
+  });
+  assert.equal(formatMiniInspectorDemoHostHelp().includes("--help"), true);
+  assert.equal(formatMiniInspectorDemoHostHelp().includes("--json"), true);
+  assert.equal(formatMiniInspectorDemoHostHelp().includes("--invalid"), true);
 
-  // 2) Neutrale Beispiel-UI mit data-ui-* Metadaten erzeugt Status ok: true
+  const helpText = formatMiniInspectorDemoHostHelp();
+  assertNoForbiddenTerms(helpText);
+
+  // 2) Hilfe wird kontrolliert ausgegeben ohne Demo-Lauf
+  const helpCliResult = runMiniInspectorDemoHostCli({ help: true, invalid: false, json: false, unknownArgs: [] });
+  assert.equal(helpCliResult.exitCode, 0);
+  assert.equal(helpCliResult.ok, true);
+  assert.equal(helpCliResult.text.includes("Mini-Inspector Demo-Host"), true);
+  assert.equal(helpCliResult.text.includes("--invalid"), true);
+  assert.equal(helpCliResult.text.includes("--json"), true);
+  assert.equal(helpCliResult.text.includes("--help"), true);
+  assertNoForbiddenTerms(helpCliResult.text);
+
+  // 3) Unbekannte Argumente werden kontrolliert abgewiesen
+  const unknownCliResult = runMiniInspectorDemoHostCli({
+    help: false,
+    invalid: false,
+    json: false,
+    unknownArgs: ["--kaputt"],
+  });
+  assert.equal(unknownCliResult.exitCode, 1);
+  assert.equal(unknownCliResult.ok, false);
+  assert.equal(unknownCliResult.text.includes("Unbekannte Option"), true);
+  assert.equal(unknownCliResult.text.includes("--kaputt"), true);
+  assertNoForbiddenTerms(unknownCliResult.text);
+
+  // 4) Neutrale Beispiel-UI mit data-ui-* Metadaten erzeugt Status ok: true
   const rootElement = createMiniInspectorDemoTargetRoot();
   const rootBefore = snapshot(rootElement);
   const inspectorContainer = createMiniInspectorDemoInspectorContainer();
@@ -74,21 +134,21 @@ function run() {
   assert.equal(result.ok, true);
   assert.equal(result.status.ok, true);
 
-  // 3) Status wird ausschliesslich im Inspector-Container dargestellt
+  // 5) Status wird ausschliesslich im Inspector-Container dargestellt
   assert.equal(inspectorContainer.innerHTML.includes("Layoutdaten Status: gueltig"), true);
   assert.equal(inspectorContainer.innerHTML.includes("Layout-Items: 2"), true);
   assert.equal(Object.prototype.hasOwnProperty.call(rootElement, "innerHTML"), false);
 
-  // 4) Ziel-UI-/Root-Struktur wird nicht mutiert
+  // 6) Ziel-UI-/Root-Struktur wird nicht mutiert
   assert.deepEqual(rootElement, rootBefore);
 
-  // 5) Status enthaelt itemCount, errorCount, scope und version
+  // 7) Status enthaelt itemCount, errorCount, scope und version
   assert.equal(result.status.itemCount, 2);
   assert.equal(result.status.errorCount, 0);
   assert.equal(result.status.scope, DEFAULT_SCOPE);
   assert.equal(result.status.version, 1);
 
-  // 6) Ungueltige Metadaten ergeben neutralen Fehlerstatus
+  // 8) Ungueltige Metadaten ergeben neutralen Fehlerstatus
   const invalidRoot = createMiniInspectorDemoTargetRoot({ invalid: true });
   const invalidBefore = snapshot(invalidRoot);
   const invalidInspector = createMiniInspectorDemoInspectorContainer();
@@ -104,11 +164,11 @@ function run() {
   assert.equal(invalidInspector.innerHTML.includes("Fehlerdetails"), true);
   assert.deepEqual(invalidRoot, invalidBefore);
 
-  // 7) Ausgabe bleibt fachneutral
+  // 9) Ausgabe bleibt fachneutral
   assertNoForbiddenTerms(combinedOutput(result));
   assertNoForbiddenTerms(combinedOutput(invalidResult));
 
-  // 8) Keine Speicherung: keine Storage- oder Datei-Schnittstelle wird benoetigt
+  // 10) Keine Speicherung: keine Storage- oder Datei-Schnittstelle wird benoetigt
   const storageBlocked = {
     get localStorage() {
       throw new Error("storage access");
@@ -118,7 +178,7 @@ function run() {
   const storageResult = runMiniInspectorDemoHost();
   assert.equal(storageResult.ok, true);
 
-  // 9) Keine Layout-Anwendung: Ziel-Metadaten bleiben unveraendert, nur Container erhaelt Markup
+  // 11) Keine Layout-Anwendung: Ziel-Metadaten bleiben unveraendert, nur Container erhaelt Markup
   const layoutRoot = createMiniInspectorDemoTargetRoot();
   const layoutBefore = snapshot(layoutRoot);
   const layoutContainer = createMiniInspectorDemoInspectorContainer();
@@ -132,13 +192,13 @@ function run() {
   assert.deepEqual(layoutRoot, layoutBefore);
   assert.equal(layoutContainer.innerHTML.includes("Scope: neutral.scope"), true);
 
-  // 10) Separater Host-Lauf aktualisiert ebenfalls nur den Inspector-Container
+  // 12) Separater Host-Lauf aktualisiert ebenfalls nur den Inspector-Container
   const directResult = runMiniInspectorDemoHost();
   assert.equal(directResult.ok, true);
   assert.equal(directResult.host.inspectorContainer.innerHTML.includes("Layoutdaten Status"), true);
   assert.deepEqual(directResult.host.rootElement, snapshot(directResult.host.rootElement));
 
-  // 11) CLI-Ausgabe bleibt neutral und enthaelt die Kernfelder
+  // 13) CLI-Ausgabe bleibt neutral und enthaelt die Kernfelder
   const cliResult = runMiniInspectorDemoHostCli();
   assert.equal(cliResult.exitCode, 0);
   assert.equal(cliResult.text.includes("ok: true"), true);
@@ -149,7 +209,7 @@ function run() {
   assert.equal(cliResult.text.includes("inspectorContainer:"), true);
   assertNoForbiddenTerms(cliResult.text);
 
-  // 12) Invalid-CLI-Ausgabe bleibt kontrolliert und berichtet ok: false ohne Runner-Fehler
+  // 14) Invalid-CLI-Ausgabe bleibt kontrolliert und berichtet ok: false ohne Runner-Fehler
   const invalidCliResult = runMiniInspectorDemoHostCli({ invalid: true });
   assert.equal(invalidCliResult.exitCode, 0);
   assert.equal(invalidCliResult.ok, false);
@@ -160,7 +220,7 @@ function run() {
   assert.equal(invalidCliResult.text.includes("Layoutdaten Status: ungueltig"), true);
   assertNoForbiddenTerms(invalidCliResult.text);
 
-  // 13) JSON-Ausgabe ist valide und fachneutral
+  // 15) JSON-Ausgabe ist valide und fachneutral
   const jsonResult = runMiniInspectorDemoHostCli({ json: true });
   const jsonPayload = JSON.parse(jsonResult.text);
   assert.equal(jsonResult.exitCode, 0);
@@ -176,7 +236,7 @@ function run() {
   assert.equal(typeof jsonPayload.inspectorContainer, "string");
   assertNoForbiddenTerms(jsonResult.text);
 
-  // 14) Invalid-JSON-Ausgabe bleibt valide und berichtet ok: false
+  // 16) Invalid-JSON-Ausgabe bleibt valide und berichtet ok: false
   const invalidJsonResult = runMiniInspectorDemoHostCli({ invalid: true, json: true });
   const invalidJsonPayload = JSON.parse(invalidJsonResult.text);
   assert.equal(invalidJsonResult.exitCode, 0);
@@ -193,7 +253,7 @@ function run() {
   assert.equal(typeof invalidJsonPayload.inspectorContainer, "string");
   assertNoForbiddenTerms(invalidJsonResult.text);
 
-  // 15) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
+  // 17) Skript ist direkt ausfuehrbar und schreibt neutral auf stdout
   const scriptRun = spawnSync(process.execPath, [path.resolve(__dirname, "../mini-inspector-demo-host.cjs")], {
     encoding: "utf8",
   });
@@ -207,7 +267,7 @@ function run() {
   assert.equal(scriptRun.stderr, "");
   assertNoForbiddenTerms(scriptRun.stdout);
 
-  // 16) Invalid-Skriptlauf bleibt Exit-Code 0 und gibt neutralen Fehlerstatus aus
+  // 18) Invalid-Skriptlauf bleibt Exit-Code 0 und gibt neutralen Fehlerstatus aus
   const invalidScriptRun = spawnSync(
     process.execPath,
     [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--invalid"],
@@ -221,7 +281,7 @@ function run() {
   assert.equal(invalidScriptRun.stderr, "");
   assertNoForbiddenTerms(invalidScriptRun.stdout);
 
-  // 17) JSON-Skriptlauf gibt nur valides JSON auf stdout aus
+  // 19) JSON-Skriptlauf gibt nur valides JSON auf stdout aus
   const jsonScriptRun = spawnSync(
     process.execPath,
     [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--json"],
@@ -239,7 +299,7 @@ function run() {
   assert.equal(jsonScriptRun.stderr, "");
   assertNoForbiddenTerms(jsonScriptRun.stdout);
 
-  // 18) Invalid-JSON-Skriptlauf gibt valides JSON mit ok: false aus
+  // 20) Invalid-JSON-Skriptlauf gibt valides JSON mit ok: false aus
   const invalidJsonScriptRun = spawnSync(
     process.execPath,
     [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--invalid", "--json"],
@@ -254,6 +314,32 @@ function run() {
   assert.equal(typeof invalidJsonScriptPayload.inspectorContainer, "string");
   assert.equal(invalidJsonScriptRun.stderr, "");
   assertNoForbiddenTerms(invalidJsonScriptRun.stdout);
+
+  // 21) Help-Skriptlauf endet kontrolliert mit Exit-Code 0
+  const helpScriptRun = spawnSync(
+    process.execPath,
+    [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--help"],
+    { encoding: "utf8" }
+  );
+  assert.equal(helpScriptRun.status, 0);
+  assert.equal(helpScriptRun.stdout.includes("Mini-Inspector Demo-Host"), true);
+  assert.equal(helpScriptRun.stdout.includes("--invalid"), true);
+  assert.equal(helpScriptRun.stdout.includes("--json"), true);
+  assert.equal(helpScriptRun.stdout.includes("--help"), true);
+  assert.equal(helpScriptRun.stderr, "");
+  assertNoForbiddenTerms(helpScriptRun.stdout);
+
+  // 22) Unbekannter Parameter endet kontrolliert mit Exit-Code ungleich 0
+  const unknownScriptRun = spawnSync(
+    process.execPath,
+    [path.resolve(__dirname, "../mini-inspector-demo-host.cjs"), "--kaputt"],
+    { encoding: "utf8" }
+  );
+  assert.equal(unknownScriptRun.status !== 0, true);
+  assert.equal(unknownScriptRun.stdout, "");
+  assert.equal(unknownScriptRun.stderr.includes("Unbekannte Option"), true);
+  assert.equal(unknownScriptRun.stderr.includes("--kaputt"), true);
+  assertNoForbiddenTerms(unknownScriptRun.stderr);
 
   console.log("TESTS OK: mini-inspector-demo-host");
 }

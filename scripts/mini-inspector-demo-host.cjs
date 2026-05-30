@@ -10,13 +10,28 @@
 const { mountMiniInspectorStatus } = require("./mini-inspector-layout-read.cjs");
 
 const DEFAULT_SCOPE = "mini-inspector-demo.scope";
+const ALLOWED_CLI_ARGS = new Set(["--invalid", "--json", "--help"]);
 
 function parseMiniInspectorDemoHostCliArgs(argv) {
   const args = Array.isArray(argv) ? argv : [];
+  const unknownArgs = args.filter((arg) => !ALLOWED_CLI_ARGS.has(arg));
   return {
     invalid: args.includes("--invalid"),
     json: args.includes("--json"),
+    help: args.includes("--help"),
+    unknownArgs,
   };
+}
+
+function formatMiniInspectorDemoHostHelp() {
+  return [
+    "Mini-Inspector Demo-Host",
+    "",
+    "Optionen:",
+    "--invalid  Fuehrt den bewusst ungueltigen Demo-Fall aus.",
+    "--json     Gibt den Demo-Status als valides JSON aus.",
+    "--help     Zeigt diese kurze Hilfe an.",
+  ].join("\n");
 }
 
 function createMiniInspectorDemoTargetRoot(options) {
@@ -200,6 +215,23 @@ function formatMiniInspectorDemoHostJson(result, options) {
 function runMiniInspectorDemoHostCli(options) {
   try {
     const opts = options || {};
+
+    if (opts.help === true) {
+      return {
+        ok: true,
+        exitCode: 0,
+        text: formatMiniInspectorDemoHostHelp(),
+      };
+    }
+
+    if (Array.isArray(opts.unknownArgs) && opts.unknownArgs.length > 0) {
+      return {
+        ok: false,
+        exitCode: 1,
+        text: `Unbekannte Option: ${opts.unknownArgs.join(", ")}. Erlaubt: --invalid, --json, --help.`,
+      };
+    }
+
     const result = runMiniInspectorDemoHost(opts);
     const output = opts.json === true
       ? JSON.stringify(formatMiniInspectorDemoHostJson(result, opts), null, 2)
@@ -224,6 +256,7 @@ function runMiniInspectorDemoHostCli(options) {
 module.exports = {
   DEFAULT_SCOPE,
   parseMiniInspectorDemoHostCliArgs,
+  formatMiniInspectorDemoHostHelp,
   createMiniInspectorDemoTargetRoot,
   createMiniInspectorDemoInspectorContainer,
   createMiniInspectorDemoHost,
