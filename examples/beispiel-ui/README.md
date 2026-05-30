@@ -1,19 +1,17 @@
-# Beispiel-UI
+﻿# Beispiel-UI
 
-Dieser Ordner enthaelt spaeter einfache Beispielstrukturen.
+Dieser Ordner enthaelt eine einfache, fachneutrale Demo-Struktur mit gueltigen Editor-Metadaten.
 
-Ziel ist zu zeigen, wie eine UI von Anfang an mit Editor-Metadaten gebaut wird.
+## Dateien
 
-## Beispielprinzip
+- `beispiel.html`
 
-```html
-<div
-  data-ui-inspector-id="demo.root"
-  data-ui-editor-kind="frame"
-  data-ui-editor-label="Demo Root"
-  data-ui-editor-parent=""
-  data-ui-editor-editable="true"
-  data-ui-editor-ops="move,resize,hide"
->
-</div>
+## Pruefung
+
+Beispielbefehl:
+
+```bash
+node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
 ```
+
+Der Vertragscheck prueft nur vorhandene `data-ui-*` Metadaten gemaess Vertrag.

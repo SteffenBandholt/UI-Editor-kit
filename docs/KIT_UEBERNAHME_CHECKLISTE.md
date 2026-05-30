@@ -1,4 +1,4 @@
-# KIT-Uebernahme-Checkliste
+﻿# KIT-Uebernahme-Checkliste
 
 Diese Checkliste hilft beim Uebernehmen des UI-Editor-Kits in eine neue App.
 
@@ -12,7 +12,7 @@ Diese Checkliste hilft beim Uebernehmen des UI-Editor-Kits in eine neue App.
 - `docs/ARCHITEKTUR.md`
 - `codex/AGENTS_UI_EDITOR_BLOCK.md`
 - `codex/CODEX_STARTREGEL_UI_PDF.md`
-- spaeter bei Bedarf: `scripts/ui-editor-contract-check.cjs`
+- `scripts/ui-editor-contract-check.cjs`
 - spaeter bei Bedarf: `src/editor/README.md`
 
 ## 2) Wo wird der AGENTS-Block eingefuegt?
@@ -26,6 +26,7 @@ Diese Checkliste hilft beim Uebernehmen des UI-Editor-Kits in eine neue App.
 - Codex-Startregel ist in der Ziel-App aktiv.
 - Es gibt eine vollstaendige UI-/PDF-Entwurfsentscheidung.
 - Editorfaehige Elemente sind mit `data-ui-*` Metadaten geplant.
+- Vertragscheck in der Ziel-App laeuft auf den UI-/PDF-Quellen.
 
 ## 4) Was darf nicht fehlen?
 
@@ -35,4 +36,5 @@ Diese Checkliste hilft beim Uebernehmen des UI-Editor-Kits in eine neue App.
 - Regel: Der Editor raet nicht.
 - Regel: Der Editor scannt keine Fachlogik.
 - Regel: Der Editor liest nur vorhandene `data-ui-*` Metadaten.
+- Regel: Vertragscheck vor Editor-Einsatz laufen lassen.
 - Ausschluss: Fachaktionen, Speichern, Anlegen, Loeschen, Upload, Import, Autosave sind keine Editor-Ziele.

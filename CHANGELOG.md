@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 ## 0.1.0-draft
 
@@ -9,3 +9,4 @@
 - Platzhalter fuer Editor-Core und Beispiele angelegt.
 - Klarstellungen zu Quelle-der-Wahrheit, Nicht-Raten und Kein-Fachlogik-Scan ergaenzt.
 - KIT-Uebernahme-Checkliste fuer neue Apps ergaenzt.
+- K0.2: Vertragscheck technisch als erster fachneutraler Kit-Baustein vorbereitet.
