@@ -1,4 +1,4 @@
-# UI-Editor-Kit
+﻿# UI-Editor-Kit
 
 Wiederverwendbares, fachneutrales UI-/PDF-Editor-Kit.
 
@@ -47,6 +47,16 @@ Der entscheidende Moment liegt vor der Umsetzung:
 3. Erst danach darf gebaut werden.
 4. Die UI/PDF wird mit klaren Editor-Metadaten erstellt.
 5. Der Editor liest spaeter nur diese Metadaten.
+
+## Vertragscheck
+
+Der Vertragscheck prueft fachneutral nur vorhandene `data-ui-*` Metadaten gegen den UI-Editor-Vertrag.
+
+Beispiel:
+
+```bash
+node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
+```
 
 ## Einstieg fuer neue Apps
 
