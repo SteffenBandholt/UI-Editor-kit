@@ -173,6 +173,10 @@ Grenzen der Browser-/HTML-Demo:
 - keine Fachlogik
 - nur der Inspector-Bereich wird aktualisiert
 
+Visuelle Referenz:
+
+- `docs/NEUTRAL_THEME_TOKENS.md`
+
 ## Referenzstand-Aussage
 
 K2.0 bis K2.4 bilden den lesenden Mini-Inspector-Referenzstand.
