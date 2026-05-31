@@ -5,32 +5,45 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
+
 const MUST_EXIST = [
+  "docs/EDITOR_BAUPLAN.md",
+  "docs/UI_ELEMENT_KATALOG.md",
+  "docs/UI_BAU_UND_PRUEFREGELN.md",
+  "docs/ZIEL_APP_ANBINDUNG.md",
   "docs/UI_EDITOR_VERTRAG.md",
   "docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
   "codex/AGENTS_UI_EDITOR_BLOCK.md",
+  "codex/CODEX_BOOTSTRAP_ZIEL_APP.md",
   "docs/NEUTRAL_THEME_TOKENS.md",
   "styles/neutral-theme-tokens.css",
   "scripts/ui-editor-contract-check.cjs",
-  "examples/beispiel-ui/beispiel.html",
 ];
+
 const MUST_NOT_EXIST = [
   "browser/mini-inspector-host-adapter.js",
   "demo/mini-inspector/index.html",
   "demo/mini-inspector/mini-inspector-demo.js",
   "demo/mini-inspector/mini-inspector-demo.css",
+  "examples/beispiel-ui/README.md",
+  "examples/beispiel-ui/beispiel.html",
   "examples/host-app-basic/index.html",
   "examples/host-app-basic/host-app-basic.js",
   "examples/host-app-basic/host-app-basic.css",
   "examples/mini-inspector/index.html",
   "examples/mini-inspector/README.md",
+  "docs/APP_INTEGRATION_MODELL.md",
+  "docs/EINBAU_IN_NEUE_APP.md",
   "docs/HOST_APP_ADOPTION_GUIDE.md",
   "docs/HOST_APP_INTEGRATION.md",
-  "docs/REFERENCE_STATUS.md",
-  "docs/MINI_INSPECTOR_REFERENZ.md",
-  "docs/MINI_INSPECTOR_STATUS.md",
+  "docs/KIT_UEBERNAHME_CHECKLISTE.md",
   "docs/LAYOUTDATEN_API.md",
   "docs/LAYOUTDATEN_KERN_REFERENZ.md",
+  "docs/LAYOUTDATEN_MODELL.md",
+  "docs/MINI_INSPECTOR_REFERENZ.md",
+  "docs/MINI_INSPECTOR_STATUS.md",
+  "docs/REFERENCE_STATUS.md",
+  "docs/UEBERNAHME_TROCKENLAUF.md",
   "scripts/mini-inspector-demo-host.cjs",
   "scripts/mini-inspector-browser-demo-info.cjs",
   "scripts/host-app-basic-info.cjs",
@@ -53,6 +66,7 @@ const MUST_NOT_EXIST = [
   "scripts/tests/layout-data-extractor.test.cjs",
   "scripts/tests/layout-data-validator.test.cjs",
 ];
+
 const FORBIDDEN_TERMS = ["Protokoll", "TOP", "Bauvorhaben", "Restarbeiten", "BBM", "Pferdeverwaltung"];
 
 function read(relativePath) {
