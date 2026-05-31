@@ -2,8 +2,9 @@
   "name": "ui-editor-kit",
   "private": true,
   "scripts": {
-    "test": "node scripts/tests/layout-data-validator.test.cjs && node scripts/tests/layout-data-extractor.test.cjs && node scripts/tests/layout-data-diagnostics.test.cjs && node scripts/tests/layout-data-diagnostics-cli.test.cjs && node scripts/tests/layout-data-api.test.cjs && node scripts/tests/mini-inspector-layout-read.test.cjs && node scripts/tests/mini-inspector-demo-host.test.cjs",
+    "test": "node scripts/tests/layout-data-validator.test.cjs && node scripts/tests/layout-data-extractor.test.cjs && node scripts/tests/layout-data-diagnostics.test.cjs && node scripts/tests/layout-data-diagnostics-cli.test.cjs && node scripts/tests/layout-data-api.test.cjs && node scripts/tests/mini-inspector-layout-read.test.cjs && node scripts/tests/mini-inspector-demo-host.test.cjs && node scripts/tests/mini-inspector-browser-demo.test.cjs",
     "layout:diagnose": "node scripts/layout-data-diagnostics-cli.cjs",
-    "mini-inspector:demo": "node scripts/mini-inspector-demo-host.cjs"
+    "mini-inspector:demo": "node scripts/mini-inspector-demo-host.cjs",
+    "mini-inspector:demo:browser": "node scripts/mini-inspector-browser-demo-info.cjs"
   }
 }
