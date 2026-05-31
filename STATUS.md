@@ -42,12 +42,13 @@ Aktueller Stand:
 - K12.3 erledigt: Parent-Validator fuer Listenstruktur gebaut.
 - K12.4 erledigt: Tabellen-/Metaspalten-Validator gebaut.
 - K13.0 erledigt: `src/core/editor-core.cjs` liest und validiert vorhandene Registry.
+- K13.1 erledigt: `src/core/editor-core.cjs` erzeugt Elementbaum aus validierter Registry.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 
-Aktueller naechster Bauabschnitt nach K13.0:
+Aktueller naechster Bauabschnitt nach K13.1:
 
-- K13.1: Elementbaum erzeugen.
+- K13.2: Elementdetails liefern.
 
 ## 4. Statuswerte
 
@@ -84,7 +85,7 @@ Bedeutung:
 | D4 | [x] | Operations-Validator | Validator + Test vorhanden, `npm test` gruen | nach D4 Tabellenlogik getrennt bauen |
 | D5 | [x] | Tabellen- und Metaspalten-Validator | Validator + Test vorhanden, `npm test` gruen | abgeschlossen |
 | E1 | [x] | Editor-Core liest Registry | Core + Test vorhanden, `npm test` gruen | nach E1 Elementbaum bauen |
-| E2 | [ ] | Elementbaum erzeugen | offen | nach E1 |
+| E2 | [x] | Elementbaum erzeugen | Core-Baum + Test vorhanden, `npm test` gruen | nach E2 Elementdetails liefern |
 | E3 | [ ] | Elementdetails liefern | offen | nach E2 |
 | E4 | [ ] | Operationen ableiten | offen | nach E3 |
 | F1 | [ ] | Aenderungsauftrag-Datenmodell | offen | nach E4 |
@@ -104,7 +105,7 @@ Bedeutung:
 |---|---|---|
 | M1 - Planung / Vertrag / LV | abgenommen | Fuehrende Unterlagen und Gesamt-LV liegen vor. |
 | M2 - Fundament: Datenmodell, Registry, Validator | abgenommen | Status nach diesem Paket: abgenommen, weil K12.3 und K12.4 gebaut sind und `npm test` gruen ist. |
-| M3 - Editor-Core | in Bau | E1 gebaut; naechster Schritt K13.1 - Elementbaum erzeugen. |
+| M3 - Editor-Core | in Bau | E1 und E2 gebaut; naechster Schritt K13.2 - Elementdetails liefern. |
 | M4 - Aenderungsauftrag | offen | Kein Bau vor Abschluss des Editor-Core-Abschnitts. |
 | M5 - Host-Adapter | offen | Kein Bau vor Aenderungsauftrag. |
 | M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
@@ -260,18 +261,34 @@ Ergebnis:
 - `scripts/tests/editor-core.test.cjs` prueft E1-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
 
+### K13.1 - Elementbaum erzeugen
+
+Status: gebaut
+
+Ergebnis:
+
+- `src/core/editor-core.cjs` um `getElementTree()` erweitert
+- Root wird aus der validierten Elementliste ueber `type = root` gelesen
+- Parent-/Child-Beziehungen werden ueber vorhandene `parentId`-Werte aufgebaut
+- Kinder werden je Knoten nach `order` sortiert
+- Baumknoten liefern nur `element` und `children` und erfinden keine neuen Felder
+- Rueckgaben sind Kopien, damit Mutationen am gelieferten Baum den Core nicht veraendern
+- keine neue Validatorlogik, keine Elementdetails, keine Operationsableitung und kein Aenderungsauftrag gebaut
+- `scripts/tests/editor-core.test.cjs` prueft E2-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
 ## 8. Naechste Baupakete
 
-### K13.1 - Elementbaum erzeugen
+### K13.2 - Elementdetails liefern
 
 LV-Bezug:
 
-- E2
+- E3
 
 Ziel:
 
-- Elementbaum aus validierten Parent-Beziehungen erzeugen.
-- Reihenfolge und Struktur ohne neue UI-Schiene bereitstellen.
+- Elementdetails fuer ein vorhandenes Element aus dem Core liefern.
+- Keine Operationsableitung und keine UI-Schiene vorziehen.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -312,10 +329,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K13.0:
+Naechster Schritt nach K13.1:
 
 ```text
-K13.1 - Elementbaum erzeugen
+K13.2 - Elementdetails liefern
 ```
 
 Nicht vorher:

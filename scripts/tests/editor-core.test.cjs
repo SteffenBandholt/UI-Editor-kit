@@ -38,6 +38,83 @@ function validElements() {
   ];
 }
 
+function treeElements() {
+  return [
+    {
+      id: "workspace.root",
+      name: "Root",
+      type: "root",
+      role: "layout",
+      parentId: null,
+      order: 0,
+      visible: true,
+      editable: false,
+      allowedOps: ["inspect"],
+      lockedOps: [],
+    },
+    {
+      id: "workspace.main.area",
+      name: "Bereich",
+      type: "area",
+      role: "layout",
+      parentId: "workspace.root",
+      order: 20,
+      visible: true,
+      editable: true,
+      allowedOps: ["inspect"],
+      lockedOps: [],
+    },
+    {
+      id: "workspace.main.group.beta",
+      name: "Gruppe Beta",
+      type: "group",
+      role: "layout",
+      parentId: "workspace.main.area",
+      order: 30,
+      visible: true,
+      editable: true,
+      allowedOps: ["inspect"],
+      lockedOps: [],
+    },
+    {
+      id: "workspace.main.group.alpha",
+      name: "Gruppe Alpha",
+      type: "group",
+      role: "layout",
+      parentId: "workspace.main.area",
+      order: 10,
+      visible: true,
+      editable: true,
+      allowedOps: ["inspect"],
+      lockedOps: [],
+    },
+    {
+      id: "workspace.main.group.alpha.field.status",
+      name: "Status",
+      type: "field",
+      role: "status",
+      parentId: "workspace.main.group.alpha",
+      order: 5,
+      visible: true,
+      editable: true,
+      allowedOps: ["inspect"],
+      lockedOps: [],
+    },
+    {
+      id: "workspace.main.group.alpha.field.title",
+      name: "Titel",
+      type: "field",
+      role: "content",
+      parentId: "workspace.main.group.alpha",
+      order: 2,
+      visible: true,
+      editable: true,
+      allowedOps: ["inspect"],
+      lockedOps: [],
+    },
+  ];
+}
+
 function loadCoreModule() {
   delete require.cache[CORE_PATH];
   return require(CORE_PATH);
@@ -69,9 +146,9 @@ function run() {
 
   const core = createEditorCore(registry);
   assert.equal(typeof core.listElements, "function");
+  assert.equal(typeof core.getElementTree, "function");
   assert.equal(typeof core.getValidationResult, "function");
   assert.equal(typeof core.size, "function");
-  assert.equal(typeof core.getElementTree, "undefined");
   assert.equal(typeof core.buildElementTree, "undefined");
   assert.equal(typeof core.getElementDetails, "undefined");
   assert.equal(typeof core.getDerivedOperations, "undefined");
@@ -90,6 +167,46 @@ function run() {
     ok: true,
     errors: [],
   });
+
+  const treeRegistry = createUiElementRegistry();
+  treeElements().forEach((element) => treeRegistry.registerElement(element));
+  const treeCore = createEditorCore(treeRegistry);
+  const elementTree = treeCore.getElementTree();
+
+  assert.equal(elementTree.element.id, "workspace.root");
+  assert.equal(elementTree.element.type, "root");
+  assert.deepEqual(
+    elementTree.children.map((childNode) => childNode.element.id),
+    ["workspace.main.area"]
+  );
+  assert.deepEqual(
+    elementTree.children[0].children.map((childNode) => childNode.element.id),
+    ["workspace.main.group.alpha", "workspace.main.group.beta"]
+  );
+  assert.deepEqual(
+    elementTree.children[0].children[0].children.map((childNode) => childNode.element.id),
+    ["workspace.main.group.alpha.field.title", "workspace.main.group.alpha.field.status"]
+  );
+
+  const mutatedTree = treeCore.getElementTree();
+  mutatedTree.element.name = "Mutated Root";
+  mutatedTree.children[0].children.reverse();
+  mutatedTree.children[0].children[0].element.name = "Mutated Child";
+  mutatedTree.children[0].children[0].children.push({
+    element: { id: "workspace.injected" },
+    children: [],
+  });
+
+  const treeAfterMutation = treeCore.getElementTree();
+  assert.equal(treeAfterMutation.element.name, "Root");
+  assert.deepEqual(
+    treeAfterMutation.children[0].children.map((childNode) => childNode.element.id),
+    ["workspace.main.group.alpha", "workspace.main.group.beta"]
+  );
+  assert.deepEqual(
+    treeAfterMutation.children[0].children[0].children.map((childNode) => childNode.element.id),
+    ["workspace.main.group.alpha.field.title", "workspace.main.group.alpha.field.status"]
+  );
 
   const registryCallLog = [];
   const stubRegistry = {
@@ -132,6 +249,10 @@ function run() {
     ok: true,
     errors: [],
   });
+  assert.deepEqual(
+    mutationCore.listElements().map((element) => element.id),
+    ["workspace.root", "workspace.main.area"]
+  );
 
   const invalidRegistry = createUiElementRegistry();
   invalidRegistry.registerElement({

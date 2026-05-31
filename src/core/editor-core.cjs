@@ -29,6 +29,13 @@ function cloneValidationResult(result) {
   };
 }
 
+function cloneElementTreeNode(node) {
+  return {
+    element: cloneValue(node.element),
+    children: node.children.map((childNode) => cloneElementTreeNode(childNode)),
+  };
+}
+
 function createEditorCoreError(message, validationResult) {
   const error = new Error(message);
   error.validationResult = cloneValidationResult(validationResult);
@@ -66,6 +73,43 @@ function validateRegistryInterface(registry) {
   };
 }
 
+function compareElementsByOrder(leftElement, rightElement) {
+  return leftElement.order - rightElement.order;
+}
+
+function buildElementTree(elements) {
+  const nodesById = new Map();
+
+  elements.forEach((element) => {
+    nodesById.set(element.id, {
+      element,
+      children: [],
+    });
+  });
+
+  let rootNode = null;
+
+  elements.forEach((element) => {
+    const node = nodesById.get(element.id);
+
+    if (element.type === "root") {
+      rootNode = node;
+      return;
+    }
+
+    const parentNode = nodesById.get(element.parentId);
+    if (parentNode) {
+      parentNode.children.push(node);
+    }
+  });
+
+  nodesById.forEach((node) => {
+    node.children.sort((leftNode, rightNode) => compareElementsByOrder(leftNode.element, rightNode.element));
+  });
+
+  return rootNode;
+}
+
 function createEditorCore(registry) {
   const registryValidationResult = validateRegistryInterface(registry);
   if (!registryValidationResult.ok) {
@@ -80,10 +124,14 @@ function createEditorCore(registry) {
 
   const storedElements = cloneElements(listedElements);
   const storedValidationResult = cloneValidationResult(validationResult);
+  const storedElementTree = buildElementTree(storedElements);
 
   return {
     listElements() {
       return cloneElements(storedElements);
+    },
+    getElementTree() {
+      return storedElementTree ? cloneElementTreeNode(storedElementTree) : null;
     },
     getValidationResult() {
       return cloneValidationResult(storedValidationResult);
