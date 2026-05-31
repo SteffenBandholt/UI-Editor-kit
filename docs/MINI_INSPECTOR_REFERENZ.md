@@ -67,6 +67,8 @@ Die Browser-Demo unter `demo/mini-inspector/index.html` laedt diesen Adapter vor
 
 K8.1 dokumentiert diesen Browser-Host-Adapter als bestaetigten Referenzstand.
 
+K9.1 verweist zusaetzlich auf das neutrale Host-App-Beispiel unter `examples/host-app-basic/index.html`.
+
 ## Grenzen
 
 - kein Speichern

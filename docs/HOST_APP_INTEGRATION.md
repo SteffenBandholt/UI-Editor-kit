@@ -105,6 +105,10 @@ Eine Host-App bindet den aktuellen Stand fachneutral so ein:
 
 Ein kleines neutrales Host-App-Beispiel liegt unter `examples/host-app-basic/index.html`.
 
+Info-Befehl:
+
+- `npm run host-app:basic`
+
 Zweck des Beispiels:
 
 - zeigt eine eigene neutrale Ziel-UI
@@ -120,6 +124,8 @@ Grenzen des Beispiels:
 - keine Layout-Anwendung
 - keine Ziel-UI-Mutation
 - keine Fachlogik
+
+K9.1 dokumentiert dieses Beispiel als bestaetigten Referenzstand nach bestandenem manuellen Sichttest.
 
 ## Grenzen
 

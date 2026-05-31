@@ -45,6 +45,7 @@
 - K8.0: Wiederverwendbaren Browser-Host-Adapter fuer Ziel-Root und getrennten Inspector-Container vorbereitet.
 - K8.1: Browser-Host-Adapter als Referenzstand dokumentiert und bestaetigten Sichttest festgehalten.
 - K9.0: Neutrales Host-App-Beispiel fuer den Browser-Host-Adapter vorbereitet.
+- K9.1: Sichttest und Referenzstand des neutralen Host-App-Beispiels dokumentiert.
 
 ## 0.1.0
 
