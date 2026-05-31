@@ -7,6 +7,17 @@ const {
   UI_ELEMENT_REQUIRED_FIELDS,
 } = require("./ui-element-model.cjs");
 
+const UI_TABLE_COLUMN_ROLES = Object.freeze([
+  "contentColumn",
+  "metaColumn",
+  "structureColumn",
+  "statusColumn",
+  "dateColumn",
+  "responsibleColumn",
+  "visibilityColumn",
+  "actionColumn",
+]);
+
 const FORBIDDEN_UI_ELEMENT_OPERATIONS = Object.freeze([
   "save",
   "create",
@@ -24,6 +35,7 @@ const FORBIDDEN_UI_ELEMENT_OPERATIONS = Object.freeze([
 const ALLOWED_TYPE_SET = new Set(UI_ELEMENT_TYPES);
 const ALLOWED_ROLE_SET = new Set(UI_ELEMENT_ROLES);
 const ALLOWED_OPERATION_SET = new Set(UI_ELEMENT_OPERATIONS);
+const ALLOWED_TABLE_COLUMN_ROLE_SET = new Set(UI_TABLE_COLUMN_ROLES);
 const FORBIDDEN_OPERATION_SET = new Set(FORBIDDEN_UI_ELEMENT_OPERATIONS);
 
 function hasOwn(source, key) {
@@ -179,6 +191,202 @@ function validateUiElement(element) {
   };
 }
 
+function isBlankParentId(parentId) {
+  return parentId === null || parentId === "";
+}
+
+function collectElementsById(elements) {
+  const elementsById = new Map();
+
+  elements.forEach((element) => {
+    const elementId = getElementId(element);
+    if (elementId !== undefined && !elementsById.has(elementId)) {
+      elementsById.set(elementId, element);
+    }
+  });
+
+  return elementsById;
+}
+
+function validateRootCount(elements, errors) {
+  const rootElements = elements.filter((element) => isObjectElement(element) && element.type === "root");
+
+  if (rootElements.length === 0) {
+    errors.push(createError("missing_root", "Elementliste muss genau ein root-Element enthalten.", "type"));
+    return null;
+  }
+
+  if (rootElements.length > 1) {
+    rootElements.forEach((rootElement) => {
+      errors.push(
+        createError(
+          "multiple_roots",
+          "Elementliste darf nur ein root-Element enthalten.",
+          "type",
+          getElementId(rootElement)
+        )
+      );
+    });
+  }
+
+  return rootElements[0];
+}
+
+function validateParentReferences(elements, elementsById, errors) {
+  elements.forEach((element) => {
+    if (!isObjectElement(element)) {
+      return;
+    }
+
+    const elementId = getElementId(element);
+
+    if (element.type === "root") {
+      if (hasOwn(element, "parentId") && !isBlankParentId(element.parentId)) {
+        errors.push(
+          createError("invalid_root_parent", "root-Element darf keinen Parent haben.", "parentId", elementId)
+        );
+      }
+      return;
+    }
+
+    if (!hasOwn(element, "parentId") || isBlankParentId(element.parentId)) {
+      errors.push(
+        createError("missing_parent", "Nicht-root-Element braucht einen parentId.", "parentId", elementId)
+      );
+      return;
+    }
+
+    if (!elementsById.has(element.parentId)) {
+      errors.push(
+        createError(
+          "unknown_parent",
+          `parentId verweist auf kein Element: ${String(element.parentId)}.`,
+          "parentId",
+          elementId
+        )
+      );
+    }
+  });
+}
+
+function validateParentCycles(elements, elementsById, errors) {
+  const checkedElementIds = new Set();
+
+  elements.forEach((element) => {
+    const startId = getElementId(element);
+    if (startId === undefined || checkedElementIds.has(startId)) {
+      return;
+    }
+
+    const pathIds = new Set();
+    let currentElement = element;
+
+    while (isObjectElement(currentElement)) {
+      const currentId = getElementId(currentElement);
+      if (currentId === undefined) {
+        return;
+      }
+
+      if (pathIds.has(currentId)) {
+        errors.push(createError("parent_cycle", "Parent-Struktur enthaelt einen Zyklus.", "parentId", currentId));
+        return;
+      }
+
+      if (checkedElementIds.has(currentId)) {
+        return;
+      }
+
+      pathIds.add(currentId);
+
+      if (currentElement.type === "root" || !hasOwn(currentElement, "parentId") || isBlankParentId(currentElement.parentId)) {
+        pathIds.forEach((pathId) => checkedElementIds.add(pathId));
+        return;
+      }
+
+      currentElement = elementsById.get(currentElement.parentId);
+      if (!currentElement) {
+        pathIds.forEach((pathId) => checkedElementIds.add(pathId));
+        return;
+      }
+    }
+  });
+}
+
+function validateParentStructure(elements, errors) {
+  const elementsById = collectElementsById(elements);
+  validateRootCount(elements, errors);
+  validateParentReferences(elements, elementsById, errors);
+  validateParentCycles(elements, elementsById, errors);
+  return elementsById;
+}
+
+function validateActionColumnOperations(element, errors, elementId) {
+  ["allowedOps", "lockedOps"].forEach((fieldName) => {
+    if (!Array.isArray(element[fieldName])) {
+      return;
+    }
+
+    element[fieldName].forEach((operation) => {
+      if (FORBIDDEN_OPERATION_SET.has(operation)) {
+        errors.push(
+          createError(
+            "forbidden_action_column_operation",
+            `Aktionsspalte darf keine fachliche Editoroperation fuehren: ${String(operation)}.`,
+            fieldName,
+            elementId
+          )
+        );
+      }
+    });
+  });
+}
+
+function validateTableColumns(elements, elementsById, errors) {
+  elements.forEach((element) => {
+    if (!isObjectElement(element) || element.type !== "tableColumn") {
+      return;
+    }
+
+    const elementId = getElementId(element);
+
+    if (
+      !hasOwn(element, "columnRole") ||
+      element.columnRole === undefined ||
+      element.columnRole === null ||
+      element.columnRole === ""
+    ) {
+      errors.push(
+        createError("missing_column_role", "tableColumn braucht eine columnRole.", "columnRole", elementId)
+      );
+    } else if (!ALLOWED_TABLE_COLUMN_ROLE_SET.has(element.columnRole)) {
+      errors.push(
+        createError(
+          "invalid_column_role",
+          `Ungueltige columnRole: ${String(element.columnRole)}.`,
+          "columnRole",
+          elementId
+        )
+      );
+    }
+
+    const parentElement = elementsById.get(element.parentId);
+    if (parentElement && parentElement.type !== "table") {
+      errors.push(
+        createError(
+          "invalid_table_column_parent",
+          "tableColumn braucht ein table-Element als Parent.",
+          "parentId",
+          elementId
+        )
+      );
+    }
+
+    if (element.columnRole === "actionColumn") {
+      validateActionColumnOperations(element, errors, elementId);
+    }
+  });
+}
+
 function validateUiElementList(elements) {
   if (!Array.isArray(elements)) {
     return {
@@ -193,6 +401,9 @@ function validateUiElementList(elements) {
     errors.push(...result.errors);
   });
 
+  const elementsById = validateParentStructure(elements, errors);
+  validateTableColumns(elements, elementsById, errors);
+
   return {
     ok: errors.length === 0,
     errors,
@@ -201,6 +412,7 @@ function validateUiElementList(elements) {
 
 module.exports = {
   FORBIDDEN_UI_ELEMENT_OPERATIONS,
+  UI_TABLE_COLUMN_ROLES,
   validateUiElement,
   validateUiElementList,
 };

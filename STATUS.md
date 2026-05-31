@@ -39,10 +39,14 @@ Aktueller Stand:
 - K12.0 erledigt: `src/core/ui-element-model.cjs` und Modelltest gebaut.
 - K12.1 erledigt: `src/core/ui-element-registry.cjs` und Registry-Test gebaut.
 - K12.2 erledigt: `src/core/ui-element-validator.cjs` und Validator-Test gebaut.
+- K12.3 erledigt: Parent-Validator fuer Listenstruktur gebaut.
+- K12.4 erledigt: Tabellen-/Metaspalten-Validator gebaut.
 
-Aktueller naechster Bauabschnitt nach K12.2:
+M2 Fundament ist nach gruenem `npm test` abgenommen.
 
-- K12.3: Parent-Validator auf Basis von B1 und C1 vorbereiten.
+Aktueller naechster Bauabschnitt nach Abschluss von M2:
+
+- K13.0: Editor-Core liest Registry.
 
 ## 4. Statuswerte
 
@@ -75,9 +79,9 @@ Bedeutung:
 | C2 | [ ] | Registry-Beispieldaten ohne HTML | offen | nach C1 |
 | D1 | [x] | Pflichtfeld-Validator | Validator + Test vorhanden, `npm test` gruen | nach D1 Parent-Regeln separat bauen |
 | D2 | [x] | Typen- und Rollen-Validator | Validator + Test vorhanden, `npm test` gruen | nach D2 bei Bedarf erweitern |
-| D3 | [ ] | Parent-Validator | offen | nach C1 |
+| D3 | [x] | Parent-Validator | Validator + Test vorhanden, `npm test` gruen | abgeschlossen |
 | D4 | [x] | Operations-Validator | Validator + Test vorhanden, `npm test` gruen | nach D4 Tabellenlogik getrennt bauen |
-| D5 | [ ] | Tabellen- und Metaspalten-Validator | offen | nach D1-D4 |
+| D5 | [x] | Tabellen- und Metaspalten-Validator | Validator + Test vorhanden, `npm test` gruen | abgeschlossen |
 | E1 | [ ] | Editor-Core liest Registry | offen | nach C/D |
 | E2 | [ ] | Elementbaum erzeugen | offen | nach E1 |
 | E3 | [ ] | Elementdetails liefern | offen | nach E2 |
@@ -93,7 +97,24 @@ Bedeutung:
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
-## 6. Abgeschlossene Pakete
+## 6. Meilenstein-Gates
+
+| Meilenstein | Status | Gate |
+|---|---|---|
+| M1 - Planung / Vertrag / LV | abgenommen | Fuehrende Unterlagen und Gesamt-LV liegen vor. |
+| M2 - Fundament: Datenmodell, Registry, Validator | abgenommen | Status nach diesem Paket: abgenommen, weil K12.3 und K12.4 gebaut sind und `npm test` gruen ist. |
+| M3 - Editor-Core | offen | Start mit K13.0 - Editor-Core liest Registry. |
+| M4 - Aenderungsauftrag | offen | Kein Bau vor Abschluss des Editor-Core-Abschnitts. |
+| M5 - Host-Adapter | offen | Kein Bau vor Aenderungsauftrag. |
+| M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
+| M7 - Editor-UI | offen | Kein Bau vor den fachneutralen Kernvertraegen. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
+
+Regel:
+
+Nach K12.4 ist die Fundamentphase beendet. Danach keine weiteren K12.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+
+## 7. Abgeschlossene Pakete
 
 ### K11.0 - Repo auf UI-Editor-Kernvertrag bereinigen
 
@@ -195,35 +216,48 @@ Ergebnis:
 - `scripts/tests/ui-element-validator.test.cjs` prueft D1, D2, D4 und die Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
 
-## 7. Naechste Baupakete
-
 ### K12.3 - Parent-Validator
 
-LV-Bezug:
+Status: gebaut
 
-- D3
+Ergebnis:
 
-Ziel:
-
-- Parent-Beziehungen pruefen
-- Root pruefen
-- verwaiste Elemente ablehnen
-- Zyklen ablehnen
+- `validateUiElementList()` prueft genau ein root-Element.
+- root-Parent wird auf null oder leeren String begrenzt.
+- Nicht-root-Elemente brauchen einen vorhandenen Parent.
+- unbekannte Parents, verwaiste Elemente und Parent-Zyklen werden mit klaren Fehlercodes abgelehnt.
+- Parent-Beziehungen werden nicht geraten und nicht aus name/type/role abgeleitet.
+- `scripts/tests/ui-element-validator.test.cjs` prueft die D3-Pflichtfaelle.
+- `npm test` gruen
 
 ### K12.4 - Tabellen- und Metaspalten-Validator
 
+Status: gebaut
+
+Ergebnis:
+
+- `validateUiElementList()` prueft `tableColumn`-Elemente gegen erlaubte `columnRole`-Werte.
+- `tableColumn` braucht ein `table`-Element als Parent.
+- Metaspalten wie `metaColumn`, `structureColumn`, `statusColumn`, `dateColumn`, `responsibleColumn` und `visibilityColumn` sind erlaubt.
+- `actionColumn` wird akzeptiert, solange keine fachliche Operation als Editoroperation gefuehrt wird.
+- Der Validator klassifiziert Spalten nicht selbst und raet keine `columnRole`.
+- `scripts/tests/ui-element-validator.test.cjs` prueft die D5-Pflichtfaelle.
+- `npm test` gruen
+
+## 8. Naechste Baupakete
+
+### K13.0 - Editor-Core liest Registry
+
 LV-Bezug:
 
-- D5
+- E1
 
 Ziel:
 
-- Tabellen als Composite pruefen
-- Spaltenrollen pruefen
-- Metaspalten pruefen
-- Aktionsspalten gegen Fachaktionen absichern
+- Editor-Core liest ausschliesslich die vorhandene Registry.
+- Keine neue K12.x-Arbeit ohne ausdrueckliche LV-Ergaenzung.
 
-## 8. Gesperrte Nebenstrecken
+## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:
 
@@ -239,7 +273,7 @@ Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:
 | [S] | direkte BBM-Integration ohne Bootstrap | Ziel-App muss zuerst Vertrag uebernehmen |
 | [S] | Fachdaten-Speicherung | Editor speichert nur Layoutdaten, spaeter und getrennt |
 
-## 9. Regel fuer neue Codex-Auftraege
+## 10. Regel fuer neue Codex-Auftraege
 
 Jeder neue Codex-Auftrag muss enthalten:
 
@@ -260,19 +294,19 @@ Wenn ein Auftrag keine LV-Position nennt, wird er nicht gestartet.
 
 Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
-## 10. Aktueller naechster Schritt
+## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach Abnahme dieser Datei:
+Naechster Schritt nach Abschluss von M2:
 
 ```text
-K12.3 - Parent-Validator
+K13.0 - Editor-Core liest Registry
 ```
 
 Nicht vorher:
 
-- keine Registry bauen
-- keinen Editor-Core bauen
+- keinen Aenderungsauftrag bauen
 - keinen Host-Adapter bauen
+- keine Editor-UI bauen
 - keine Ziel-App anbinden
 
-Erst B1 sauber bauen, dann weiter.
+M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
