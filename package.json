@@ -2,6 +2,6 @@
   "name": "ui-editor-kit",
   "private": true,
   "scripts": {
-    "test": "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/repo-core-contract-cleanup.test.cjs"
+    "test": "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs"
   }
 }

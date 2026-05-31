@@ -1,4 +1,4 @@
-# STATUS - UI-Editor-kit
+﻿# STATUS - UI-Editor-kit
 
 ## 1. Zweck
 
@@ -35,11 +35,12 @@ Aktueller Stand:
 - K11.0 erledigt: Repo auf UI-Editor-Kernvertrag bereinigt.
 - K11.1 erledigt: Beispiel-UI-/HTML-/data-ui-Restspur entfernt.
 - K11.2 erledigt: `docs/EDITOR_GESAMT_LV.md` als Gesamt-LV angelegt.
-- K11.3 in Bau: `STATUS.md` aus dem Gesamt-LV ableiten.
+- K11.3 erledigt: `STATUS.md` aus dem Gesamt-LV abgeleitet.
+- K12.0 erledigt: `src/core/ui-element-model.cjs` und Modelltest gebaut.
 
-Aktueller naechster Bauabschnitt nach K11.3:
+Aktueller naechster Bauabschnitt nach K12.0:
 
-- K12.0: UI-Element-Datenmodell technisch umsetzen.
+- K12.1: Registry-Grundstruktur auf Basis von B1 vorbereiten.
 
 ## 4. Statuswerte
 
@@ -63,8 +64,8 @@ Bedeutung:
 |---|---:|---|---|---|
 | A1 | [A] | Fuehrende Projektunterlagen | Kernunterlagen vorhanden, `npm test` gruen | fortlaufend pflegen |
 | A2 | [x] | Gesamt-LV | `docs/EDITOR_GESAMT_LV.md` angelegt | mit STATUS abgleichen |
-| A3 | [~] | STATUS als Baufortschritt | diese Datei | nach Sync testen und committen |
-| B1 | [ ] | UI-Element-Datenmodell | offen | K12.0 |
+| A3 | [A] | STATUS als Baufortschritt | `STATUS.md` vorhanden, `npm test` gruen | fortlaufend pflegen |
+| B1 | [x] | UI-Element-Datenmodell | Modell + Test vorhanden, `npm test` gruen | nach B1 Registry bauen |
 | B2 | [x] | Elementtypen-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
 | B3 | [x] | Rollen-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
 | B4 | [x] | Operations-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
@@ -138,50 +139,33 @@ Nachweis:
 
 ### K11.3 - STATUS aus Gesamt-LV ableiten
 
-Status: in Bau
+Status: abgenommen
 
 Ergebnis:
 
 - `STATUS.md` angelegt
 - LV-Positionen als Baufortschrittsliste uebernommen
 - naechster Bauabschnitt K12.0 festgelegt
+- `npm test` gruen
 
-Abnahme noch offen:
+Nachweis:
 
-- lokal synchronisieren
-- `npm test` ausfuehren
-- `git diff --check` pruefen
-- committen und pushen
-
-## 7. Naechste Baupakete
+- `STATUS.md` vorhanden
+- `npm test` gruen
 
 ### K12.0 - UI-Element-Datenmodell technisch umsetzen
 
-LV-Bezug:
+Status: gebaut
 
-- B1
+Ergebnis:
 
-Ziel:
-
-- technisches Datenmodell fuer UI-Elemente anlegen
-- Pflichtfelder abbilden
-- erlaubte Typen, Rollen und Operationen noch nicht vollstaendig validieren, aber strukturell vorbereiten
-
-Nicht-Ziel:
-
-- keine Editor-UI
-- kein Host-Adapter
-- keine Layoutspeicherung
-- keine Ziel-App-Anbindung
-- kein Scanning
-- keine Demo-Oberflaeche
-
-Abnahmekriterien:
-
-- Datenmodell vorhanden
-- gueltiges Element kann beschrieben werden
-- Element ohne Pflichtfelder kann im naechsten Validator-Paket geprueft werden
+- `src/core/ui-element-model.cjs` angelegt
+- fachneutrale Konstanten fuer Typen, Rollen, Operationen und Pflichtfelder exportiert
+- Basishilfen fuer bekannte Feldgruppen und zwei neutrale Modellfunktionen angelegt
+- `scripts/tests/ui-element-model.test.cjs` prueft Modellinhalt und Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
+
+## 7. Naechste Baupakete
 
 ### K12.1 - Registry-Grundstruktur
 
@@ -278,7 +262,7 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 Naechster Schritt nach Abnahme dieser Datei:
 
 ```text
-K12.0 - UI-Element-Datenmodell technisch umsetzen
+K12.1 - Registry-Grundstruktur
 ```
 
 Nicht vorher:
