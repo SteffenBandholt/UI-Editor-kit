@@ -10,6 +10,11 @@ const {
   DEMO_PATH,
   formatMiniInspectorBrowserDemoInfo,
 } = require("../mini-inspector-browser-demo-info.cjs");
+const {
+  DEFAULT_SCOPE: HOST_DEFAULT_SCOPE,
+  formatMiniInspectorDemoHostJson,
+  runMiniInspectorDemoHost,
+} = require("../mini-inspector-demo-host.cjs");
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const DEMO_DIR = path.join(REPO_ROOT, "demo", "mini-inspector");
@@ -74,6 +79,23 @@ function loadBrowserDemoApi() {
   return context.window.miniInspectorBrowserDemo;
 }
 
+function assertStatusShape(status, scope) {
+  assert.deepEqual(Object.keys(status), [
+    "ok",
+    "itemCount",
+    "errorCount",
+    "scope",
+    "version",
+    "errors",
+  ]);
+  assert.equal(typeof status.ok, "boolean");
+  assert.equal(typeof status.itemCount, "number");
+  assert.equal(typeof status.errorCount, "number");
+  assert.equal(status.scope, scope);
+  assert.equal(status.version, 1);
+  assert.equal(Array.isArray(status.errors), true);
+}
+
 function run() {
   // 1) Demo-Dateien existieren.
   [HTML_PATH, JS_PATH, CSS_PATH].forEach((filePath) => {
@@ -116,6 +138,7 @@ function run() {
 
   // 7) Browserseitige Funktion erzeugt gueltigen Status.
   const api = loadBrowserDemoApi();
+  assert.equal(api.DEFAULT_SCOPE, HOST_DEFAULT_SCOPE);
   assert.equal(typeof api.createBrowserDemoStatus, "function");
   assert.equal(typeof api.renderStatus, "function");
   const root = createRoot([
@@ -124,6 +147,7 @@ function run() {
     createElement({ "data-ui-inspector-id": "demo.bereich-b", "data-ui-layout-order": "3" }),
   ]);
   const validStatus = api.createBrowserDemoStatus(root, { scope: "test.scope" });
+  assertStatusShape(validStatus, "test.scope");
   assert.equal(validStatus.ok, true);
   assert.equal(validStatus.itemCount, 3);
   assert.equal(validStatus.errorCount, 0);
@@ -135,6 +159,7 @@ function run() {
     createElement({ "data-ui-inspector-id": "demo.bereich-b", "data-demo-invalid-width": "-1" }),
   ]);
   const invalidStatus = api.createBrowserDemoStatus(invalidRoot, { invalid: true });
+  assertStatusShape(invalidStatus, HOST_DEFAULT_SCOPE);
   assert.equal(invalidStatus.ok, false);
   assert.equal(invalidStatus.itemCount, 2);
   assert.equal(invalidStatus.errorCount, 1);
@@ -154,7 +179,14 @@ function run() {
   assert.equal(inspectorContainer.attributes["data-status"], "error");
   assertNoTerms(inspectorContainer.innerHTML, FORBIDDEN_TERMS, "Inspector-Ausgabe");
 
-  // 10) Optionaler npm-Befehl gibt nur neutrale Pfadinformation aus.
+  // 10) Browser-Demo und Node-Referenz sichern denselben neutralen Statusumfang ab.
+  const nodeStatus = formatMiniInspectorDemoHostJson(runMiniInspectorDemoHost()).status;
+  assertStatusShape(nodeStatus, HOST_DEFAULT_SCOPE);
+  assert.deepEqual(Object.keys(nodeStatus), Object.keys(invalidStatus));
+  assert.equal(js.includes('DEFAULT_SCOPE: DEFAULT_SCOPE'), true);
+  assert.equal(js.includes('scope: typeof opts.scope === "string" ? opts.scope : DEFAULT_SCOPE'), true);
+
+  // 11) Optionaler npm-Befehl gibt nur neutrale Pfadinformation aus.
   const packageJson = JSON.parse(read(path.join(REPO_ROOT, "package.json")));
   assert.equal(
     packageJson.scripts["mini-inspector:demo:browser"],

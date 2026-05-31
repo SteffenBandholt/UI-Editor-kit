@@ -98,7 +98,7 @@ Grenzen des Befehls:
 - keine Fachlogik
 
 
-## K5.0 Browser-/HTML-Demo
+## K5.0/K5.1 Browser-/HTML-Demo
 
 Die fachneutrale Browser-/HTML-Demo liegt unter `demo/mini-inspector/index.html`.
 
@@ -116,7 +116,28 @@ Oeffnen:
 - optional den Pfad ueber `npm run mini-inspector:demo:browser` ausgeben lassen
 
 Die Node-Referenzlogik fuer die Demo-/Host-Schale bleibt weiterhin in `scripts/mini-inspector-demo-host.cjs`.
-Da die Browser-Demo ohne Buildsystem und ohne neue Runtime-Abhaengigkeiten auskommt, nutzt sie eine kleine browserseitige Demo-Schicht fuer dasselbe fachneutrale Lesestatus-Verhalten.
+Die Browser-Demo bleibt weiterhin unter `demo/mini-inspector/index.html`.
+Da die Browser-Demo ohne Buildsystem und ohne neue Runtime-Abhaengigkeiten auskommt, nutzt sie eine kleine browserseitige Demo-Schicht fuer denselben fachneutralen Statusumfang wie die Node-Referenz.
+
+Gemeinsamer Statusumfang von Node-Referenz und Browser-Demo:
+
+- `ok`
+- `itemCount`
+- `errorCount`
+- `scope`
+- `version`
+- `errors`
+
+K5.1 sichert diesen Referenzabgleich ausdruecklich ab:
+
+- Node-Referenz bleibt `scripts/mini-inspector-demo-host.cjs`
+- Browser-Demo bleibt `demo/mini-inspector/index.html`
+- Browser-Demo demonstriert denselben Statusumfang
+- Browser-Demo bleibt rein lesend
+- keine Speicherung
+- keine Layout-Anwendung
+- keine Ziel-UI-Mutation
+- keine Fachlogik
 
 Grenzen der Browser-/HTML-Demo:
 

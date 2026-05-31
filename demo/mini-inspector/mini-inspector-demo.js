@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var DEFAULT_SCOPE = "mini-inspector-browser-demo.scope";
+  var DEFAULT_SCOPE = "mini-inspector-demo.scope";
 
   function escapeHtml(value) {
     return String(value)
@@ -117,6 +117,7 @@
   });
 
   window.miniInspectorBrowserDemo = {
+    DEFAULT_SCOPE: DEFAULT_SCOPE,
     createBrowserDemoStatus: createBrowserDemoStatus,
     renderStatus: renderStatus,
   };

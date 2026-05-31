@@ -25,6 +25,8 @@ Die Funktion liefert einen neutralen Status mit:
 - `version`
 - `errors`
 
+Dieselben Kernfelder werden fuer die Browser-Demo unter `demo/mini-inspector/index.html` ebenfalls fachneutral verwendet und in K5.1 gegen die Node-Referenz abgesichert.
+
 Die Statusanzeige ist sichtbar/renderbar vorbereitet ueber das View-Modell aus `formatMiniInspectorLayoutStatus(...)` bzw. `createMiniInspectorStatusViewModel(...)`.
 
 Der DOM-/Markup-Adapter wird ueber `createMiniInspectorStatusMarkup(...)` und `renderMiniInspectorStatus(container, statusViewModel)` bereitgestellt.

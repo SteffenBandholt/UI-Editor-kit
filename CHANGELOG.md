@@ -36,6 +36,7 @@
 - K4.3: Demo-/Host-Befehl um optionale fachneutrale JSON-Ausgabe per `--json` erweitert.
 - K4.4: Demo-/Host-CLI um `--help` und kontrollierte Pruefung unbekannter Argumente erweitert.
 - K5.0: Fachneutrale Mini-Inspector Browser-/HTML-Demo mit getrenntem Inspector-Bereich vorbereitet.
+- K5.1: Browser-Demo gegen Node-Referenzstatus mit gemeinsamem Scope, Referenztests und Doku-Abgleich abgesichert.
 
 ## 0.1.0
 
