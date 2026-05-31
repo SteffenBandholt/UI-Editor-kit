@@ -127,6 +127,10 @@ Grenzen des Beispiels:
 
 K9.1 dokumentiert dieses Beispiel als bestaetigten Referenzstand nach bestandenem manuellen Sichttest.
 
+Leitfaden fuer die fachneutrale Einbindung:
+
+- `docs/HOST_APP_ADOPTION_GUIDE.md`
+
 ## Grenzen
 
 Weiterhin gilt ausdruecklich:
