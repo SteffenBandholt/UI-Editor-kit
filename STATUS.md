@@ -37,10 +37,11 @@ Aktueller Stand:
 - K11.2 erledigt: `docs/EDITOR_GESAMT_LV.md` als Gesamt-LV angelegt.
 - K11.3 erledigt: `STATUS.md` aus dem Gesamt-LV abgeleitet.
 - K12.0 erledigt: `src/core/ui-element-model.cjs` und Modelltest gebaut.
+- K12.1 erledigt: `src/core/ui-element-registry.cjs` und Registry-Test gebaut.
 
-Aktueller naechster Bauabschnitt nach K12.0:
+Aktueller naechster Bauabschnitt nach K12.1:
 
-- K12.1: Registry-Grundstruktur auf Basis von B1 vorbereiten.
+- K12.2: Validator-Grundlage auf Basis von B1 bis B4 vorbereiten.
 
 ## 4. Statuswerte
 
@@ -69,7 +70,7 @@ Bedeutung:
 | B2 | [x] | Elementtypen-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
 | B3 | [x] | Rollen-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
 | B4 | [x] | Operations-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
-| C1 | [ ] | Registry-Grundstruktur | offen | nach B1 |
+| C1 | [x] | Registry-Grundstruktur | Registry + Test vorhanden, `npm test` gruen | nach C1 Validator-Grundlage bauen |
 | C2 | [ ] | Registry-Beispieldaten ohne HTML | offen | nach C1 |
 | D1 | [ ] | Pflichtfeld-Validator | offen | nach B1 |
 | D2 | [ ] | Typen- und Rollen-Validator | offen | nach B2/B3 |
@@ -165,21 +166,21 @@ Ergebnis:
 - `scripts/tests/ui-element-model.test.cjs` prueft Modellinhalt und Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
 
+### K12.1 - Registry-Grundstruktur technisch umsetzen
+
+Status: gebaut
+
+Ergebnis:
+
+- `src/core/ui-element-registry.cjs` angelegt
+- Registry erstellt, registriert, liest per ID, listet in Registrierungsreihenfolge und leert neutral
+- Registrierung nutzt `src/core/ui-element-model.cjs` zur Normalisierung
+- doppelte IDs und fehlende/leere string-IDs werden mit klarer Fehlermeldung abgelehnt
+- Rueckgaben sind Kopien, damit interne Daten nicht durch aeussere Mutation veraendert werden
+- `scripts/tests/ui-element-registry.test.cjs` prueft C1-Funktionen und Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
 ## 7. Naechste Baupakete
-
-### K12.1 - Registry-Grundstruktur
-
-LV-Bezug:
-
-- C1
-
-Ziel:
-
-- Registry erstellen
-- Element registrieren
-- Elementliste ausgeben
-- Registry leeren
-- doppelte IDs ablehnen
 
 ### K12.2 - Validator-Grundlage
 
@@ -262,7 +263,7 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 Naechster Schritt nach Abnahme dieser Datei:
 
 ```text
-K12.1 - Registry-Grundstruktur
+K12.2 - Validator-Grundlage
 ```
 
 Nicht vorher:
