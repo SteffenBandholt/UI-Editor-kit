@@ -1,12 +1,15 @@
+@import "../../styles/neutral-theme-tokens.css";
+
 :root {
-  --demo-bg: #f6f8fc;
-  --demo-panel: #ffffff;
-  --demo-line: #d8deea;
-  --demo-text: #1f2937;
-  --demo-muted: #5f6b7a;
-  --demo-ok: #0f766e;
-  --demo-error: #b42318;
-  --demo-soft: #eef6ff;
+  /* Bruecke von den Demo-Namen auf die fachneutrale Token-Referenz. */
+  --demo-bg: var(--ui-neutral-bg);
+  --demo-panel: var(--ui-neutral-panel);
+  --demo-line: var(--ui-neutral-line);
+  --demo-text: var(--ui-neutral-text);
+  --demo-muted: var(--ui-neutral-muted);
+  --demo-ok: var(--ui-neutral-ok);
+  --demo-error: var(--ui-neutral-error);
+  --demo-soft: var(--ui-neutral-soft);
 }
 
 * {
@@ -31,7 +34,7 @@ body {
   background: var(--demo-panel);
   border: 1px solid var(--demo-line);
   border-radius: 14px;
-  box-shadow: 0 10px 24px rgba(31, 41, 55, 0.06);
+  box-shadow: var(--ui-neutral-shadow-soft);
 }
 
 .demo-header {
@@ -72,9 +75,9 @@ p {
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px dashed #9aa8bd;
+  border: 1px dashed var(--ui-neutral-border-muted);
   border-radius: 12px;
-  background: #fbfdff;
+  background: var(--ui-neutral-surface-soft);
 }
 
 .target-block {
@@ -106,7 +109,7 @@ p {
   padding: 14px;
   border: 1px solid var(--demo-line);
   border-radius: 12px;
-  background: #fbfdff;
+  background: var(--ui-neutral-surface-soft);
 }
 
 .inspector-output h3 {
@@ -124,11 +127,11 @@ p {
 }
 
 .inspector-output[data-status="ok"] {
-  border-color: rgba(15, 118, 110, 0.45);
+  border-color: var(--ui-neutral-ok-border-soft);
 }
 
 .inspector-output[data-status="error"] {
-  border-color: rgba(180, 35, 24, 0.45);
+  border-color: var(--ui-neutral-error-border-soft);
 }
 
 @media (max-width: 860px) {

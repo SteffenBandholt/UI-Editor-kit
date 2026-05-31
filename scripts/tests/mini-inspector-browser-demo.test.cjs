@@ -21,6 +21,7 @@ const DEMO_DIR = path.join(REPO_ROOT, "demo", "mini-inspector");
 const HTML_PATH = path.join(DEMO_DIR, "index.html");
 const JS_PATH = path.join(DEMO_DIR, "mini-inspector-demo.js");
 const CSS_PATH = path.join(DEMO_DIR, "mini-inspector-demo.css");
+const TOKEN_CSS_PATH = path.join(REPO_ROOT, "styles", "neutral-theme-tokens.css");
 const FORBIDDEN_TERMS = ["Protokoll", "TOP", "Bauvorhaben", "Restarbeiten"];
 const STORAGE_TERMS = ["localStorage", "sessionStorage"];
 const FILE_WRITE_PATTERNS = ["writeFile", "writeFileSync", "createWriteStream"];
@@ -98,14 +99,15 @@ function assertStatusShape(status, scope) {
 
 function run() {
   // 1) Demo-Dateien existieren.
-  [HTML_PATH, JS_PATH, CSS_PATH].forEach((filePath) => {
+  [HTML_PATH, JS_PATH, CSS_PATH, TOKEN_CSS_PATH].forEach((filePath) => {
     assert.equal(fs.existsSync(filePath), true, `Datei fehlt: ${filePath}`);
   });
 
   const html = read(HTML_PATH);
   const js = read(JS_PATH);
   const css = read(CSS_PATH);
-  const combined = [html, js, css].join("\n");
+  const tokenCss = read(TOKEN_CSS_PATH);
+  const combined = [html, js, css, tokenCss].join("\n");
 
   // 2) HTML enthaelt getrennte Beispiel-UI und getrennten Inspector-Bereich.
   assert.equal(html.includes('id="miniInspectorDemoTarget"'), true);
@@ -128,7 +130,46 @@ function run() {
   assertNoTerms(combined, STORAGE_TERMS, "Browser-Demo");
   assertNoTerms(combined, FILE_WRITE_PATTERNS, "Browser-Demo");
 
-  // 6) Keine Layout-Anwendung auf die Ziel-UI.
+  // 6) CSS-Referenz enthaelt die erwarteten neutralen Tokens und Werte.
+  [
+    "--ui-neutral-bg",
+    "--ui-neutral-panel",
+    "--ui-neutral-line",
+    "--ui-neutral-text",
+    "--ui-neutral-muted",
+    "--ui-neutral-ok",
+    "--ui-neutral-error",
+    "--ui-neutral-soft",
+    "--ui-neutral-surface-soft",
+    "--ui-neutral-border-muted",
+    "--ui-neutral-shadow-soft",
+    "--ui-neutral-ok-border-soft",
+    "--ui-neutral-error-border-soft",
+  ].forEach((tokenName) => {
+    assert.equal(tokenCss.includes(tokenName), true, `Token fehlt: ${tokenName}`);
+  });
+  [
+    "#f6f8fc",
+    "#ffffff",
+    "#d8deea",
+    "#1f2937",
+    "#5f6b7a",
+    "#0f766e",
+    "#b42318",
+    "#eef6ff",
+    "#fbfdff",
+    "#9aa8bd",
+    "rgba(31, 41, 55, 0.06)",
+    "rgba(15, 118, 110, 0.45)",
+    "rgba(180, 35, 24, 0.45)",
+  ].forEach((tokenValue) => {
+    assert.equal(tokenCss.includes(tokenValue), true, `Token-Wert fehlt: ${tokenValue}`);
+  });
+  assert.equal(css.includes('@import "../../styles/neutral-theme-tokens.css";'), true);
+  assert.equal(css.includes("var(--ui-neutral-bg)"), true);
+  assert.equal(css.includes("var(--ui-neutral-shadow-soft)"), true);
+
+  // 7) Keine Layout-Anwendung auf die Ziel-UI.
   assert.equal(js.includes("data-ui-layout-width"), true, "Metadaten duerfen lesend ausgewertet werden");
   assert.equal(js.includes(".style"), false, "Keine dynamische Style-Anwendung");
   assert.equal(js.includes("setAttribute(\"data-ui-"), false, "Keine Mutation von data-ui-* Metadaten");
@@ -136,7 +177,7 @@ function run() {
   assert.equal(js.includes("removeChild"), false, "Keine Ziel-UI-Entfernung");
   assert.equal(js.includes("insertBefore"), false, "Keine Ziel-UI-Umsortierung");
 
-  // 7) Browserseitige Funktion erzeugt gueltigen Status.
+  // 8) Browserseitige Funktion erzeugt gueltigen Status.
   const api = loadBrowserDemoApi();
   assert.equal(api.DEFAULT_SCOPE, HOST_DEFAULT_SCOPE);
   assert.equal(typeof api.createBrowserDemoStatus, "function");
@@ -153,7 +194,7 @@ function run() {
   assert.equal(validStatus.errorCount, 0);
   assert.equal(validStatus.scope, "test.scope");
 
-  // 8) Ungueltiger Demo-Zustand erzeugt neutralen Fehlerstatus.
+  // 9) Ungueltiger Demo-Zustand erzeugt neutralen Fehlerstatus.
   const invalidRoot = createRoot([
     createElement({ "data-ui-inspector-id": "demo.kopfbereich" }),
     createElement({ "data-ui-inspector-id": "demo.bereich-b", "data-demo-invalid-width": "-1" }),
@@ -165,7 +206,7 @@ function run() {
   assert.equal(invalidStatus.errorCount, 1);
   assert.equal(invalidStatus.errors[0].code, "NEGATIVE_DIMENSION");
 
-  // 9) Inspector-Ausgabe bleibt fachneutral und wird nur in den Container geschrieben.
+  // 10) Inspector-Ausgabe bleibt fachneutral und wird nur in den Container geschrieben.
   const inspectorContainer = {
     innerHTML: "",
     attributes: {},
@@ -179,14 +220,14 @@ function run() {
   assert.equal(inspectorContainer.attributes["data-status"], "error");
   assertNoTerms(inspectorContainer.innerHTML, FORBIDDEN_TERMS, "Inspector-Ausgabe");
 
-  // 10) Browser-Demo und Node-Referenz sichern denselben neutralen Statusumfang ab.
+  // 11) Browser-Demo und Node-Referenz sichern denselben neutralen Statusumfang ab.
   const nodeStatus = formatMiniInspectorDemoHostJson(runMiniInspectorDemoHost()).status;
   assertStatusShape(nodeStatus, HOST_DEFAULT_SCOPE);
   assert.deepEqual(Object.keys(nodeStatus), Object.keys(invalidStatus));
   assert.equal(js.includes('DEFAULT_SCOPE: DEFAULT_SCOPE'), true);
   assert.equal(js.includes('scope: typeof opts.scope === "string" ? opts.scope : DEFAULT_SCOPE'), true);
 
-  // 11) Optionaler npm-Befehl gibt nur neutrale Pfadinformation aus.
+  // 12) Optionaler npm-Befehl gibt nur neutrale Pfadinformation aus.
   const packageJson = JSON.parse(read(path.join(REPO_ROOT, "package.json")));
   assert.equal(
     packageJson.scripts["mini-inspector:demo:browser"],

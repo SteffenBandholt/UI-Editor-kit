@@ -1,0 +1,15 @@
+:root {
+  --ui-neutral-bg: #f6f8fc;
+  --ui-neutral-panel: #ffffff;
+  --ui-neutral-line: #d8deea;
+  --ui-neutral-text: #1f2937;
+  --ui-neutral-muted: #5f6b7a;
+  --ui-neutral-ok: #0f766e;
+  --ui-neutral-error: #b42318;
+  --ui-neutral-soft: #eef6ff;
+  --ui-neutral-surface-soft: #fbfdff;
+  --ui-neutral-border-muted: #9aa8bd;
+  --ui-neutral-shadow-soft: 0 10px 24px rgba(31, 41, 55, 0.06);
+  --ui-neutral-ok-border-soft: rgba(15, 118, 110, 0.45);
+  --ui-neutral-error-border-soft: rgba(180, 35, 24, 0.45);
+}
