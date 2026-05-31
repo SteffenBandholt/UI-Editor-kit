@@ -20,6 +20,7 @@ const REPO_ROOT = path.resolve(__dirname, "../..");
 const DEMO_DIR = path.join(REPO_ROOT, "demo", "mini-inspector");
 const HTML_PATH = path.join(DEMO_DIR, "index.html");
 const JS_PATH = path.join(DEMO_DIR, "mini-inspector-demo.js");
+const ADAPTER_PATH = path.join(REPO_ROOT, "browser", "mini-inspector-host-adapter.js");
 const CSS_PATH = path.join(DEMO_DIR, "mini-inspector-demo.css");
 const TOKEN_CSS_PATH = path.join(REPO_ROOT, "styles", "neutral-theme-tokens.css");
 const FORBIDDEN_TERMS = ["Protokoll", "TOP", "Bauvorhaben", "Restarbeiten"];
@@ -75,6 +76,7 @@ function loadBrowserDemoApi() {
   };
 
   vm.createContext(context);
+  vm.runInContext(read(ADAPTER_PATH), context, { filename: ADAPTER_PATH });
   vm.runInContext(read(JS_PATH), context, { filename: JS_PATH });
   assert.equal(typeof listeners.DOMContentLoaded, "function");
   return context.window.miniInspectorBrowserDemo;
@@ -99,15 +101,16 @@ function assertStatusShape(status, scope) {
 
 function run() {
   // 1) Demo-Dateien existieren.
-  [HTML_PATH, JS_PATH, CSS_PATH, TOKEN_CSS_PATH].forEach((filePath) => {
+  [HTML_PATH, JS_PATH, ADAPTER_PATH, CSS_PATH, TOKEN_CSS_PATH].forEach((filePath) => {
     assert.equal(fs.existsSync(filePath), true, `Datei fehlt: ${filePath}`);
   });
 
   const html = read(HTML_PATH);
   const js = read(JS_PATH);
   const css = read(CSS_PATH);
+  const adapter = read(ADAPTER_PATH);
   const tokenCss = read(TOKEN_CSS_PATH);
-  const combined = [html, js, css, tokenCss].join("\n");
+  const combined = [html, js, adapter, css, tokenCss].join("\n");
 
   // 2) HTML enthaelt getrennte Beispiel-UI und getrennten Inspector-Bereich.
   assert.equal(html.includes('id="miniInspectorDemoTarget"'), true);
@@ -116,6 +119,7 @@ function run() {
   assert.equal(html.includes('data-ui-inspector-id="demo.kopfbereich"'), true);
   assert.equal(html.includes('data-ui-inspector-id="demo.bereich-a"'), true);
   assert.equal(html.includes('data-ui-inspector-id="demo.bereich-b"'), true);
+  assert.equal(html.includes('src="../../browser/mini-inspector-host-adapter.js"'), true);
 
   // 3) HTML/JS/CSS bleiben frei von verbotenen Fachbegriffen.
   assertNoTerms(combined, FORBIDDEN_TERMS, "Browser-Demo");
@@ -170,18 +174,24 @@ function run() {
   assert.equal(css.includes("var(--ui-neutral-shadow-soft)"), true);
 
   // 7) Keine Layout-Anwendung auf die Ziel-UI.
-  assert.equal(js.includes("data-ui-layout-width"), true, "Metadaten duerfen lesend ausgewertet werden");
-  assert.equal(js.includes(".style"), false, "Keine dynamische Style-Anwendung");
-  assert.equal(js.includes("setAttribute(\"data-ui-"), false, "Keine Mutation von data-ui-* Metadaten");
-  assert.equal(js.includes("appendChild"), false, "Keine Ziel-UI-Erweiterung");
-  assert.equal(js.includes("removeChild"), false, "Keine Ziel-UI-Entfernung");
-  assert.equal(js.includes("insertBefore"), false, "Keine Ziel-UI-Umsortierung");
+  assert.equal(adapter.includes("data-ui-layout-width"), true, "Metadaten duerfen lesend ausgewertet werden");
+  [js, adapter].forEach((source, index) => {
+    const label = index === 0 ? "Browser-Demo" : "Browser-Host-Adapter";
+    assert.equal(source.includes(".style"), false, `${label}: Keine dynamische Style-Anwendung`);
+    assert.equal(source.includes("setAttribute(\"data-ui-"), false, `${label}: Keine Mutation von data-ui-* Metadaten`);
+    assert.equal(source.includes("appendChild"), false, `${label}: Keine Ziel-UI-Erweiterung`);
+    assert.equal(source.includes("removeChild"), false, `${label}: Keine Ziel-UI-Entfernung`);
+    assert.equal(source.includes("insertBefore"), false, `${label}: Keine Ziel-UI-Umsortierung`);
+  });
 
   // 8) Browserseitige Funktion erzeugt gueltigen Status.
   const api = loadBrowserDemoApi();
   assert.equal(api.DEFAULT_SCOPE, HOST_DEFAULT_SCOPE);
   assert.equal(typeof api.createBrowserDemoStatus, "function");
   assert.equal(typeof api.renderStatus, "function");
+  assert.equal(adapter.includes("createMiniInspectorHostStatus"), true);
+  assert.equal(adapter.includes("renderMiniInspectorHostStatus"), true);
+  assert.equal(adapter.includes("updateMiniInspectorHostAdapter"), true);
   const root = createRoot([
     createElement({ "data-ui-inspector-id": "demo.kopfbereich", "data-ui-layout-order": "1" }),
     createElement({ "data-ui-inspector-id": "demo.bereich-a", "data-ui-layout-order": "2" }),
@@ -225,7 +235,7 @@ function run() {
   assertStatusShape(nodeStatus, HOST_DEFAULT_SCOPE);
   assert.deepEqual(Object.keys(nodeStatus), Object.keys(invalidStatus));
   assert.equal(js.includes('DEFAULT_SCOPE: DEFAULT_SCOPE'), true);
-  assert.equal(js.includes('scope: typeof opts.scope === "string" ? opts.scope : DEFAULT_SCOPE'), true);
+  assert.equal(adapter.includes('scope = typeof opts.scope === "string" ? opts.scope : DEFAULT_SCOPE'), true);
 
   // 12) Optionaler npm-Befehl gibt nur neutrale Pfadinformation aus.
   const packageJson = JSON.parse(read(path.join(REPO_ROOT, "package.json")));
