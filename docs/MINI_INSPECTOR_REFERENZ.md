@@ -177,6 +177,10 @@ Visuelle Referenz:
 
 - `docs/NEUTRAL_THEME_TOKENS.md`
 
+Integrationsvertrag fuer spaetere Host-Apps:
+
+- `docs/HOST_APP_INTEGRATION.md`
+
 ## Referenzstand-Aussage
 
 K2.0 bis K2.4 bilden den lesenden Mini-Inspector-Referenzstand.
