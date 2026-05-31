@@ -65,6 +65,8 @@ Oeffentliche Browser-Einstiege:
 
 Die Browser-Demo unter `demo/mini-inspector/index.html` laedt diesen Adapter vor dem Demo-Script.
 
+K8.1 dokumentiert diesen Browser-Host-Adapter als bestaetigten Referenzstand.
+
 ## Grenzen
 
 - kein Speichern

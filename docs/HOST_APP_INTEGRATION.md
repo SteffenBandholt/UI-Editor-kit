@@ -89,6 +89,8 @@ Fuer den Adapter gilt weiterhin:
 - keine Ziel-UI-Mutation
 - keine Fachlogik
 
+K8.1 dokumentiert diesen Browser-Host-Adapter als Referenzstand und bestaetigt den bestandenen Sichttest nach K8.0.
+
 ## Minimaler Integrationsablauf
 
 Eine Host-App bindet den aktuellen Stand fachneutral so ein:

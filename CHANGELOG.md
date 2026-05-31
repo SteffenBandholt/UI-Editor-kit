@@ -43,6 +43,7 @@
 - K7.0: Fachneutralen Integrationsvertrag fuer spaetere Host-Apps dokumentiert.
 - K7.1: Host-App-Integrationsvertrag mit eigenem Smoke-Test technisch abgesichert.
 - K8.0: Wiederverwendbaren Browser-Host-Adapter fuer Ziel-Root und getrennten Inspector-Container vorbereitet.
+- K8.1: Browser-Host-Adapter als Referenzstand dokumentiert und bestaetigten Sichttest festgehalten.
 
 ## 0.1.0
 
