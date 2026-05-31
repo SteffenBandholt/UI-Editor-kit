@@ -97,6 +97,38 @@ Grenzen des Befehls:
 - keine Ziel-UI-Mutation
 - keine Fachlogik
 
+
+## K5.0 Browser-/HTML-Demo
+
+Die fachneutrale Browser-/HTML-Demo liegt unter `demo/mini-inspector/index.html`.
+
+Zweck der Demo:
+
+- eine neutrale Beispiel-UI mit vorhandenen `data-ui-*` Metadaten sichtbar machen
+- einen getrennten Mini-Inspector-Bereich anzeigen
+- den Mini-Inspector-Status im Browser rein lesend erzeugen
+- den Status ausschliesslich in den Inspector-Bereich rendern
+- einen gueltigen und einen bewusst ungueltigen Beispielzustand neutral umschaltbar machen
+
+Oeffnen:
+
+- `demo/mini-inspector/index.html` direkt im Browser laden
+- optional den Pfad ueber `npm run mini-inspector:demo:browser` ausgeben lassen
+
+Die Node-Referenzlogik fuer die Demo-/Host-Schale bleibt weiterhin in `scripts/mini-inspector-demo-host.cjs`.
+Da die Browser-Demo ohne Buildsystem und ohne neue Runtime-Abhaengigkeiten auskommt, nutzt sie eine kleine browserseitige Demo-Schicht fuer dasselbe fachneutrale Lesestatus-Verhalten.
+
+Grenzen der Browser-/HTML-Demo:
+
+- rein lesend
+- kein Speichern
+- kein `localStorage` oder `sessionStorage`
+- keine Layout-Anwendung
+- keine Ziel-UI-Mutation
+- keine Bearbeitung von Layoutdaten
+- keine Fachlogik
+- nur der Inspector-Bereich wird aktualisiert
+
 ## Referenzstand-Aussage
 
 K2.0 bis K2.4 bilden den lesenden Mini-Inspector-Referenzstand.
