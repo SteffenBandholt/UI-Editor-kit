@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Host-App-Beispiel</title>
+    <link rel="stylesheet" href="../../styles/neutral-theme-tokens.css" />
+    <link rel="stylesheet" href="./host-app-basic.css" />
+  </head>
+  <body>
+    <main class="host-shell" aria-labelledby="host-title">
+      <header class="host-header">
+        <p class="eyebrow">Beispiel-App</p>
+        <h1 id="host-title">Neutrales Host-App-Beispiel</h1>
+        <p>
+          Die Ziel-UI bleibt getrennt vom Inspector. Der Mini-Inspector liest nur
+          vorhandene <code>data-ui-*</code> Metadaten und schreibt den Status ausschliesslich
+          in den Inspector-Bereich.
+        </p>
+      </header>
+
+      <section class="host-grid" aria-label="Host-Bereiche">
+        <section class="host-card" aria-labelledby="target-title">
+          <div class="section-head">
+            <div>
+              <h2 id="target-title">Zielbereich</h2>
+              <p class="note">Neutrale Ziel-UI mit lesbaren Metadaten.</p>
+            </div>
+            <label class="toggle-row" for="hostInvalidToggle">
+              <input id="hostInvalidToggle" type="checkbox" />
+              Ungueltigen Zustand anzeigen
+            </label>
+          </div>
+
+          <div
+            id="hostTargetRoot"
+            class="target-ui"
+            data-ui-demo-root="true"
+            aria-label="Neutrale Ziel-UI"
+          >
+            <header
+              class="target-block"
+              data-ui-inspector-id="host.kopfbereich"
+              data-ui-editor-editable="true"
+              data-ui-editor-ops="read,inspect"
+              data-ui-layout-order="1"
+            >
+              <strong>Kopfbereich</strong>
+              <span>Element</span>
+            </header>
+
+            <section
+              class="target-block"
+              data-ui-inspector-id="host.inhalt"
+              data-ui-editor-editable="true"
+              data-ui-editor-ops="read"
+              data-ui-layout-order="2"
+            >
+              <strong>Inhalt</strong>
+              <span>Bereich A</span>
+            </section>
+
+            <section
+              class="target-block"
+              data-ui-inspector-id="host.aktion"
+              data-ui-editor-editable="false"
+              data-ui-editor-ops="inspect"
+              data-ui-layout-order="3"
+              data-demo-invalid-width="-1"
+            >
+              <strong>Aktion</strong>
+              <span>Bereich B</span>
+            </section>
+          </div>
+        </section>
+
+        <aside class="host-card inspector-card" aria-labelledby="inspector-title">
+          <div class="section-head">
+            <div>
+              <h2 id="inspector-title">Inspector</h2>
+              <p class="note">Getrennter Inspector-Bereich fuer den Lesestatus.</p>
+            </div>
+          </div>
+
+          <div
+            id="hostInspectorContainer"
+            class="inspector-output"
+            aria-live="polite"
+            data-mini-inspector-container="true"
+          ></div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="../../browser/mini-inspector-host-adapter.js"></script>
+    <script src="./host-app-basic.js"></script>
+  </body>
+</html>

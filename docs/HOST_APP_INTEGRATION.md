@@ -101,6 +101,26 @@ Eine Host-App bindet den aktuellen Stand fachneutral so ein:
 4. Der Mini-Inspector liest die Ziel-UI ueber den oeffentlichen Einstieg.
 5. Der Status wird ausschliesslich in den Inspector-Container gerendert.
 
+## Neutrales Beispiel
+
+Ein kleines neutrales Host-App-Beispiel liegt unter `examples/host-app-basic/index.html`.
+
+Zweck des Beispiels:
+
+- zeigt eine eigene neutrale Ziel-UI
+- zeigt einen getrennten Inspector-Container
+- laedt den Browser-Host-Adapter
+- uebergibt `rootElement` und `inspectorContainer`
+- laesst den Adapter nur den Inspector-Container aktualisieren
+- bleibt rein lesend
+
+Grenzen des Beispiels:
+
+- keine Speicherung
+- keine Layout-Anwendung
+- keine Ziel-UI-Mutation
+- keine Fachlogik
+
 ## Grenzen
 
 Weiterhin gilt ausdruecklich:
