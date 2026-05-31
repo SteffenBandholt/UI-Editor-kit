@@ -38,10 +38,11 @@ Aktueller Stand:
 - K11.3 erledigt: `STATUS.md` aus dem Gesamt-LV abgeleitet.
 - K12.0 erledigt: `src/core/ui-element-model.cjs` und Modelltest gebaut.
 - K12.1 erledigt: `src/core/ui-element-registry.cjs` und Registry-Test gebaut.
+- K12.2 erledigt: `src/core/ui-element-validator.cjs` und Validator-Test gebaut.
 
-Aktueller naechster Bauabschnitt nach K12.1:
+Aktueller naechster Bauabschnitt nach K12.2:
 
-- K12.2: Validator-Grundlage auf Basis von B1 bis B4 vorbereiten.
+- K12.3: Parent-Validator auf Basis von B1 und C1 vorbereiten.
 
 ## 4. Statuswerte
 
@@ -72,10 +73,10 @@ Bedeutung:
 | B4 | [x] | Operations-Katalog als Plan | `docs/UI_ELEMENT_KATALOG.md` | technisch im Validator abbilden |
 | C1 | [x] | Registry-Grundstruktur | Registry + Test vorhanden, `npm test` gruen | nach C1 Validator-Grundlage bauen |
 | C2 | [ ] | Registry-Beispieldaten ohne HTML | offen | nach C1 |
-| D1 | [ ] | Pflichtfeld-Validator | offen | nach B1 |
-| D2 | [ ] | Typen- und Rollen-Validator | offen | nach B2/B3 |
+| D1 | [x] | Pflichtfeld-Validator | Validator + Test vorhanden, `npm test` gruen | nach D1 Parent-Regeln separat bauen |
+| D2 | [x] | Typen- und Rollen-Validator | Validator + Test vorhanden, `npm test` gruen | nach D2 bei Bedarf erweitern |
 | D3 | [ ] | Parent-Validator | offen | nach C1 |
-| D4 | [ ] | Operations-Validator | offen | nach B4 |
+| D4 | [x] | Operations-Validator | Validator + Test vorhanden, `npm test` gruen | nach D4 Tabellenlogik getrennt bauen |
 | D5 | [ ] | Tabellen- und Metaspalten-Validator | offen | nach D1-D4 |
 | E1 | [ ] | Editor-Core liest Registry | offen | nach C/D |
 | E2 | [ ] | Elementbaum erzeugen | offen | nach E1 |
@@ -180,20 +181,21 @@ Ergebnis:
 - `scripts/tests/ui-element-registry.test.cjs` prueft C1-Funktionen und Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
 
+### K12.2 - Validator-Grundlage technisch umsetzen
+
+Status: gebaut
+
+Ergebnis:
+
+- `src/core/ui-element-validator.cjs` angelegt
+- `validateUiElement()` prueft Elementform, Pflichtfelder, Typ, Rolle und Operationsgrundregeln
+- `validateUiElementList()` prueft mehrere Elemente und sammelt Fehler ohne Parent- oder Tabellenlogik
+- Validator ergaenzt keine Werte, normalisiert nicht still und mutiert Eingaben nicht
+- fachliche Operationen werden abgelehnt, ebenso ungueltige Ops-Arrays und Doppelbelegungen erlaubt/gesperrt
+- `scripts/tests/ui-element-validator.test.cjs` prueft D1, D2, D4 und die Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
 ## 7. Naechste Baupakete
-
-### K12.2 - Validator-Grundlage
-
-LV-Bezug:
-
-- D1, D2, D4
-
-Ziel:
-
-- Pflichtfelder pruefen
-- Typen pruefen
-- Rollen pruefen
-- Operationen pruefen
 
 ### K12.3 - Parent-Validator
 
@@ -263,7 +265,7 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 Naechster Schritt nach Abnahme dieser Datei:
 
 ```text
-K12.2 - Validator-Grundlage
+K12.3 - Parent-Validator
 ```
 
 Nicht vorher:
