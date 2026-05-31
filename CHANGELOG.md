@@ -48,6 +48,7 @@
 - K9.1: Sichttest und Referenzstand des neutralen Host-App-Beispiels dokumentiert.
 - K10.0: Neutralen Host-App-Adoptionsleitfaden fuer den Browser-Host-Adapter vorbereitet.
 - K10.1: Neutralen Gesamt-Referenzstand nach K10.0 dokumentiert.
+- K11.0: Repo auf echten UI-Editor-Kernvertrag bereinigt; Browser-/Host-Demo-Spur entfernt; Farb-/Theme-Referenz behalten.
 
 ## 0.1.0
 

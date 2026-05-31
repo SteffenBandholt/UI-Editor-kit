@@ -1,92 +1,113 @@
-# UI-Editor Vertrag
+﻿# UI-Editor Vertrag
 
 ## Zweck
 
 Dieser Vertrag legt verbindlich fest, wie neue oder neu strukturierte UIs editorfaehig aufgebaut werden.
 
-Der Editor soll nicht raten. Eine editorfaehige UI liefert klare Metadaten direkt aus der UI.
+Der Editor soll nicht raten.
+
+Eine editorfaehige UI liefert eine klassifizierte UI-Elementliste.
+
+Der Editor arbeitet ausschliesslich mit dieser Liste.
 
 ## Geltung
 
 Dieser Vertrag ist fachneutral.
 
-Er gilt fuer jede neue App und jedes neue Modul, das den UI-/PDF-Editor verwenden soll.
+Er gilt fuer jede neue App und jedes neue Modul, das den UI-Editor verwenden soll.
 
-Der Editor ist kein Fachmodul. Er kennt keine Restarbeiten, kein Protokoll, keine Pferdeverwaltung und keine sonstige Fachlogik.
+Der Editor ist kein Fachmodul.
 
-## Pflichtattribute pro editorrelevantem Element
+Er kennt keine Fachlogik und keine Fachdaten.
 
-Jedes editorrelevante Element braucht:
+## Pflichtangaben pro editorrelevantem Element
 
-- `data-ui-inspector-id`
-- `data-ui-editor-kind`
-- `data-ui-editor-label`
-- `data-ui-editor-parent`
-- `data-ui-editor-editable`
-- optional: `data-ui-editor-ops`
+Jedes editorrelevante Element braucht mindestens:
 
-## Erlaubte kind-Werte
+- `id`
+- `name`
+- `type`
+- `role`
+- `parentId`
+- `order`
+- `visible`
+- `editable`
+- `allowedOps`
+- `lockedOps`
 
-- `frame`
-- `field`
-- `single`
+Je nach Elementtyp koennen weitere Angaben erforderlich sein:
 
-Bedeutung:
+- `columnRole`
+- `fieldKind`
+- `actionKind`
+- `componentKind`
 
-- `frame` = Rahmen, Gruppe oder Container
-- `field` = Eingabe-, Text- oder Listenfeld
-- `single` = Button, Label, Anzeige oder kleines Einzelelement
+## Grundregel
+
+Ein UI-Element ist nur editorfaehig, wenn es in der UI-Elementliste enthalten ist.
+
+Nicht registrierte Elemente sind fuer den Editor nicht vorhanden.
+
+Der Editor darf keine Elemente erraten.
+
+Der Editor darf keine Elemente selbst klassifizieren.
 
 ## Parent-Regel
 
-- Jedes Element ausser Root braucht einen Parent.
-- Der Parent muss selbst als Editor-Ziel existieren.
-- Parent-Beziehungen duerfen nicht geraten werden.
+Jedes Element ausser Root braucht einen Parent.
+
+Der Parent muss selbst als Editor-Ziel existieren.
+
+Parent-Beziehungen duerfen nicht geraten werden.
 
 ## Editor-Regeln
 
 - Eine Auswahl = genau ein Ziel.
 - Eine Aenderung = nur dieses Ziel.
-- Keine automatische Aenderung von Parent, Child oder Geschwistern.
-- Der Editor aendert Darstellung, keine Fachlogik.
+- Keine automatische Aenderung von Parent, Child oder Geschwistern ohne ausdruecklich erlaubte Operation.
+- Der Editor aendert Layout und Darstellung, keine Fachlogik.
 - Der Editor erzeugt, aendert oder loescht keine Fachdaten.
+- Der Editor arbeitet nur mit erlaubten Operationen aus `allowedOps`.
+- Operationen in `lockedOps` sind gesperrt.
 
-## Trefferregel
+## Tabellen-Regeln
 
-- `elementFromPoint` + `closest("[data-ui-inspector-id]")`.
-- Typ/Kind entscheidet, ob ein Ziel im aktuellen Modus erlaubt ist.
-- Wenn `closest` nicht direkt aufloesbar ist, darf ein Ziel gewinnen, wenn dessen Element den Top-Treffer enthaelt.
+Tabellen sind Composite-Elemente.
+
+Editorrelevante Spalten werden als eigene Elemente registriert.
+
+Metaspalten sind Normalfall und muessen klassifiziert werden.
+
+Der Editor darf nicht selbst entscheiden, ob eine Spalte Fachspalte, Metaspalte oder Aktionsspalte ist.
 
 ## Verbotene Editor-Ziele
 
 Nicht editorfaehig sind insbesondere:
 
-- Fachaktionen,
-- Speichern,
-- Anlegen,
-- Loeschen,
-- Upload,
-- Import,
-- Autosave,
-- fachliche IPC-/Datenaktionen,
-- sonstige Fachdatenveraenderungen.
+- Fachaktionen
+- fachliches Speichern
+- fachliches Anlegen
+- fachliches Loeschen
+- Upload
+- Import
+- Export
+- Autosave
+- Datenbankaktionen
+- fachliche IPC-/Datenaktionen
+- fachliches Ausfuehren eines Buttons
 
 ## Speichern
 
-Solange nur Vorschau-/Editor-Entwicklung laeuft: keine Speicherung.
+Layoutdaten und Fachdaten bleiben strikt getrennt.
 
-Spaeteres Speichern von Layoutdaten muss getrennt von Fachdaten erfolgen.
+Der Editor darf keine Fachdaten speichern.
 
-## Beispiel-DOM
+Spaeteres Speichern von Layoutdaten muss getrennt, versionierbar und ruecksetzbar erfolgen.
 
-```html
-<div
-  data-ui-inspector-id="app.screen.detailbereich"
-  data-ui-editor-kind="frame"
-  data-ui-editor-label="Detailbereich"
-  data-ui-editor-parent="app.screen.root"
-  data-ui-editor-editable="true"
-  data-ui-editor-ops="move,resize,hide"
->
-</div>
-```
+## Pruefung
+
+Nach dem Bau oder Umbau einer editorfaehigen UI muss ein Vertragscheck laufen.
+
+Wenn der Check Fehler meldet, ist die UI nicht fertig.
+
+Codex muss dann reparieren und erneut pruefen.

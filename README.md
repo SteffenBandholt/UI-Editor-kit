@@ -7,7 +7,6 @@ Dieses Repository ist die zentrale Quelle fuer:
 - den UI-Editor-Vertrag,
 - die Codex-Regeln fuer UI-/PDF-Entwurfsentscheidungen,
 - die Einbauanleitung fuer neue Apps,
-- spaetere Editor-Core-Dateien,
 - generische Vertragspruefungen.
 
 Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor.
@@ -24,14 +23,7 @@ Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor
 
 Der Editor kennt keine Fachmodule.
 
-Er kennt nicht:
-
-- Restarbeiten,
-- Protokoll,
-- Pferdeverwaltung,
-- Speichern von Fachdaten,
-- Anlegen oder Loeschen fachlicher Datensaetze,
-- Upload, Import oder Autosave.
+Er kennt keine fachlichen Datensaetze, keine Speicherung und keine sonstige Fachlogik.
 
 Er kennt nur editorfaehige Elemente mit expliziten Metadaten:
 
@@ -66,17 +58,13 @@ Beispiel:
 node scripts/ui-editor-contract-check.cjs examples/beispiel-ui/beispiel.html
 ```
 
+## Beispiel-UI
+
+Die einfache fachneutrale Beispiel-UI liegt unter `examples/beispiel-ui/beispiel.html`.
+
 ## Bootstrap-Auftrag fuer neue Apps
 
 Fuer die kontrollierte Uebernahme in neue Ziel-Apps steht ein kopierbarer Auftrag in `codex/CODEX_BOOTSTRAP_ZIEL_APP.md`.
-
-## Mini-Inspector Demo (K1.0)
-
-Erste sichtbare, fachneutrale Demo zum Lesen und Anzeigen von `data-ui-*` Metadaten:
-
-```powershell
-start examples\mini-inspector\index.html
-```
 
 ## App-Integration-Modell (K1.1)
 

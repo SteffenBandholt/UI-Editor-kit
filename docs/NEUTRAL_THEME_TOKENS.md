@@ -1,13 +1,11 @@
-# Neutrale Theme-Tokens
+﻿# Neutrale Theme-Tokens
 
 ## Zweck
 
-Dieses Dokument leitet aus der bestehenden Browser-Demo unter `demo/mini-inspector/mini-inspector-demo.css` eine fachneutrale visuelle Referenz ab.
-
-Die Palette beschreibt nur vorhandene Farben und Darstellungsprinzipien der Demo.
+Dieses Dokument beschreibt eine fachneutrale visuelle Referenz fuer UI-Oberflaechen.
 
 Die technische CSS-Referenzdatei ist `styles/neutral-theme-tokens.css`.
-Die Browser-Demo nutzt diese Tokens ueber `demo/mini-inspector/mini-inspector-demo.css`.
+Die Datei enthaelt nur neutrale Farb- und Schattenwerte.
 
 ## Token-Uebersicht
 
@@ -20,7 +18,7 @@ Die Browser-Demo nutzt diese Tokens ueber `demo/mini-inspector/mini-inspector-de
 - Status Fehler: `--ui-neutral-error` = `#b42318`
 - sanfte Flaeche: `--ui-neutral-soft` = `#eef6ff`
 
-Weitere in der Demo verwendete visuelle Werte:
+Weitere neutrale visuelle Werte:
 
 - neutrale Arbeitsflaeche innen: `--ui-neutral-surface-soft` = `#fbfdff`
 - gestrichelter Rahmen: `--ui-neutral-border-muted` = `#9aa8bd`
@@ -32,13 +30,13 @@ Weitere in der Demo verwendete visuelle Werte:
 
 Die vorhandene Palette eignet sich fachneutral fuer:
 
-- Demo-/Inspector-Bereiche
+- Editor-/Pruefbereiche
 - neutrale Arbeitsflaechen
 - Statusanzeigen
 - Karten- und Panel-Strukturen
 - Diagnose- und Pruefbereiche
 
-Die visuelle Wirkung der Demo bleibt dabei:
+Die visuelle Wirkung bleibt dabei:
 
 - ruhig
 - gut lesbar
@@ -59,4 +57,3 @@ Die visuelle Wirkung der Demo bleibt dabei:
 ## Quelle
 
 - `styles/neutral-theme-tokens.css`
-- `demo/mini-inspector/mini-inspector-demo.css`
