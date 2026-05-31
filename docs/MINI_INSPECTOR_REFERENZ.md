@@ -139,6 +139,29 @@ K5.1 sichert diesen Referenzabgleich ausdruecklich ab:
 - keine Ziel-UI-Mutation
 - keine Fachlogik
 
+K5.2 dokumentiert den bestandenen manuellen Sichttest dieser Browser-Demo als Referenzstand.
+
+Referenzbefehl fuer den Sichttest:
+
+- `npm run mini-inspector:demo:browser`
+- danach `demo/mini-inspector/index.html` im Browser oeffnen
+
+Bestandener manueller Sichttest:
+
+- Browser-Demo wurde manuell geoeffnet
+- neutrale Beispiel-UI ist sichtbar
+- getrennter Inspector-Bereich ist sichtbar
+- gueltiger Status wird angezeigt
+- Layout-Items, Fehler, Scope und Version sind sichtbar
+- Umschalter fuer den ungueltigen Beispielzustand ist sichtbar
+- ungueltiger Demo-Zustand zeigt einen neutralen Fehlerstatus
+- Beispiel-UI wird nicht veraendert
+- nur der Inspector-Bereich wird aktualisiert
+- weiterhin kein Speichern
+- weiterhin keine Layout-Anwendung
+- weiterhin keine Ziel-UI-Mutation
+- weiterhin keine Fachlogik
+
 Grenzen der Browser-/HTML-Demo:
 
 - rein lesend

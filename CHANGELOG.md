@@ -37,6 +37,7 @@
 - K4.4: Demo-/Host-CLI um `--help` und kontrollierte Pruefung unbekannter Argumente erweitert.
 - K5.0: Fachneutrale Mini-Inspector Browser-/HTML-Demo mit getrenntem Inspector-Bereich vorbereitet.
 - K5.1: Browser-Demo gegen Node-Referenzstatus mit gemeinsamem Scope, Referenztests und Doku-Abgleich abgesichert.
+- K5.2: Bestandener manueller Sichttest der Browser-Demo fachneutral als K5-Referenzstand dokumentiert.
 
 ## 0.1.0
 
