@@ -92,6 +92,8 @@ Weiterhin gilt ausdruecklich:
 
 Der Editor liest nur vorhandene Metadaten und setzt keine Fachdaten voraus.
 
+K7.1 sichert diesen Vertrag zusaetzlich per Smoke-Test ueber `scripts/tests/host-app-integration-contract.test.cjs` ab.
+
 ## Verweise
 
 - `docs/LAYOUTDATEN_API.md`

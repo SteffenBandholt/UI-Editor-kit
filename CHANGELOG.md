@@ -41,6 +41,7 @@
 - K6.0: Neutrale Design-/Theme-Tokens aus der Browser-Demo als visuelle Referenz dokumentiert.
 - K6.1: Neutrale Theme-Tokens als technische CSS-Referenzdatei bereitgestellt und in die Browser-Demo eingebunden.
 - K7.0: Fachneutralen Integrationsvertrag fuer spaetere Host-Apps dokumentiert.
+- K7.1: Host-App-Integrationsvertrag mit eigenem Smoke-Test technisch abgesichert.
 
 ## 0.1.0
 
