@@ -131,6 +131,10 @@ Leitfaden fuer die fachneutrale Einbindung:
 
 - `docs/HOST_APP_ADOPTION_GUIDE.md`
 
+Gesamt-Referenzstand:
+
+- `docs/REFERENCE_STATUS.md`
+
 ## Grenzen
 
 Weiterhin gilt ausdruecklich:

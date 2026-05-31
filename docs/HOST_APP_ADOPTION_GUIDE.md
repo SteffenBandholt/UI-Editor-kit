@@ -107,3 +107,7 @@ window.miniInspectorHostAdapter.updateMiniInspectorHostAdapter(
 - keine Bearbeitung von Layoutdaten
 
 Der Adapter arbeitet rein lesend gegen die Ziel-UI und aktualisiert nur den Inspector-Container.
+
+Gesamt-Referenzstand:
+
+- `docs/REFERENCE_STATUS.md`

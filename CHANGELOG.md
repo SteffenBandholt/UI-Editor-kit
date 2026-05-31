@@ -47,6 +47,7 @@
 - K9.0: Neutrales Host-App-Beispiel fuer den Browser-Host-Adapter vorbereitet.
 - K9.1: Sichttest und Referenzstand des neutralen Host-App-Beispiels dokumentiert.
 - K10.0: Neutralen Host-App-Adoptionsleitfaden fuer den Browser-Host-Adapter vorbereitet.
+- K10.1: Neutralen Gesamt-Referenzstand nach K10.0 dokumentiert.
 
 ## 0.1.0
 
