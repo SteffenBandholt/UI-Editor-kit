@@ -57,6 +57,7 @@ Aktuell relevante oeffentliche Einstiege sind:
 - `scripts/layout-data-api.cjs`
 - `scripts/mini-inspector-layout-read.cjs`
 - `scripts/mini-inspector-demo-host.cjs`
+- `browser/mini-inspector-host-adapter.js`
 - `demo/mini-inspector/index.html`
 - `styles/neutral-theme-tokens.css`
 
@@ -65,8 +66,28 @@ Rollen dieser Einstiege:
 - `scripts/layout-data-api.cjs`: oeffentlicher Einstieg fuer Layoutdaten-Extractor, Validator und Diagnose
 - `scripts/mini-inspector-layout-read.cjs`: lesender Mini-Inspector-Einstieg fuer Status, View-Modell und Inspector-Rendering
 - `scripts/mini-inspector-demo-host.cjs`: fachneutrale Demo-/Host-Schale mit getrenntem Root- und Inspector-Container
+- `browser/mini-inspector-host-adapter.js`: wiederverwendbarer Browser-Host-Adapter fuer getrennte Ziel-UI und getrennten Inspector-Container
 - `demo/mini-inspector/index.html`: sichtbare Browser-Referenz fuer getrennte Ziel-UI und getrennten Inspector-Bereich
 - `styles/neutral-theme-tokens.css`: optionale visuelle Referenz fuer fachneutrale Oberflaechen
+
+
+## Browser-Host-Adapter
+
+Der wiederverwendbare Browser-Host-Adapter liegt unter `browser/mini-inspector-host-adapter.js` und stellt ueber `window.miniInspectorHostAdapter` diese neutralen Einstiege bereit:
+
+- `createMiniInspectorHostStatus(rootElement, options)`
+- `renderMiniInspectorHostStatus(inspectorContainer, status)`
+- `updateMiniInspectorHostAdapter(rootElement, inspectorContainer, options)`
+
+Eine Host-App uebergibt ein Ziel-UI-Root-Element und einen davon getrennten Inspector-Container. Der Adapter liest ausschliesslich neutrale `data-ui-*` Metadaten aus dem Ziel-Root, erzeugt daraus einen neutralen Status und aktualisiert nur den uebergebenen Inspector-Container.
+
+Fuer den Adapter gilt weiterhin:
+
+- rein lesend gegenueber der Ziel-UI
+- keine Speicherung
+- keine Layout-Anwendung
+- keine Ziel-UI-Mutation
+- keine Fachlogik
 
 ## Minimaler Integrationsablauf
 

@@ -10,6 +10,7 @@ K2 und K3 bleiben bis hier ein rein lesender Stand.
 
 - `scripts/mini-inspector-layout-read.cjs`
 - vorbereiteter Einhaengepunkt: `mountMiniInspectorStatus(container, rootElement, options)`
+- Browser-Host-Adapter: `browser/mini-inspector-host-adapter.js` mit `window.miniInspectorHostAdapter`
 
 ## Verhaeltnis zum Layoutdaten-Kern
 
@@ -51,6 +52,18 @@ Damit ist der aktuelle Stand klar getrennt:
 - sichtbare Demo vorhanden
 - lesender Integrationspunkt vorhanden
 - noch keine echte App- oder Ziel-UI-Anbindung im Repository umgesetzt
+
+## Browser-Host-Adapter (K8.0)
+
+Der Browser-Host-Adapter stellt fuer Host-Apps ohne Build-Kette einen kleinen, fachneutralen Browser-Einstieg bereit. Eine Host-App kann ein Ziel-Root und einen getrennten Inspector-Container uebergeben; der Adapter liest `data-ui-*` Metadaten, erzeugt den neutralen Status und rendert ausschliesslich in den Inspector-Container.
+
+Oeffentliche Browser-Einstiege:
+
+- `createMiniInspectorHostStatus(rootElement, options)`
+- `renderMiniInspectorHostStatus(inspectorContainer, status)`
+- `updateMiniInspectorHostAdapter(rootElement, inspectorContainer, options)`
+
+Die Browser-Demo unter `demo/mini-inspector/index.html` laedt diesen Adapter vor dem Demo-Script.
 
 ## Grenzen
 
@@ -166,7 +179,7 @@ Grenzen der Browser-/HTML-Demo:
 
 - rein lesend
 - kein Speichern
-- kein `localStorage` oder `sessionStorage`
+- keine Browser-Speicher
 - keine Layout-Anwendung
 - keine Ziel-UI-Mutation
 - keine Bearbeitung von Layoutdaten
