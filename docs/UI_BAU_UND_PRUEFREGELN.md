@@ -1,0 +1,253 @@
+# UI-Bau- und Pruefregeln
+
+## 1. Zweck
+
+Diese Datei beschreibt verbindlich, wie eine neue oder geaenderte UI gebaut werden muss, damit sie editorfaehig ist.
+
+Sie richtet sich an Codex und an jede Person, die eine UI fuer eine Anwendungs-App plant oder umbaut.
+
+Der Grundsatz lautet:
+
+Eine editorfaehige UI ist erst fertig, wenn ihre relevanten Elemente klassifiziert, registriert und erfolgreich geprueft wurden.
+
+## 2. Fuehrende Unterlagen
+
+Vor jeder editorrelevanten UI-Umsetzung muessen diese Unterlagen beachtet werden:
+
+- `docs/EDITOR_BAUPLAN.md`
+- `docs/UI_ELEMENT_KATALOG.md`
+- `docs/UI_EDITOR_VERTRAG.md`
+- `docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md`
+- `codex/AGENTS_UI_EDITOR_BLOCK.md`
+
+Wenn eine dieser Grundlagen fehlt oder widerspruechlich ist, darf keine editorfaehige UI gebaut werden.
+
+## 3. Vor dem UI-Bau
+
+Vor dem Bau oder Umbau einer UI muss eine Entwurfsentscheidung vorliegen.
+
+Diese Entscheidung muss klaeren:
+
+- ob die UI editorfaehig sein soll
+- welche Bereiche editorfaehig sind
+- welche Gruppen editorfaehig sind
+- welche Untergruppen editorfaehig sind
+- welche Komponenten editorfaehig sind
+- welche Tabellen editorfaehig sind
+- welche Spalten editorfaehig sind
+- welche Buttons editorfaehig sind
+- welche Felder editorfaehig sind
+- welche Fachaktionen nicht editorfaehig sind
+- welche Operationen erlaubt sind
+- welche Operationen gesperrt sind
+
+Ohne vollstaendige Entwurfsentscheidung gilt: STOPP.
+
+## 4. Beim UI-Bau
+
+Beim Bau der UI muss jedes editorrelevante Element klassifiziert und registriert werden.
+
+Kein relevantes UI-Element ohne Eintrag in der UI-Elementliste.
+
+Jeder Eintrag muss mindestens enthalten:
+
+- `id`
+- `name`
+- `type`
+- `role`
+- `parentId`
+- `order`
+- `visible`
+- `editable`
+- `allowedOps`
+- `lockedOps`
+
+Die erlaubten Werte fuer `type`, `role`, `columnRole` und Operationen stehen im `docs/UI_ELEMENT_KATALOG.md`.
+
+## 5. Namens- und ID-Regeln
+
+Jede ID muss eindeutig und stabil sein.
+
+Eine ID darf nicht zufaellig erzeugt werden, wenn sie fuer die Editorfaehigkeit relevant ist.
+
+Empfohlenes Format:
+
+```text
+appBereich.teilbereich.element
+```
+
+Beispiele:
+
+```text
+workspace.main
+workspace.main.toolbar
+workspace.main.table
+workspace.main.table.column.status
+workspace.main.table.column.responsible
+```
+
+Die ID beschreibt die technische Einordnung, nicht den aktuellen Fachdateninhalt.
+
+Nicht erlaubt:
+
+- IDs aus aktuellen Datensaetzen
+- IDs aus Namen von Personen
+- IDs aus Terminen
+- IDs aus zufaelligen Laufzeitwerten
+
+## 6. Parent-Regeln
+
+Jedes editorrelevante Element ausser Root braucht einen Parent.
+
+Der Parent muss selbst in der UI-Elementliste enthalten sein.
+
+Parent-Beziehungen duerfen nicht geraten werden.
+
+Die Struktur muss nachvollziehbar sein:
+
+```text
+Root
+  Bereich
+    Gruppe
+      Untergruppe
+        Element
+```
+
+Komplexe Komponenten wie Tabellen, Listen, Karten und Dialoge duerfen eigene Unterelemente besitzen, muessen diese aber ebenfalls registrieren.
+
+## 7. Tabellen-Regeln
+
+Tabellen sind Composite-Elemente.
+
+Eine Tabelle darf nicht nur als ein einziges flaches Element behandelt werden, wenn ihre Spalten oder Teilbereiche editorrelevant sind.
+
+Editorrelevante Tabellen muessen ihre Bestandteile klassifizieren, zum Beispiel:
+
+- Tabelle
+- Tabellenkopf
+- Inhaltsspalten
+- Metaspalten
+- Strukturspalten
+- Statusspalten
+- Terminspalten
+- Verantwortlich-Spalten
+- Sichtbarkeitsspalten
+- Aktionsspalten
+- Toolbar
+- Filterbereich
+- Zeilenbereich
+- Fussbereich
+
+Jede editorrelevante Spalte ist ein eigenes Element.
+
+Metaspalten sind Normalfall und muessen klassifiziert werden.
+
+Der Editor darf nicht selbst entscheiden, ob eine Spalte Fachspalte, Metaspalte oder Aktionsspalte ist.
+
+## 8. Button- und Aktionsregeln
+
+Buttons koennen editorrelevante UI-Elemente sein.
+
+Die fachliche Aktion eines Buttons ist aber keine Editoroperation.
+
+Ein Button darf fuer den Editor beispielsweise sichtbar, verschiebbar oder umbenennbar sein, wenn dies freigegeben wurde.
+
+Der Editor darf den Button aber nicht fachlich ausloesen.
+
+Nicht editorfaehig sind insbesondere:
+
+- fachliches Speichern
+- fachliches Anlegen
+- fachliches Loeschen
+- Import
+- Upload
+- Export
+- Datenbankaktion
+- fachlicher IPC-Aufruf
+
+## 9. Operationen
+
+Der Editor darf nur Operationen anbieten, die in `allowedOps` stehen.
+
+Operationen in `lockedOps` sind gesperrt.
+
+Eine Operation darf nicht gleichzeitig in `allowedOps` und `lockedOps` stehen.
+
+Wenn eine Operation nicht ausdruecklich erlaubt ist, gilt sie als nicht erlaubt.
+
+## 10. Nach dem UI-Bau
+
+Nach dem Bau oder Umbau einer editorfaehigen UI muss ein Vertragscheck laufen.
+
+Der Check ist Teil der Fertigstellung.
+
+Eine UI ist nicht fertig, solange der Check fehlschlaegt.
+
+Wenn Fehler gefunden werden, muss Codex reparieren und den Check erneut ausfuehren.
+
+## 11. Mindestpruefungen
+
+Der Vertragscheck muss mindestens pruefen:
+
+- alle Pflichtfelder vorhanden
+- alle IDs eindeutig
+- alle Parent-Bezuege gueltig
+- alle Elementtypen erlaubt
+- alle Rollen erlaubt
+- alle Spaltenrollen erlaubt
+- alle Operationen erlaubt
+- keine Operation gleichzeitig erlaubt und gesperrt
+- Tabellenbestandteile klassifiziert
+- Metaspalten klassifiziert
+- keine Fachaktion als Editoroperation markiert
+- keine unzulaessigen Datensatz-, Personen- oder Terminwerte in IDs
+- keine unvollstaendige UI-Elementliste
+
+## 12. Reparaturpflicht
+
+Wenn der Check fehlschlaegt, darf Codex die UI nicht als fertig melden.
+
+Codex muss:
+
+1. Fehler nennen
+2. Ursache beheben
+3. Check erneut ausfuehren
+4. Ergebnis melden
+
+Erst ein gruener Check gilt als abnahmefaehig.
+
+## 13. Was Codex nicht tun darf
+
+Codex darf beim Bau editorfaehiger UI nicht:
+
+- UI-Elemente ohne Klassifizierung bauen
+- Parent-Strukturen raten
+- Tabellen ohne Spaltenklassifizierung bauen
+- Metaspalten ignorieren
+- Buttons als fachliche Editoroperationen behandeln
+- Fachlogik in die UI-Elementliste schreiben
+- Fachdaten in IDs oder Metadaten schreiben
+- HTML, DOM oder eine Demo-Technik zur Kernarchitektur erklaeren
+- UI als fertig melden, wenn der Vertragscheck rot ist
+
+## 14. Abnahmebericht nach UI-Bau
+
+Nach jedem editorrelevanten UI-Bau muss Codex berichten:
+
+- welche UI gebaut oder geaendert wurde
+- welche Bereiche editorfaehig sind
+- welche Gruppen und Untergruppen registriert wurden
+- welche Tabellen und Spalten registriert wurden
+- welche Buttons und Felder registriert wurden
+- welche Fachaktionen ausgeschlossen wurden
+- welches Ergebnis der Vertragscheck geliefert hat
+- ob Reparaturen erforderlich waren
+- ob die UI editorfaehig abnahmefaehig ist
+
+## 15. Kernaussage
+
+Editorfaehige UI wird nicht nachtraeglich geraten.
+
+Sie wird beim Bau geplant, klassifiziert, registriert und geprueft.
+
+Nur eine erfolgreich gepruefte UI-Elementliste ist Grundlage fuer den Editor.
