@@ -125,8 +125,23 @@ function createEditorCore(registry) {
   const storedElements = cloneElements(listedElements);
   const storedValidationResult = cloneValidationResult(validationResult);
   const storedElementTree = buildElementTree(storedElements);
+  const storedElementsById = new Map();
+
+  storedElements.forEach((element) => {
+    storedElementsById.set(element.id, element);
+  });
 
   return {
+    hasElement(elementId) {
+      return storedElementsById.has(elementId);
+    },
+    getElementDetails(elementId) {
+      if (!storedElementsById.has(elementId)) {
+        return null;
+      }
+
+      return cloneValue(storedElementsById.get(elementId));
+    },
     listElements() {
       return cloneElements(storedElements);
     },

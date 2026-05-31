@@ -43,12 +43,13 @@ Aktueller Stand:
 - K12.4 erledigt: Tabellen-/Metaspalten-Validator gebaut.
 - K13.0 erledigt: `src/core/editor-core.cjs` liest und validiert vorhandene Registry.
 - K13.1 erledigt: `src/core/editor-core.cjs` erzeugt Elementbaum aus validierter Registry.
+- K13.2 erledigt: `src/core/editor-core.cjs` liefert Elementdetails per ID.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 
-Aktueller naechster Bauabschnitt nach K13.1:
+Aktueller naechster Bauabschnitt nach K13.2:
 
-- K13.2: Elementdetails liefern.
+- K13.3: Operationen ableiten.
 
 ## 4. Statuswerte
 
@@ -86,7 +87,7 @@ Bedeutung:
 | D5 | [x] | Tabellen- und Metaspalten-Validator | Validator + Test vorhanden, `npm test` gruen | abgeschlossen |
 | E1 | [x] | Editor-Core liest Registry | Core + Test vorhanden, `npm test` gruen | nach E1 Elementbaum bauen |
 | E2 | [x] | Elementbaum erzeugen | Core-Baum + Test vorhanden, `npm test` gruen | nach E2 Elementdetails liefern |
-| E3 | [ ] | Elementdetails liefern | offen | nach E2 |
+| E3 | [x] | Elementdetails liefern | Core-Details + Test vorhanden, `npm test` gruen | nach E3 Operationen ableiten |
 | E4 | [ ] | Operationen ableiten | offen | nach E3 |
 | F1 | [ ] | Aenderungsauftrag-Datenmodell | offen | nach E4 |
 | F2 | [ ] | Aenderungsauftrag pruefen | offen | nach F1 |
@@ -105,7 +106,7 @@ Bedeutung:
 |---|---|---|
 | M1 - Planung / Vertrag / LV | abgenommen | Fuehrende Unterlagen und Gesamt-LV liegen vor. |
 | M2 - Fundament: Datenmodell, Registry, Validator | abgenommen | Status nach diesem Paket: abgenommen, weil K12.3 und K12.4 gebaut sind und `npm test` gruen ist. |
-| M3 - Editor-Core | in Bau | E1 und E2 gebaut; naechster Schritt K13.2 - Elementdetails liefern. |
+| M3 - Editor-Core | in Bau | E1 bis E3 gebaut; naechster Schritt K13.3 - Operationen ableiten. |
 | M4 - Aenderungsauftrag | offen | Kein Bau vor Abschluss des Editor-Core-Abschnitts. |
 | M5 - Host-Adapter | offen | Kein Bau vor Aenderungsauftrag. |
 | M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
@@ -277,18 +278,33 @@ Ergebnis:
 - `scripts/tests/editor-core.test.cjs` prueft E2-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
 
+### K13.2 - Elementdetails liefern
+
+Status: gebaut
+
+Ergebnis:
+
+- `src/core/editor-core.cjs` um `hasElement(elementId)` und `getElementDetails(elementId)` erweitert
+- Elementdetails werden ausschliesslich aus der validierten Elementliste gelesen
+- bekannte IDs liefern eine Kopie des passenden Elements, unbekannte IDs liefern `null`
+- optionale Felder bleiben erhalten, es werden keine neuen Felder erfunden
+- Rueckgaben sind kopiert, damit Mutationen den Core nicht veraendern
+- keine neue Validatorlogik, keine Operationsableitung und kein Aenderungsauftrag gebaut
+- `scripts/tests/editor-core.test.cjs` prueft E3-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
 ## 8. Naechste Baupakete
 
-### K13.2 - Elementdetails liefern
+### K13.3 - Operationen ableiten
 
 LV-Bezug:
 
-- E3
+- E4
 
 Ziel:
 
-- Elementdetails fuer ein vorhandenes Element aus dem Core liefern.
-- Keine Operationsableitung und keine UI-Schiene vorziehen.
+- Erlaubte und gesperrte Operationen je Element aus dem Core ableiten.
+- Keine UI-Schiene und keinen Aenderungsauftrag vorziehen.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -329,10 +345,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K13.1:
+Naechster Schritt nach K13.2:
 
 ```text
-K13.2 - Elementdetails liefern
+K13.3 - Operationen ableiten
 ```
 
 Nicht vorher:

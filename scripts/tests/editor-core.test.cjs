@@ -34,6 +34,7 @@ function validElements() {
       editable: true,
       allowedOps: ["inspect", "move"],
       lockedOps: [],
+      layoutArea: "main",
     },
   ];
 }
@@ -145,15 +146,37 @@ function run() {
   validElements().forEach((element) => registry.registerElement(element));
 
   const core = createEditorCore(registry);
+  assert.equal(typeof core.hasElement, "function");
+  assert.equal(typeof core.getElementDetails, "function");
   assert.equal(typeof core.listElements, "function");
   assert.equal(typeof core.getElementTree, "function");
   assert.equal(typeof core.getValidationResult, "function");
   assert.equal(typeof core.size, "function");
   assert.equal(typeof core.buildElementTree, "undefined");
-  assert.equal(typeof core.getElementDetails, "undefined");
   assert.equal(typeof core.getDerivedOperations, "undefined");
   assert.equal(typeof core.deriveOperations, "undefined");
   assert.equal(typeof core.createChangeRequest, "undefined");
+
+  assert.equal(core.hasElement("workspace.main.area"), true);
+  assert.equal(core.hasElement("workspace.unknown"), false);
+
+  const knownElementDetails = core.getElementDetails("workspace.main.area");
+  assert.deepEqual(knownElementDetails, {
+    id: "workspace.main.area",
+    name: "Bereich",
+    type: "area",
+    role: "layout",
+    parentId: "workspace.root",
+    order: 1,
+    visible: true,
+    editable: true,
+    allowedOps: ["inspect", "move"],
+    lockedOps: [],
+    layoutArea: "main",
+  });
+  assert.equal(core.getElementDetails("workspace.unknown"), null);
+  assert.equal(Object.prototype.hasOwnProperty.call(knownElementDetails, "layoutArea"), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(knownElementDetails, "columnRole"), false);
 
   const coreElements = core.listElements();
   assert.deepEqual(
@@ -249,6 +272,16 @@ function run() {
     ok: true,
     errors: [],
   });
+
+  const mutatedDetails = mutationCore.getElementDetails("workspace.main.area");
+  mutatedDetails.name = "Per Details geaendert";
+  mutatedDetails.allowedOps.push("pin");
+  mutatedDetails.layoutArea = "changed";
+
+  const detailsAfterMutation = mutationCore.getElementDetails("workspace.main.area");
+  assert.equal(detailsAfterMutation.name, "Bereich");
+  assert.deepEqual(detailsAfterMutation.allowedOps, ["inspect", "move"]);
+  assert.equal(detailsAfterMutation.layoutArea, "main");
   assert.deepEqual(
     mutationCore.listElements().map((element) => element.id),
     ["workspace.root", "workspace.main.area"]
