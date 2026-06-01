@@ -32,6 +32,8 @@ const MUST_EXIST = [
   "scripts/tests/neutral-minimal-host.test.cjs",
   "src/core/target-app-adapter-manifest.cjs",
   "scripts/tests/target-app-adapter-manifest.test.cjs",
+  "src/core/target-app-adapter-manifest-check.cjs",
+  "scripts/tests/target-app-adapter-manifest-check.test.cjs",
 ];
 
 const MUST_NOT_EXIST = [
@@ -106,7 +108,7 @@ function run() {
   assert.deepEqual(Object.keys(packageJson.scripts), ["test"]);
   assert.equal(
     packageJson.scripts.test,
-    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs"
+    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/target-app-adapter-manifest-check.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs"
   );
 
   assertNoTerms(read("README.md"), FORBIDDEN_TERMS, "README");

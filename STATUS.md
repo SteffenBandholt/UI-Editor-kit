@@ -58,6 +58,7 @@ Aktueller Stand:
 - K18.3 erledigt: neutraler Minimal-Host als kontrollierte Ziel-App-Vorstufe technisch gebaut.
 - K18.4 erledigt: Ziel-App-Adapter-Regeln fuer spaetere echte Apps dokumentiert.
 - K18.5 erledigt: fachneutrales Ziel-App-Adapter-Manifest technisch vorbereitet.
+- K18.6 erledigt: Adapter-Manifest-Check gegen neutralen Minimal-Host technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -66,9 +67,9 @@ M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 
-Aktueller naechster Bauabschnitt nach K18.5:
+Aktueller naechster Bauabschnitt nach K18.6:
 
-- K18.6 - Adapter-Manifest gegen neutralen Minimal-Host pruefen.
+- K18.7 - Adapter-Manifest-Gate vor echter Ziel-App-Freigabe vorbereiten.
 
 ## 4. Statuswerte
 
@@ -115,7 +116,7 @@ Bedeutung:
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
-| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich, Ziel-App-Auswahl, neutraler Minimal-Host, Adapter-Regeln und technisches Adapter-Manifest vorhanden, `npm test` gruen | nach K18.5 K18.6 Adapter-Manifest gegen neutralen Minimal-Host pruefen |
+| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich, Ziel-App-Auswahl, neutraler Minimal-Host, Adapter-Regeln, technisches Adapter-Manifest und neutraler Manifest-Check vorhanden, `npm test` gruen | nach K18.6 K18.7 Adapter-Manifest-Gate vor echter Ziel-App-Freigabe vorbereiten |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -130,7 +131,7 @@ Bedeutung:
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
-| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich; K18.2 dokumentiert das Sicherheitsgate fuer die Ziel-App-Auswahl; K18.3 baut nur den neutralen Minimal-Host; K18.4 legt nur Ziel-App-Adapter-Regeln fest; K18.5 baut nur das technische Adapter-Manifest-Modell. Keine echte Ziel-App-Anbindung. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich; K18.2 dokumentiert das Sicherheitsgate fuer die Ziel-App-Auswahl; K18.3 baut nur den neutralen Minimal-Host; K18.4 legt nur Ziel-App-Adapter-Regeln fest; K18.5 baut nur das technische Adapter-Manifest-Modell; K18.6 prueft nur das Adapter-Manifest gegen den neutralen Minimal-Host. Keine echte Ziel-App-Anbindung. |
 
 Regel:
 
@@ -635,7 +636,34 @@ Ergebnis:
 
 Nach K18.5 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
 
-Naechster Bauabschnitt: K18.6 - Adapter-Manifest gegen neutralen Minimal-Host pruefen.
+### K18.6 - Adapter-Manifest gegen neutralen Minimal-Host pruefen
+
+Status: gebaut
+
+LV-Bezug:
+
+- J1
+
+Ergebnis:
+
+- `src/core/target-app-adapter-manifest-check.cjs` angelegt
+- `scripts/tests/target-app-adapter-manifest-check.test.cjs` angelegt
+- K18.6 prueft nur das Adapter-Manifest gegen den neutralen Minimal-Host
+- Standardmanifest fuer `neutral-minimal-host`, `workspace` und `neutral-minimal-layout` ist fachneutral erzeugbar
+- Manifest-Check prueft Elementtypen, Rollen, erlaubte Operationen, harte Sperroperationen, Ausfuehrungsmodus und Speichermodus gegen den neutralen Minimal-Host
+- Check-Report liefert nur technische, fachneutrale Zusammenfassung, Fehlerliste und Kompatibilitaetsstatus
+- produktive Ausfuehrung bleibt gesperrt
+- echte Speicherung bleibt gesperrt
+- keine echte Ziel-App wurde angebunden
+- keine BBM-Integration wurde gebaut
+- keine Fachlogik und keine Fachdaten wurden eingefuehrt
+- keine Runtime-Implementierung fuer echte Adapter wurde gebaut
+- keine echte UI-App, keine HTML-/DOM-/Browser-Schiene, keine Dateispeicherung, keine Datenbank und keine Layoutspeicherung eingefuehrt
+- `npm test` gruen
+
+Nach K18.6 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
+
+Naechster Bauabschnitt: K18.7 - Adapter-Manifest-Gate vor echter Ziel-App-Freigabe vorbereiten.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -676,10 +704,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K18.5:
+Naechster Schritt nach K18.6:
 
 ```text
-K18.6 - Adapter-Manifest gegen neutralen Minimal-Host pruefen
+K18.7 - Adapter-Manifest-Gate vor echter Ziel-App-Freigabe vorbereiten
 ```
 
 Nicht vorher:
