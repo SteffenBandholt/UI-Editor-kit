@@ -47,14 +47,16 @@ Aktueller Stand:
 - K13.3 erledigt: `src/core/editor-core.cjs` leitet erlaubte, gesperrte und verfuegbare Operationen je Element ab.
 - K14.0 erledigt: `src/core/change-request-model.cjs` beschreibt fachneutrale Aenderungsauftraege.
 - K14.1 erledigt: `src/core/change-request-validator.cjs` prueft Aenderungsauftraege gegen den Editor-Core.
+- K15.0 erledigt: `src/core/host-adapter-contract.cjs` und `src/core/test-host-adapter.cjs` technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
+M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 
-Aktueller naechster Bauabschnitt nach K14.1:
+Aktueller naechster Bauabschnitt nach K15.0:
 
-- K15.0: Host-Adapter-Vertrag technisch vorbereiten.
+- K16.0: Speichervertrag fuer Layoutdaten.
 
 ## 4. Statuswerte
 
@@ -96,7 +98,7 @@ Bedeutung:
 | E4 | [x] | Operationen ableiten | Core + Test vorhanden, `npm test` gruen | nach E4 F1 bauen |
 | F1 | [x] | Aenderungsauftrag-Datenmodell | Modell + Test vorhanden, `npm test` gruen | nach F1 F2 bauen |
 | F2 | [x] | Aenderungsauftrag pruefen | Validator + Test vorhanden, `npm test` gruen | nach F2 G1 vorbereiten |
-| G1 | [ ] | Host-Adapter-Vertrag technisch vorbereiten | offen | nach F2 |
+| G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
 | H1 | [ ] | Speichervertrag fuer Layoutdaten | offen | nach G1 |
 | I1 | [ ] | Elementbaum-Anzeige | offen | nach E2 |
 | I2 | [ ] | Elementdetails- und Operationsanzeige | offen | nach E3/E4 |
@@ -113,7 +115,7 @@ Bedeutung:
 | M2 - Fundament: Datenmodell, Registry, Validator | abgenommen | Status nach diesem Paket: abgenommen, weil K12.3 und K12.4 gebaut sind und `npm test` gruen ist. |
 | M3 - Editor-Core | abgenommen | E1 bis E4 gebaut, `npm test` gruen; K13.3 schliesst M3 ab. |
 | M4 - Aenderungsauftrag | abgenommen | F1 bis F2 gebaut, `npm test` gruen; nach K14.1 abgeschlossen. |
-| M5 - Host-Adapter | offen | Kein Bau vor Aenderungsauftrag. |
+| M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
 | M7 - Editor-UI | offen | Kein Bau vor den fachneutralen Kernvertraegen. |
 | M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
@@ -356,6 +358,33 @@ Ergebnis:
 - `npm test` gruen
 
 Nach K14.1 ist M4 abgeschlossen; keine weiteren K14.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+Nach K15.0 ist M5 abgeschlossen; keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+
+### K15.0 - Host-Adapter-Vertrag technisch vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- G1
+
+Ergebnis:
+
+- `src/core/host-adapter-contract.cjs` angelegt
+- Pflichtmethoden `getRegistry`, `getCurrentLayoutState` und `submitChangeRequest` werden als Kopie bereitgestellt
+- `validateHostAdapterContract(adapter)` prueft den neutralen Adapter-Vertrag ohne Adapter-Methoden auszufuehren
+- Ergebnisformat ist `{ ok, errors }`; Fehler enthalten Code, Meldung und bei fehlenden Methoden den Methodennamen
+- `src/core/test-host-adapter.cjs` angelegt
+- Test-Adapter liefert eine uebergebene Registry, kopiert Layoutzustand und nimmt Aenderungsauftraege nur entgegen
+- eingereichte Aenderungsauftraege werden intern kopiert, koennen fuer Tests gelistet und geloescht werden und werden nicht ausgefuehrt
+- keine echte Ziel-App, keine Layoutspeicherung, keine Editor-UI, keine Datenbankaktion, keine Fachlogik und keine Fachdaten eingefuehrt
+- `scripts/tests/host-adapter-contract.test.cjs` prueft G1-Vertrag und Abgrenzung gegen verbotene Nebenstrecken
+- `scripts/tests/test-host-adapter.test.cjs` prueft Test-Adapter, Kopierverhalten, Nicht-Ausfuehrung und Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
+Nach K15.0 ist M5 abgeschlossen; keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+
+Naechster Bauabschnitt: K16.0 - Speichervertrag fuer Layoutdaten.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -396,15 +425,15 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K14.1:
+Naechster Schritt nach K15.0:
 
 ```text
-K15.0 - Host-Adapter-Vertrag technisch vorbereiten
+K16.0 - Speichervertrag fuer Layoutdaten
 ```
 
 Nicht vorher:
 
-- keinen Host-Adapter ohne K15.0-Auftrag bauen
+- keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung bauen
 - keine Layoutspeicherung bauen
 - keine Editor-UI bauen
 - keine Ziel-App anbinden
@@ -412,3 +441,4 @@ Nicht vorher:
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 Nach K14.1 ist M4 abgeschlossen; keine weiteren K14.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+Nach K15.0 ist M5 abgeschlossen; keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
