@@ -45,13 +45,16 @@ Aktueller Stand:
 - K13.1 erledigt: `src/core/editor-core.cjs` erzeugt Elementbaum aus validierter Registry.
 - K13.2 erledigt: `src/core/editor-core.cjs` liefert Elementdetails per ID.
 - K13.3 erledigt: `src/core/editor-core.cjs` leitet erlaubte, gesperrte und verfuegbare Operationen je Element ab.
+- K14.0 erledigt: `src/core/change-request-model.cjs` beschreibt fachneutrale Aenderungsauftraege.
+- K14.1 erledigt: `src/core/change-request-validator.cjs` prueft Aenderungsauftraege gegen den Editor-Core.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
+M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
 
-Aktueller naechster Bauabschnitt nach K13.3:
+Aktueller naechster Bauabschnitt nach K14.1:
 
-- K14.0: Aenderungsauftrag-Datenmodell.
+- K15.0: Host-Adapter-Vertrag technisch vorbereiten.
 
 ## 4. Statuswerte
 
@@ -91,8 +94,8 @@ Bedeutung:
 | E2 | [x] | Elementbaum erzeugen | Core-Baum + Test vorhanden, `npm test` gruen | nach E2 Elementdetails liefern |
 | E3 | [x] | Elementdetails liefern | Core-Details + Test vorhanden, `npm test` gruen | nach E3 Operationen ableiten |
 | E4 | [x] | Operationen ableiten | Core + Test vorhanden, `npm test` gruen | nach E4 F1 bauen |
-| F1 | [ ] | Aenderungsauftrag-Datenmodell | offen | nach E4 |
-| F2 | [ ] | Aenderungsauftrag pruefen | offen | nach F1 |
+| F1 | [x] | Aenderungsauftrag-Datenmodell | Modell + Test vorhanden, `npm test` gruen | nach F1 F2 bauen |
+| F2 | [x] | Aenderungsauftrag pruefen | Validator + Test vorhanden, `npm test` gruen | nach F2 G1 vorbereiten |
 | G1 | [ ] | Host-Adapter-Vertrag technisch vorbereiten | offen | nach F2 |
 | H1 | [ ] | Speichervertrag fuer Layoutdaten | offen | nach G1 |
 | I1 | [ ] | Elementbaum-Anzeige | offen | nach E2 |
@@ -109,7 +112,7 @@ Bedeutung:
 | M1 - Planung / Vertrag / LV | abgenommen | Fuehrende Unterlagen und Gesamt-LV liegen vor. |
 | M2 - Fundament: Datenmodell, Registry, Validator | abgenommen | Status nach diesem Paket: abgenommen, weil K12.3 und K12.4 gebaut sind und `npm test` gruen ist. |
 | M3 - Editor-Core | abgenommen | E1 bis E4 gebaut, `npm test` gruen; K13.3 schliesst M3 ab. |
-| M4 - Aenderungsauftrag | offen | Kein Bau vor Abschluss des Editor-Core-Abschnitts. |
+| M4 - Aenderungsauftrag | abgenommen | F1 bis F2 gebaut, `npm test` gruen; nach K14.1 abgeschlossen. |
 | M5 - Host-Adapter | offen | Kein Bau vor Aenderungsauftrag. |
 | M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
 | M7 - Editor-UI | offen | Kein Bau vor den fachneutralen Kernvertraegen. |
@@ -314,14 +317,45 @@ Ergebnis:
 
 ### K14.0 - Aenderungsauftrag-Datenmodell
 
+Status: gebaut
+
 LV-Bezug:
 
 - F1
 
-Ziel:
+Ergebnis:
 
-- Aenderungsauftraege als fachneutrales Datenmodell vorbereiten.
-- Nach K13.3 keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung starten.
+- `src/core/change-request-model.cjs` angelegt
+- `normalizeChangeRequest(values)` uebernimmt nur bekannte Auftragsfelder und entfernt unbekannte Felder
+- `createChangeRequest(values)` erzeugt ausschliesslich den beschriebenen Auftrag und fuehrt keine Aenderung aus
+- `payload` wird kopiert, damit nachtraegliche Eingabemutationen den Auftrag nicht veraendern
+- Pflichtfelder werden nicht automatisch erfunden; `createdAt` bleibt ein uebergebener Wert
+- verbotene Fachfelder werden als Liste bereitgestellt und vom Modell nicht uebernommen
+- `scripts/tests/change-request-model.test.cjs` prueft F1-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
+### K14.1 - Aenderungsauftrag pruefen
+
+Status: gebaut
+
+LV-Bezug:
+
+- F2
+
+Ergebnis:
+
+- `src/core/change-request-validator.cjs` angelegt
+- `validateChangeRequestShape(changeRequest)` prueft Objektform, Pflichtfelder, `payload` und verbotene Fachfelder
+- `validateChangeRequest(changeRequest, editorCore)` prueft zusaetzlich den vorhandenen Editor-Core-Vertrag
+- unbekannte Elemente werden abgelehnt
+- nicht erlaubte, unbekannte oder gesperrte Operationen werden mit klaren Fehlern abgelehnt
+- Ergebnisformat ist `{ ok, errors }`; Fehler enthalten Code, Meldung und passende Kontextfelder
+- Validator veraendert weder Auftrag noch Editor-Core und fuehrt keine Aenderung aus
+- kein Host-Adapter, keine Layoutspeicherung, keine Editor-UI und keine Ziel-App-Anbindung gebaut
+- `scripts/tests/change-request-validator.test.cjs` prueft F2-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
+Nach K14.1 ist M4 abgeschlossen; keine weiteren K14.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -362,18 +396,19 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K13.3:
+Naechster Schritt nach K14.1:
 
 ```text
-K14.0 - Aenderungsauftrag-Datenmodell
+K15.0 - Host-Adapter-Vertrag technisch vorbereiten
 ```
 
 Nicht vorher:
 
-- keinen Aenderungsauftrag bauen
-- keinen Host-Adapter bauen
+- keinen Host-Adapter ohne K15.0-Auftrag bauen
+- keine Layoutspeicherung bauen
 - keine Editor-UI bauen
 - keine Ziel-App anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+Nach K14.1 ist M4 abgeschlossen; keine weiteren K14.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
