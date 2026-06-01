@@ -50,17 +50,18 @@ Aktueller Stand:
 - K15.0 erledigt: `src/core/host-adapter-contract.cjs` und `src/core/test-host-adapter.cjs` technisch gebaut.
 - K16.0 erledigt: `src/core/layout-state-model.cjs` und `src/core/layout-state-store.cjs` technisch gebaut.
 - K17.0 erledigt: neutrale Elementbaum-Anzeige-Struktur und Editor-UI-State technisch gebaut.
+- K17.1 erledigt: neutrale Elementdetails- und Operationsanzeige-Strukturen technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
-M7 Editor-UI ist teilweise gebaut; I1 ist umgesetzt, I2 und I3 bleiben offen.
+M7 Editor-UI ist teilweise gebaut; I1 und I2 sind umgesetzt, I3 bleibt offen.
 
-Aktueller naechster Bauabschnitt nach K17.0:
+Aktueller naechster Bauabschnitt nach K17.1:
 
-- K17.1: Elementdetails- und Operationsanzeige, ausgerichtet an LV-Position I2 - Elementdetails- und Operationsanzeige.
+- K17.2: Aenderungsentwurf-Anzeige, ausgerichtet an LV-Position I3 - Aenderungsentwurf-Anzeige.
 
 ## 4. Statuswerte
 
@@ -105,7 +106,7 @@ Bedeutung:
 | G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
-| I2 | [ ] | Elementdetails- und Operationsanzeige | offen | nach E3/E4 |
+| I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [ ] | Aenderungsentwurf-Anzeige | offen | nach F1/F2 |
 | J1 | [x] | Ziel-App-Bootstrap als Plan | `codex/CODEX_BOOTSTRAP_ZIEL_APP.md` | spaeter auf konkrete Ziel-App anwenden |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
@@ -121,7 +122,7 @@ Bedeutung:
 | M4 - Aenderungsauftrag | abgenommen | F1 bis F2 gebaut, `npm test` gruen; nach K14.1 abgeschlossen. |
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
-| M7 - Editor-UI | teilweise gebaut | I1/K17.0 gebaut und abgenommen; I2 und I3 offen. |
+| M7 - Editor-UI | teilweise gebaut | I1/K17.0 und I2/K17.1 gebaut und abgenommen; I3 offen. |
 | M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
 
 Regel:
@@ -439,6 +440,29 @@ Nach K17.0 ist M7 teilweise gebaut; I2 und I3 bleiben offen.
 
 Naechster Bauabschnitt: K17.1 - Elementdetails- und Operationsanzeige, ausgerichtet an LV-Position I2 - Elementdetails- und Operationsanzeige.
 
+### K17.1 - Elementdetails- und Operationsanzeige vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- I2
+
+Ergebnis:
+
+- `src/core/editor-ui-details-view-model.cjs` angelegt
+- neutrale Elementdetails-Darstellungsstruktur aus `editorCore.getElementDetails(elementId)` vorbereitet
+- neutrale Operationsanzeige-Struktur aus `editorCore.getElementOperations(elementId)` vorbereitet, wenn der Editor-Core diese Funktion bereitstellt
+- erlaubte, gesperrte und verfuegbare Operationen werden nur als Anzeigezeilen abgebildet
+- K17.1 baut nur neutrale Elementdetails- und Operationsanzeige-Strukturen fuer eine spaetere Oberflaeche
+- keine echte UI-App, keine Ziel-App-Anbindung, keine Integrationsstrecke, keine Layoutspeicher-Erweiterung und keine Aenderungsausfuehrung eingefuehrt
+- `scripts/tests/editor-ui-details-view-model.test.cjs` prueft Details, Operationszeilen, Kopierverhalten, Nur-Lese-Verhalten und Abgrenzung gegen gesperrte Nebenstrecken
+- `npm test` gruen
+
+Nach K17.1 ist M7 teilweise gebaut; I3 bleibt offen.
+
+Naechster Bauabschnitt: K17.2 - Aenderungsentwurf-Anzeige, ausgerichtet an LV-Position I3 - Aenderungsentwurf-Anzeige.
+
 ## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:
@@ -478,16 +502,16 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K17.0:
+Naechster Schritt nach K17.1:
 
 ```text
-K17.1 - Elementdetails- und Operationsanzeige (LV I2 - Elementdetails- und Operationsanzeige)
+K17.2 - Aenderungsentwurf-Anzeige (LV I3 - Aenderungsentwurf-Anzeige)
 ```
 
 Nicht vorher:
 
-- keine weiteren K17.0-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
-- keine Editor-UI ausserhalb LV I2 bauen
+- keine weiteren K17.1-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
+- keine Editor-UI ausserhalb LV I3 bauen
 - keine Ziel-App anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
