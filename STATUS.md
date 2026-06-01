@@ -49,16 +49,18 @@ Aktueller Stand:
 - K14.1 erledigt: `src/core/change-request-validator.cjs` prueft Aenderungsauftraege gegen den Editor-Core.
 - K15.0 erledigt: `src/core/host-adapter-contract.cjs` und `src/core/test-host-adapter.cjs` technisch gebaut.
 - K16.0 erledigt: `src/core/layout-state-model.cjs` und `src/core/layout-state-store.cjs` technisch gebaut.
+- K17.0 erledigt: neutrale Elementbaum-Anzeige-Struktur und Editor-UI-State technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
+M7 Editor-UI ist teilweise gebaut; I1 ist umgesetzt, I2 und I3 bleiben offen.
 
-Aktueller naechster Bauabschnitt nach K16.0:
+Aktueller naechster Bauabschnitt nach K17.0:
 
-- K17.0: Editor-UI Grundstruktur / Elementbaum-Anzeige, ausgerichtet an LV-Position I1 - Elementbaum-Anzeige.
+- K17.1: Elementdetails- und Operationsanzeige, ausgerichtet an LV-Position I2 - Elementdetails- und Operationsanzeige.
 
 ## 4. Statuswerte
 
@@ -102,7 +104,7 @@ Bedeutung:
 | F2 | [x] | Aenderungsauftrag pruefen | Validator + Test vorhanden, `npm test` gruen | nach F2 G1 vorbereiten |
 | G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
-| I1 | [ ] | Elementbaum-Anzeige | offen | nach E2 |
+| I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [ ] | Elementdetails- und Operationsanzeige | offen | nach E3/E4 |
 | I3 | [ ] | Aenderungsentwurf-Anzeige | offen | nach F1/F2 |
 | J1 | [x] | Ziel-App-Bootstrap als Plan | `codex/CODEX_BOOTSTRAP_ZIEL_APP.md` | spaeter auf konkrete Ziel-App anwenden |
@@ -119,7 +121,7 @@ Bedeutung:
 | M4 - Aenderungsauftrag | abgenommen | F1 bis F2 gebaut, `npm test` gruen; nach K14.1 abgeschlossen. |
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
-| M7 - Editor-UI | offen | Kein Bau vor den fachneutralen Kernvertraegen. |
+| M7 - Editor-UI | teilweise gebaut | I1/K17.0 gebaut und abgenommen; I2 und I3 offen. |
 | M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
 
 Regel:
@@ -411,7 +413,31 @@ Ergebnis:
 
 Nach K16.0 ist M6 abgeschlossen; keine weiteren K16.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 
-Naechster Bauabschnitt: K17.0 - Editor-UI Grundstruktur / Elementbaum-Anzeige, ausgerichtet an LV-Position I1 - Elementbaum-Anzeige.
+K17.0 wurde nach K16.0 als naechster Bauabschnitt umgesetzt.
+
+### K17.0 - Editor-UI Grundstruktur / Elementbaum-Anzeige vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- I1
+
+Ergebnis:
+
+- `src/core/editor-ui-tree-view-model.cjs` angelegt
+- neutrale Elementbaum-Darstellungsstruktur aus `editorCore.getElementTree()` vorbereitet
+- optionale Detail- und Operationsinformationen werden nur lesend fuer Anzeigezusammenfassungen genutzt
+- Auswahl-, Aufklapp-, Fehler- und Moduszustand in `src/core/editor-ui-state.cjs` fachneutral vorbereitet
+- K17.0 baut nur die neutrale Elementbaum-Anzeige-Struktur fuer eine spaetere Oberflaeche
+- keine echte UI-App, keine Ziel-App-Anbindung, keine Integrationsstrecke, keine Layoutspeicher-Erweiterung und keine Aenderungsausfuehrung eingefuehrt
+- `scripts/tests/editor-ui-tree-view-model.test.cjs` prueft Baumstruktur, Tiefe, technische ID-Pfade, Sichtbarkeitsfilter, Operationszusammenfassung und Nur-Lese-Verhalten
+- `scripts/tests/editor-ui-state.test.cjs` prueft neutralen UI-State, Kopierverhalten, Auswahl, Aufklappstatus, Modi und Fehlerzustand
+- `npm test` gruen
+
+Nach K17.0 ist M7 teilweise gebaut; I2 und I3 bleiben offen.
+
+Naechster Bauabschnitt: K17.1 - Elementdetails- und Operationsanzeige, ausgerichtet an LV-Position I2 - Elementdetails- und Operationsanzeige.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -452,16 +478,16 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K16.0:
+Naechster Schritt nach K17.0:
 
 ```text
-K17.0 - Editor-UI Grundstruktur / Elementbaum-Anzeige (LV I1 - Elementbaum-Anzeige)
+K17.1 - Elementdetails- und Operationsanzeige (LV I2 - Elementdetails- und Operationsanzeige)
 ```
 
 Nicht vorher:
 
-- keine weiteren K16.x-Pakete ohne ausdrueckliche LV-Ergaenzung bauen
-- keine Editor-UI ausserhalb LV I1 bauen
+- keine weiteren K17.0-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
+- keine Editor-UI ausserhalb LV I2 bauen
 - keine Ziel-App anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
