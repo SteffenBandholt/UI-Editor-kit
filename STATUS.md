@@ -52,6 +52,7 @@ Aktueller Stand:
 - K17.0 erledigt: neutrale Elementbaum-Anzeige-Struktur und Editor-UI-State technisch gebaut.
 - K17.1 erledigt: neutrale Elementdetails- und Operationsanzeige-Strukturen technisch gebaut.
 - K17.2 erledigt: neutrale Aenderungsentwurf-Anzeige-Struktur technisch gebaut.
+- K18.0 erledigt: neutraler Ziel-App-Bootstrap-Vertrag technisch vorbereitet.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -60,9 +61,9 @@ M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 
-Aktueller naechster Bauabschnitt nach K17.2:
+Aktueller naechster Bauabschnitt nach K18.0:
 
-- M8 - Ziel-App-Bootstrap / erste Ziel-App nur nach ausdruecklichem Ziel-App-Auftrag.
+- K18.1 - Ziel-App-Durchstich mit neutralem Test-Host.
 
 ## 4. Statuswerte
 
@@ -109,7 +110,7 @@ Bedeutung:
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
-| J1 | [x] | Ziel-App-Bootstrap als Plan | `codex/CODEX_BOOTSTRAP_ZIEL_APP.md` | spaeter auf konkrete Ziel-App anwenden |
+| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag vorhanden, `npm test` gruen | nach J1/K18.0 K18.1 Test-Host-Durchstich |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -124,7 +125,7 @@ Bedeutung:
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
-| M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut nur den neutralen Ziel-App-Bootstrap-Vertrag; keine echte Ziel-App-Anbindung. |
 
 Regel:
 
@@ -485,7 +486,28 @@ Ergebnis:
 
 Nach K17.2 ist M7 abgeschlossen; keine weiteren K17.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 
-Naechster Bauabschnitt: M8 - Ziel-App-Bootstrap / erste Ziel-App nur nach ausdruecklichem Ziel-App-Auftrag.
+### K18.0 - Ziel-App-Bootstrap-Vertrag technisch vorbereiten
+
+Status: gebaut
+
+LV-Bezug:
+
+- J1
+
+Ergebnis:
+
+- `src/core/target-app-bootstrap.cjs` angelegt
+- `createTargetAppBootstrap(options)` verbindet fachneutral Host-Adapter, Registry, Editor-Core, aktuellen Layoutzustand, Editor-UI-State und Tree-ViewModel
+- Bootstrap-Ergebnis liefert `ok`, `errors`, Ziel-App-ID, Layoutprofil, UI-Scope, Editor-Core, UI-State, kopierten Layoutzustand, kopiertes Tree-ViewModel und neutrale Capabilities
+- Host-Adapter-Vertrag wird vor dem Lesen geprueft; fehlende Optionen, ungueltiger Host-Adapter, fehlende Registry und ungueltige Registry liefern klare Fehlerobjekte
+- K18.0 baut nur den neutralen Ziel-App-Bootstrap-Vertrag, keine echte Ziel-App-Anbindung
+- keine BBM-Integration, keine echte UI-App, keine HTML-/DOM-/Browser-Schiene, keine Layoutspeicherung, keine Aenderungsausfuehrung, keine Fachlogik und keine Fachdaten eingefuehrt
+- `scripts/tests/target-app-bootstrap.test.cjs` prueft Bootstrap-Vertrag, Test-Host-Durchstich, Kopierverhalten, Nicht-Ausfuehrung von Aenderungen, Nicht-Nutzung von Layoutspeicherung und Abgrenzung gegen gesperrte Nebenstrecken
+- `npm test` gruen
+
+Nach K18.0 ist M8 teilweise gebaut; weitere konkrete Ziel-App-Schritte bleiben offen.
+
+Naechster Bauabschnitt: K18.1 - Ziel-App-Durchstich mit neutralem Test-Host.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -526,17 +548,17 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K17.2:
+Naechster Schritt nach K18.0:
 
 ```text
-M8 - Ziel-App-Bootstrap / erste Ziel-App nur nach ausdruecklichem Ziel-App-Auftrag
+K18.1 - Ziel-App-Durchstich mit neutralem Test-Host
 ```
 
 Nicht vorher:
 
 - keine weiteren K17.x-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
 - keine Editor-UI ausserhalb einer ausdruecklichen LV-Ergaenzung bauen
-- keine Ziel-App ohne ausdruecklichen Ziel-App-Auftrag anbinden
+- keine echte Ziel-App ohne ausdruecklichen Ziel-App-Auftrag anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
