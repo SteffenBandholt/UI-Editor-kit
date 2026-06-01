@@ -51,17 +51,18 @@ Aktueller Stand:
 - K16.0 erledigt: `src/core/layout-state-model.cjs` und `src/core/layout-state-store.cjs` technisch gebaut.
 - K17.0 erledigt: neutrale Elementbaum-Anzeige-Struktur und Editor-UI-State technisch gebaut.
 - K17.1 erledigt: neutrale Elementdetails- und Operationsanzeige-Strukturen technisch gebaut.
+- K17.2 erledigt: neutrale Aenderungsentwurf-Anzeige-Struktur technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
-M7 Editor-UI ist teilweise gebaut; I1 und I2 sind umgesetzt, I3 bleibt offen.
+M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 
-Aktueller naechster Bauabschnitt nach K17.1:
+Aktueller naechster Bauabschnitt nach K17.2:
 
-- K17.2: Aenderungsentwurf-Anzeige, ausgerichtet an LV-Position I3 - Aenderungsentwurf-Anzeige.
+- M8 - Ziel-App-Bootstrap / erste Ziel-App nur nach ausdruecklichem Ziel-App-Auftrag.
 
 ## 4. Statuswerte
 
@@ -107,7 +108,7 @@ Bedeutung:
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
-| I3 | [ ] | Aenderungsentwurf-Anzeige | offen | nach F1/F2 |
+| I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
 | J1 | [x] | Ziel-App-Bootstrap als Plan | `codex/CODEX_BOOTSTRAP_ZIEL_APP.md` | spaeter auf konkrete Ziel-App anwenden |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
@@ -122,7 +123,7 @@ Bedeutung:
 | M4 - Aenderungsauftrag | abgenommen | F1 bis F2 gebaut, `npm test` gruen; nach K14.1 abgeschlossen. |
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
-| M7 - Editor-UI | teilweise gebaut | I1/K17.0 und I2/K17.1 gebaut und abgenommen; I3 offen. |
+| M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
 | M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
 
 Regel:
@@ -463,6 +464,29 @@ Nach K17.1 ist M7 teilweise gebaut; I3 bleibt offen.
 
 Naechster Bauabschnitt: K17.2 - Aenderungsentwurf-Anzeige, ausgerichtet an LV-Position I3 - Aenderungsentwurf-Anzeige.
 
+### K17.2 - Aenderungsentwurf-Anzeige vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- I3
+
+Ergebnis:
+
+- `src/core/editor-ui-change-draft-view-model.cjs` angelegt
+- neutrale Aenderungsentwurf-Darstellungsstruktur aus normalisiertem Aenderungsauftrag vorbereitet
+- Ziel-Element, gewuenschte Operation, Payload-Zeilen und Pruefergebnis werden fachneutral als Kopien angezeigt
+- `canSubmit` wird ausschliesslich aus `validation.ok` abgeleitet und fuehrt keine Aenderung aus
+- K17.2 baut nur neutrale Aenderungsentwurf-Anzeige-Strukturen fuer eine spaetere Oberflaeche, keine echte UI-App
+- keine Ziel-App-Anbindung, keine BBM-Integration, keine Layoutspeicher-Erweiterung, keine Aenderungsausfuehrung und keine Fachlogik eingefuehrt
+- `scripts/tests/editor-ui-change-draft-view-model.test.cjs` prueft ViewModel-Struktur, Payload-, Element-, Operations- und Validierungsanzeige, Kopierverhalten, Nur-Lese-Verhalten und Abgrenzung gegen gesperrte Nebenstrecken
+- `npm test` gruen
+
+Nach K17.2 ist M7 abgeschlossen; keine weiteren K17.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+
+Naechster Bauabschnitt: M8 - Ziel-App-Bootstrap / erste Ziel-App nur nach ausdruecklichem Ziel-App-Auftrag.
+
 ## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:
@@ -502,17 +526,17 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K17.1:
+Naechster Schritt nach K17.2:
 
 ```text
-K17.2 - Aenderungsentwurf-Anzeige (LV I3 - Aenderungsentwurf-Anzeige)
+M8 - Ziel-App-Bootstrap / erste Ziel-App nur nach ausdruecklichem Ziel-App-Auftrag
 ```
 
 Nicht vorher:
 
-- keine weiteren K17.1-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
-- keine Editor-UI ausserhalb LV I3 bauen
-- keine Ziel-App anbinden
+- keine weiteren K17.x-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
+- keine Editor-UI ausserhalb einer ausdruecklichen LV-Ergaenzung bauen
+- keine Ziel-App ohne ausdruecklichen Ziel-App-Auftrag anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
