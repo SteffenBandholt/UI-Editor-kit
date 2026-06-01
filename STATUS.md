@@ -55,6 +55,7 @@ Aktueller Stand:
 - K18.0 erledigt: neutraler Ziel-App-Bootstrap-Vertrag technisch vorbereitet.
 - K18.1 erledigt: neutraler Test-Host-Durchstich technisch gebaut.
 - K18.2 erledigt: Ziel-App-Auswahl als Sicherheitsgate dokumentiert.
+- K18.3 erledigt: neutraler Minimal-Host als kontrollierte Ziel-App-Vorstufe technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -63,9 +64,9 @@ M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 
-Aktueller naechster Bauabschnitt nach K18.2:
+Aktueller naechster Bauabschnitt nach K18.3:
 
-- K18.3 - Neutraler Minimal-Host als erste kontrollierte Ziel-App vorbereiten.
+- K18.4 - Ziel-App-Adapter-Regeln fuer spaetere echte App festlegen.
 
 ## 4. Statuswerte
 
@@ -112,7 +113,7 @@ Bedeutung:
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
-| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich und Ziel-App-Auswahl vorhanden, `npm test` gruen | nach K18.2 K18.3 neutralen Minimal-Host vorbereiten |
+| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich, Ziel-App-Auswahl und neutraler Minimal-Host vorhanden, `npm test` gruen | nach K18.3 K18.4 Ziel-App-Adapter-Regeln festlegen |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -127,7 +128,7 @@ Bedeutung:
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
-| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich; K18.2 dokumentiert das Sicherheitsgate fuer die Ziel-App-Auswahl. Keine echte Ziel-App-Anbindung. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich; K18.2 dokumentiert das Sicherheitsgate fuer die Ziel-App-Auswahl; K18.3 baut nur den neutralen Minimal-Host. Keine echte Ziel-App-Anbindung. |
 
 Regel:
 
@@ -554,7 +555,33 @@ Ergebnis:
 
 Nach K18.2 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
 
-Naechster Bauabschnitt: K18.3 - Neutraler Minimal-Host als erste kontrollierte Ziel-App vorbereiten.
+### K18.3 - Neutraler Minimal-Host als erste kontrollierte Ziel-App vorbereiten
+
+Status: gebaut
+
+LV-Bezug:
+
+- J1
+
+Ergebnis:
+
+- `src/core/neutral-minimal-host.cjs` angelegt
+- K18.3 baut nur einen neutralen Minimal-Host als kontrollierte Ziel-App-Vorstufe
+- `createNeutralMinimalRegistry()` erzeugt eine fachneutrale Minimal-Registry mit Root, Header, Content und Sidebar
+- erlaubte und gesperrte Operationen sind je neutralem Element begrenzt und pruefbar
+- `createNeutralMinimalHost()` erzeugt Registry, Test-Host-Adapter und Bootstrap, ohne einen Auftrag auszufuehren
+- `runNeutralMinimalHostFlow()` nutzt den bestehenden Test-Host-Flow mit neutralem Aenderungsauftrag; submit erfolgt nur an den Test-Host und `executed` bleibt `false`
+- gesperrte Operationen und unbekannte Elemente werden nicht submitfaehig
+- keine echte Ziel-App wurde angebunden
+- keine BBM-Integration wurde gebaut
+- keine Fachlogik und keine Fachdaten wurden eingefuehrt
+- keine echte UI-App, keine HTML-/DOM-/Browser-Schiene, keine Dateispeicherung, keine Datenbank und keine Layoutspeicherung eingefuehrt
+- `scripts/tests/neutral-minimal-host.test.cjs` prueft Minimal-Host, Minimal-Registry, Host-Adapter-Vertrag, Bootstrap, Flow, erlaubte und gesperrte Operationen, Kopierverhalten und Abgrenzung gegen gesperrte Nebenstrecken
+- `npm test` gruen
+
+Nach K18.3 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
+
+Naechster Bauabschnitt: K18.4 - Ziel-App-Adapter-Regeln fuer spaetere echte App festlegen.
 
 ## 9. Gesperrte Nebenstrecken
 
