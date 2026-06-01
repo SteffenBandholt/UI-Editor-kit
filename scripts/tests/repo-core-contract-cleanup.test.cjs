@@ -92,7 +92,7 @@ function run() {
   assert.deepEqual(Object.keys(packageJson.scripts), ["test"]);
   assert.equal(
     packageJson.scripts.test,
-    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs"
+    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs"
   );
 
   assertNoTerms(read("README.md"), FORBIDDEN_TERMS, "README");

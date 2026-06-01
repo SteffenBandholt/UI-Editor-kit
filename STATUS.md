@@ -48,15 +48,17 @@ Aktueller Stand:
 - K14.0 erledigt: `src/core/change-request-model.cjs` beschreibt fachneutrale Aenderungsauftraege.
 - K14.1 erledigt: `src/core/change-request-validator.cjs` prueft Aenderungsauftraege gegen den Editor-Core.
 - K15.0 erledigt: `src/core/host-adapter-contract.cjs` und `src/core/test-host-adapter.cjs` technisch gebaut.
+- K16.0 erledigt: `src/core/layout-state-model.cjs` und `src/core/layout-state-store.cjs` technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
+M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 
-Aktueller naechster Bauabschnitt nach K15.0:
+Aktueller naechster Bauabschnitt nach K16.0:
 
-- K16.0: Speichervertrag fuer Layoutdaten.
+- K17.0: Editor-UI Grundstruktur / Elementbaum-Anzeige, ausgerichtet an LV-Position I1 - Elementbaum-Anzeige.
 
 ## 4. Statuswerte
 
@@ -99,7 +101,7 @@ Bedeutung:
 | F1 | [x] | Aenderungsauftrag-Datenmodell | Modell + Test vorhanden, `npm test` gruen | nach F1 F2 bauen |
 | F2 | [x] | Aenderungsauftrag pruefen | Validator + Test vorhanden, `npm test` gruen | nach F2 G1 vorbereiten |
 | G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
-| H1 | [ ] | Speichervertrag fuer Layoutdaten | offen | nach G1 |
+| H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [ ] | Elementbaum-Anzeige | offen | nach E2 |
 | I2 | [ ] | Elementdetails- und Operationsanzeige | offen | nach E3/E4 |
 | I3 | [ ] | Aenderungsentwurf-Anzeige | offen | nach F1/F2 |
@@ -116,7 +118,7 @@ Bedeutung:
 | M3 - Editor-Core | abgenommen | E1 bis E4 gebaut, `npm test` gruen; K13.3 schliesst M3 ab. |
 | M4 - Aenderungsauftrag | abgenommen | F1 bis F2 gebaut, `npm test` gruen; nach K14.1 abgeschlossen. |
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
-| M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
+| M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | offen | Kein Bau vor den fachneutralen Kernvertraegen. |
 | M8 - Ziel-App-Bootstrap / erste Ziel-App | offen | Kein Bau vor ausdruecklichem Ziel-App-Auftrag. |
 
@@ -358,7 +360,6 @@ Ergebnis:
 - `npm test` gruen
 
 Nach K14.1 ist M4 abgeschlossen; keine weiteren K14.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
-Nach K15.0 ist M5 abgeschlossen; keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 
 ### K15.0 - Host-Adapter-Vertrag technisch vorbereiten
 
@@ -385,6 +386,32 @@ Ergebnis:
 Nach K15.0 ist M5 abgeschlossen; keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 
 Naechster Bauabschnitt: K16.0 - Speichervertrag fuer Layoutdaten.
+
+### K16.0 - Speichervertrag fuer Layoutdaten technisch vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- H1
+
+Ergebnis:
+
+- `src/core/layout-state-model.cjs` angelegt
+- fachneutraler Speichervertrag mit Pflichtfeldern fuer Layoutprofil, technische Ziel-App-ID, UI-Scope, Element-ID, Aenderungs-ID, Editoroperation, Layoutwert, Version und Zeitwerte definiert
+- optionale neutrale Felder fuer Quelle, Notiz, Vorversion und Anwenderkennung definiert
+- verbotene Fachfelder werden beim Normalisieren nicht uebernommen, auch nicht innerhalb von `layoutValue`
+- `src/core/layout-state-store.cjs` angelegt
+- neutrale In-Memory-Test-Speicherung erstellt, die Datensaetze normalisiert, kopiert, listet, technisch filtert, nach Einfuegereihenfolge den letzten passenden Datensatz liefert, zuruecksetzt und leert
+- fachliche oder unbekannte Filter werden klar abgelehnt
+- keine echte Datenbank, keine Dateispeicherung, keine Ziel-App-Anbindung, keine Host-Adapter-Erweiterung, keine Editor-UI und keine Fachlogik eingefuehrt
+- `scripts/tests/layout-state-model.test.cjs` prueft H1-Modell, Kopierverhalten und Abgrenzung gegen verbotene Nebenstrecken
+- `scripts/tests/layout-state-store.test.cjs` prueft In-Memory-Store, Filter, Rueckgabe-Kopien, Reset und Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
+Nach K16.0 ist M6 abgeschlossen; keine weiteren K16.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+
+Naechster Bauabschnitt: K17.0 - Editor-UI Grundstruktur / Elementbaum-Anzeige, ausgerichtet an LV-Position I1 - Elementbaum-Anzeige.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -425,17 +452,16 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K15.0:
+Naechster Schritt nach K16.0:
 
 ```text
-K16.0 - Speichervertrag fuer Layoutdaten
+K17.0 - Editor-UI Grundstruktur / Elementbaum-Anzeige (LV I1 - Elementbaum-Anzeige)
 ```
 
 Nicht vorher:
 
-- keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung bauen
-- keine Layoutspeicherung bauen
-- keine Editor-UI bauen
+- keine weiteren K16.x-Pakete ohne ausdrueckliche LV-Ergaenzung bauen
+- keine Editor-UI ausserhalb LV I1 bauen
 - keine Ziel-App anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
