@@ -13,6 +13,7 @@ const MUST_EXIST = [
   "docs/ZIEL_APP_ANBINDUNG.md",
   "docs/ZIEL_APP_AUSWAHL.md",
   "docs/ZIEL_APP_ADAPTER_REGELN.md",
+  "docs/ZIEL_APP_FREIGABE_DOSSIER.md",
   "docs/UI_EDITOR_VERTRAG.md",
   "docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
   "codex/AGENTS_UI_EDITOR_BLOCK.md",

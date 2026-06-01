@@ -62,6 +62,7 @@ Aktueller Stand:
 - K18.7 erledigt: Adapter-Manifest-Gate vor echter Ziel-App-Freigabe technisch vorbereitet.
 - K18.8 erledigt: Adapter-Planungsgrundlage fuer spaetere echte Ziel-App technisch vorbereitet.
 - K18.9 erledigt: Adapter-Plan-Sicherheitspruefung gegen verbindliche Sicherheitsregeln technisch gebaut.
+- K18.10 erledigt: Ziel-App-Freigabe-Dossier fuer spaetere echte App dokumentarisch erstellt.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -69,10 +70,11 @@ M4 Aenderungsauftrag ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
+M8 Ziel-App-Bootstrap ist abgeschlossen als Sicherheits- und Vertragsvorbau; keine echte Ziel-App-Anbindung.
 
-Aktueller naechster Bauabschnitt nach K18.9:
+Aktueller naechster Bauabschnitt nach K18.10:
 
-- K18.10 - Ziel-App-Freigabe-Dossier fuer spaetere echte App vorbereiten.
+- K19.0 - Erste echte Ziel-App-Planung festlegen.
 
 ## 4. Statuswerte
 
@@ -119,7 +121,7 @@ Bedeutung:
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
-| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich, Ziel-App-Auswahl, neutraler Minimal-Host, Adapter-Regeln, technisches Adapter-Manifest, neutraler Manifest-Check, Adapter-Manifest-Gate, Adapter-Planungsgrundlage und Adapter-Plan-Sicherheitspruefung vorhanden, `npm test` gruen | nach K18.9 K18.10 Ziel-App-Freigabe-Dossier vorbereiten |
+| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich, Ziel-App-Auswahl, neutraler Minimal-Host, Adapter-Regeln, technisches Adapter-Manifest, neutraler Manifest-Check, Adapter-Manifest-Gate, Adapter-Planungsgrundlage, Adapter-Plan-Sicherheitspruefung und Ziel-App-Freigabe-Dossier vorhanden, `npm test` gruen | nach K18.10 K19.0 erste echte Ziel-App-Planung festlegen |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -134,7 +136,7 @@ Bedeutung:
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
-| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich; K18.2 dokumentiert das Sicherheitsgate fuer die Ziel-App-Auswahl; K18.3 baut nur den neutralen Minimal-Host; K18.4 legt nur Ziel-App-Adapter-Regeln fest; K18.5 baut nur das technische Adapter-Manifest-Modell; K18.6 prueft nur das Adapter-Manifest gegen den neutralen Minimal-Host; K18.7 baut nur das Adapter-Manifest-Gate vor spaeterer Adapter-Planung; K18.8 baut nur die Adapter-Planungsgrundlage; K18.9 baut nur die Sicherheitspruefung fuer Adapter-Plaene. Keine echte Ziel-App-Anbindung. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | abgeschlossen als Sicherheits- und Vertragsvorbau; keine echte Ziel-App-Anbindung | K18.0 bis K18.9 bauten den neutralen Sicherheits- und Vertragsvorbau; K18.10 baut nur das Ziel-App-Freigabe-Dossier. Keine echte Ziel-App wurde angebunden. Keine BBM-Integration wurde gebaut. Keine produktive Ausfuehrung wurde freigegeben. Keine Adapterdateien fuer echte Ziel-Apps wurden erzeugt. Keine Fachlogik und keine Fachdaten wurden eingefuehrt. Nach K18.10 endet der abstrakte M8-Vorbau. |
 
 Regel:
 
@@ -744,9 +746,34 @@ Ergebnis:
 - keine echte UI-App, keine HTML-/DOM-/Browser-Schiene, keine Dateispeicherung, keine Datenbank und keine Layoutspeicherung eingefuehrt
 - `npm test` gruen
 
-Nach K18.9 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
+Nach K18.9 war M8 noch nicht abgeschlossen; echte Ziel-App-Schritte blieben offen.
 
-Naechster Bauabschnitt: K18.10 - Ziel-App-Freigabe-Dossier fuer spaetere echte App vorbereiten.
+### K18.10 - Ziel-App-Freigabe-Dossier fuer spaetere echte App vorbereiten
+
+Status: gebaut
+
+LV-Bezug:
+
+- J1
+
+Ergebnis:
+
+- `docs/ZIEL_APP_FREIGABE_DOSSIER.md` angelegt
+- K18.10 baut nur das Ziel-App-Freigabe-Dossier als Abschlussdokument fuer M8
+- M8-Bausteine K18.0 bis K18.10, vorhandene technische Bausteine, verbindliche Sperren und Voraussetzungen vor einer spaeteren echten Ziel-App-Planung sind zusammengefasst
+- der naechste Bauabschnitt ist K19.0 - Erste echte Ziel-App-Planung festlegen
+- keine echte Ziel-App wurde angebunden
+- keine BBM-Integration wurde gebaut
+- keine produktive Ausfuehrung wurde freigegeben
+- keine Adapterdateien fuer echte Ziel-Apps wurden erzeugt
+- keine Fachlogik und keine Fachdaten wurden eingefuehrt
+- keine Runtime-Implementierung fuer echte Adapter wurde gebaut
+- keine echte UI-App, keine HTML-/DOM-/Browser-Schiene, keine Dateispeicherung, keine Datenbank und keine Layoutspeicherung eingefuehrt
+- `npm test` gruen
+
+Nach K18.10 ist M8 abgeschlossen als Sicherheits- und Vertragsvorbau; echte Ziel-App-Anbindung bleibt offen. Nach K18.10 endet der abstrakte M8-Vorbau.
+
+Naechster Bauabschnitt: K19.0 - Erste echte Ziel-App-Planung festlegen.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -787,10 +814,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K18.9:
+Naechster Schritt nach K18.10:
 
 ```text
-K18.10 - Ziel-App-Freigabe-Dossier fuer spaetere echte App vorbereiten
+K19.0 - Erste echte Ziel-App-Planung festlegen
 ```
 
 Nicht vorher:
@@ -800,6 +827,7 @@ Nicht vorher:
 - keine echte Ziel-App ohne ausdruecklichen Ziel-App-Auftrag anbinden
 - keine BBM-Integration ohne eigenen Auftrag bauen
 - BBM nicht als ersten unkontrollierten Direktanschluss freigeben
+- nach K18.10 keine weitere abstrakte M8-Vorbau-Abstraktion ohne konkrete Ziel-App-Entscheidung fortsetzen
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
