@@ -36,6 +36,20 @@ function cloneElementTreeNode(node) {
   };
 }
 
+function getAvailableOperations(element) {
+  const lockedOpsSet = new Set(element.lockedOps);
+  return element.allowedOps.filter((operation) => !lockedOpsSet.has(operation));
+}
+
+function cloneElementOperations(element) {
+  return {
+    elementId: element.id,
+    allowedOps: element.allowedOps.slice(),
+    lockedOps: element.lockedOps.slice(),
+    availableOps: getAvailableOperations(element),
+  };
+}
+
 function createEditorCoreError(message, validationResult) {
   const error = new Error(message);
   error.validationResult = cloneValidationResult(validationResult);
@@ -134,6 +148,25 @@ function createEditorCore(registry) {
   return {
     hasElement(elementId) {
       return storedElementsById.has(elementId);
+    },
+    getElementOperations(elementId) {
+      if (!storedElementsById.has(elementId)) {
+        return null;
+      }
+
+      return cloneElementOperations(storedElementsById.get(elementId));
+    },
+    canElementPerformOperation(elementId, operation) {
+      if (!storedElementsById.has(elementId)) {
+        return false;
+      }
+
+      const element = storedElementsById.get(elementId);
+      if (!element.allowedOps.includes(operation)) {
+        return false;
+      }
+
+      return !element.lockedOps.includes(operation);
     },
     getElementDetails(elementId) {
       if (!storedElementsById.has(elementId)) {

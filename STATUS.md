@@ -44,12 +44,14 @@ Aktueller Stand:
 - K13.0 erledigt: `src/core/editor-core.cjs` liest und validiert vorhandene Registry.
 - K13.1 erledigt: `src/core/editor-core.cjs` erzeugt Elementbaum aus validierter Registry.
 - K13.2 erledigt: `src/core/editor-core.cjs` liefert Elementdetails per ID.
+- K13.3 erledigt: `src/core/editor-core.cjs` leitet erlaubte, gesperrte und verfuegbare Operationen je Element ab.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
+M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
 
-Aktueller naechster Bauabschnitt nach K13.2:
+Aktueller naechster Bauabschnitt nach K13.3:
 
-- K13.3: Operationen ableiten.
+- K14.0: Aenderungsauftrag-Datenmodell.
 
 ## 4. Statuswerte
 
@@ -88,7 +90,7 @@ Bedeutung:
 | E1 | [x] | Editor-Core liest Registry | Core + Test vorhanden, `npm test` gruen | nach E1 Elementbaum bauen |
 | E2 | [x] | Elementbaum erzeugen | Core-Baum + Test vorhanden, `npm test` gruen | nach E2 Elementdetails liefern |
 | E3 | [x] | Elementdetails liefern | Core-Details + Test vorhanden, `npm test` gruen | nach E3 Operationen ableiten |
-| E4 | [ ] | Operationen ableiten | offen | nach E3 |
+| E4 | [x] | Operationen ableiten | Core + Test vorhanden, `npm test` gruen | nach E4 F1 bauen |
 | F1 | [ ] | Aenderungsauftrag-Datenmodell | offen | nach E4 |
 | F2 | [ ] | Aenderungsauftrag pruefen | offen | nach F1 |
 | G1 | [ ] | Host-Adapter-Vertrag technisch vorbereiten | offen | nach F2 |
@@ -106,7 +108,7 @@ Bedeutung:
 |---|---|---|
 | M1 - Planung / Vertrag / LV | abgenommen | Fuehrende Unterlagen und Gesamt-LV liegen vor. |
 | M2 - Fundament: Datenmodell, Registry, Validator | abgenommen | Status nach diesem Paket: abgenommen, weil K12.3 und K12.4 gebaut sind und `npm test` gruen ist. |
-| M3 - Editor-Core | in Bau | E1 bis E3 gebaut; naechster Schritt K13.3 - Operationen ableiten. |
+| M3 - Editor-Core | abgenommen | E1 bis E4 gebaut, `npm test` gruen; K13.3 schliesst M3 ab. |
 | M4 - Aenderungsauftrag | offen | Kein Bau vor Abschluss des Editor-Core-Abschnitts. |
 | M5 - Host-Adapter | offen | Kein Bau vor Aenderungsauftrag. |
 | M6 - Layoutspeicherung | offen | Kein Bau vor Host-Adapter-Vertrag. |
@@ -293,18 +295,33 @@ Ergebnis:
 - `scripts/tests/editor-core.test.cjs` prueft E3-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
 - `npm test` gruen
 
+### K13.3 - Operationen ableiten
+
+Status: gebaut
+
+Ergebnis:
+
+- `src/core/editor-core.cjs` um `getElementOperations(elementId)` und `canElementPerformOperation(elementId, operation)` erweitert
+- der Core leitet `allowedOps`, `lockedOps` und `availableOps` ausschliesslich aus der validierten Elementliste ab
+- `availableOps` enthaelt nur erlaubte Operationen, die nicht gesperrt sind; `lockedOps` uebersteuert die Verfuegbarkeit
+- unbekannte Element-IDs liefern bei `getElementOperations()` sauber `null` und bei `canElementPerformOperation()` `false`
+- Rueckgaben sind kopiert, damit Mutationen an Operationen den Core nicht veraendern
+- keine neue Validatorlogik, kein Aenderungsauftrag, kein Host-Adapter und keine UI-/Ziel-App-Anbindung gebaut
+- `scripts/tests/editor-core.test.cjs` prueft E4-Faelle und die Abgrenzung gegen verbotene Nebenstrecken
+- `npm test` gruen
+
 ## 8. Naechste Baupakete
 
-### K13.3 - Operationen ableiten
+### K14.0 - Aenderungsauftrag-Datenmodell
 
 LV-Bezug:
 
-- E4
+- F1
 
 Ziel:
 
-- Erlaubte und gesperrte Operationen je Element aus dem Core ableiten.
-- Keine UI-Schiene und keinen Aenderungsauftrag vorziehen.
+- Aenderungsauftraege als fachneutrales Datenmodell vorbereiten.
+- Nach K13.3 keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung starten.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -345,10 +362,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K13.2:
+Naechster Schritt nach K13.3:
 
 ```text
-K13.3 - Operationen ableiten
+K14.0 - Aenderungsauftrag-Datenmodell
 ```
 
 Nicht vorher:
@@ -359,3 +376,4 @@ Nicht vorher:
 - keine Ziel-App anbinden
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
+Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.

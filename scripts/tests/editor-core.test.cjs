@@ -32,8 +32,38 @@ function validElements() {
       order: 1,
       visible: true,
       editable: true,
-      allowedOps: ["inspect", "move"],
+      allowedOps: ["inspect", "move", "resize"],
+      lockedOps: ["rename"],
+      layoutArea: "main",
+    },
+  ];
+}
+
+function conflictingOperationElements() {
+  return [
+    {
+      id: "workspace.root",
+      name: "Root",
+      type: "root",
+      role: "layout",
+      parentId: null,
+      order: 0,
+      visible: true,
+      editable: false,
+      allowedOps: ["inspect"],
       lockedOps: [],
+    },
+    {
+      id: "workspace.main.area",
+      name: "Bereich",
+      type: "area",
+      role: "layout",
+      parentId: "workspace.root",
+      order: 1,
+      visible: true,
+      editable: true,
+      allowedOps: ["inspect", "move", "resize"],
+      lockedOps: ["move", "rename"],
       layoutArea: "main",
     },
   ];
@@ -147,6 +177,8 @@ function run() {
 
   const core = createEditorCore(registry);
   assert.equal(typeof core.hasElement, "function");
+  assert.equal(typeof core.getElementOperations, "function");
+  assert.equal(typeof core.canElementPerformOperation, "function");
   assert.equal(typeof core.getElementDetails, "function");
   assert.equal(typeof core.listElements, "function");
   assert.equal(typeof core.getElementTree, "function");
@@ -170,13 +202,26 @@ function run() {
     order: 1,
     visible: true,
     editable: true,
-    allowedOps: ["inspect", "move"],
-    lockedOps: [],
+    allowedOps: ["inspect", "move", "resize"],
+    lockedOps: ["rename"],
     layoutArea: "main",
   });
   assert.equal(core.getElementDetails("workspace.unknown"), null);
   assert.equal(Object.prototype.hasOwnProperty.call(knownElementDetails, "layoutArea"), true);
   assert.equal(Object.prototype.hasOwnProperty.call(knownElementDetails, "columnRole"), false);
+
+  assert.deepEqual(core.getElementOperations("workspace.main.area"), {
+    elementId: "workspace.main.area",
+    allowedOps: ["inspect", "move", "resize"],
+    lockedOps: ["rename"],
+    availableOps: ["inspect", "move", "resize"],
+  });
+  assert.equal(core.getElementOperations("workspace.unknown"), null);
+
+  assert.equal(core.canElementPerformOperation("workspace.main.area", "move"), true);
+  assert.equal(core.canElementPerformOperation("workspace.main.area", "rename"), false);
+  assert.equal(core.canElementPerformOperation("workspace.main.area", "hide"), false);
+  assert.equal(core.canElementPerformOperation("workspace.unknown", "move"), false);
 
   const coreElements = core.listElements();
   assert.deepEqual(
@@ -254,7 +299,7 @@ function run() {
 
   const storedAfterRegistryMutation = mutationCore.listElements();
   assert.equal(storedAfterRegistryMutation[1].name, "Bereich");
-  assert.deepEqual(storedAfterRegistryMutation[1].allowedOps, ["inspect", "move"]);
+  assert.deepEqual(storedAfterRegistryMutation[1].allowedOps, ["inspect", "move", "resize"]);
 
   const listedFromCore = mutationCore.listElements();
   listedFromCore[1].name = "Von Core geaendert";
@@ -262,7 +307,7 @@ function run() {
 
   const listedFromCoreAgain = mutationCore.listElements();
   assert.equal(listedFromCoreAgain[1].name, "Bereich");
-  assert.deepEqual(listedFromCoreAgain[1].allowedOps, ["inspect", "move"]);
+  assert.deepEqual(listedFromCoreAgain[1].allowedOps, ["inspect", "move", "resize"]);
 
   const returnedValidationResult = mutationCore.getValidationResult();
   returnedValidationResult.ok = false;
@@ -280,12 +325,28 @@ function run() {
 
   const detailsAfterMutation = mutationCore.getElementDetails("workspace.main.area");
   assert.equal(detailsAfterMutation.name, "Bereich");
-  assert.deepEqual(detailsAfterMutation.allowedOps, ["inspect", "move"]);
+  assert.deepEqual(detailsAfterMutation.allowedOps, ["inspect", "move", "resize"]);
   assert.equal(detailsAfterMutation.layoutArea, "main");
   assert.deepEqual(
     mutationCore.listElements().map((element) => element.id),
     ["workspace.root", "workspace.main.area"]
   );
+
+  const operationsBeforeMutation = mutationCore.getElementOperations("workspace.main.area");
+  operationsBeforeMutation.elementId = "workspace.changed";
+  operationsBeforeMutation.allowedOps.push("pin");
+  operationsBeforeMutation.lockedOps.push("move");
+  operationsBeforeMutation.availableOps.length = 0;
+
+  const operationsAfterMutation = mutationCore.getElementOperations("workspace.main.area");
+  assert.deepEqual(operationsAfterMutation, {
+    elementId: "workspace.main.area",
+    allowedOps: ["inspect", "move", "resize"],
+    lockedOps: ["rename"],
+    availableOps: ["inspect", "move", "resize"],
+  });
+  assert.equal(mutationCore.canElementPerformOperation("workspace.main.area", "move"), true);
+  assert.equal(mutationCore.canElementPerformOperation("workspace.main.area", "rename"), false);
 
   const invalidRegistry = createUiElementRegistry();
   invalidRegistry.registerElement({
@@ -353,6 +414,40 @@ function run() {
   }
 
   assert.equal(validatorCallCount, 1);
+
+  const conflictingValidatorModule = require(VALIDATOR_PATH);
+  const originalConflictingValidateUiElementList = conflictingValidatorModule.validateUiElementList;
+  conflictingValidatorModule.validateUiElementList = (elements) => {
+    if (elements === conflictingElements) {
+      return { ok: true, errors: [] };
+    }
+
+    return originalConflictingValidateUiElementList(elements);
+  };
+
+  const conflictingElements = conflictingOperationElements();
+  let conflictingCore = null;
+
+  try {
+    delete require.cache[CORE_PATH];
+    const { createEditorCore: createEditorCoreWithConflicts } = loadCoreModule();
+    conflictingCore = createEditorCoreWithConflicts({
+      listElements() {
+        return conflictingElements;
+      },
+    });
+  } finally {
+    conflictingValidatorModule.validateUiElementList = originalConflictingValidateUiElementList;
+    delete require.cache[CORE_PATH];
+  }
+
+  assert.deepEqual(conflictingCore.getElementOperations("workspace.main.area"), {
+    elementId: "workspace.main.area",
+    allowedOps: ["inspect", "move", "resize"],
+    lockedOps: ["move", "rename"],
+    availableOps: ["inspect", "resize"],
+  });
+  assert.equal(conflictingCore.canElementPerformOperation("workspace.main.area", "move"), false);
 
   const sourceText = fs.readFileSync(CORE_PATH, "utf8");
   const forbiddenMarkers = [
