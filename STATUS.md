@@ -53,6 +53,7 @@ Aktueller Stand:
 - K17.1 erledigt: neutrale Elementdetails- und Operationsanzeige-Strukturen technisch gebaut.
 - K17.2 erledigt: neutrale Aenderungsentwurf-Anzeige-Struktur technisch gebaut.
 - K18.0 erledigt: neutraler Ziel-App-Bootstrap-Vertrag technisch vorbereitet.
+- K18.1 erledigt: neutraler Test-Host-Durchstich technisch gebaut.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -61,9 +62,9 @@ M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 
-Aktueller naechster Bauabschnitt nach K18.0:
+Aktueller naechster Bauabschnitt nach K18.1:
 
-- K18.1 - Ziel-App-Durchstich mit neutralem Test-Host.
+- K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten.
 
 ## 4. Statuswerte
 
@@ -110,7 +111,7 @@ Bedeutung:
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
-| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag vorhanden, `npm test` gruen | nach J1/K18.0 K18.1 Test-Host-Durchstich |
+| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag und neutraler Test-Host-Durchstich vorhanden, `npm test` gruen | nach K18.1 K18.2 Ziel-App-Auswahl vorbereiten |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -125,7 +126,7 @@ Bedeutung:
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
-| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut nur den neutralen Ziel-App-Bootstrap-Vertrag; keine echte Ziel-App-Anbindung. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich, keine echte Ziel-App-Anbindung. |
 
 Regel:
 
@@ -507,7 +508,29 @@ Ergebnis:
 
 Nach K18.0 ist M8 teilweise gebaut; weitere konkrete Ziel-App-Schritte bleiben offen.
 
-Naechster Bauabschnitt: K18.1 - Ziel-App-Durchstich mit neutralem Test-Host.
+### K18.1 - Ziel-App-Durchstich mit neutralem Test-Host
+
+Status: gebaut
+
+LV-Bezug:
+
+- J1
+
+Ergebnis:
+
+- `src/core/target-app-test-host-flow.cjs` angelegt
+- `createTargetAppTestHostFlow(options)` verbindet fachneutral Test-Host, Ziel-App-Bootstrap, Editor-Core, Tree-ViewModel, Details-ViewModel und ChangeDraft-ViewModel
+- gueltige Aenderungsauftraege werden nur an den neutralen Test-Host uebergeben und dort als Kopien vermerkt
+- `submitResult.executed` bleibt `false`; es wird keine Aenderung ausgefuehrt
+- `initialLayoutState` wird nur ueber Bootstrap/Test-Host gelesen; keine Layoutspeicherung wird verwendet
+- K18.1 baut nur den neutralen Test-Host-Durchstich, keine echte Ziel-App-Anbindung
+- keine BBM-Integration, keine echte UI-App, keine HTML-/DOM-/Browser-Schiene, keine Dateispeicherung, keine Datenbank, keine Fachlogik und keine Fachdaten eingefuehrt
+- `scripts/tests/target-app-test-host-flow.test.cjs` prueft Flow-Vertrag, Bootstrap- und ViewModel-Verbindung, erlaubte und abgelehnte Aenderungsauftraege, Kopierverhalten und Abgrenzung gegen gesperrte Nebenstrecken
+- `npm test` gruen
+
+Nach K18.1 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
+
+Naechster Bauabschnitt: K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -548,10 +571,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K18.0:
+Naechster Schritt nach K18.1:
 
 ```text
-K18.1 - Ziel-App-Durchstich mit neutralem Test-Host
+K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten
 ```
 
 Nicht vorher:
