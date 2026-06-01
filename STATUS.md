@@ -54,6 +54,7 @@ Aktueller Stand:
 - K17.2 erledigt: neutrale Aenderungsentwurf-Anzeige-Struktur technisch gebaut.
 - K18.0 erledigt: neutraler Ziel-App-Bootstrap-Vertrag technisch vorbereitet.
 - K18.1 erledigt: neutraler Test-Host-Durchstich technisch gebaut.
+- K18.2 erledigt: Ziel-App-Auswahl als Sicherheitsgate dokumentiert.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -62,9 +63,9 @@ M5 Host-Adapter ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 
-Aktueller naechster Bauabschnitt nach K18.1:
+Aktueller naechster Bauabschnitt nach K18.2:
 
-- K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten.
+- K18.3 - Neutraler Minimal-Host als erste kontrollierte Ziel-App vorbereiten.
 
 ## 4. Statuswerte
 
@@ -111,7 +112,7 @@ Bedeutung:
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
-| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag und neutraler Test-Host-Durchstich vorhanden, `npm test` gruen | nach K18.1 K18.2 Ziel-App-Auswahl vorbereiten |
+| J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich und Ziel-App-Auswahl vorhanden, `npm test` gruen | nach K18.2 K18.3 neutralen Minimal-Host vorbereiten |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -126,7 +127,7 @@ Bedeutung:
 | M5 - Host-Adapter | abgenommen | G1 gebaut und mit `npm test` gruen abgenommen; nach K15.0 abgeschlossen. |
 | M6 - Layoutspeicherung | abgenommen | H1 gebaut und mit `npm test` gruen abgenommen; nach K16.0 abgeschlossen. |
 | M7 - Editor-UI | abgenommen | I1/K17.0, I2/K17.1 und I3/K17.2 gebaut und mit `npm test` gruen abgenommen. |
-| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich, keine echte Ziel-App-Anbindung. |
+| M8 - Ziel-App-Bootstrap / erste Ziel-App | teilweise gebaut | K18.0 baut den neutralen Ziel-App-Bootstrap-Vertrag; K18.1 baut nur den neutralen Test-Host-Durchstich; K18.2 dokumentiert das Sicherheitsgate fuer die Ziel-App-Auswahl. Keine echte Ziel-App-Anbindung. |
 
 Regel:
 
@@ -530,7 +531,30 @@ Ergebnis:
 
 Nach K18.1 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
 
-Naechster Bauabschnitt: K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten.
+### K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten
+
+Status: gebaut
+
+LV-Bezug:
+
+- J1
+
+Ergebnis:
+
+- `docs/ZIEL_APP_AUSWAHL.md` angelegt
+- K18.2 ist ein Sicherheitsgate vor der ersten echten Ziel-App-Anbindung
+- erste echte Ziel-App wird nicht als komplexe Produktiv-App und nicht als direkter BBM-Produktiv-Anschluss freigegeben
+- empfohlen ist zuerst ein kleiner, kontrollierter, fachneutraler Ziel-App-Durchstich ueber einen neutralen Minimal-Host
+- BBM bleibt spaeterer Kandidat, aber nicht erster Direktanschluss
+- Mindestvoraussetzungen, gesperrte Aktionen, Risiken und Abnahmekriterien vor K18.3 sind dokumentiert
+- keine echte Ziel-App wurde angebunden
+- keine BBM-Integration wurde gebaut
+- keine neue Runtime-Architektur, keine UI, keine Layoutspeicher-Erweiterung, keine Aenderungsausfuehrung, keine Fachlogik und keine Fachdaten eingefuehrt
+- `npm test` gruen
+
+Nach K18.2 ist M8 weiterhin teilweise gebaut; echte Ziel-App-Schritte bleiben offen.
+
+Naechster Bauabschnitt: K18.3 - Neutraler Minimal-Host als erste kontrollierte Ziel-App vorbereiten.
 
 ## 9. Gesperrte Nebenstrecken
 
@@ -571,10 +595,10 @@ Wenn ein Auftrag neue Ideen einfuehrt, die nicht im LV stehen, gilt: STOPP.
 
 ## 11. Aktueller naechster Schritt
 
-Naechster Schritt nach K18.1:
+Naechster Schritt nach K18.2:
 
 ```text
-K18.2 - Entscheidung erste echte Ziel-App / Ziel-App-Auswahl vorbereiten
+K18.3 - Neutraler Minimal-Host als erste kontrollierte Ziel-App vorbereiten
 ```
 
 Nicht vorher:
@@ -582,6 +606,8 @@ Nicht vorher:
 - keine weiteren K17.x-Erweiterungen ohne ausdrueckliche LV-Ergaenzung bauen
 - keine Editor-UI ausserhalb einer ausdruecklichen LV-Ergaenzung bauen
 - keine echte Ziel-App ohne ausdruecklichen Ziel-App-Auftrag anbinden
+- keine BBM-Integration ohne eigenen Auftrag bauen
+- BBM nicht als ersten unkontrollierten Direktanschluss freigeben
 
 M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzung gesperrt.
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
