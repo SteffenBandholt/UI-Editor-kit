@@ -7,7 +7,10 @@ const path = require("node:path");
 const { URL } = require("node:url");
 
 const { createTargetAppInstallerPlan } = require("../src/core/target-app-installer-plan.cjs");
-const { createTargetAppInstallerExecutionPreview } = require("../src/core/target-app-installer-execution.cjs");
+const {
+  createTargetAppInstallerExecutionPreview,
+  executeTargetAppInstallerPlan,
+} = require("../src/core/target-app-installer-execution.cjs");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALLER_APP_ROOT = path.join(REPO_ROOT, "src/installer-app");
@@ -24,6 +27,11 @@ function createInstallerAppServer() {
   return http.createServer((request, response) => {
     if (request.method === "POST" && request.url === "/api/installer/preview") {
       handleInstallerPreviewRequest(request, response);
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/api/installer/install") {
+      handleInstallerInstallRequest(request, response);
       return;
     }
 
@@ -96,7 +104,47 @@ function handleInstallerPreviewRequest(request, response) {
         ok: false,
         plan: null,
         preview: null,
-        errors: normalizePreviewErrors(error),
+        errors: normalizeInstallerErrors(
+          error,
+          "installer_preview_failed",
+          "Installer-Preview konnte nicht erzeugt werden."
+        ),
+      });
+    });
+}
+
+function handleInstallerInstallRequest(request, response) {
+  readJsonBody(request)
+    .then((body) => {
+      const inputs = {
+        targetAppPath: body.targetAppPath,
+        targetAppId: body.targetAppId,
+        targetAppName: body.targetAppName,
+        selectedMode: "prepare-registry-structure",
+      };
+      const plan = createTargetAppInstallerPlan(inputs);
+      const executionResult = executeTargetAppInstallerPlan({
+        installerPlan: plan,
+        confirmation: body.confirmation,
+      });
+
+      sendJson(response, executionResult.ok ? 200 : 400, {
+        ok: executionResult.ok,
+        plan,
+        writtenFiles: executionResult.writtenFiles,
+        errors: executionResult.errors,
+      });
+    })
+    .catch((error) => {
+      sendJson(response, 400, {
+        ok: false,
+        plan: null,
+        writtenFiles: [],
+        errors: normalizeInstallerErrors(
+          error,
+          "installer_install_failed",
+          "Installation konnte nicht ausgefuehrt werden."
+        ),
       });
     });
 }
@@ -124,15 +172,15 @@ function readJsonBody(request) {
   });
 }
 
-function normalizePreviewErrors(error) {
+function normalizeInstallerErrors(error, fallbackCode, fallbackMessage) {
   if (Array.isArray(error.errors)) {
     return error.errors.map((entry) => ({ ...entry }));
   }
 
   return [
     {
-      code: error.code || "installer_preview_failed",
-      message: error.message || "Installer-Preview konnte nicht erzeugt werden.",
+      code: error.code || fallbackCode,
+      message: error.message || fallbackMessage,
     },
   ];
 }

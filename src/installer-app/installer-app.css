@@ -190,3 +190,29 @@ li + li {
     grid-column: 1;
   }
 }
+
+
+.confirmation-panel[hidden] {
+  display: none;
+}
+
+.confirmation-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+
+.confirmation-list label {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #d8e1ed;
+  border-radius: 10px;
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.8rem 0.9rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

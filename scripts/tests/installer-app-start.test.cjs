@@ -65,6 +65,27 @@ function requestJson(port, pathname, payload) {
   });
 }
 
+function collectRelativeFiles(rootPath) {
+  const files = [];
+
+  function visit(currentPath) {
+    fs.readdirSync(currentPath, { withFileTypes: true }).forEach((entry) => {
+      const entryPath = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+        return;
+      }
+      files.push(path.relative(rootPath, entryPath).split(path.sep).join("/"));
+    });
+  }
+
+  if (fs.existsSync(rootPath)) {
+    visit(rootPath);
+  }
+
+  return files.sort();
+}
+
 function closeServer(server) {
   return new Promise((resolve, reject) => {
     server.close((error) => {
@@ -91,18 +112,29 @@ async function run() {
   const uiSource = `${indexSource}\n${appSource}\n${cssSource}`;
   const allNewSource = `${serverSource}\n${uiSource}`;
 
-  assertNotIncludes(serverSource, "executeTargetAppInstallerPlan", SERVER_PATH);
   assert.equal(serverSource.includes("/api/installer/preview"), true);
+  assert.equal(serverSource.includes("/api/installer/install"), true);
   assert.equal(serverSource.includes("createTargetAppInstallerPlan"), true);
   assert.equal(serverSource.includes("createTargetAppInstallerExecutionPreview"), true);
+  assert.equal(serverSource.includes("executeTargetAppInstallerPlan"), true);
 
   const buttonLabels = collectButtonLabels(indexSource);
-  assert.deepEqual(buttonLabels, ["Installer-Plan pruefen"]);
-  buttonLabels.forEach((label) => {
-    assertNotIncludes(label, "Installieren", "Installer-App-Button");
-    assertNotIncludes(label, "Ausführen", "Installer-App-Button");
-    assertNotIncludes(label, "Ausfuehren", "Installer-App-Button");
+  assert.deepEqual(buttonLabels, ["Installer-Plan pruefen", "Grundstruktur installieren"]);
+  assert.equal(indexSource.includes('id="installation-confirmation-panel"'), true);
+  assert.equal(indexSource.includes('id="install-button" type="button" disabled'), true);
+  [
+    "installationConfirmed",
+    "targetAppSelected",
+    "installPathConfirmed",
+    "noAutoScan",
+    "noAutoRegister",
+    "registryStructureOnly",
+  ].forEach((flag) => {
+    assert.equal(indexSource.includes(`confirmation-${flag}`), true, `Checkbox fehlt: ${flag}`);
+    assert.equal(appSource.includes(flag), true, `Bestaetigungslogik fehlt: ${flag}`);
   });
+  assert.equal(appSource.includes("allConfirmationsChecked"), true);
+  assert.equal(appSource.includes("installButton.disabled = !ready"), true);
 
   assert.equal(indexSource.includes("UI-Editor Ziel-App-Installer"), true);
   assert.equal(indexSource.includes("targetAppPath"), true);
@@ -110,11 +142,13 @@ async function run() {
   assert.equal(indexSource.includes("targetAppName"), true);
   assert.equal(indexSource.includes("prepare-registry-structure"), true);
   assert.equal(appSource.includes("/api/installer/preview"), true);
+  assert.equal(appSource.includes("/api/installer/install"), true);
   assert.equal(appSource.includes("fetch("), true);
+  assert.equal(indexSource.includes("written-files-output"), true);
 
   assertNoFragments(allNewSource, [["B", "BM"].join("")], "Installer-App-Dateien");
   assertNoFragments(uiSource, ["querySelectorAll", "writeFile", "mkdir", "readdir", "executeTargetAppInstallerPlan"], "Installer-UI");
-  assertNoFragments(uiSource, ["autoScan", "detectElements", "elementDetection", "scanTarget"], "Installer-UI");
+  assertNoFragments(uiSource, ["detectElements", "elementDetection", "scanTarget", "autoDetect", ["B", "BM"].join("")], "Installer-UI");
 
   const { createInstallerAppServer } = require(path.join(REPO_ROOT, SERVER_PATH));
   const server = createInstallerAppServer();
@@ -141,6 +175,49 @@ async function run() {
     assert.equal(response.body.preview.willRegisterElements, false);
     assert.deepEqual(response.body.errors, []);
     assert.equal(fs.existsSync(targetRoot), false, "Preview darf keine Ziel-App-Dateien erzeugen.");
+
+    const blockedInstallResponse = await requestJson(port, "/api/installer/install", {
+      targetAppPath: targetRoot,
+      targetAppId: "neutral-target-app",
+      targetAppName: "Neutral Target App",
+      selectedMode: "prepare-registry-structure",
+      confirmation: {
+        installationConfirmed: true,
+        targetAppSelected: true,
+      },
+    });
+
+    assert.equal(blockedInstallResponse.statusCode, 400);
+    assert.equal(blockedInstallResponse.body.ok, false);
+    assert.deepEqual(blockedInstallResponse.body.writtenFiles, []);
+    assert.equal(fs.existsSync(targetRoot), false, "Ohne vollstaendige Bestaetigung darf nichts geschrieben werden.");
+
+    const allowedFiles = [
+      "uiEditor/README.md",
+      "uiEditor/tests/uiEditorRegistry.test.cjs",
+      "uiEditor/uiEditorRegistry.js",
+      "uiEditor/uiEditorRules.md",
+    ];
+    const installResponse = await requestJson(port, "/api/installer/install", {
+      targetAppPath: targetRoot,
+      targetAppId: "neutral-target-app",
+      targetAppName: "Neutral Target App",
+      selectedMode: "prepare-registry-structure",
+      confirmation: {
+        installationConfirmed: true,
+        targetAppSelected: true,
+        installPathConfirmed: true,
+        noAutoScan: true,
+        noAutoRegister: true,
+        registryStructureOnly: true,
+      },
+    });
+
+    assert.equal(installResponse.statusCode, 200);
+    assert.equal(installResponse.body.ok, true);
+    assert.deepEqual(installResponse.body.writtenFiles.slice().sort(), allowedFiles);
+    assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles);
+    assert.deepEqual(installResponse.body.errors, []);
   } finally {
     await closeServer(server);
   }

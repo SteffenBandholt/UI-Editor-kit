@@ -12,8 +12,8 @@
         <p class="eyebrow">Lokale Preview-App</p>
         <h1 id="app-title">UI-Editor Ziel-App-Installer</h1>
         <p class="intro">
-          Diese Startoberflaeche erzeugt nur einen Installer-Plan und eine Preview. Sie fuehrt keine Installation aus
-          und veraendert keine Ziel-App.
+          Diese Startoberflaeche erzeugt zuerst einen Installer-Plan und eine Preview. Erst nach ausdruecklicher
+          Bestaetigung schreibt sie die vorbereitete UI-Editor-Grundstruktur.
         </p>
       </section>
 
@@ -36,6 +36,24 @@
 
           <button type="submit">Installer-Plan pruefen</button>
         </form>
+      </section>
+
+
+      <section id="installation-confirmation-panel" class="panel confirmation-panel" aria-labelledby="confirmation-title" hidden>
+        <h2 id="confirmation-title">Installation bestaetigen</h2>
+        <p>
+          Setze alle Bestaetigungen, damit ausschliesslich die vorbereitete UI-Editor-Grundstruktur geschrieben wird.
+        </p>
+        <div class="confirmation-list">
+          <label><input id="confirmation-installationConfirmed" type="checkbox" /> installationConfirmed</label>
+          <label><input id="confirmation-targetAppSelected" type="checkbox" /> targetAppSelected</label>
+          <label><input id="confirmation-installPathConfirmed" type="checkbox" /> installPathConfirmed</label>
+          <label><input id="confirmation-noAutoScan" type="checkbox" /> noAutoScan</label>
+          <label><input id="confirmation-noAutoRegister" type="checkbox" /> noAutoRegister</label>
+          <label><input id="confirmation-registryStructureOnly" type="checkbox" /> registryStructureOnly</label>
+        </div>
+        <div id="confirmation-status" class="status">Bitte alle Bestaetigungen setzen, bevor Dateien geschrieben werden.</div>
+        <button id="install-button" type="button" disabled>Grundstruktur installieren</button>
       </section>
 
       <section class="panel result-panel" aria-labelledby="result-title">
@@ -62,6 +80,10 @@
           <article>
             <h3>Bestaetigungen</h3>
             <ul id="confirmations-output"></ul>
+          </article>
+          <article>
+            <h3>Geschriebene Dateien</h3>
+            <ul id="written-files-output"></ul>
           </article>
           <article>
             <h3>Fehler</h3>
