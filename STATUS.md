@@ -63,6 +63,7 @@ Aktueller Stand:
 - K18.8 erledigt: Adapter-Planungsgrundlage fuer spaetere echte Ziel-App technisch vorbereitet.
 - K18.9 erledigt: Adapter-Plan-Sicherheitspruefung gegen verbindliche Sicherheitsregeln technisch gebaut.
 - K18.10 erledigt: Ziel-App-Freigabe-Dossier fuer spaetere echte App dokumentarisch erstellt.
+- K19.2 erledigt: UI-Editor-kit Installer-Grundlage fuer Ziel-App-Setup technisch vorbereitet.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -72,9 +73,15 @@ M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 M8 Ziel-App-Bootstrap ist abgeschlossen als Sicherheits- und Vertragsvorbau; keine echte Ziel-App-Anbindung.
 
-Aktueller naechster Bauabschnitt nach K18.10:
+Aktueller Stand nach K19.2:
 
-- K19.0 - Erste echte Ziel-App-Planung festlegen.
+- UI-Editor-kit Installer-Grundlage vorbereitet.
+- Es wird nur ein Installationsplan erzeugt, keine Ziel-App veraendert.
+- Keine automatische UI-Analyse, keine automatische Registry-Erzeugung aus Scan.
+
+Aktueller naechster Bauabschnitt nach K19.2:
+
+- Ziel-App-Setup erst mit ausdruecklichem Installationsauftrag fortsetzen.
 
 ## 4. Statuswerte
 
@@ -122,6 +129,7 @@ Bedeutung:
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
 | I3 | [A] | Aenderungsentwurf-Anzeige | neutrales Change-Draft-ViewModel + Test vorhanden, `npm test` gruen | abgeschlossen |
 | J1 | [x] | Ziel-App-Bootstrap technisch vorbereitet | Plan + neutraler Bootstrap-Vertrag, neutraler Test-Host-Durchstich, Ziel-App-Auswahl, neutraler Minimal-Host, Adapter-Regeln, technisches Adapter-Manifest, neutraler Manifest-Check, Adapter-Manifest-Gate, Adapter-Planungsgrundlage, Adapter-Plan-Sicherheitspruefung und Ziel-App-Freigabe-Dossier vorhanden, `npm test` gruen | nach K18.10 K19.0 erste echte Ziel-App-Planung festlegen |
+| J1 | [x] | UI-Editor-kit Installer-Grundlage fuer Ziel-App-Setup | Installer-Plan-Core + Test vorhanden, `npm test` gruen | erst mit ausdruecklichem Installationsauftrag fortsetzen |
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 
@@ -774,6 +782,20 @@ Ergebnis:
 Nach K18.10 ist M8 abgeschlossen als Sicherheits- und Vertragsvorbau; echte Ziel-App-Anbindung bleibt offen. Nach K18.10 endet der abstrakte M8-Vorbau.
 
 Naechster Bauabschnitt: K19.0 - Erste echte Ziel-App-Planung festlegen.
+
+### K19.2 - UI-Editor-kit Installer-Grundlage fuer Ziel-App-Setup
+
+Status: abgenommen
+
+Ergebnis:
+
+- UI-Editor-kit Installer-Grundlage vorbereitet.
+- Es wird nur ein Installationsplan erzeugt, keine Ziel-App veraendert.
+- Keine automatische UI-Analyse, keine automatische Registry-Erzeugung aus Scan.
+- Keine echte Ziel-App wurde veraendert.
+- Keine BBM-Sonderlogik wurde eingefuehrt.
+- Installer erzeugt nur einen Plan, noch keine Dateien.
+- `npm test` gruen
 
 ## 9. Gesperrte Nebenstrecken
 
