@@ -3,6 +3,7 @@
 
 const fs = require("node:fs");
 const os = require("node:os");
+const { spawn } = require("node:child_process");
 const http = require("node:http");
 const path = require("node:path");
 const { URL } = require("node:url");
@@ -21,6 +22,7 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALLER_APP_ROOT = path.join(REPO_ROOT, "src/installer-app");
 const DEFAULT_PORT = 3210;
 const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+const SELECT_FOLDER_TIMEOUT_MS = 120000;
 
 const CONTENT_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -39,6 +41,11 @@ function createInstallerAppServer() {
 
     if (request.method === "GET" && requestUrl.pathname === "/api/installer/directories") {
       handleDirectoriesRequest(requestUrl, response);
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/installer/select-folder") {
+      handleSelectFolderRequest(response);
       return;
     }
 
@@ -76,6 +83,146 @@ function createInstallerAppServer() {
   });
 }
 
+
+
+function handleSelectFolderRequest(response) {
+  if (process.platform !== "win32") {
+    sendJson(response, 200, {
+      ok: false,
+      selectedPath: null,
+      cancelled: false,
+      errors: [
+        {
+          code: "windows_folder_dialog_not_supported",
+          message: "Der Windows-Ordnerdialog ist nur unter Windows verfügbar.",
+        },
+      ],
+    });
+    return;
+  }
+
+  openWindowsFolderDialog()
+    .then((selectedPath) => {
+      if (!selectedPath) {
+        sendJson(response, 200, {
+          ok: false,
+          selectedPath: null,
+          cancelled: true,
+          errors: [],
+        });
+        return;
+      }
+
+      sendJson(response, 200, {
+        ok: true,
+        selectedPath,
+      });
+    })
+    .catch((error) => {
+      sendJson(response, 500, {
+        ok: false,
+        selectedPath: null,
+        cancelled: false,
+        errors: normalizeInstallerErrors(
+          error,
+          "windows_folder_dialog_failed",
+          "Der Windows-Ordnerdialog konnte nicht geöffnet werden."
+        ),
+      });
+    });
+}
+
+function openWindowsFolderDialog() {
+  const selectedMarker = "__UI_EDITOR_FOLDER_SELECTED__";
+  const cancelledMarker = "__UI_EDITOR_FOLDER_CANCELLED__";
+  const script = `
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = 'Ziel-App-Ordner auswählen'
+$dialog.ShowNewFolderButton = $false
+$result = $dialog.ShowDialog()
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+  Write-Output '${selectedMarker}'
+  Write-Output $dialog.SelectedPath
+} else {
+  Write-Output '${cancelledMarker}'
+}
+`;
+
+  return new Promise((resolve, reject) => {
+    const child = spawn("powershell.exe", ["-NoProfile", "-Sta", "-ExecutionPolicy", "Bypass", "-Command", script], {
+      windowsHide: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      child.kill();
+      reject(createServerError("windows_folder_dialog_timeout", "Der Windows-Ordnerdialog hat nicht rechtzeitig geantwortet."));
+    }, SELECT_FOLDER_TIMEOUT_MS);
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
+      reject(createServerError("windows_folder_dialog_process_failed", error.message));
+    });
+    child.on("close", (exitCode) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
+
+      if (exitCode !== 0) {
+        reject(
+          createServerError(
+            "windows_folder_dialog_failed",
+            stderr.trim() || "Der Windows-Ordnerdialog wurde mit einem Fehler beendet."
+          )
+        );
+        return;
+      }
+
+      const lines = stdout
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const selectedMarkerIndex = lines.indexOf(selectedMarker);
+
+      if (selectedMarkerIndex !== -1) {
+        resolve(lines.slice(selectedMarkerIndex + 1).join("\n").trim());
+        return;
+      }
+
+      if (lines.includes(cancelledMarker) || lines.length === 0) {
+        resolve(null);
+        return;
+      }
+
+      reject(createServerError("windows_folder_dialog_unexpected_output", "Der Windows-Ordnerdialog hat keine gültige Auswahl geliefert."));
+    });
+  });
+}
 
 function handlePathRootsRequest(response) {
   const roots = [];

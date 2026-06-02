@@ -899,6 +899,19 @@ Ergebnis:
 - Keine Ziel-App-Änderung durch Pfadauswahl, kein Scan, keine automatische UI-Erkennung, kein Editor-Panel.
 - `npm test` grün
 
+### K19.12a - Installer-UI vereinfachen: echten Windows-Ordnerdialog öffnen
+
+Status: gebaut
+
+Ergebnis:
+
+- Installer-UI vereinfacht.
+- Der Hauptweg zur Pfadauswahl ist jetzt ein echter Windows-Ordnerdialog über den lokalen Node-Server.
+- Schnellwahl und manuelle Eingabe bleiben erhalten.
+- Die serverseitige Ordnerliste ist nur noch Fallback/sekundär.
+- Keine Ziel-App-Änderung durch Pfadauswahl, kein Scan, keine automatische UI-Erkennung, kein Editor-Panel.
+- `npm test` grün
+
 ## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:

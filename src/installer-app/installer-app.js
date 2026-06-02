@@ -43,6 +43,8 @@ const uninstallPanel = document.getElementById("uninstall-confirmation-panel");
 const uninstallStatus = document.getElementById("uninstall-confirmation-status");
 const uninstallButton = document.getElementById("uninstall-button");
 const removedFilesOutput = document.getElementById("removed-files-output");
+const selectFolderButton = document.getElementById("select-folder-button");
+const folderDialogStatus = document.getElementById("folder-dialog-status");
 const openPathPickerButton = document.getElementById("open-path-picker-button");
 const pathPickerBrowser = document.getElementById("path-picker-browser");
 const pathPickerCurrent = document.getElementById("path-picker-current");
@@ -345,6 +347,33 @@ function renderDirectoryButtons(element, entries, emptyText) {
   });
 }
 
+
+async function selectFolderWithWindowsDialog() {
+  folderDialogStatus.textContent = "Windows-Ordnerdialog wird geöffnet ...";
+  selectFolderButton.disabled = true;
+
+  try {
+    const result = await postJson("/api/installer/select-folder", {});
+
+    if (result.ok && result.selectedPath) {
+      setTargetAppPath(result.selectedPath);
+      folderDialogStatus.textContent = "Ordner übernommen. Ziel-App-Daten wurden automatisch gesetzt.";
+      return;
+    }
+
+    if (result.cancelled) {
+      folderDialogStatus.textContent = "Ordnerauswahl abgebrochen. Es wurde nichts geändert.";
+      return;
+    }
+
+    folderDialogStatus.textContent = (result.errors || []).map((error) => error.message).join(" ") || "Ordner konnte nicht ausgewählt werden.";
+  } catch (error) {
+    folderDialogStatus.textContent = `Ordner konnte nicht ausgewählt werden: ${error.message}`;
+  } finally {
+    selectFolderButton.disabled = false;
+  }
+}
+
 async function loadPathRoots() {
   const result = await getJson("/api/installer/path-roots");
 
@@ -411,6 +440,7 @@ Array.from(document.getElementsByClassName("quick-select-card")).forEach((button
 
 targetAppPathInput.addEventListener("change", () => setTargetAppPath(targetAppPathInput.value.trim()));
 targetAppPathInput.addEventListener("input", updateResultTargetPath);
+selectFolderButton.addEventListener("click", selectFolderWithWindowsDialog);
 openPathPickerButton.addEventListener("click", openPathPicker);
 pathPickerParentButton.addEventListener("click", () => loadDirectories(currentParentPath));
 useCurrentPathButton.addEventListener("click", () => setTargetAppPath(currentPickerPath));

@@ -324,3 +324,39 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.folder-dialog-panel {
+  align-items: center;
+  border: 2px solid #b9d9f8;
+  border-radius: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 18px;
+  background: #f4f9ff;
+}
+
+.folder-dialog-panel h3,
+.folder-dialog-panel p {
+  margin-bottom: 6px;
+}
+
+.folder-dialog-panel button {
+  grid-column: auto;
+}
+
+.path-picker-secondary {
+  background: #fbfcfe;
+  margin-top: 12px;
+}
+
+.path-picker-secondary summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.path-picker-secondary .path-picker-header {
+  margin-top: 16px;
+}

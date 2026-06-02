@@ -142,6 +142,11 @@ async function run() {
   assert.equal(serverSource.includes("/api/installer/install"), true);
   assert.equal(serverSource.includes("/api/installer/uninstall/preview"), true);
   assert.equal(serverSource.includes("/api/installer/uninstall"), true);
+  assert.equal(serverSource.includes("/api/installer/select-folder"), true);
+  assert.equal(serverSource.includes("FolderBrowserDialog"), true);
+  assert.equal(serverSource.includes("System.Windows.Forms"), true);
+  assert.equal(serverSource.includes("powershell.exe"), true);
+  assert.equal(serverSource.includes("child_process"), true);
   assert.equal(serverSource.includes("/api/installer/path-roots"), true);
   assert.equal(serverSource.includes("/api/installer/directories"), true);
   assert.equal(serverSource.includes("fs.readdir"), true);
@@ -156,7 +161,8 @@ async function run() {
   [
     "BBM-Produktiv C:\\01_Projekte\\BBM-Produktiv",
     "UI-Editor-Testziel C:\\01_Projekte\\UI-Editor-Testziel",
-    "Pfad auswählen",
+    "Ordner auswählen",
+    "Ordnerliste laden",
     "Eine Ebene höher",
     "Diesen Ordner verwenden",
     "Installer-Plan prüfen",
@@ -205,13 +211,19 @@ async function run() {
   assert.equal(indexSource.includes("B) Installation"), true);
   assert.equal(indexSource.includes("C) Deinstallation"), true);
   assert.equal(indexSource.includes("D) Ergebnis"), true);
-  assert.equal(indexSource.includes("Pfad auswählen"), true);
+  assert.equal(indexSource.includes("Ordner auswählen"), true);
+  assert.equal(indexSource.includes("Windows-Ordnerdialog"), true);
+  assert.equal(indexSource.includes("Erweiterte Pfadauswahl öffnen"), true);
+  assert.equal(indexSource.includes("Ordnerliste laden"), true);
   assert.equal(indexSource.includes("Diesen Ordner verwenden"), true);
   assert.equal(indexSource.includes("prepare-registry-structure"), true);
   assert.equal(appSource.includes("/api/installer/preview"), true);
   assert.equal(appSource.includes("/api/installer/install"), true);
   assert.equal(appSource.includes("/api/installer/uninstall/preview"), true);
   assert.equal(appSource.includes("/api/installer/uninstall"), true);
+  assert.equal(appSource.includes("/api/installer/select-folder"), true);
+  assert.equal(appSource.includes("selectFolderWithWindowsDialog"), true);
+  assert.equal(appSource.includes("setTargetAppPath(result.selectedPath)"), true);
   assert.equal(appSource.includes("fetch("), true);
   assert.equal(appSource.includes("deriveTargetAppData"), true);
   assert.equal(appSource.includes("createSlug"), true);
@@ -222,6 +234,8 @@ async function run() {
   assert.equal(indexSource.includes("removed-files-output"), true);
 
   assert.equal(serverSource.includes("BBM-Produktiv"), false, "Server darf keine BBM-Sonderlogik enthalten.");
+  assert.equal(packageJson.dependencies, undefined, "Keine externen npm-Abhängigkeiten für den Ordnerdialog erlauben.");
+  assert.equal(indexSource.indexOf("Ordner auswählen") < indexSource.indexOf("Erweiterte Pfadauswahl öffnen"), true);
   assertNoFragments(uiSource, ["querySelectorAll", "writeFile", "mkdir", "readdir", "executeTargetAppInstallerPlan"], "Installer-UI");
   assertNoFragments(uiSource, ["detectElements", "elementDetection", "scanTarget", "autoDetect", "registryAutofill", "editor-panel"], "Installer-UI");
   assertNoFragments(uiSource, ["pruefen", "Bestaetigung", "ausgefuehrt", "geloescht", "Ziel-App Daten"], "Installer-UI");
@@ -240,6 +254,16 @@ async function run() {
     fs.mkdirSync(path.join(pathApiRoot, "beta"));
     fs.writeFileSync(path.join(pathApiRoot, "not-a-directory.txt"), "file", "utf8");
     const beforePathApiFiles = collectRelativeFiles(pathApiRoot);
+
+    if (process.platform !== "win32") {
+      const selectFolderResponse = await requestJson(port, "/api/installer/select-folder", {});
+      assert.equal(selectFolderResponse.statusCode, 200);
+      assert.equal(selectFolderResponse.body.ok, false);
+      assert.equal(selectFolderResponse.body.selectedPath, null);
+      assert.equal(selectFolderResponse.body.cancelled, false);
+      assert.equal(selectFolderResponse.body.errors[0].code, "windows_folder_dialog_not_supported");
+      assert.deepEqual(collectRelativeFiles(pathApiRoot), beforePathApiFiles, "Ordnerdialog-Endpoint darf nichts schreiben oder löschen.");
+    }
 
     const pathRootsResponse = await getJson(port, "/api/installer/path-roots");
     assert.equal(pathRootsResponse.statusCode, 200);
