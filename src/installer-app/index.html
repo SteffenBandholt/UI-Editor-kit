@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI-Editor Ziel-App-Installer</title>
+    <link rel="stylesheet" href="/installer-app.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="app-title">
+        <p class="eyebrow">Lokale Preview-App</p>
+        <h1 id="app-title">UI-Editor Ziel-App-Installer</h1>
+        <p class="intro">
+          Diese Startoberflaeche erzeugt nur einen Installer-Plan und eine Preview. Sie fuehrt keine Installation aus
+          und veraendert keine Ziel-App.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="input-title">
+        <h2 id="input-title">Ziel-App-Daten</h2>
+        <form id="installer-preview-form">
+          <label for="targetAppPath">targetAppPath</label>
+          <input id="targetAppPath" name="targetAppPath" type="text" placeholder="/pfad/zur/ziel-app" required />
+
+          <label for="targetAppId">targetAppId</label>
+          <input id="targetAppId" name="targetAppId" type="text" placeholder="neutral-target-app" required />
+
+          <label for="targetAppName">targetAppName</label>
+          <input id="targetAppName" name="targetAppName" type="text" placeholder="Neutral Target App" required />
+
+          <div class="mode-row">
+            <span>selectedMode</span>
+            <strong id="selectedMode">prepare-registry-structure</strong>
+          </div>
+
+          <button type="submit">Installer-Plan pruefen</button>
+        </form>
+      </section>
+
+      <section class="panel result-panel" aria-labelledby="result-title">
+        <h2 id="result-title">Ergebnis</h2>
+        <div id="status" class="status">Noch keine Preview angefordert.</div>
+
+        <div class="result-grid">
+          <article>
+            <h3>Plan</h3>
+            <pre id="plan-output">{}</pre>
+          </article>
+          <article>
+            <h3>Preview</h3>
+            <pre id="preview-output">{}</pre>
+          </article>
+          <article>
+            <h3>Dateien, die spaeter erstellt wuerden</h3>
+            <ul id="files-output"></ul>
+          </article>
+          <article>
+            <h3>Gesperrte Aktionen</h3>
+            <ul id="blocked-actions-output"></ul>
+          </article>
+          <article>
+            <h3>Bestaetigungen</h3>
+            <ul id="confirmations-output"></ul>
+          </article>
+          <article>
+            <h3>Fehler</h3>
+            <pre id="errors-output">[]</pre>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="/installer-app.js"></script>
+  </body>
+</html>

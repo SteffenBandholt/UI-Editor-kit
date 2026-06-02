@@ -64,6 +64,7 @@ Aktueller Stand:
 - K18.9 erledigt: Adapter-Plan-Sicherheitspruefung gegen verbindliche Sicherheitsregeln technisch gebaut.
 - K18.10 erledigt: Ziel-App-Freigabe-Dossier fuer spaetere echte App dokumentarisch erstellt.
 - K19.2 erledigt: UI-Editor-kit Installer-Grundlage fuer Ziel-App-Setup technisch vorbereitet.
+- K19.4 erledigt: UI-Editor-kit ist als lokale npm-App startbar; Installer-Oberflaeche zeigt Plan und Preview ohne Ziel-App-Aenderung.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -73,13 +74,15 @@ M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 M8 Ziel-App-Bootstrap ist abgeschlossen als Sicherheits- und Vertragsvorbau; keine echte Ziel-App-Anbindung.
 
-Aktueller Stand nach K19.2:
+Aktueller Stand nach K19.4:
 
-- UI-Editor-kit Installer-Grundlage vorbereitet.
-- Es wird nur ein Installationsplan erzeugt, keine Ziel-App veraendert.
-- Keine automatische UI-Analyse, keine automatische Registry-Erzeugung aus Scan.
+- UI-Editor-kit ist als lokale npm-App startbar.
+- Installer-Oberflaeche zeigt Plan und Preview.
+- Keine Ziel-App wird veraendert.
+- Keine Installation wird ausgefuehrt.
+- Kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung.
 
-Aktueller naechster Bauabschnitt nach K19.2:
+Aktueller naechster Bauabschnitt nach K19.4:
 
 - Ziel-App-Setup erst mit ausdruecklichem Installationsauftrag fortsetzen.
 
@@ -808,6 +811,20 @@ Ergebnis:
 - Keine UI-Analyse, kein Scan, keine automatische Registry-Befuellung, keine BBM-Sonderlogik.
 - Installer schreibt nur die erlaubte UI-Editor-Grundstruktur.
 - Ohne Bestaetigung wird nichts geschrieben.
+- `npm test` gruen
+
+### K19.4 - UI-Editor-kit als startbare npm-App mit Installer-Startoberflaeche
+
+Status: abgenommen
+
+Ergebnis:
+
+- UI-Editor-kit ist als lokale npm-App startbar.
+- Installer-Oberflaeche zeigt Plan und Preview.
+- Keine Ziel-App wird veraendert.
+- Keine Installation wird ausgefuehrt.
+- Kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung.
+- Keine BBM-Sonderlogik, keine Fachlogik und keine Fachdaten wurden eingefuehrt.
 - `npm test` gruen
 
 ## 9. Gesperrte Nebenstrecken
