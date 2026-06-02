@@ -77,6 +77,7 @@ function run() {
     [
       "uiEditor/README.md",
       "uiEditor/uiEditorRegistry.js",
+  "uiEditor/targetAppRegistry.js",
       "uiEditor/uiEditorLauncherButton.js",
       "uiEditor/uiEditorLauncherButton.css",
       "uiEditor/uiEditorRules.md",
@@ -98,6 +99,7 @@ function run() {
     [
       "uiEditor/README.md",
       "uiEditor/uiEditorRegistry.js",
+  "uiEditor/targetAppRegistry.js",
       "uiEditor/uiEditorLauncherButton.js",
       "uiEditor/uiEditorLauncherButton.css",
       "uiEditor/uiEditorRules.md",

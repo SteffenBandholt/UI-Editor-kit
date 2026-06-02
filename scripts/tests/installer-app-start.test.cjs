@@ -194,6 +194,7 @@ async function run() {
 
     const allowedFiles = [
       "uiEditor/README.md",
+      "uiEditor/targetAppRegistry.js",
       "uiEditor/tests/uiEditorRegistry.test.cjs",
       "uiEditor/uiEditorLauncherButton.css",
       "uiEditor/uiEditorLauncherButton.js",

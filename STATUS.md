@@ -857,6 +857,19 @@ Ergebnis:
 - Keine Ziel-App-Fachlogik, kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung, keine Speicherung und kein Editor-Panel.
 - `npm test` gruen
 
+
+### K19.10 - Standard-Ziel-App-Vertrag festgelegt
+
+Status: abgenommen
+
+Ergebnis:
+
+- Standard-Ziel-App-Vertrag `uiEditor/targetAppRegistry.js` festgelegt.
+- Der UI-Editor kennt kuenftig nur diesen oeffentlichen Einstieg und keine app-spezifischen internen Registry-Pfade.
+- Original-/Changed-Werte sind im Vertrag vorgesehen, echte Speicherung wird noch nicht ausgefuehrt.
+- Keine BBM-Sonderlogik, kein Scan, keine automatische UI-Erkennung, kein Editor-Panel.
+- `npm test` gruen
+
 ## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:

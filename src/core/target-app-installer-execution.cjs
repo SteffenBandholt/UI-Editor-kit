@@ -10,6 +10,7 @@ const TARGET_APP_INSTALLER_EXECUTION_REQUIRED_INPUTS = Object.freeze(["installer
 const TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES = Object.freeze([
   "uiEditor/README.md",
   "uiEditor/uiEditorRegistry.js",
+  "uiEditor/targetAppRegistry.js",
   "uiEditor/uiEditorLauncherButton.js",
   "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",
@@ -305,6 +306,11 @@ function createTargetFileContent(relativePath) {
 
   if (relativePath === "uiEditor/uiEditorRegistry.js") {
     return `"use strict";\n\nconst uiEditorRegistry = Object.freeze({\n  uiScopes: Object.freeze([\n    Object.freeze({\n      uiScopeId: "uiEditor.global",\n      label: "UI-Editor globale Elemente",\n      elements: Object.freeze([\n        Object.freeze({\n          id: "uiEditor.launcherButton",\n          type: "button",\n          role: "editor-launcher",\n          area: "overlay",\n          position: Object.freeze({ x: 24, y: 24 }),\n          editable: true,\n          allowedOps: Object.freeze(["move", "hide", "show"]),\n          lockedOps: Object.freeze(["delete", "executeTargetAction", "modifyDomainData"]),\n        }),\n      ]),\n    }),\n  ]),\n});\n\nmodule.exports = { uiEditorRegistry };\n`;
+  }
+
+
+  if (relativePath === "uiEditor/targetAppRegistry.js") {
+    return `"use strict";\n\nconst TARGET_APP_REGISTRY_CONTRACT = Object.freeze({\n  contractName: "ui-editor-target-app-registry",\n  contractVersion: "1.0.0",\n  publicEntry: "uiEditor/targetAppRegistry.js",\n});\n\nconst TARGET_APP_INFO = Object.freeze({\n  targetAppId: "target-app",\n  targetAppName: "Target App",\n});\n\nfunction cloneContractObject(value) {\n  return { ...value };\n}\n\nfunction getTargetAppRegistryContractInfo() {\n  return cloneContractObject(TARGET_APP_REGISTRY_CONTRACT);\n}\n\nfunction getTargetAppInfo() {\n  return cloneContractObject(TARGET_APP_INFO);\n}\n\nfunction getAvailableUiScopes() {\n  return [];\n}\n\nfunction getActiveUiScope(context) {\n  const normalizedContext = context && typeof context === "object" ? context : {};\n\n  return typeof normalizedContext.activeUiScope === "string" && normalizedContext.activeUiScope.trim() !== ""\n    ? normalizedContext.activeUiScope\n    : null;\n}\n\nfunction getUiRegistry(uiScope) {\n  return {\n    ok: false,\n    uiScope,\n    elements: [],\n    reason: "unknown-ui-scope",\n  };\n}\n\nfunction getOriginalValues(uiScope) {\n  return {\n    ok: true,\n    uiScope,\n    values: {},\n  };\n}\n\nfunction getChangedValues(uiScope) {\n  return {\n    ok: true,\n    uiScope,\n    values: {},\n  };\n}\n\nfunction saveChangedValues(uiScope, changes) {\n  void changes;\n\n  return {\n    ok: false,\n    uiScope,\n    saved: false,\n    reason: "storage-not-configured",\n  };\n}\n\nmodule.exports = {\n  getTargetAppRegistryContractInfo,\n  getTargetAppInfo,\n  getAvailableUiScopes,\n  getActiveUiScope,\n  getUiRegistry,\n  getOriginalValues,\n  getChangedValues,\n  saveChangedValues,\n};\n`;
   }
 
   if (relativePath === "uiEditor/uiEditorLauncherButton.js") {
