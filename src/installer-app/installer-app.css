@@ -216,3 +216,111 @@ button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
+
+.section-note {
+  color: #526173;
+  margin-bottom: 18px;
+}
+
+.quick-select-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 22px;
+}
+
+.quick-select-card {
+  grid-column: auto;
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 18px;
+  text-align: left;
+  width: 100%;
+}
+
+.quick-select-card span {
+  color: #d8ebff;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.path-picker {
+  border: 1px solid #d9e2ee;
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.path-picker-header,
+.path-picker-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.path-picker-header h3,
+.path-picker-header p {
+  margin-bottom: 6px;
+}
+
+.path-picker-browser[hidden],
+#path-picker-error[hidden] {
+  display: none;
+}
+
+.path-picker-browser {
+  display: grid;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.directory-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding-left: 0;
+}
+
+.directory-list button {
+  grid-column: auto;
+  background: #edf6ff;
+  color: #164a7f;
+  width: 100%;
+}
+
+.directory-list button:hover,
+.directory-list button:focus {
+  background: #dcefff;
+}
+
+.result-summary {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.result-summary p {
+  margin: 0;
+}
+
+.json-details {
+  margin-top: 18px;
+}
+
+.json-details summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .quick-select-grid {
+    grid-template-columns: 1fr;
+  }
+}

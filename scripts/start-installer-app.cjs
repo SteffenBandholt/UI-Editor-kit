@@ -2,6 +2,7 @@
 "use strict";
 
 const fs = require("node:fs");
+const os = require("node:os");
 const http = require("node:http");
 const path = require("node:path");
 const { URL } = require("node:url");
@@ -29,22 +30,34 @@ const CONTENT_TYPES = Object.freeze({
 
 function createInstallerAppServer() {
   return http.createServer((request, response) => {
-    if (request.method === "POST" && request.url === "/api/installer/preview") {
+    const requestUrl = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+
+    if (request.method === "GET" && requestUrl.pathname === "/api/installer/path-roots") {
+      handlePathRootsRequest(response);
+      return;
+    }
+
+    if (request.method === "GET" && requestUrl.pathname === "/api/installer/directories") {
+      handleDirectoriesRequest(requestUrl, response);
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/installer/preview") {
       handleInstallerPreviewRequest(request, response);
       return;
     }
 
-    if (request.method === "POST" && request.url === "/api/installer/install") {
+    if (request.method === "POST" && requestUrl.pathname === "/api/installer/install") {
       handleInstallerInstallRequest(request, response);
       return;
     }
 
-    if (request.method === "POST" && request.url === "/api/installer/uninstall/preview") {
+    if (request.method === "POST" && requestUrl.pathname === "/api/installer/uninstall/preview") {
       handleInstallerUninstallPreviewRequest(request, response);
       return;
     }
 
-    if (request.method === "POST" && request.url === "/api/installer/uninstall") {
+    if (request.method === "POST" && requestUrl.pathname === "/api/installer/uninstall") {
       handleInstallerUninstallRequest(request, response);
       return;
     }
@@ -58,7 +71,85 @@ function createInstallerAppServer() {
       ok: false,
       plan: null,
       preview: null,
-      errors: [{ code: "method_not_allowed", message: "Diese Methode ist fuer die Installer-App nicht erlaubt." }],
+      errors: [{ code: "method_not_allowed", message: "Diese Methode ist für die Installer-App nicht erlaubt." }],
+    });
+  });
+}
+
+
+function handlePathRootsRequest(response) {
+  const roots = [];
+  const fixedProjectRoot = "C:\\01_Projekte";
+  const candidates = [
+    { path: fixedProjectRoot, includeWhenMissing: true },
+    { path: process.cwd(), includeWhenMissing: false },
+    { path: os.homedir(), includeWhenMissing: false },
+  ].filter((candidate) => candidate.path);
+
+  candidates.forEach((candidate) => {
+    const exists = fs.existsSync(candidate.path);
+    const normalizedPath = path.resolve(candidate.path);
+
+    if ((exists || candidate.includeWhenMissing) && !roots.some((root) => root.path === candidate.path || root.path === normalizedPath)) {
+      roots.push({ name: candidate.path, path: candidate.path, exists });
+    }
+  });
+
+  sendJson(response, 200, {
+    ok: true,
+    roots,
+    errors: [],
+  });
+}
+
+function handleDirectoriesRequest(requestUrl, response) {
+  const requestedPath = requestUrl.searchParams.get("path");
+
+  if (!requestedPath) {
+    sendJson(response, 400, {
+      ok: false,
+      currentPath: null,
+      parentPath: null,
+      directories: [],
+      errors: [{ code: "path_required", message: "Es wurde kein Pfad angegeben." }],
+    });
+    return;
+  }
+
+  const currentPath = path.resolve(requestedPath);
+
+  fs.readdir(currentPath, { withFileTypes: true }, (error, entries) => {
+    if (error) {
+      sendJson(response, 400, {
+        ok: false,
+        currentPath,
+        parentPath: null,
+        directories: [],
+        errors: [
+          {
+            code: error.code === "ENOENT" ? "path_not_found" : "path_not_readable",
+            message:
+              error.code === "ENOENT"
+                ? "Der angegebene Pfad existiert nicht."
+                : "Der angegebene Pfad ist nicht lesbar.",
+          },
+        ],
+      });
+      return;
+    }
+
+    const directories = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => ({ name: entry.name, path: path.join(currentPath, entry.name) }))
+      .sort((left, right) => left.name.localeCompare(right.name, "de"));
+    const parentPath = path.dirname(currentPath) === currentPath ? null : path.dirname(currentPath);
+
+    sendJson(response, 200, {
+      ok: true,
+      currentPath,
+      parentPath,
+      directories,
+      errors: [],
     });
   });
 }
@@ -157,7 +248,7 @@ function handleInstallerInstallRequest(request, response) {
         errors: normalizeInstallerErrors(
           error,
           "installer_install_failed",
-          "Installation konnte nicht ausgefuehrt werden."
+          "Installation konnte nicht ausgeführt werden."
         ),
       });
     });
@@ -213,7 +304,7 @@ function handleInstallerUninstallRequest(request, response) {
         errors: normalizeInstallerErrors(
           error,
           "installer_uninstall_failed",
-          "Deinstallation konnte nicht ausgefuehrt werden."
+          "Deinstallation konnte nicht ausgeführt werden."
         ),
       });
     });
@@ -227,7 +318,7 @@ function readJsonBody(request) {
     request.on("data", (chunk) => {
       rawBody += chunk;
       if (Buffer.byteLength(rawBody, "utf8") > MAX_REQUEST_BODY_BYTES) {
-        reject(createServerError("request_body_too_large", "Die Preview-Anfrage ist zu gross."));
+        reject(createServerError("request_body_too_large", "Die Vorschau-Anfrage ist zu groß."));
         request.destroy();
       }
     });
@@ -235,7 +326,7 @@ function readJsonBody(request) {
       try {
         resolve(rawBody.trim() === "" ? {} : JSON.parse(rawBody));
       } catch (error) {
-        reject(createServerError("invalid_json", "Die Preview-Anfrage muss gueltiges JSON enthalten."));
+        reject(createServerError("invalid_json", "Die Vorschau-Anfrage muss gültiges JSON enthalten."));
       }
     });
     request.on("error", (error) => reject(error));
@@ -298,7 +389,7 @@ function startInstallerApp(port = DEFAULT_PORT) {
   });
 
   server.listen(port, "localhost", () => {
-    console.log("UI-Editor Ziel-App-Installer laeuft lokal.");
+    console.log("UI-Editor Ziel-App-Installer läuft lokal.");
     console.log(`URL: ${url}`);
   });
 

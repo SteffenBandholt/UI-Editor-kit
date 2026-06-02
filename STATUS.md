@@ -887,6 +887,18 @@ Ergebnis:
 - Installation/Deinstallation ist damit wiederholbar testbar.
 - `npm test` gruen
 
+### K19.12 - Installer-UI benutzbar machen: Pfadauswahl, Ziel-App-Vorlagen, klare deutsche Texte
+
+Status: gebaut
+
+Ergebnis:
+
+- Installer-UI benutzbar gemacht.
+- Ziel-App-Schnellwahl, serverseitige Pfadauswahl, automatische Ziel-App-Daten und korrigierte deutsche UI-Texte ergänzt.
+- Installation und Deinstallation klar getrennt.
+- Keine Ziel-App-Änderung durch Pfadauswahl, kein Scan, keine automatische UI-Erkennung, kein Editor-Panel.
+- `npm test` grün
+
 ## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:

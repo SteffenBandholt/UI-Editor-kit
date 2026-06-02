@@ -65,6 +65,32 @@ function requestJson(port, pathname, payload) {
   });
 }
 
+function getJson(port, pathname) {
+  return new Promise((resolve, reject) => {
+    const request = http.request(
+      {
+        hostname: "localhost",
+        port,
+        path: pathname,
+        method: "GET",
+      },
+      (response) => {
+        let rawBody = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          rawBody += chunk;
+        });
+        response.on("end", () => {
+          resolve({ statusCode: response.statusCode, body: JSON.parse(rawBody) });
+        });
+      }
+    );
+
+    request.on("error", reject);
+    request.end();
+  });
+}
+
 function collectRelativeFiles(rootPath) {
   const files = [];
 
@@ -116,6 +142,10 @@ async function run() {
   assert.equal(serverSource.includes("/api/installer/install"), true);
   assert.equal(serverSource.includes("/api/installer/uninstall/preview"), true);
   assert.equal(serverSource.includes("/api/installer/uninstall"), true);
+  assert.equal(serverSource.includes("/api/installer/path-roots"), true);
+  assert.equal(serverSource.includes("/api/installer/directories"), true);
+  assert.equal(serverSource.includes("fs.readdir"), true);
+  assert.equal(serverSource.includes("withFileTypes: true"), true);
   assert.equal(serverSource.includes("createTargetAppInstallerPlan"), true);
   assert.equal(serverSource.includes("createTargetAppInstallerExecutionPreview"), true);
   assert.equal(serverSource.includes("executeTargetAppInstallerPlan"), true);
@@ -123,12 +153,19 @@ async function run() {
   assert.equal(serverSource.includes("uninstallTargetAppInstallerArtifacts"), true);
 
   const buttonLabels = collectButtonLabels(indexSource);
-  assert.deepEqual(buttonLabels, [
-    "Installer-Plan pruefen",
-    "Deinstallation pruefen",
+  [
+    "BBM-Produktiv C:\\01_Projekte\\BBM-Produktiv",
+    "UI-Editor-Testziel C:\\01_Projekte\\UI-Editor-Testziel",
+    "Pfad auswählen",
+    "Eine Ebene höher",
+    "Diesen Ordner verwenden",
+    "Installer-Plan prüfen",
+    "Deinstallation prüfen",
     "Grundstruktur installieren",
     "UI-Editor-Artefakte deinstallieren",
-  ]);
+  ].forEach((label) => {
+    assert.equal(buttonLabels.includes(label), true, `Button fehlt: ${label}`);
+  });
   assert.equal(indexSource.includes('id="installation-confirmation-panel"'), true);
   assert.equal(indexSource.includes('id="install-button" type="button" disabled'), true);
   assert.equal(indexSource.includes('id="uninstall-confirmation-panel"'), true);
@@ -163,18 +200,31 @@ async function run() {
   assert.equal(indexSource.includes("targetAppPath"), true);
   assert.equal(indexSource.includes("targetAppId"), true);
   assert.equal(indexSource.includes("targetAppName"), true);
+  assert.equal(indexSource.includes("Ziel-App auswählen"), true);
+  assert.equal(indexSource.includes("A) Ziel-App-Daten"), true);
+  assert.equal(indexSource.includes("B) Installation"), true);
+  assert.equal(indexSource.includes("C) Deinstallation"), true);
+  assert.equal(indexSource.includes("D) Ergebnis"), true);
+  assert.equal(indexSource.includes("Pfad auswählen"), true);
+  assert.equal(indexSource.includes("Diesen Ordner verwenden"), true);
   assert.equal(indexSource.includes("prepare-registry-structure"), true);
   assert.equal(appSource.includes("/api/installer/preview"), true);
   assert.equal(appSource.includes("/api/installer/install"), true);
   assert.equal(appSource.includes("/api/installer/uninstall/preview"), true);
   assert.equal(appSource.includes("/api/installer/uninstall"), true);
   assert.equal(appSource.includes("fetch("), true);
+  assert.equal(appSource.includes("deriveTargetAppData"), true);
+  assert.equal(appSource.includes("createSlug"), true);
+  assert.equal(appSource.includes("BBM-Produktiv"), true);
+  assert.equal(appSource.includes("neutral-target-app"), true);
+  assert.equal(appSource.includes("getJson(`/api/installer/directories?path="), true);
   assert.equal(indexSource.includes("written-files-output"), true);
   assert.equal(indexSource.includes("removed-files-output"), true);
 
-  assertNoFragments(allNewSource, [["B", "BM"].join("")], "Installer-App-Dateien");
+  assert.equal(serverSource.includes("BBM-Produktiv"), false, "Server darf keine BBM-Sonderlogik enthalten.");
   assertNoFragments(uiSource, ["querySelectorAll", "writeFile", "mkdir", "readdir", "executeTargetAppInstallerPlan"], "Installer-UI");
-  assertNoFragments(uiSource, ["detectElements", "elementDetection", "scanTarget", "autoDetect", ["B", "BM"].join("")], "Installer-UI");
+  assertNoFragments(uiSource, ["detectElements", "elementDetection", "scanTarget", "autoDetect", "registryAutofill", "editor-panel"], "Installer-UI");
+  assertNoFragments(uiSource, ["pruefen", "Bestaetigung", "ausgefuehrt", "geloescht", "Ziel-App Daten"], "Installer-UI");
 
   const { createInstallerAppServer } = require(path.join(REPO_ROOT, SERVER_PATH));
   const server = createInstallerAppServer();
@@ -184,6 +234,36 @@ async function run() {
     const port = server.address().port;
     const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-installer-app-target-"));
     fs.rmSync(targetRoot, { recursive: true, force: true });
+
+    const pathApiRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-installer-path-api-"));
+    fs.mkdirSync(path.join(pathApiRoot, "alpha"));
+    fs.mkdirSync(path.join(pathApiRoot, "beta"));
+    fs.writeFileSync(path.join(pathApiRoot, "not-a-directory.txt"), "file", "utf8");
+    const beforePathApiFiles = collectRelativeFiles(pathApiRoot);
+
+    const pathRootsResponse = await getJson(port, "/api/installer/path-roots");
+    assert.equal(pathRootsResponse.statusCode, 200);
+    assert.equal(pathRootsResponse.body.ok, true);
+    assert.equal(pathRootsResponse.body.roots.some((root) => root.path === "C:\\01_Projekte"), true);
+    assert.equal(pathRootsResponse.body.roots.some((root) => root.path === process.cwd()), true);
+    assert.equal(pathRootsResponse.body.roots.some((root) => root.path === os.homedir()), true);
+
+    const directoriesResponse = await getJson(port, `/api/installer/directories?path=${encodeURIComponent(pathApiRoot)}`);
+    assert.equal(directoriesResponse.statusCode, 200);
+    assert.equal(directoriesResponse.body.ok, true);
+    assert.equal(directoriesResponse.body.currentPath, path.resolve(pathApiRoot));
+    assert.equal(directoriesResponse.body.parentPath, path.dirname(path.resolve(pathApiRoot)));
+    assert.deepEqual(directoriesResponse.body.directories.map((entry) => entry.name).sort(), ["alpha", "beta"]);
+    assert.equal(directoriesResponse.body.directories.some((entry) => entry.name === "not-a-directory.txt"), false);
+    assert.deepEqual(collectRelativeFiles(pathApiRoot), beforePathApiFiles, "Pfad-API darf nichts schreiben oder löschen.");
+
+    const missingDirectoriesResponse = await getJson(
+      port,
+      `/api/installer/directories?path=${encodeURIComponent(path.join(pathApiRoot, "missing"))}`
+    );
+    assert.equal(missingDirectoriesResponse.statusCode, 400);
+    assert.equal(missingDirectoriesResponse.body.ok, false);
+    assert.deepEqual(collectRelativeFiles(pathApiRoot), beforePathApiFiles);
 
     const response = await requestJson(port, "/api/installer/preview", {
       targetAppPath: targetRoot,
