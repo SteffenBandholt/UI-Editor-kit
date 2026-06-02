@@ -195,6 +195,8 @@ async function run() {
     const allowedFiles = [
       "uiEditor/README.md",
       "uiEditor/tests/uiEditorRegistry.test.cjs",
+      "uiEditor/uiEditorLauncherButton.css",
+      "uiEditor/uiEditorLauncherButton.js",
       "uiEditor/uiEditorRegistry.js",
       "uiEditor/uiEditorRules.md",
     ];
@@ -217,6 +219,10 @@ async function run() {
     assert.equal(installResponse.body.ok, true);
     assert.deepEqual(installResponse.body.writtenFiles.slice().sort(), allowedFiles);
     assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles);
+    const registry = fs.readFileSync(path.join(targetRoot, "uiEditor/uiEditorRegistry.js"), "utf8");
+    assert.equal(registry.includes("uiEditor.launcherButton"), true);
+    assert.equal(registry.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
+    assert.equal(registry.includes("editable: true"), true);
     assert.deepEqual(installResponse.body.errors, []);
   } finally {
     await closeServer(server);

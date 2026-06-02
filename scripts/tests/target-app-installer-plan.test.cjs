@@ -77,6 +77,8 @@ function run() {
     [
       "uiEditor/README.md",
       "uiEditor/uiEditorRegistry.js",
+      "uiEditor/uiEditorLauncherButton.js",
+      "uiEditor/uiEditorLauncherButton.css",
       "uiEditor/uiEditorRules.md",
       "uiEditor/tests/uiEditorRegistry.test.cjs",
     ],
@@ -96,6 +98,8 @@ function run() {
     [
       "uiEditor/README.md",
       "uiEditor/uiEditorRegistry.js",
+      "uiEditor/uiEditorLauncherButton.js",
+      "uiEditor/uiEditorLauncherButton.css",
       "uiEditor/uiEditorRules.md",
       "uiEditor/tests/uiEditorRegistry.test.cjs",
     ],

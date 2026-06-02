@@ -12,6 +12,8 @@ const TARGET_APP_INSTALLER_ALLOWED_MODES = Object.freeze(["prepare-registry-stru
 const TARGET_APP_INSTALLER_INSTALLABLE_FILES = Object.freeze([
   "uiEditor/README.md",
   "uiEditor/uiEditorRegistry.js",
+  "uiEditor/uiEditorLauncherButton.js",
+  "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",
   "uiEditor/tests/uiEditorRegistry.test.cjs",
 ]);

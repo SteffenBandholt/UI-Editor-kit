@@ -66,6 +66,7 @@ Aktueller Stand:
 - K19.2 erledigt: UI-Editor-kit Installer-Grundlage fuer Ziel-App-Setup technisch vorbereitet.
 - K19.4 erledigt: UI-Editor-kit ist als lokale npm-App startbar; Installer-Oberflaeche zeigt Plan und Preview ohne Ziel-App-Aenderung.
 - K19.5 erledigt: Installer-App kann nach expliziter Bestaetigung die UI-Editor-Grundstruktur schreiben.
+- K19.8 erledigt: UI-Editor-Installer bringt eigenen Launcher-Button als installierbares Artefakt mit und registriert ihn als `uiEditor.launcherButton` mit Default-Position. Keine Ziel-App-Fachlogik, kein Scan, keine Speicherung, kein Editor-Panel.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -75,15 +76,16 @@ M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 M8 Ziel-App-Bootstrap ist abgeschlossen als Sicherheits- und Vertragsvorbau; keine echte Ziel-App-Anbindung.
 
-Aktueller Stand nach K19.5:
+Aktueller Stand nach K19.8:
 
 - UI-Editor-kit ist als lokale npm-App startbar.
 - Installer-Oberflaeche zeigt Plan und Preview.
-- Installation schreibt nach vollstaendiger Bestaetigung nur die UI-Editor-Grundstruktur.
+- Installation schreibt nach vollstaendiger Bestaetigung nur die UI-Editor-Grundstruktur inklusive eigenem Launcher-Button-Artefakt.
+- Registry enthaelt `uiEditor.launcherButton` als verschiebbares, editorfaehiges UI-Editor-Element mit Default-Position.
 - Ohne vollstaendige Bestaetigung wird nichts geschrieben.
-- Kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung.
+- Kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung, keine Speicherung, kein Editor-Panel.
 
-Aktueller naechster Bauabschnitt nach K19.5:
+Aktueller naechster Bauabschnitt nach K19.8:
 
 - Ziel-App-Setup erst mit ausdruecklichem Folgeauftrag ueber die Grundstruktur hinaus fortsetzen.
 
@@ -840,6 +842,19 @@ Ergebnis:
 - Geschrieben werden ausschliesslich `uiEditor/README.md`, `uiEditor/uiEditorRegistry.js`, `uiEditor/uiEditorRules.md` und `uiEditor/tests/uiEditorRegistry.test.cjs`.
 - Keine UI-Analyse, kein Scan, keine automatische Registry-Befuellung, keine BBM-Sonderlogik.
 - Ohne Bestaetigung wird nichts geschrieben.
+- `npm test` gruen
+
+### K19.8 - UI-Editor installiert eigenen Launcher-Button und registriert ihn
+
+Status: abgenommen
+
+Ergebnis:
+
+- UI-Editor-Installer bringt einen eigenen Launcher-Button als installierbares Artefakt mit.
+- Installer-Plan und Installer-Ausfuehrung enthalten `uiEditor/uiEditorLauncherButton.js` und `uiEditor/uiEditorLauncherButton.css`.
+- Die installierte Registry registriert `uiEditor.launcherButton` als Button mit Rolle `editor-launcher`, Bereich `overlay`, Default-Position und `editable: true`.
+- Der Launcher-Button ist fuer `move`, `hide` und `show` freigegeben; `delete`, `executeTargetAction` und `modifyDomainData` sind gesperrt.
+- Keine Ziel-App-Fachlogik, kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung, keine Speicherung und kein Editor-Panel.
 - `npm test` gruen
 
 ## 9. Gesperrte Nebenstrecken
