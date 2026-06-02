@@ -35,6 +35,7 @@
           </div>
 
           <button type="submit">Installer-Plan pruefen</button>
+          <button id="uninstall-preview-button" type="button">Deinstallation pruefen</button>
         </form>
       </section>
 
@@ -54,6 +55,23 @@
         </div>
         <div id="confirmation-status" class="status">Bitte alle Bestaetigungen setzen, bevor Dateien geschrieben werden.</div>
         <button id="install-button" type="button" disabled>Grundstruktur installieren</button>
+      </section>
+
+      <section id="uninstall-confirmation-panel" class="panel confirmation-panel" aria-labelledby="uninstall-confirmation-title" hidden>
+        <h2 id="uninstall-confirmation-title">Deinstallation</h2>
+        <p>
+          Setze alle Bestaetigungen, damit nur bekannte UI-Editor-Installer-Artefakte entfernt werden.
+          Ziel-App-Quellen und unbekannte Dateien bleiben unangetastet.
+        </p>
+        <div class="confirmation-list">
+          <label><input id="uninstall-confirmation-uninstallConfirmed" type="checkbox" /> uninstallConfirmed</label>
+          <label><input id="uninstall-confirmation-targetAppSelected" type="checkbox" /> targetAppSelected</label>
+          <label><input id="uninstall-confirmation-installPathConfirmed" type="checkbox" /> installPathConfirmed</label>
+          <label><input id="uninstall-confirmation-removeUiEditorArtifactsOnly" type="checkbox" /> removeUiEditorArtifactsOnly</label>
+          <label><input id="uninstall-confirmation-keepTargetAppSource" type="checkbox" /> keepTargetAppSource</label>
+        </div>
+        <div id="uninstall-confirmation-status" class="status">Bitte erst die Deinstallation pruefen.</div>
+        <button id="uninstall-button" type="button" disabled>UI-Editor-Artefakte deinstallieren</button>
       </section>
 
       <section class="panel result-panel" aria-labelledby="result-title">
@@ -84,6 +102,10 @@
           <article>
             <h3>Geschriebene Dateien</h3>
             <ul id="written-files-output"></ul>
+          </article>
+          <article>
+            <h3>Entfernte Dateien</h3>
+            <ul id="removed-files-output"></ul>
           </article>
           <article>
             <h3>Fehler</h3>

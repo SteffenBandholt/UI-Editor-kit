@@ -114,14 +114,25 @@ async function run() {
 
   assert.equal(serverSource.includes("/api/installer/preview"), true);
   assert.equal(serverSource.includes("/api/installer/install"), true);
+  assert.equal(serverSource.includes("/api/installer/uninstall/preview"), true);
+  assert.equal(serverSource.includes("/api/installer/uninstall"), true);
   assert.equal(serverSource.includes("createTargetAppInstallerPlan"), true);
   assert.equal(serverSource.includes("createTargetAppInstallerExecutionPreview"), true);
   assert.equal(serverSource.includes("executeTargetAppInstallerPlan"), true);
+  assert.equal(serverSource.includes("createTargetAppInstallerUninstallPreview"), true);
+  assert.equal(serverSource.includes("uninstallTargetAppInstallerArtifacts"), true);
 
   const buttonLabels = collectButtonLabels(indexSource);
-  assert.deepEqual(buttonLabels, ["Installer-Plan pruefen", "Grundstruktur installieren"]);
+  assert.deepEqual(buttonLabels, [
+    "Installer-Plan pruefen",
+    "Deinstallation pruefen",
+    "Grundstruktur installieren",
+    "UI-Editor-Artefakte deinstallieren",
+  ]);
   assert.equal(indexSource.includes('id="installation-confirmation-panel"'), true);
   assert.equal(indexSource.includes('id="install-button" type="button" disabled'), true);
+  assert.equal(indexSource.includes('id="uninstall-confirmation-panel"'), true);
+  assert.equal(indexSource.includes('id="uninstall-button" type="button" disabled'), true);
   [
     "installationConfirmed",
     "targetAppSelected",
@@ -135,6 +146,18 @@ async function run() {
   });
   assert.equal(appSource.includes("allConfirmationsChecked"), true);
   assert.equal(appSource.includes("installButton.disabled = !ready"), true);
+  [
+    "uninstallConfirmed",
+    "targetAppSelected",
+    "installPathConfirmed",
+    "removeUiEditorArtifactsOnly",
+    "keepTargetAppSource",
+  ].forEach((flag) => {
+    assert.equal(indexSource.includes(`uninstall-confirmation-${flag}`), true, `Deinstallations-Checkbox fehlt: ${flag}`);
+    assert.equal(appSource.includes(flag), true, `Deinstallations-Bestaetigungslogik fehlt: ${flag}`);
+  });
+  assert.equal(appSource.includes("allUninstallConfirmationsChecked"), true);
+  assert.equal(appSource.includes("uninstallButton.disabled = !ready"), true);
 
   assert.equal(indexSource.includes("UI-Editor Ziel-App-Installer"), true);
   assert.equal(indexSource.includes("targetAppPath"), true);
@@ -143,8 +166,11 @@ async function run() {
   assert.equal(indexSource.includes("prepare-registry-structure"), true);
   assert.equal(appSource.includes("/api/installer/preview"), true);
   assert.equal(appSource.includes("/api/installer/install"), true);
+  assert.equal(appSource.includes("/api/installer/uninstall/preview"), true);
+  assert.equal(appSource.includes("/api/installer/uninstall"), true);
   assert.equal(appSource.includes("fetch("), true);
   assert.equal(indexSource.includes("written-files-output"), true);
+  assert.equal(indexSource.includes("removed-files-output"), true);
 
   assertNoFragments(allNewSource, [["B", "BM"].join("")], "Installer-App-Dateien");
   assertNoFragments(uiSource, ["querySelectorAll", "writeFile", "mkdir", "readdir", "executeTargetAppInstallerPlan"], "Installer-UI");
@@ -225,6 +251,63 @@ async function run() {
     assert.equal(registry.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
     assert.equal(registry.includes("editable: true"), true);
     assert.deepEqual(installResponse.body.errors, []);
+
+    const uninstallPreviewResponse = await requestJson(port, "/api/installer/uninstall/preview", {
+      targetAppPath: targetRoot,
+    });
+    assert.equal(uninstallPreviewResponse.statusCode, 200);
+    assert.equal(uninstallPreviewResponse.body.ok, true);
+    assert.equal(uninstallPreviewResponse.body.preview.willRemoveFiles, false);
+    assert.equal(uninstallPreviewResponse.body.preview.willRemoveSourceFiles, false);
+    assert.equal(uninstallPreviewResponse.body.preview.willRemoveUnknownFiles, false);
+    assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles, "Deinstallations-Preview darf nichts entfernen.");
+
+    const blockedUninstallResponse = await requestJson(port, "/api/installer/uninstall", {
+      targetAppPath: targetRoot,
+      confirmation: {
+        uninstallConfirmed: true,
+      },
+    });
+    assert.equal(blockedUninstallResponse.statusCode, 400);
+    assert.equal(blockedUninstallResponse.body.ok, false);
+    assert.deepEqual(blockedUninstallResponse.body.removedFiles, []);
+    assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles);
+
+    const uninstallResponse = await requestJson(port, "/api/installer/uninstall", {
+      targetAppPath: targetRoot,
+      confirmation: {
+        uninstallConfirmed: true,
+        targetAppSelected: true,
+        installPathConfirmed: true,
+        removeUiEditorArtifactsOnly: true,
+        keepTargetAppSource: true,
+      },
+    });
+    assert.equal(uninstallResponse.statusCode, 200);
+    assert.equal(uninstallResponse.body.ok, true);
+    assert.deepEqual(uninstallResponse.body.removedFiles.slice().sort(), allowedFiles);
+    assert.deepEqual(collectRelativeFiles(targetRoot), []);
+
+    fs.mkdirSync(path.join(targetRoot, "uiEditor"), { recursive: true });
+    fs.writeFileSync(path.join(targetRoot, "uiEditor/custom-note.md"), "unknown", "utf8");
+    const unknownUninstallResponse = await requestJson(port, "/api/installer/uninstall", {
+      targetAppPath: targetRoot,
+      confirmation: {
+        uninstallConfirmed: true,
+        targetAppSelected: true,
+        installPathConfirmed: true,
+        removeUiEditorArtifactsOnly: true,
+        keepTargetAppSource: true,
+      },
+    });
+    assert.equal(unknownUninstallResponse.statusCode, 400);
+    assert.equal(unknownUninstallResponse.body.ok, false);
+    assert.equal(
+      unknownUninstallResponse.body.errors.some((error) => error.code === "unknown-ui-editor-files"),
+      true
+    );
+    assert.deepEqual(unknownUninstallResponse.body.removedFiles, []);
+    assert.equal(fs.existsSync(path.join(targetRoot, "uiEditor/custom-note.md")), true);
   } finally {
     await closeServer(server);
   }

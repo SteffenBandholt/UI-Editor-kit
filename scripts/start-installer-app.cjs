@@ -11,6 +11,10 @@ const {
   createTargetAppInstallerExecutionPreview,
   executeTargetAppInstallerPlan,
 } = require("../src/core/target-app-installer-execution.cjs");
+const {
+  createTargetAppInstallerUninstallPreview,
+  uninstallTargetAppInstallerArtifacts,
+} = require("../src/core/target-app-installer-uninstall.cjs");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALLER_APP_ROOT = path.join(REPO_ROOT, "src/installer-app");
@@ -32,6 +36,16 @@ function createInstallerAppServer() {
 
     if (request.method === "POST" && request.url === "/api/installer/install") {
       handleInstallerInstallRequest(request, response);
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/api/installer/uninstall/preview") {
+      handleInstallerUninstallPreviewRequest(request, response);
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/api/installer/uninstall") {
+      handleInstallerUninstallRequest(request, response);
       return;
     }
 
@@ -144,6 +158,62 @@ function handleInstallerInstallRequest(request, response) {
           error,
           "installer_install_failed",
           "Installation konnte nicht ausgefuehrt werden."
+        ),
+      });
+    });
+}
+
+function handleInstallerUninstallPreviewRequest(request, response) {
+  readJsonBody(request)
+    .then((body) => {
+      const previewResult = createTargetAppInstallerUninstallPreview({
+        targetAppPath: body.targetAppPath,
+        confirmation: body.confirmation || {},
+      });
+
+      sendJson(response, previewResult.ok ? 200 : 400, {
+        ok: previewResult.ok,
+        preview: previewResult.preview,
+        errors: previewResult.errors,
+      });
+    })
+    .catch((error) => {
+      sendJson(response, 400, {
+        ok: false,
+        preview: null,
+        errors: normalizeInstallerErrors(
+          error,
+          "installer_uninstall_preview_failed",
+          "Deinstallations-Preview konnte nicht erzeugt werden."
+        ),
+      });
+    });
+}
+
+function handleInstallerUninstallRequest(request, response) {
+  readJsonBody(request)
+    .then((body) => {
+      const uninstallResult = uninstallTargetAppInstallerArtifacts({
+        targetAppPath: body.targetAppPath,
+        confirmation: body.confirmation,
+      });
+
+      sendJson(response, uninstallResult.ok ? 200 : 400, {
+        ok: uninstallResult.ok,
+        removedFiles: uninstallResult.removedFiles,
+        removedDirectories: uninstallResult.removedDirectories,
+        errors: uninstallResult.errors,
+      });
+    })
+    .catch((error) => {
+      sendJson(response, 400, {
+        ok: false,
+        removedFiles: [],
+        removedDirectories: [],
+        errors: normalizeInstallerErrors(
+          error,
+          "installer_uninstall_failed",
+          "Deinstallation konnte nicht ausgefuehrt werden."
         ),
       });
     });

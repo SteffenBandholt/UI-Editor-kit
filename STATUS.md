@@ -67,6 +67,7 @@ Aktueller Stand:
 - K19.4 erledigt: UI-Editor-kit ist als lokale npm-App startbar; Installer-Oberflaeche zeigt Plan und Preview ohne Ziel-App-Aenderung.
 - K19.5 erledigt: Installer-App kann nach expliziter Bestaetigung die UI-Editor-Grundstruktur schreiben.
 - K19.8 erledigt: UI-Editor-Installer bringt eigenen Launcher-Button als installierbares Artefakt mit und registriert ihn als `uiEditor.launcherButton` mit Default-Position. Keine Ziel-App-Fachlogik, kein Scan, keine Speicherung, kein Editor-Panel.
+- K19.11 erledigt: Installer-Deinstallationsroutine vorbereitet; bekannte UI-Editor-Artefakte koennen nach expliziter Bestaetigung sicher entfernt werden.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -76,16 +77,18 @@ M6 Layoutspeicherung ist nach gruenem `npm test` abgeschlossen und abgenommen.
 M7 Editor-UI ist nach gruenem `npm test` abgeschlossen und abgenommen; I1, I2 und I3 sind umgesetzt.
 M8 Ziel-App-Bootstrap ist abgeschlossen als Sicherheits- und Vertragsvorbau; keine echte Ziel-App-Anbindung.
 
-Aktueller Stand nach K19.8:
+Aktueller Stand nach K19.11:
 
 - UI-Editor-kit ist als lokale npm-App startbar.
 - Installer-Oberflaeche zeigt Plan und Preview.
 - Installation schreibt nach vollstaendiger Bestaetigung nur die UI-Editor-Grundstruktur inklusive eigenem Launcher-Button-Artefakt.
 - Registry enthaelt `uiEditor.launcherButton` als verschiebbares, editorfaehiges UI-Editor-Element mit Default-Position.
 - Ohne vollstaendige Bestaetigung wird nichts geschrieben.
+- Deinstallation entfernt nach vollstaendiger Bestaetigung nur bekannte UI-Editor-Installer-Artefakte und blockiert unbekannte Dateien unter `uiEditor/`.
+- Ziel-App-Quellen ausserhalb `uiEditor/` bleiben bei Installation und Deinstallation unangetastet.
 - Kein Scan, keine automatische UI-Erkennung, keine automatische Registry-Befuellung, keine Speicherung, kein Editor-Panel.
 
-Aktueller naechster Bauabschnitt nach K19.8:
+Aktueller naechster Bauabschnitt nach K19.11:
 
 - Ziel-App-Setup erst mit ausdruecklichem Folgeauftrag ueber die Grundstruktur hinaus fortsetzen.
 
@@ -868,6 +871,20 @@ Ergebnis:
 - Der UI-Editor kennt kuenftig nur diesen oeffentlichen Einstieg und keine app-spezifischen internen Registry-Pfade.
 - Original-/Changed-Werte sind im Vertrag vorgesehen, echte Speicherung wird noch nicht ausgefuehrt.
 - Keine BBM-Sonderlogik, kein Scan, keine automatische UI-Erkennung, kein Editor-Panel.
+- `npm test` gruen
+
+
+### K19.11 - Installer-Deinstallationsroutine fuer wiederholbare Ziel-App-Tests
+
+Status: abgenommen
+
+Ergebnis:
+
+- Installer-Deinstallationsroutine vorbereitet.
+- Installierte UI-Editor-Artefakte koennen nach expliziter Bestaetigung sicher entfernt werden.
+- Es werden nur bekannte Installer-Artefakte geloescht, keine Ziel-App-Quellen, keine Fachlogik und keine unbekannten Dateien.
+- Unbekannte Dateien unter `uiEditor/` blockieren die Deinstallation ohne Teil-Loeschung.
+- Installation/Deinstallation ist damit wiederholbar testbar.
 - `npm test` gruen
 
 ## 9. Gesperrte Nebenstrecken
