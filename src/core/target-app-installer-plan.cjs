@@ -14,7 +14,6 @@ const TARGET_APP_INSTALLER_INSTALLABLE_FILES = Object.freeze([
   "uiEditor/uiEditorRegistry.js",
   "uiEditor/uiEditorRules.md",
   "uiEditor/tests/uiEditorRegistry.test.cjs",
-  "uiEditor/uiScopes/exampleUiScope.js",
 ]);
 
 const TARGET_APP_INSTALLER_BLOCKED_ACTIONS = Object.freeze([

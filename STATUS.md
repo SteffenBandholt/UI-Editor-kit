@@ -797,6 +797,19 @@ Ergebnis:
 - Installer erzeugt nur einen Plan, noch keine Dateien.
 - `npm test` gruen
 
+### K19.3 - Ziel-App-Installer-Ausfuehrung vorbereiten
+
+Status: abgenommen
+
+Ergebnis:
+
+- Installer-Ausfuehrung vorbereitet.
+- Dateien werden nur nach expliziter Bestaetigung geschrieben.
+- Keine UI-Analyse, kein Scan, keine automatische Registry-Befuellung, keine BBM-Sonderlogik.
+- Installer schreibt nur die erlaubte UI-Editor-Grundstruktur.
+- Ohne Bestaetigung wird nichts geschrieben.
+- `npm test` gruen
+
 ## 9. Gesperrte Nebenstrecken
 
 Diese Punkte sind gesperrt, solange keine ausdrueckliche LV-Ergaenzung erfolgt:
