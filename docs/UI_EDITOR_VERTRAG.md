@@ -52,6 +52,8 @@ Der Editor darf keine Elemente erraten.
 
 Der Editor darf keine Elemente selbst klassifizieren.
 
+Der Editor analysiert keine bestehende UI, scannt keine bestehende UI, erzeugt keine automatische UI-Elementliste und migriert keine Legacy-UI automatisch.
+
 ## Parent-Regel
 
 Jedes Element ausser Root braucht einen Parent.
@@ -65,6 +67,7 @@ Parent-Beziehungen duerfen nicht geraten werden.
 - Eine Auswahl = genau ein Ziel.
 - Eine Aenderung = nur dieses Ziel.
 - Keine automatische Aenderung von Parent, Child oder Geschwistern ohne ausdruecklich erlaubte Operation.
+- Keine UI-Analyse, Bestandsanalyse, UI-Erkennung oder automatische Klassifizierung bestehender UI.
 - Der Editor aendert Layout und Darstellung, keine Fachlogik.
 - Der Editor erzeugt, aendert oder loescht keine Fachdaten.
 - Der Editor arbeitet nur mit erlaubten Operationen aus `allowedOps`.

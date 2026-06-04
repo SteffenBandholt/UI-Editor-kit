@@ -12,6 +12,7 @@ Der Editor raet nicht.
 Der Editor scannt nicht blind.
 Der Editor erfindet keine Elemente.
 Der Editor arbeitet nur mit der freigegebenen UI-Elementliste.
+Der Editor analysiert keine bestehende UI und migriert keine Legacy-UI automatisch.
 
 ## 2. Grundprinzip
 
@@ -22,6 +23,8 @@ Diese Beschreibung besteht aus einer klassifizierten UI-Elementliste.
 Diese Liste enthaelt alle Elemente, die der Editor sehen, pruefen oder veraendern darf.
 
 Nicht registrierte Elemente gelten fuer den Editor als nicht vorhanden.
+
+Bestehende UI wird nicht nachtraeglich per Bestandsanalyse, UI-Erkennung oder UI-Scan in eine automatische UI-Elementliste ueberfuehrt.
 
 ## 3. Eigenstaendige Editor-App
 

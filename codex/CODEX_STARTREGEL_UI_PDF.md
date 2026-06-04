@@ -31,3 +31,5 @@ Erst entscheiden, dann bauen.
 Der Editor liest spaeter nur die fertigen Metadaten.
 
 Der Editor raet nicht und scannt keine Fachlogik.
+
+Codex analysiert keine bestehende UI, scannt keine bestehende UI, erzeugt keine automatische UI-Elementliste und migriert keine Legacy-UI automatisch.

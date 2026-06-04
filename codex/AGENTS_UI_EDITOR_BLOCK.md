@@ -68,7 +68,11 @@ Je nach Elementtyp sind weitere Angaben erforderlich, zum Beispiel:
 - Keine Metaspalte ohne Rolle.
 - Kein Button ohne klare Trennung zwischen UI-Element und fachlicher Aktion.
 - Keine Parent-Struktur raten.
-- Keine UI blind scannen.
+- Keine bestehende UI analysieren.
+- Keine bestehende UI scannen.
+- Keine automatische Bestandserkennung.
+- Keine automatische UI-Elementliste erzeugen.
+- Keine bestehende Legacy-UI automatisch migrieren.
 - Keine Elemente erfinden.
 - Keine Fachdaten in IDs oder Metadaten schreiben.
 
@@ -106,6 +110,8 @@ Eine editorfaehige UI ist erst fertig, wenn der Vertragscheck gruen ist.
 Wenn die Entwurfsentscheidung fehlt oder unvollstaendig ist: STOPP.
 
 Wenn Pflichtangaben fuer editorrelevante Elemente fehlen: STOPP.
+
+Wenn der Auftrag auf UI-Analyse, Bestandsanalyse, UI-Erkennung, UI-Scan oder automatische Migration bestehender UI hinauslaeuft: STOPP.
 
 Wenn Tabellen, Metaspalten, Buttons oder Fachaktionen nicht sauber klassifiziert sind: STOPP.
 

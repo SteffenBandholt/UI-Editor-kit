@@ -18,6 +18,8 @@ Der UI-Editor arbeitet nur mit einer von der Ziel-App gelieferten, klassifiziert
 
 Nicht registrierte Elemente sind fuer den Editor nicht vorhanden.
 
+Die Regelpaket-Installation ist nur ein Ziel-App-Regelpaket-Bootstrap. Sie analysiert, scannt, erkennt, registriert oder migriert keine bestehende UI.
+
 ## 3. Voraussetzungen in der Ziel-App
 
 Eine Ziel-App muss mindestens bereitstellen:
@@ -161,6 +163,10 @@ Die Ziel-App darf dem Editor nicht erlauben:
 
 - Fachlogik auszufuehren
 - Fachdaten zu aendern
+- bestehende UI zu analysieren
+- bestehende UI zu scannen
+- eine automatische Bestandserkennung oder UI-Elementliste zu erzeugen
+- bestehende Legacy-UIs automatisch zu migrieren
 - Datenbankaktionen auszufuehren
 - fachliche Buttons auszufuehren
 - Speicher-, Loesch-, Upload-, Import- oder Exportaktionen als Editoroperation zu behandeln

@@ -116,6 +116,10 @@ function assertNoTerms(text, terms, label) {
   });
 }
 
+function assertIncludes(text, fragment, label) {
+  assert.equal(text.includes(fragment), true, `${label} enthaelt nicht: ${fragment}`);
+}
+
 function run() {
   MUST_EXIST.forEach((relativePath) => {
     assert.equal(fs.existsSync(path.join(REPO_ROOT, relativePath)), true, `Datei fehlt: ${relativePath}`);
@@ -134,7 +138,16 @@ function run() {
     "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/target-app-adapter-manifest-check.test.cjs && node scripts/tests/target-app-adapter-release-gate.test.cjs && node scripts/tests/target-app-adapter-plan.test.cjs && node scripts/tests/target-app-adapter-plan-safety-check.test.cjs && node scripts/tests/target-app-installer-plan.test.cjs && node scripts/tests/target-app-installer-execution.test.cjs && node scripts/tests/target-app-installer-uninstall.test.cjs && node scripts/tests/target-app-registry-contract.test.cjs && node scripts/tests/install-ui-editor-to-target-cli.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs && node scripts/tests/installer-app-start.test.cjs"
   );
 
-  assertNoTerms(read("README.md"), FORBIDDEN_TERMS, "README");
+  const readme = read("README.md");
+  assertNoTerms(readme, FORBIDDEN_TERMS, "README");
+  assertIncludes(readme, "Offizieller Ziel-App-Regelpaket-Bootstrap", "README");
+  assertIncludes(readme, "CLI-Regelpaket-Installation", "README");
+  assertIncludes(readme, "Browser-Installer existiert weiterhin, ist aber nicht mehr der empfohlene Standardweg", "README");
+  assertIncludes(readme, "node scripts/install-ui-editor-to-target.cjs", "README");
+  assertIncludes(readme, "keine bestehende UI analysieren", "README");
+  assertIncludes(readme, "keine bestehende UI scannen", "README");
+  assertIncludes(readme, "keine bestehende UI migrieren", "README");
+  assertIncludes(readme, "keine automatische UI-Elementliste erzeugen", "README");
   assertNoTerms(read("docs/UI_EDITOR_VERTRAG.md"), FORBIDDEN_TERMS, "UI_EDITOR_VERTRAG");
   assertNoTerms(read("docs/NEUTRAL_THEME_TOKENS.md"), ["Browser-Demo", "browser demo", "mini-inspector"], "NEUTRAL_THEME_TOKENS");
 

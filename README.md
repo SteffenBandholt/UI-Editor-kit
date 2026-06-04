@@ -48,9 +48,9 @@ Der entscheidende Moment liegt vor der Umsetzung:
 4. Die UI/PDF wird mit klaren Editor-Metadaten erstellt.
 5. Der Editor liest spaeter nur diese Metadaten.
 
-## Offizielle Ziel-App-Installation
+## Offizieller Ziel-App-Regelpaket-Bootstrap
 
-Der bevorzugte Installationsweg fuer Ziel-Apps ist die CLI.
+Der bevorzugte Weg fuer Ziel-Apps ist die CLI-Regelpaket-Installation.
 
 Der Browser-Installer existiert weiterhin, ist aber nicht mehr der empfohlene Standardweg fuer den praktischen Trockenlauf oder die normale Installation.
 
@@ -76,7 +76,7 @@ Nach der Installation wird der Ziel-App-Test in der Ziel-App ausgefuehrt:
 node "C:\01_Projekte\UI-Editor-Testziel\uiEditor\tests\uiEditorInstallation.test.cjs"
 ```
 
-Der CLI-Installer prueft den Zielpfad per Preflight, schreibt nur das vorbereitende Regel- und Pruefpaket und gibt einen strukturierten Installations-/Sicherheitsreport aus.
+Der CLI-Installer prueft den Zielpfad per Ziel-App-Vorbereitungscheck, schreibt nur das vorbereitende Regelpaket und die Pruefinfrastruktur und gibt einen strukturierten Installations-/Sicherheitsreport aus.
 
 Installiert werden:
 
@@ -96,10 +96,16 @@ Installiert werden:
 
 Ausdruecklich nicht ausgefuehrt wird:
 
-- keine Ziel-UI lesen
+- keine bestehende UI analysieren
+- keine bestehende UI lesen
+- keine bestehende UI scannen
 - kein UI-Scan
+- keine automatische Bestandserkennung
 - keine automatische Elementerkennung
 - keine automatische Registrierung
+- keine automatische UI-Elementliste erzeugen
+- keine bestehende UI migrieren
+- keine automatische Migration
 - keine Ziel-App-UI aendern
 - keine Fachlogik aendern
 - keine Fachdaten aendern

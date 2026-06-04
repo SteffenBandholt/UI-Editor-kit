@@ -10,6 +10,8 @@ Der Grundsatz lautet:
 
 Eine editorfaehige UI ist erst fertig, wenn ihre relevanten Elemente klassifiziert, registriert und erfolgreich geprueft wurden.
 
+Der Ziel-App-Regelpaket-Bootstrap ist nur eine Regelpaket-Installation mit Installationspruefung. Er macht eine bestehende UI nicht automatisch editorfaehig.
+
 ## 2. Fuehrende Unterlagen
 
 Vor jeder editorrelevanten UI-Umsetzung muessen diese Unterlagen beachtet werden:
@@ -42,6 +44,8 @@ Diese Entscheidung muss klaeren:
 - welche Operationen gesperrt sind
 
 Ohne vollstaendige Entwurfsentscheidung gilt: STOPP.
+
+Bestehende UI darf nicht per UI-Analyse, Bestandsanalyse, UI-Erkennung oder UI-Scan nachtraeglich automatisch klassifiziert werden.
 
 ## 4. Beim UI-Bau
 
@@ -222,6 +226,11 @@ Codex darf beim Bau editorfaehiger UI nicht:
 
 - UI-Elemente ohne Klassifizierung bauen
 - Parent-Strukturen raten
+- bestehende UI analysieren
+- bestehende UI scannen
+- automatische Bestandserkennung durchfuehren
+- automatische UI-Elementlisten erzeugen
+- bestehende Legacy-UIs automatisch migrieren
 - Tabellen ohne Spaltenklassifizierung bauen
 - Metaspalten ignorieren
 - Buttons als fachliche Editoroperationen behandeln
