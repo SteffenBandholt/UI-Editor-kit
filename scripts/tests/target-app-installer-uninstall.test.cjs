@@ -19,10 +19,20 @@ const KNOWN_ARTIFACTS = Object.freeze([
   "uiEditor/README.md",
   "uiEditor/uiEditorRegistry.js",
   "uiEditor/targetAppRegistry.js",
-  "uiEditor/uiEditorRules.md",
   "uiEditor/uiEditorLauncherButton.js",
   "uiEditor/uiEditorLauncherButton.css",
+  "uiEditor/uiEditorRules.md",
   "uiEditor/tests/uiEditorRegistry.test.cjs",
+  "docs/ui-editor/EDITOR_BAUPLAN.md",
+  "docs/ui-editor/UI_ELEMENT_KATALOG.md",
+  "docs/ui-editor/UI_BAU_UND_PRUEFREGELN.md",
+  "docs/ui-editor/ZIEL_APP_ANBINDUNG.md",
+  "docs/ui-editor/UI_EDITOR_VERTRAG.md",
+  "docs/ui-editor/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
+  "codex/AGENTS_UI_EDITOR_BLOCK.md",
+  "codex/CODEX_STARTREGEL_UI_PDF.md",
+  "scripts/ui-editor-contract-check.cjs",
+  "uiEditor/INSTALLATION_STATUS.md",
 ]);
 
 function createTempTargetApp() {
@@ -85,6 +95,10 @@ function read(relativePath) {
   return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
 }
 
+function readInstalled(targetAppPath, relativePath) {
+  return fs.readFileSync(path.join(targetAppPath, relativePath), "utf8");
+}
+
 function assertNoForbiddenFragments(text, label) {
   const forbiddenFragments = [
     ["B", "BM"].join(""),
@@ -127,7 +141,8 @@ function run() {
   assert.deepEqual(previewResult.errors, []);
   assert.equal(previewResult.preview.targetAppPath, previewTarget);
   assert.deepEqual(previewResult.preview.filesToRemove, KNOWN_ARTIFACTS);
-  assert.deepEqual(previewResult.preview.directoriesToRemoveIfEmpty, ["uiEditor/tests", "uiEditor"]);
+  assert.deepEqual(previewResult.preview.filesToUpdate, ["AGENTS.md"]);
+  assert.deepEqual(previewResult.preview.directoriesToRemoveIfEmpty, ["uiEditor/tests", "uiEditor", "docs/ui-editor"]);
   assert.equal(previewResult.preview.willRemoveFiles, false);
   assert.equal(previewResult.preview.willRemoveSourceFiles, false);
   assert.equal(previewResult.preview.willRemoveUnknownFiles, false);
@@ -146,6 +161,12 @@ function run() {
 
   const uninstallTarget = createTempTargetApp();
   writeKnownArtifacts(uninstallTarget);
+  writeFile(
+    uninstallTarget,
+    "AGENTS.md",
+    "# AGENTS\n\nLokale Regel bleibt.\n\n<!-- UI-EDITOR-KIT:START -->\nBlock\n<!-- UI-EDITOR-KIT:END -->\n",
+    "utf8"
+  );
   writeFile(uninstallTarget, "src/app.js", "source stays");
   const uninstallResult = uninstallTargetAppInstallerArtifacts(createConfirmedInputs(uninstallTarget));
   assert.equal(uninstallResult.ok, true);
@@ -153,17 +174,29 @@ function run() {
   assert.deepEqual(uninstallResult.removedFiles.slice().sort(), KNOWN_ARTIFACTS.slice().sort());
   assert.equal(uninstallResult.removedDirectories.includes("uiEditor/tests"), true);
   assert.equal(uninstallResult.removedDirectories.includes("uiEditor"), true);
+  assert.equal(uninstallResult.removedDirectories.includes("docs/ui-editor"), true);
+  assert.deepEqual(uninstallResult.updatedFiles, ["AGENTS.md"]);
   assert.equal(exists(uninstallTarget, "uiEditor"), false, "Leere uiEditor-Ordner muessen entfernt werden.");
-  assert.equal(exists(uninstallTarget, "src/app.js"), true, "Dateien ausserhalb uiEditor/ bleiben unangetastet.");
-  assert.deepEqual(listFiles(uninstallTarget), ["src/app.js"]);
+  assert.equal(exists(uninstallTarget, "docs/ui-editor"), false, "Leere ui-editor-Dokuordner muessen entfernt werden.");
+  assert.equal(exists(uninstallTarget, "src/app.js"), true, "Dateien ausserhalb der Installer-Artefakte bleiben unangetastet.");
+  assert.equal(exists(uninstallTarget, "AGENTS.md"), true, "AGENTS.md darf nicht geloescht werden.");
+  assert.equal(readInstalled(uninstallTarget, "AGENTS.md").includes("Lokale Regel bleibt."), true);
+  assert.equal(readInstalled(uninstallTarget, "AGENTS.md").includes("<!-- UI-EDITOR-KIT:START -->"), false);
+  assert.equal(readInstalled(uninstallTarget, "AGENTS.md").includes("<!-- UI-EDITOR-KIT:END -->"), false);
+  assert.deepEqual(listFiles(uninstallTarget), ["AGENTS.md", "src/app.js"]);
 
   const partialTarget = createTempTargetApp();
   writeFile(partialTarget, "uiEditor/README.md", "known");
   writeFile(partialTarget, "uiEditor/uiEditorRules.md", "known");
+  writeFile(partialTarget, "docs/ui-editor/UI_EDITOR_VERTRAG.md", "known");
   const partialResult = uninstallTargetAppInstallerArtifacts(createConfirmedInputs(partialTarget));
   assert.equal(partialResult.ok, true);
-  assert.deepEqual(partialResult.removedFiles.slice().sort(), ["uiEditor/README.md", "uiEditor/uiEditorRules.md"]);
+  assert.deepEqual(
+    partialResult.removedFiles.slice().sort(),
+    ["docs/ui-editor/UI_EDITOR_VERTRAG.md", "uiEditor/README.md", "uiEditor/uiEditorRules.md"]
+  );
   assert.equal(exists(partialTarget, "uiEditor"), false);
+  assert.equal(exists(partialTarget, "docs/ui-editor"), false);
 
   const unknownTarget = createTempTargetApp();
   writeKnownArtifacts(unknownTarget);
@@ -194,6 +227,14 @@ function run() {
   assert.equal(nestedUnknownPreview.ok, false);
   assert.equal(nestedUnknownPreview.errors.some((error) => error.code === "unknown-ui-editor-files"), true);
   assert.equal(exists(nestedUnknownTarget, "uiEditor/tests/custom.test.cjs"), true, "Keine rekursive Blindloeschung.");
+
+  const agentsWithoutBlockTarget = createTempTargetApp();
+  writeKnownArtifacts(agentsWithoutBlockTarget);
+  writeFile(agentsWithoutBlockTarget, "AGENTS.md", "# AGENTS\n\nEigene Regeln\n");
+  const agentsWithoutBlockResult = uninstallTargetAppInstallerArtifacts(createConfirmedInputs(agentsWithoutBlockTarget));
+  assert.equal(agentsWithoutBlockResult.ok, true);
+  assert.deepEqual(agentsWithoutBlockResult.updatedFiles, []);
+  assert.equal(readInstalled(agentsWithoutBlockTarget, "AGENTS.md"), "# AGENTS\n\nEigene Regeln\n");
 
   assertNoForbiddenFragments(read("src/core/target-app-installer-uninstall.cjs"), "Uninstall-Core");
 

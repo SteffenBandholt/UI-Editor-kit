@@ -4,18 +4,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { validateTargetAppInstallerPlan } = require("./target-app-installer-plan.cjs");
+const {
+  TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
+  buildTargetAppInstallerManagedFiles,
+  getTargetAppInstallerInstallableFiles,
+  createAgentsFileContent,
+  appendAgentsBlock,
+  hasMarkedAgentsBlock,
+  isSafeRelativePath,
+} = require("./target-app-installer-artifacts.cjs");
 
 const TARGET_APP_INSTALLER_EXECUTION_REQUIRED_INPUTS = Object.freeze(["installerPlan", "confirmation"]);
 
-const TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES = Object.freeze([
-  "uiEditor/README.md",
-  "uiEditor/uiEditorRegistry.js",
-  "uiEditor/targetAppRegistry.js",
-  "uiEditor/uiEditorLauncherButton.js",
-  "uiEditor/uiEditorLauncherButton.css",
-  "uiEditor/uiEditorRules.md",
-  "uiEditor/tests/uiEditorRegistry.test.cjs",
-]);
+const TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES = Object.freeze(getTargetAppInstallerInstallableFiles());
 
 const TARGET_APP_INSTALLER_EXECUTION_CONFIRMATION_FIELDS = Object.freeze([
   "installationConfirmed",
@@ -102,10 +103,17 @@ function executeTargetAppInstallerPlan(inputs) {
     fs.writeFileSync(file.absolutePath, file.content, "utf8");
   });
 
+  const agentsWriteResult = writeAgentsFile(plan.targetAppPath);
+  const writtenFiles = filesToWrite.map((file) => file.relativePath);
+
+  if (agentsWriteResult.written) {
+    writtenFiles.push(TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH);
+  }
+
   return {
     ok: true,
     errors: [],
-    writtenFiles: filesToWrite.map((file) => file.relativePath),
+    writtenFiles,
   };
 }
 
@@ -152,6 +160,7 @@ function createExecutionPreview(plan) {
     targetAppId: typeof safePlan.targetAppId === "string" ? safePlan.targetAppId : undefined,
     selectedMode: typeof safePlan.selectedMode === "string" ? safePlan.selectedMode : undefined,
     filesToCreate: TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES.slice(),
+    agentsFile: TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
     blockedActions: Array.isArray(safePlan.blockedActions)
       ? safePlan.blockedActions.map((entry) => cloneInstallerExecutionValue(entry))
       : [],
@@ -203,7 +212,7 @@ function validateInstallableFileSafety(plan) {
   const errors = [];
 
   plan.installableFiles.forEach((installableFile) => {
-    if (typeof installableFile !== "string" || installableFile.trim() === "") {
+    if (!isSafeRelativePath(installableFile)) {
       errors.push(
         createInstallerExecutionIssue(
           "invalid_installable_file_path",
@@ -211,28 +220,28 @@ function validateInstallableFileSafety(plan) {
           "installableFiles"
         )
       );
+      if (path.isAbsolute(installableFile)) {
+        errors.push(
+          createInstallerExecutionIssue(
+            "absolute_installable_file_path",
+            "Absolute Dateipfade sind in installableFiles nicht erlaubt.",
+            "installableFiles"
+          )
+        );
+      }
+
+      const segments = typeof installableFile === "string" ? installableFile.split(/[\\/]+/u) : [];
+      if (segments.includes("..")) {
+        errors.push(
+          createInstallerExecutionIssue(
+            "traversal_installable_file_path",
+            "Pfade mit .. sind in installableFiles nicht erlaubt.",
+            "installableFiles"
+          )
+        );
+      }
+
       return;
-    }
-
-    if (path.isAbsolute(installableFile)) {
-      errors.push(
-        createInstallerExecutionIssue(
-          "absolute_installable_file_path",
-          "Absolute Dateipfade sind in installableFiles nicht erlaubt.",
-          "installableFiles"
-        )
-      );
-    }
-
-    const segments = installableFile.split(/[\\/]+/u);
-    if (segments.includes("..")) {
-      errors.push(
-        createInstallerExecutionIssue(
-          "traversal_installable_file_path",
-          "Pfade mit .. sind in installableFiles nicht erlaubt.",
-          "installableFiles"
-        )
-      );
     }
 
     if (!TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES.includes(installableFile)) {
@@ -258,6 +267,7 @@ function validateTargetWriteSet(plan) {
   const overwrite = plan.overwrite === true;
   const targetRoot = path.resolve(plan.targetAppPath);
   const filesToWrite = buildTargetFiles(targetRoot);
+  const agentsPath = path.resolve(targetRoot, TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH);
 
   filesToWrite.forEach((file) => {
     if (!isPathInsideTargetRoot(file.absolutePath, targetRoot)) {
@@ -281,6 +291,26 @@ function validateTargetWriteSet(plan) {
     }
   });
 
+  if (!isPathInsideTargetRoot(agentsPath, targetRoot)) {
+    errors.push(
+      createInstallerExecutionIssue(
+        "target_file_outside_target_app_path",
+        "Zielpfade ausserhalb von targetAppPath sind nicht erlaubt.",
+        TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH
+      )
+    );
+  }
+
+  if (fs.existsSync(agentsPath) && fs.statSync(agentsPath).isDirectory()) {
+    errors.push(
+      createInstallerExecutionIssue(
+        "target_file_is_directory",
+        "AGENTS.md muss als Datei vorliegen oder fehlen.",
+        TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH
+      )
+    );
+  }
+
   return { errors };
 }
 
@@ -290,46 +320,27 @@ function isPathInsideTargetRoot(candidatePath, targetRoot) {
 }
 
 function buildTargetFiles(targetAppPath) {
-  const targetRoot = path.resolve(targetAppPath);
-
-  return TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES.map((relativePath) => ({
-    relativePath,
-    absolutePath: path.resolve(targetRoot, relativePath),
-    content: createTargetFileContent(relativePath),
-  }));
+  return buildTargetAppInstallerManagedFiles(targetAppPath);
 }
 
-function createTargetFileContent(relativePath) {
-  if (relativePath === "uiEditor/README.md") {
-    return `# UI-Editor Registry-Struktur\n\nDiese vorbereitete Grundstruktur ermoeglicht einer Ziel-App, UI-Elemente explizit fuer den UI-Editor zu registrieren.\n\nDer UI-Editor bringt einen eigenen Launcher-Button als Artefakt mit und registriert ihn als verschiebbares UI-Editor-Element.\n\nDie Struktur enthaelt keine automatisch erkannten Elemente, keine Fachdaten und keine Ziel-App-Fachlogik.\n`;
+function writeAgentsFile(targetAppPath) {
+  const targetRoot = path.resolve(targetAppPath);
+  const absolutePath = path.resolve(targetRoot, TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH);
+
+  fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+
+  if (!fs.existsSync(absolutePath)) {
+    fs.writeFileSync(absolutePath, createAgentsFileContent(), "utf8");
+    return { written: true, action: "created" };
   }
 
-  if (relativePath === "uiEditor/uiEditorRegistry.js") {
-    return `"use strict";\n\nconst uiEditorRegistry = Object.freeze({\n  uiScopes: Object.freeze([\n    Object.freeze({\n      uiScopeId: "uiEditor.global",\n      label: "UI-Editor globale Elemente",\n      elements: Object.freeze([\n        Object.freeze({\n          id: "uiEditor.launcherButton",\n          type: "button",\n          role: "editor-launcher",\n          area: "overlay",\n          position: Object.freeze({ x: 24, y: 24 }),\n          editable: true,\n          allowedOps: Object.freeze(["move", "hide", "show"]),\n          lockedOps: Object.freeze(["delete", "executeTargetAction", "modifyDomainData"]),\n        }),\n      ]),\n    }),\n  ]),\n});\n\nmodule.exports = { uiEditorRegistry };\n`;
+  const currentContent = fs.readFileSync(absolutePath, "utf8");
+  if (hasMarkedAgentsBlock(currentContent)) {
+    return { written: false, action: "already-present" };
   }
 
-
-  if (relativePath === "uiEditor/targetAppRegistry.js") {
-    return `"use strict";\n\nconst TARGET_APP_REGISTRY_CONTRACT = Object.freeze({\n  contractName: "ui-editor-target-app-registry",\n  contractVersion: "1.0.0",\n  publicEntry: "uiEditor/targetAppRegistry.js",\n});\n\nconst TARGET_APP_INFO = Object.freeze({\n  targetAppId: "target-app",\n  targetAppName: "Target App",\n});\n\nfunction cloneContractObject(value) {\n  return { ...value };\n}\n\nfunction getTargetAppRegistryContractInfo() {\n  return cloneContractObject(TARGET_APP_REGISTRY_CONTRACT);\n}\n\nfunction getTargetAppInfo() {\n  return cloneContractObject(TARGET_APP_INFO);\n}\n\nfunction getAvailableUiScopes() {\n  return [];\n}\n\nfunction getActiveUiScope(context) {\n  const normalizedContext = context && typeof context === "object" ? context : {};\n\n  return typeof normalizedContext.activeUiScope === "string" && normalizedContext.activeUiScope.trim() !== ""\n    ? normalizedContext.activeUiScope\n    : null;\n}\n\nfunction getUiRegistry(uiScope) {\n  return {\n    ok: false,\n    uiScope,\n    elements: [],\n    reason: "unknown-ui-scope",\n  };\n}\n\nfunction getOriginalValues(uiScope) {\n  return {\n    ok: true,\n    uiScope,\n    values: {},\n  };\n}\n\nfunction getChangedValues(uiScope) {\n  return {\n    ok: true,\n    uiScope,\n    values: {},\n  };\n}\n\nfunction saveChangedValues(uiScope, changes) {\n  void changes;\n\n  return {\n    ok: false,\n    uiScope,\n    saved: false,\n    reason: "storage-not-configured",\n  };\n}\n\nmodule.exports = {\n  getTargetAppRegistryContractInfo,\n  getTargetAppInfo,\n  getAvailableUiScopes,\n  getActiveUiScope,\n  getUiRegistry,\n  getOriginalValues,\n  getChangedValues,\n  saveChangedValues,\n};\n`;
-  }
-
-  if (relativePath === "uiEditor/uiEditorLauncherButton.js") {
-    return `"use strict";\n\nconst UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS = Object.freeze({\n  id: "uiEditor.launcherButton",\n  type: "button",\n  role: "editor-launcher",\n  area: "overlay",\n  label: "UI-Editor",\n  cssClassName: "ui-editor-launcher-button",\n  position: Object.freeze({ x: 24, y: 24 }),\n});\n\nfunction cloneLauncherButtonDefaults() {\n  return {\n    id: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.id,\n    type: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.type,\n    role: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.role,\n    area: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.area,\n    label: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.label,\n    cssClassName: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.cssClassName,\n    position: {\n      x: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.position.x,\n      y: UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.position.y,\n    },\n  };\n}\n\nfunction createUiEditorLauncherButton(options) {\n  const normalizedOptions = options && typeof options === "object" ? options : {};\n  const position = normalizedOptions.position && typeof normalizedOptions.position === "object"\n    ? normalizedOptions.position\n    : UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.position;\n\n  return {\n    ...cloneLauncherButtonDefaults(),\n    label: typeof normalizedOptions.label === "string" && normalizedOptions.label.trim() !== ""\n      ? normalizedOptions.label\n      : UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.label,\n    position: {\n      x: Number.isFinite(position.x) ? position.x : UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.position.x,\n      y: Number.isFinite(position.y) ? position.y : UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS.position.y,\n    },\n  };\n}\n\nmodule.exports = {\n  UI_EDITOR_LAUNCHER_BUTTON_DEFAULTS,\n  createUiEditorLauncherButton,\n};\n`;
-  }
-
-  if (relativePath === "uiEditor/uiEditorLauncherButton.css") {
-    return `.ui-editor-launcher-button {\n  position: fixed;\n  left: 24px;\n  top: 24px;\n  z-index: 2147483000;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 44px;\n  min-height: 44px;\n  padding: 0 14px;\n  border: 1px solid #64748b;\n  border-radius: 999px;\n  background: #0f172a;\n  color: #f8fafc;\n  font: 600 14px/1.2 system-ui, sans-serif;\n  box-shadow: 0 8px 24px rgb(15 23 42 / 24%);\n  cursor: pointer;\n}\n\n.ui-editor-launcher-button[hidden] {\n  display: none;\n}\n`;
-  }
-
-  if (relativePath === "uiEditor/uiEditorRules.md") {
-    return `# UI-Editor Regeln\n\n- Kein Scan.\n- Keine automatische Elementerkennung.\n- Keine automatische Freigabe.\n- Jede UI muss ihre Elemente explizit registrieren.\n- Fachlogik und Fachdaten bleiben in der Ziel-App.\n`;
-  }
-
-  if (relativePath === "uiEditor/tests/uiEditorRegistry.test.cjs") {
-    return `#!/usr/bin/env node\n\nconst assert = require("node:assert/strict");\nconst path = require("node:path");\n\nconst { uiEditorRegistry } = require(path.resolve(__dirname, "../uiEditorRegistry.js"));\n\nassert.equal(Boolean(uiEditorRegistry), true);\nassert.equal(Array.isArray(uiEditorRegistry.uiScopes), true);\nassert.equal(uiEditorRegistry.uiScopes.length, 1);\nassert.equal(uiEditorRegistry.uiScopes[0].uiScopeId, "uiEditor.global");\nassert.equal(Array.isArray(uiEditorRegistry.uiScopes[0].elements), true);\nassert.equal(uiEditorRegistry.uiScopes[0].elements.length, 1);\nassert.equal(uiEditorRegistry.uiScopes[0].elements[0].id, "uiEditor.launcherButton");\nassert.deepEqual(uiEditorRegistry.uiScopes[0].elements[0].position, { x: 24, y: 24 });\nassert.equal(uiEditorRegistry.uiScopes[0].elements[0].editable, true);\nassert.deepEqual(uiEditorRegistry.uiScopes[0].elements[0].allowedOps, ["move", "hide", "show"]);\nassert.equal(uiEditorRegistry.uiScopes[0].elements[0].lockedOps.includes("delete"), true);\nassert.equal(uiEditorRegistry.uiScopes[0].elements[0].lockedOps.includes("executeTargetAction"), true);\n\nconsole.log("TESTS OK: uiEditorRegistry contract");\n`;
-  }
-
-  throw new Error(`Unsupported target file: ${relativePath}`);
+  fs.writeFileSync(absolutePath, appendAgentsBlock(currentContent), "utf8");
+  return { written: true, action: "appended" };
 }
 
 module.exports = {

@@ -1,5 +1,9 @@
 "use strict";
 
+const {
+  getTargetAppInstallerInstallableFiles: getInstallableArtifactFiles,
+} = require("./target-app-installer-artifacts.cjs");
+
 const TARGET_APP_INSTALLER_REQUIRED_INPUTS = Object.freeze([
   "targetAppPath",
   "targetAppId",
@@ -9,15 +13,7 @@ const TARGET_APP_INSTALLER_REQUIRED_INPUTS = Object.freeze([
 
 const TARGET_APP_INSTALLER_ALLOWED_MODES = Object.freeze(["prepare-registry-structure"]);
 
-const TARGET_APP_INSTALLER_INSTALLABLE_FILES = Object.freeze([
-  "uiEditor/README.md",
-  "uiEditor/uiEditorRegistry.js",
-  "uiEditor/targetAppRegistry.js",
-  "uiEditor/uiEditorLauncherButton.js",
-  "uiEditor/uiEditorLauncherButton.css",
-  "uiEditor/uiEditorRules.md",
-  "uiEditor/tests/uiEditorRegistry.test.cjs",
-]);
+const TARGET_APP_INSTALLER_INSTALLABLE_FILES = Object.freeze(getInstallableArtifactFiles());
 
 const TARGET_APP_INSTALLER_BLOCKED_ACTIONS = Object.freeze([
   "scan-ui",

@@ -8,6 +8,8 @@ const path = require("node:path");
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const PLAN_MODULE_PATH = path.join(REPO_ROOT, "src/core/target-app-installer-plan.cjs");
 const EXECUTION_MODULE_PATH = path.join(REPO_ROOT, "src/core/target-app-installer-execution.cjs");
+const UI_ELEMENT_MODEL_MODULE_PATH = path.join(REPO_ROOT, "src/core/ui-element-model.cjs");
+const UI_ELEMENT_VALIDATOR_MODULE_PATH = path.join(REPO_ROOT, "src/core/ui-element-validator.cjs");
 
 const { createTargetAppInstallerPlan } = require(PLAN_MODULE_PATH);
 const {
@@ -15,8 +17,10 @@ const {
   createTargetAppInstallerExecutionPreview,
   executeTargetAppInstallerPlan,
 } = require(EXECUTION_MODULE_PATH);
+const { UI_ELEMENT_OPERATIONS } = require(UI_ELEMENT_MODEL_MODULE_PATH);
+const { validateUiElementList } = require(UI_ELEMENT_VALIDATOR_MODULE_PATH);
 
-const ALLOWED_FILES = Object.freeze([
+const MANAGED_FILES = Object.freeze([
   "uiEditor/README.md",
   "uiEditor/uiEditorRegistry.js",
   "uiEditor/targetAppRegistry.js",
@@ -24,6 +28,30 @@ const ALLOWED_FILES = Object.freeze([
   "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",
   "uiEditor/tests/uiEditorRegistry.test.cjs",
+  "docs/ui-editor/EDITOR_BAUPLAN.md",
+  "docs/ui-editor/UI_ELEMENT_KATALOG.md",
+  "docs/ui-editor/UI_BAU_UND_PRUEFREGELN.md",
+  "docs/ui-editor/ZIEL_APP_ANBINDUNG.md",
+  "docs/ui-editor/UI_EDITOR_VERTRAG.md",
+  "docs/ui-editor/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
+  "codex/AGENTS_UI_EDITOR_BLOCK.md",
+  "codex/CODEX_STARTREGEL_UI_PDF.md",
+  "scripts/ui-editor-contract-check.cjs",
+  "uiEditor/INSTALLATION_STATUS.md",
+]);
+
+const ALLOWED_FILES = Object.freeze(MANAGED_FILES.concat(["AGENTS.md"]));
+
+const SOURCE_MIRRORED_FILES = Object.freeze([
+  ["docs/ui-editor/EDITOR_BAUPLAN.md", "docs/EDITOR_BAUPLAN.md"],
+  ["docs/ui-editor/UI_ELEMENT_KATALOG.md", "docs/UI_ELEMENT_KATALOG.md"],
+  ["docs/ui-editor/UI_BAU_UND_PRUEFREGELN.md", "docs/UI_BAU_UND_PRUEFREGELN.md"],
+  ["docs/ui-editor/ZIEL_APP_ANBINDUNG.md", "docs/ZIEL_APP_ANBINDUNG.md"],
+  ["docs/ui-editor/UI_EDITOR_VERTRAG.md", "docs/UI_EDITOR_VERTRAG.md"],
+  ["docs/ui-editor/UI_PDF_ENTWURFSENTSCHEIDUNG.md", "docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md"],
+  ["codex/AGENTS_UI_EDITOR_BLOCK.md", "codex/AGENTS_UI_EDITOR_BLOCK.md"],
+  ["codex/CODEX_STARTREGEL_UI_PDF.md", "codex/CODEX_STARTREGEL_UI_PDF.md"],
+  ["scripts/ui-editor-contract-check.cjs", "scripts/ui-editor-contract-check.cjs"],
 ]);
 
 function createTempTargetApp() {
@@ -83,6 +111,14 @@ function listFiles(root) {
   return files.sort();
 }
 
+function readInstalled(targetAppPath, relativePath) {
+  return fs.readFileSync(path.join(targetAppPath, relativePath), "utf8");
+}
+
+function readRepo(relativePath) {
+  return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
+}
+
 function assertNoFiles(root, message) {
   assert.deepEqual(listFiles(root), [], message);
 }
@@ -100,6 +136,12 @@ function assertNoForbiddenFragments(text, label) {
     ["D", "OM"].join(""),
     ["HT", "ML"].join(""),
     ["Bro", "wser"].join(""),
+    "detectElements",
+    "autoRegister",
+    "scan-ui",
+    "modify-target-ui",
+    "write-domain-data",
+    "execute-target-app-action",
   ];
 
   forbiddenFragments.forEach((fragment) => {
@@ -109,6 +151,16 @@ function assertNoForbiddenFragments(text, label) {
 
 function assertWrittenFilesAreAllowed(targetAppPath) {
   assert.deepEqual(listFiles(targetAppPath), ALLOWED_FILES.slice().sort());
+}
+
+function assertMirroredSourceFiles(targetAppPath) {
+  SOURCE_MIRRORED_FILES.forEach(([installedPath, sourcePath]) => {
+    assert.equal(
+      readInstalled(targetAppPath, installedPath),
+      readRepo(sourcePath),
+      `${installedPath} muss inhaltlich aus ${sourcePath} stammen.`
+    );
+  });
 }
 
 function run() {
@@ -124,6 +176,7 @@ function run() {
   assert.equal(previewResult.preview.targetAppId, previewPlan.targetAppId);
   assert.equal(previewResult.preview.selectedMode, previewPlan.selectedMode);
   assert.deepEqual(previewResult.preview.filesToCreate, ALLOWED_FILES);
+  assert.equal(previewResult.preview.agentsFile, "AGENTS.md");
   assert.equal(previewResult.preview.requiresConfirmation.includes("registry-structure-only"), true);
   assert.equal(previewResult.preview.willWriteFiles, false);
   assert.equal(previewResult.preview.willScanUi, false);
@@ -145,44 +198,82 @@ function run() {
   assert.equal(confirmedResult.ok, true);
   assert.deepEqual(confirmedResult.writtenFiles.slice().sort(), ALLOWED_FILES.slice().sort());
   assertWrittenFilesAreAllowed(confirmedPlan.targetAppPath);
+  assertMirroredSourceFiles(confirmedPlan.targetAppPath);
 
   const installedRegistryModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/uiEditorRegistry.js"));
-  const installedLauncherElement = installedRegistryModule.uiEditorRegistry.uiScopes[0].elements[0];
+  const installedElements = installedRegistryModule.uiEditorRegistry.uiScopes[0].elements;
+  const installedRootElement = installedElements[0];
+  const installedLauncherElement = installedElements[1];
+  assert.equal(installedRootElement.id, "uiEditor.root");
+  assert.equal(installedRootElement.name, "UI-Editor Root");
+  assert.equal(installedRootElement.type, "root");
+  assert.equal(installedRootElement.role, "system");
+  assert.equal(installedRootElement.parentId, null);
+  assert.equal(installedRootElement.order, 0);
+  assert.equal(installedRootElement.visible, true);
+  assert.equal(installedRootElement.editable, false);
+  assert.deepEqual(installedRootElement.allowedOps, ["inspect"]);
+  assert.deepEqual(installedRootElement.lockedOps, []);
   assert.equal(installedLauncherElement.id, "uiEditor.launcherButton");
+  assert.equal(installedLauncherElement.name, "UI-Editor Launcher");
   assert.equal(installedLauncherElement.type, "button");
-  assert.equal(installedLauncherElement.role, "editor-launcher");
-  assert.equal(installedLauncherElement.area, "overlay");
-  assert.deepEqual(installedLauncherElement.position, { x: 24, y: 24 });
+  assert.equal(installedLauncherElement.role, "navigation");
+  assert.equal(installedLauncherElement.parentId, "uiEditor.root");
+  assert.equal(installedLauncherElement.order, 10);
+  assert.equal(installedLauncherElement.visible, true);
   assert.equal(installedLauncherElement.editable, true);
-  assert.deepEqual(installedLauncherElement.allowedOps, ["move", "hide", "show"]);
-  assert.equal(installedLauncherElement.lockedOps.includes("delete"), true);
-  assert.equal(installedLauncherElement.lockedOps.includes("executeTargetAction"), true);
+  assert.deepEqual(installedLauncherElement.allowedOps, ["inspect", "move", "hide", "show"]);
+  assert.deepEqual(installedLauncherElement.lockedOps, ["rename"]);
+  assert.equal(validateUiElementList(installedElements).ok, true);
+  installedElements.forEach((element) => {
+    element.allowedOps.concat(element.lockedOps).forEach((operation) => {
+      assert.equal(UI_ELEMENT_OPERATIONS.includes(operation), true, `Ungueltige Operation installiert: ${operation}`);
+    });
+  });
 
-  const readme = fs.readFileSync(path.join(confirmedPlan.targetAppPath, "uiEditor/README.md"), "utf8");
-  const registry = fs.readFileSync(path.join(confirmedPlan.targetAppPath, "uiEditor/uiEditorRegistry.js"), "utf8");
-  const targetAppRegistry = fs.readFileSync(path.join(confirmedPlan.targetAppPath, "uiEditor/targetAppRegistry.js"), "utf8");
-  const launcherButton = fs.readFileSync(path.join(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.js"), "utf8");
-  const launcherButtonCss = fs.readFileSync(path.join(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.css"), "utf8");
-  const rules = fs.readFileSync(path.join(confirmedPlan.targetAppPath, "uiEditor/uiEditorRules.md"), "utf8");
-  const contractTest = fs.readFileSync(
-    path.join(confirmedPlan.targetAppPath, "uiEditor/tests/uiEditorRegistry.test.cjs"),
-    "utf8"
-  );
+  const readme = readInstalled(confirmedPlan.targetAppPath, "uiEditor/README.md");
+  const registry = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRegistry.js");
+  const targetAppRegistry = readInstalled(confirmedPlan.targetAppPath, "uiEditor/targetAppRegistry.js");
+  const launcherButton = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.js");
+  const launcherButtonCss = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.css");
+  const rules = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRules.md");
+  const contractTest = readInstalled(confirmedPlan.targetAppPath, "uiEditor/tests/uiEditorRegistry.test.cjs");
+  const installationStatus = readInstalled(confirmedPlan.targetAppPath, "uiEditor/INSTALLATION_STATUS.md");
+  const agentsFile = readInstalled(confirmedPlan.targetAppPath, "AGENTS.md");
+
   assert.equal(readme.includes("Registry-Struktur"), true);
+  assert.equal(readme.includes("keine fachlichen Aktionen"), true);
   assert.equal(registry.includes("uiEditor.global"), true);
+  assert.equal(registry.includes("uiEditor.root"), true);
+  assert.equal(registry.includes('name: "UI-Editor Root"'), true);
+  assert.equal(registry.includes('type: "root"'), true);
+  assert.equal(registry.includes('role: "system"'), true);
+  assert.equal(registry.includes("parentId: null"), true);
+  assert.equal(registry.includes("order: 0"), true);
+  assert.equal(registry.includes("visible: true"), true);
+  assert.equal(registry.includes("lockedOps: Object.freeze([])"), true);
   assert.equal(registry.includes("uiEditor.launcherButton"), true);
+  assert.equal(registry.includes('name: "UI-Editor Launcher"'), true);
   assert.equal(registry.includes('type: "button"'), true);
-  assert.equal(registry.includes('role: "editor-launcher"'), true);
-  assert.equal(registry.includes('area: "overlay"'), true);
-  assert.equal(registry.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
+  assert.equal(registry.includes('role: "navigation"'), true);
+  assert.equal(registry.includes('parentId: "uiEditor.root"'), true);
+  assert.equal(registry.includes("order: 10"), true);
+  assert.equal(registry.includes("visible: true"), true);
   assert.equal(registry.includes("editable: true"), true);
-  assert.equal(registry.includes('allowedOps: Object.freeze(["move", "hide", "show"])'), true);
-  assert.equal(registry.includes('lockedOps: Object.freeze(["delete", "executeTargetAction", "modifyDomainData"])'), true);
+  assert.equal(registry.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
+  assert.equal(registry.includes('lockedOps: Object.freeze(["rename"])'), true);
   assert.equal(targetAppRegistry.includes("getTargetAppRegistryContractInfo"), true);
   assert.equal(targetAppRegistry.includes('publicEntry: "uiEditor/targetAppRegistry.js"'), true);
   assert.equal(targetAppRegistry.includes('reason: "storage-not-configured"'), true);
   assert.equal(launcherButton.includes("createUiEditorLauncherButton"), true);
   assert.equal(launcherButton.includes("uiEditor.launcherButton"), true);
+  assert.equal(launcherButton.includes('name: "UI-Editor Launcher"'), true);
+  assert.equal(launcherButton.includes('role: "navigation"'), true);
+  assert.equal(launcherButton.includes('parentId: "uiEditor.root"'), true);
+  assert.equal(launcherButton.includes("order: 10"), true);
+  assert.equal(launcherButton.includes("visible: true"), true);
+  assert.equal(launcherButton.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
+  assert.equal(launcherButton.includes('lockedOps: Object.freeze(["rename"])'), true);
   assert.equal(launcherButton.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
   assert.equal(launcherButtonCss.includes(".ui-editor-launcher-button"), true);
   assert.equal(launcherButtonCss.includes("left: 24px"), true);
@@ -191,8 +282,25 @@ function run() {
   assert.equal(rules.includes("Keine automatische Elementerkennung."), true);
   assert.equal(rules.includes("Keine automatische Freigabe."), true);
   assert.equal(rules.includes("explizit registrieren"), true);
+  assert.equal(rules.includes("Keine fachlichen Aktionen."), true);
   assert.equal(rules.includes("Fachlogik und Fachdaten bleiben in der Ziel-App."), true);
   assert.equal(contractTest.includes("uiEditorRegistry contract"), true);
+  assert.equal(contractTest.includes('assert.deepEqual(uiEditorRegistry.uiScopes[0].elements[0].lockedOps, [])'), true);
+  assert.equal(contractTest.includes('assert.equal(uiEditorRegistry.uiScopes[0].elements[1].role, "navigation")'), true);
+  assert.equal(installationStatus.includes("UI-Editor-Regelpaket installiert."), true);
+  assert.equal(installationStatus.includes("Keine Ziel-UI analysiert."), true);
+  assert.equal(installationStatus.includes("Keine Ziel-UI geaendert."), true);
+  assert.equal(installationStatus.includes("Keine Elemente automatisch erkannt."), true);
+  assert.equal(installationStatus.includes("Keine Elemente automatisch registriert."), true);
+  assert.equal(installationStatus.includes("Keine fachlichen Aktionen ausgefuehrt."), true);
+  assert.equal(installationStatus.includes("Vertragscheck vorhanden."), true);
+  assert.equal(installationStatus.includes("Entwurfsentscheidungspflicht aktiv."), true);
+  assert.equal(installationStatus.includes("Fachlogik und Fachdaten bleiben in der Ziel-App."), true);
+  assert.equal(agentsFile.includes("# AGENTS"), true);
+  assert.equal(agentsFile.includes("Diese Datei aktiviert die UI-Editor-Regeln"), true);
+  assert.equal(agentsFile.includes("<!-- UI-EDITOR-KIT:START -->"), true);
+  assert.equal(agentsFile.includes("<!-- UI-EDITOR-KIT:END -->"), true);
+  assert.equal(agentsFile.includes(readRepo("codex/AGENTS_UI_EDITOR_BLOCK.md").trim()), true);
 
   const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-installer-outside-"));
   const outsidePlan = createValidPlan({ targetAppPath: path.join(outsideRoot, "target-app") });
@@ -211,37 +319,77 @@ function run() {
   assertNoFiles(traversalPlan.targetAppPath, ".. in Pfaden darf keine Teilinstallation ausloesen.");
 
   const existingPlan = createValidPlan();
-  fs.mkdirSync(path.join(existingPlan.targetAppPath, "uiEditor"), { recursive: true });
-  fs.writeFileSync(path.join(existingPlan.targetAppPath, "uiEditor/README.md"), "existing", "utf8");
+  fs.mkdirSync(path.join(existingPlan.targetAppPath, "docs/ui-editor"), { recursive: true });
+  fs.writeFileSync(path.join(existingPlan.targetAppPath, "docs/ui-editor/EDITOR_BAUPLAN.md"), "existing", "utf8");
   const existingResult = executeTargetAppInstallerPlan(createConfirmedInputs(existingPlan));
   assert.equal(existingResult.ok, false);
   assert.equal(existingResult.errors.some((error) => error.code === "target_file_already_exists"), true);
-  assert.equal(fs.readFileSync(path.join(existingPlan.targetAppPath, "uiEditor/README.md"), "utf8"), "existing");
-  assert.deepEqual(listFiles(existingPlan.targetAppPath), ["uiEditor/README.md"]);
+  assert.equal(fs.readFileSync(path.join(existingPlan.targetAppPath, "docs/ui-editor/EDITOR_BAUPLAN.md"), "utf8"), "existing");
+  assert.deepEqual(listFiles(existingPlan.targetAppPath), ["docs/ui-editor/EDITOR_BAUPLAN.md"]);
 
   const overwritePlan = { ...existingPlan, overwrite: true };
   const overwriteResult = executeTargetAppInstallerPlan(createConfirmedInputs(overwritePlan));
   assert.equal(overwriteResult.ok, true);
   assertWrittenFilesAreAllowed(overwritePlan.targetAppPath);
-  assert.notEqual(fs.readFileSync(path.join(overwritePlan.targetAppPath, "uiEditor/README.md"), "utf8"), "existing");
+  assert.notEqual(
+    fs.readFileSync(path.join(overwritePlan.targetAppPath, "docs/ui-editor/EDITOR_BAUPLAN.md"), "utf8"),
+    "existing"
+  );
+
+  const appendAgentsPlan = createValidPlan();
+  fs.mkdirSync(appendAgentsPlan.targetAppPath, { recursive: true });
+  fs.writeFileSync(path.join(appendAgentsPlan.targetAppPath, "AGENTS.md"), "Bestehende Regel\n", "utf8");
+  const appendAgentsResult = executeTargetAppInstallerPlan(createConfirmedInputs(appendAgentsPlan));
+  assert.equal(appendAgentsResult.ok, true);
+  assert.equal(appendAgentsResult.writtenFiles.includes("AGENTS.md"), true);
+  const appendedAgents = readInstalled(appendAgentsPlan.targetAppPath, "AGENTS.md");
+  assert.equal(appendedAgents.startsWith("Bestehende Regel\n"), true);
+  assert.equal(appendedAgents.includes("<!-- UI-EDITOR-KIT:START -->"), true);
+  assert.equal(appendedAgents.includes("<!-- UI-EDITOR-KIT:END -->"), true);
+
+  const existingAgentsBlockPlan = createValidPlan();
+  fs.mkdirSync(existingAgentsBlockPlan.targetAppPath, { recursive: true });
+  fs.writeFileSync(
+    path.join(existingAgentsBlockPlan.targetAppPath, "AGENTS.md"),
+    "# AGENTS\n\n<!-- UI-EDITOR-KIT:START -->\nBereits da\n<!-- UI-EDITOR-KIT:END -->\n",
+    "utf8"
+  );
+  const existingAgentsBlockResult = executeTargetAppInstallerPlan(createConfirmedInputs(existingAgentsBlockPlan));
+  assert.equal(existingAgentsBlockResult.ok, true);
+  assert.equal(existingAgentsBlockResult.writtenFiles.includes("AGENTS.md"), false);
+  const existingAgentsContent = readInstalled(existingAgentsBlockPlan.targetAppPath, "AGENTS.md");
+  assert.equal(existingAgentsContent.match(/<!-- UI-EDITOR-KIT:START -->/gu).length, 1);
+  assert.equal(existingAgentsContent.match(/<!-- UI-EDITOR-KIT:END -->/gu).length, 1);
 
   const moduleSource = fs.readFileSync(EXECUTION_MODULE_PATH, "utf8");
   assertNoForbiddenFragments(moduleSource, "target-app-installer-execution.cjs");
-  [readme, registry, targetAppRegistry, launcherButton, launcherButtonCss, rules, contractTest].forEach((content, index) => {
-    assertNoForbiddenFragments(content, `installierte Datei ${index}`);
-  });
+  [readme, registry, targetAppRegistry, launcherButton, launcherButtonCss, rules, contractTest, installationStatus, agentsFile].forEach(
+    (content, index) => {
+      assertNoForbiddenFragments(content, `installierte Datei ${index}`);
+    }
+  );
   assert.equal(registry.includes("kunde"), false);
   assert.equal(registry.includes("auftrag"), false);
   assert.equal(registry.includes("produkt"), false);
-  [registry, targetAppRegistry, launcherButton, launcherButtonCss].forEach((content, index) => {
-    assert.equal(content.includes("querySelector"), false, `Launcher-Artefakt ${index} darf keinen UI-Scan enthalten.`);
-    assert.equal(content.includes("detectElements"), false, `Launcher-Artefakt ${index} darf keine automatische UI-Erkennung enthalten.`);
-    assert.equal(content.includes("autoRegister"), false, `Launcher-Artefakt ${index} darf keine automatische Registry-Befuellung enthalten.`);
-    assert.equal(content.includes("writeFile"), false, `Launcher-Artefakt ${index} darf keine Speicherung enthalten.`);
-    assert.equal(content.includes("kunde"), false, `Launcher-Artefakt ${index} darf keine Fachdaten enthalten.`);
-    assert.equal(content.includes("auftrag"), false, `Launcher-Artefakt ${index} darf keine Fachdaten enthalten.`);
-    assert.equal(content.includes("produkt"), false, `Launcher-Artefakt ${index} darf keine Fachdaten enthalten.`);
-  });
+  [registry, targetAppRegistry, launcherButton, launcherButtonCss, installationStatus, agentsFile].forEach(
+    (content, index) => {
+      assert.equal(content.includes("querySelector"), false, `Installer-Artefakt ${index} darf keinen UI-Scan enthalten.`);
+      assert.equal(
+        content.includes("detectElements"),
+        false,
+        `Installer-Artefakt ${index} darf keine automatische UI-Erkennung enthalten.`
+      );
+      assert.equal(
+        content.includes("autoRegister"),
+        false,
+        `Installer-Artefakt ${index} darf keine automatische Registry-Befuellung enthalten.`
+      );
+      assert.equal(content.includes("writeFile"), false, `Installer-Artefakt ${index} darf keine Speicherung enthalten.`);
+      assert.equal(content.includes("kunde"), false, `Installer-Artefakt ${index} darf keine Fachdaten enthalten.`);
+      assert.equal(content.includes("auftrag"), false, `Installer-Artefakt ${index} darf keine Fachdaten enthalten.`);
+      assert.equal(content.includes("produkt"), false, `Installer-Artefakt ${index} darf keine Fachdaten enthalten.`);
+    }
+  );
 
   console.log("TESTS OK: target-app-installer-execution");
 }

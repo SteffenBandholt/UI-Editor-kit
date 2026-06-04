@@ -14,6 +14,27 @@ const {
   validateTargetAppInstallerPlan,
 } = require(MODULE_PATH);
 
+const EXPECTED_INSTALLABLE_FILES = Object.freeze([
+  "uiEditor/README.md",
+  "uiEditor/uiEditorRegistry.js",
+  "uiEditor/targetAppRegistry.js",
+  "uiEditor/uiEditorLauncherButton.js",
+  "uiEditor/uiEditorLauncherButton.css",
+  "uiEditor/uiEditorRules.md",
+  "uiEditor/tests/uiEditorRegistry.test.cjs",
+  "docs/ui-editor/EDITOR_BAUPLAN.md",
+  "docs/ui-editor/UI_ELEMENT_KATALOG.md",
+  "docs/ui-editor/UI_BAU_UND_PRUEFREGELN.md",
+  "docs/ui-editor/ZIEL_APP_ANBINDUNG.md",
+  "docs/ui-editor/UI_EDITOR_VERTRAG.md",
+  "docs/ui-editor/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
+  "codex/AGENTS_UI_EDITOR_BLOCK.md",
+  "codex/CODEX_STARTREGEL_UI_PDF.md",
+  "scripts/ui-editor-contract-check.cjs",
+  "uiEditor/INSTALLATION_STATUS.md",
+  "AGENTS.md",
+]);
+
 function createValidInputs(overrides) {
   return {
     targetAppPath: "/tmp/neutral-target-app",
@@ -72,19 +93,7 @@ function run() {
   ]);
 
   const installableFiles = getTargetAppInstallerInstallableFiles();
-  assertIncludesAll(
-    installableFiles,
-    [
-      "uiEditor/README.md",
-      "uiEditor/uiEditorRegistry.js",
-  "uiEditor/targetAppRegistry.js",
-      "uiEditor/uiEditorLauncherButton.js",
-      "uiEditor/uiEditorLauncherButton.css",
-      "uiEditor/uiEditorRules.md",
-      "uiEditor/tests/uiEditorRegistry.test.cjs",
-    ],
-    "installableFiles"
-  );
+  assertIncludesAll(installableFiles, EXPECTED_INSTALLABLE_FILES, "installableFiles");
   installableFiles.push("mutated");
   assert.equal(getTargetAppInstallerInstallableFiles().includes("mutated"), false);
 
@@ -94,19 +103,7 @@ function run() {
   assert.equal(validPlan.targetAppPath, "/tmp/neutral-target-app");
   assert.equal(validPlan.selectedMode, "prepare-registry-structure");
 
-  assertIncludesAll(
-    validPlan.installableFiles,
-    [
-      "uiEditor/README.md",
-      "uiEditor/uiEditorRegistry.js",
-  "uiEditor/targetAppRegistry.js",
-      "uiEditor/uiEditorLauncherButton.js",
-      "uiEditor/uiEditorLauncherButton.css",
-      "uiEditor/uiEditorRules.md",
-      "uiEditor/tests/uiEditorRegistry.test.cjs",
-    ],
-    "Plan-installableFiles"
-  );
+  assertIncludesAll(validPlan.installableFiles, EXPECTED_INSTALLABLE_FILES, "Plan-installableFiles");
   assertIncludesAll(
     validPlan.blockedActions,
     [

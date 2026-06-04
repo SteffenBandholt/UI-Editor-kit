@@ -322,15 +322,27 @@ async function run() {
     assert.deepEqual(blockedInstallResponse.body.writtenFiles, []);
     assert.equal(fs.existsSync(targetRoot), false, "Ohne vollstaendige Bestaetigung darf nichts geschrieben werden.");
 
-    const allowedFiles = [
+    const installedFiles = [
+      "AGENTS.md",
       "uiEditor/README.md",
+      "uiEditor/INSTALLATION_STATUS.md",
       "uiEditor/targetAppRegistry.js",
       "uiEditor/tests/uiEditorRegistry.test.cjs",
       "uiEditor/uiEditorLauncherButton.css",
       "uiEditor/uiEditorLauncherButton.js",
       "uiEditor/uiEditorRegistry.js",
       "uiEditor/uiEditorRules.md",
+      "docs/ui-editor/EDITOR_BAUPLAN.md",
+      "docs/ui-editor/UI_BAU_UND_PRUEFREGELN.md",
+      "docs/ui-editor/UI_ELEMENT_KATALOG.md",
+      "docs/ui-editor/UI_EDITOR_VERTRAG.md",
+      "docs/ui-editor/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
+      "docs/ui-editor/ZIEL_APP_ANBINDUNG.md",
+      "codex/AGENTS_UI_EDITOR_BLOCK.md",
+      "codex/CODEX_STARTREGEL_UI_PDF.md",
+      "scripts/ui-editor-contract-check.cjs",
     ];
+    const removedFiles = installedFiles.filter((relativePath) => relativePath !== "AGENTS.md");
     const installResponse = await requestJson(port, "/api/installer/install", {
       targetAppPath: targetRoot,
       targetAppId: "neutral-target-app",
@@ -348,12 +360,30 @@ async function run() {
 
     assert.equal(installResponse.statusCode, 200);
     assert.equal(installResponse.body.ok, true);
-    assert.deepEqual(installResponse.body.writtenFiles.slice().sort(), allowedFiles);
-    assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles);
+    assert.deepEqual(installResponse.body.writtenFiles.slice().sort(), installedFiles.slice().sort());
+    assert.deepEqual(collectRelativeFiles(targetRoot), installedFiles.slice().sort());
     const registry = fs.readFileSync(path.join(targetRoot, "uiEditor/uiEditorRegistry.js"), "utf8");
+    assert.equal(registry.includes("uiEditor.root"), true);
     assert.equal(registry.includes("uiEditor.launcherButton"), true);
-    assert.equal(registry.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
+    assert.equal(registry.includes('lockedOps: Object.freeze([])'), true);
+    assert.equal(registry.includes('role: "navigation"'), true);
+    assert.equal(registry.includes('parentId: "uiEditor.root"'), true);
+    assert.equal(registry.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
     assert.equal(registry.includes("editable: true"), true);
+    const rules = fs.readFileSync(path.join(targetRoot, "uiEditor/uiEditorRules.md"), "utf8");
+    const status = fs.readFileSync(path.join(targetRoot, "uiEditor/INSTALLATION_STATUS.md"), "utf8");
+    assert.equal(rules.includes("Keine automatische Elementerkennung."), true);
+    assert.equal(rules.includes("Keine automatische Freigabe."), true);
+    assert.equal(rules.includes("Keine fachlichen Aktionen."), true);
+    assert.equal(status.includes("Keine Ziel-UI analysiert."), true);
+    assert.equal(status.includes("Keine Ziel-UI geaendert."), true);
+    assert.equal(status.includes("Keine Elemente automatisch erkannt."), true);
+    assert.equal(status.includes("Keine Elemente automatisch registriert."), true);
+    assert.equal(status.includes("Keine fachlichen Aktionen ausgefuehrt."), true);
+    assert.equal(status.includes("Fachlogik und Fachdaten bleiben in der Ziel-App."), true);
+    const agents = fs.readFileSync(path.join(targetRoot, "AGENTS.md"), "utf8");
+    assert.equal(agents.includes("<!-- UI-EDITOR-KIT:START -->"), true);
+    assert.equal(agents.includes("<!-- UI-EDITOR-KIT:END -->"), true);
     assert.deepEqual(installResponse.body.errors, []);
 
     const uninstallPreviewResponse = await requestJson(port, "/api/installer/uninstall/preview", {
@@ -364,7 +394,11 @@ async function run() {
     assert.equal(uninstallPreviewResponse.body.preview.willRemoveFiles, false);
     assert.equal(uninstallPreviewResponse.body.preview.willRemoveSourceFiles, false);
     assert.equal(uninstallPreviewResponse.body.preview.willRemoveUnknownFiles, false);
-    assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles, "Deinstallations-Preview darf nichts entfernen.");
+    assert.deepEqual(
+      collectRelativeFiles(targetRoot),
+      installedFiles.slice().sort(),
+      "Deinstallations-Preview darf nichts entfernen."
+    );
 
     const blockedUninstallResponse = await requestJson(port, "/api/installer/uninstall", {
       targetAppPath: targetRoot,
@@ -375,7 +409,7 @@ async function run() {
     assert.equal(blockedUninstallResponse.statusCode, 400);
     assert.equal(blockedUninstallResponse.body.ok, false);
     assert.deepEqual(blockedUninstallResponse.body.removedFiles, []);
-    assert.deepEqual(collectRelativeFiles(targetRoot), allowedFiles);
+    assert.deepEqual(collectRelativeFiles(targetRoot), installedFiles.slice().sort());
 
     const uninstallResponse = await requestJson(port, "/api/installer/uninstall", {
       targetAppPath: targetRoot,
@@ -389,8 +423,9 @@ async function run() {
     });
     assert.equal(uninstallResponse.statusCode, 200);
     assert.equal(uninstallResponse.body.ok, true);
-    assert.deepEqual(uninstallResponse.body.removedFiles.slice().sort(), allowedFiles);
-    assert.deepEqual(collectRelativeFiles(targetRoot), []);
+    assert.deepEqual(uninstallResponse.body.removedFiles.slice().sort(), removedFiles.slice().sort());
+    assert.deepEqual(collectRelativeFiles(targetRoot), ["AGENTS.md"]);
+    assert.equal(fs.readFileSync(path.join(targetRoot, "AGENTS.md"), "utf8").includes("<!-- UI-EDITOR-KIT:START -->"), false);
 
     fs.mkdirSync(path.join(targetRoot, "uiEditor"), { recursive: true });
     fs.writeFileSync(path.join(targetRoot, "uiEditor/custom-note.md"), "unknown", "utf8");

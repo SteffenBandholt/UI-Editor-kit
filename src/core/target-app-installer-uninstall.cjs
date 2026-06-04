@@ -3,19 +3,22 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const {
+  TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
+  getTargetAppInstallerManagedFiles,
+  getTargetAppInstallerUninstallEmptyDirectories,
+  isSafeRelativePath,
+  hasMarkedAgentsBlock,
+  removeMarkedAgentsBlock,
+} = require("./target-app-installer-artifacts.cjs");
+
 const TARGET_APP_INSTALLER_UNINSTALL_REQUIRED_INPUTS = Object.freeze(["targetAppPath", "confirmation"]);
 
-const TARGET_APP_INSTALLER_UNINSTALL_ALLOWED_FILES = Object.freeze([
-  "uiEditor/README.md",
-  "uiEditor/uiEditorRegistry.js",
-  "uiEditor/targetAppRegistry.js",
-  "uiEditor/uiEditorRules.md",
-  "uiEditor/uiEditorLauncherButton.js",
-  "uiEditor/uiEditorLauncherButton.css",
-  "uiEditor/tests/uiEditorRegistry.test.cjs",
-]);
+const TARGET_APP_INSTALLER_UNINSTALL_ALLOWED_FILES = Object.freeze(getTargetAppInstallerManagedFiles());
 
-const TARGET_APP_INSTALLER_UNINSTALL_EMPTY_DIRECTORIES = Object.freeze(["uiEditor/tests", "uiEditor"]);
+const TARGET_APP_INSTALLER_UNINSTALL_EMPTY_DIRECTORIES = Object.freeze(
+  getTargetAppInstallerUninstallEmptyDirectories()
+);
 
 const TARGET_APP_INSTALLER_UNINSTALL_CONFIRMATION_FIELDS = Object.freeze([
   "uninstallConfirmed",
@@ -87,6 +90,7 @@ function uninstallTargetAppInstallerArtifacts(inputs) {
 
   const removedFiles = [];
   const removedDirectories = [];
+  const updatedFiles = [];
 
   TARGET_APP_INSTALLER_UNINSTALL_ALLOWED_FILES.forEach((relativePath) => {
     const absolutePath = resolveTargetPath(validation.targetAppPath, relativePath);
@@ -95,6 +99,10 @@ function uninstallTargetAppInstallerArtifacts(inputs) {
       removedFiles.push(relativePath);
     }
   });
+
+  if (removeAgentsBlock(validation.targetAppPath)) {
+    updatedFiles.push(TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH);
+  }
 
   TARGET_APP_INSTALLER_UNINSTALL_EMPTY_DIRECTORIES.forEach((relativePath) => {
     const absolutePath = resolveTargetPath(validation.targetAppPath, relativePath);
@@ -109,6 +117,7 @@ function uninstallTargetAppInstallerArtifacts(inputs) {
     errors: [],
     removedFiles,
     removedDirectories,
+    updatedFiles,
   };
 }
 
@@ -305,6 +314,7 @@ function createUninstallPreview(targetAppPath) {
   return {
     targetAppPath: typeof targetAppPath === "string" ? targetAppPath : undefined,
     filesToRemove: TARGET_APP_INSTALLER_UNINSTALL_ALLOWED_FILES.slice(),
+    filesToUpdate: [TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH],
     directoriesToRemoveIfEmpty: TARGET_APP_INSTALLER_UNINSTALL_EMPTY_DIRECTORIES.slice(),
     willRemoveFiles: false,
     willRemoveSourceFiles: false,
@@ -323,20 +333,7 @@ function resolveTargetPath(targetAppPath, relativePath) {
 }
 
 function isSafeRelativeInstallerPath(relativePath) {
-  if (typeof relativePath !== "string" || relativePath.trim() === "") {
-    return false;
-  }
-
-  if (path.isAbsolute(relativePath)) {
-    return false;
-  }
-
-  const normalized = path.posix.normalize(relativePath.split(path.sep).join("/"));
-  if (normalized === "." || normalized.startsWith("../") || normalized.includes("/../")) {
-    return false;
-  }
-
-  return normalized === "uiEditor" || normalized.startsWith("uiEditor/");
+  return isSafeRelativePath(relativePath);
 }
 
 function isPathInside(candidatePath, rootPath) {
@@ -346,6 +343,31 @@ function isPathInside(candidatePath, rootPath) {
 
 function isDirectoryEmpty(directoryPath) {
   return fs.readdirSync(directoryPath).length === 0;
+}
+
+function removeAgentsBlock(targetAppPath) {
+  const absolutePath = resolveTargetPath(targetAppPath, TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH);
+
+  if (!fs.existsSync(absolutePath)) {
+    return false;
+  }
+
+  if (fs.statSync(absolutePath).isDirectory()) {
+    return false;
+  }
+
+  const content = fs.readFileSync(absolutePath, "utf8");
+  if (!hasMarkedAgentsBlock(content)) {
+    return false;
+  }
+
+  const nextContent = removeMarkedAgentsBlock(content);
+  if (!nextContent.changed) {
+    return false;
+  }
+
+  fs.writeFileSync(absolutePath, nextContent.content, "utf8");
+  return true;
 }
 
 module.exports = {
