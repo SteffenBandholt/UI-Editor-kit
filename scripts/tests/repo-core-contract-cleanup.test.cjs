@@ -21,6 +21,7 @@ const MUST_EXIST = [
   "docs/NEUTRAL_THEME_TOKENS.md",
   "styles/neutral-theme-tokens.css",
   "scripts/ui-editor-contract-check.cjs",
+  "scripts/install-ui-editor-to-target.cjs",
   "src/core/editor-ui-details-view-model.cjs",
   "scripts/tests/editor-ui-details-view-model.test.cjs",
   "src/core/editor-ui-change-draft-view-model.cjs",
@@ -48,6 +49,7 @@ const MUST_EXIST = [
   "src/core/target-app-installer-uninstall.cjs",
   "scripts/tests/target-app-installer-uninstall.test.cjs",
   "scripts/tests/target-app-registry-contract.test.cjs",
+  "scripts/tests/install-ui-editor-to-target-cli.test.cjs",
   "scripts/start-installer-app.cjs",
   "src/installer-app/index.html",
   "src/installer-app/installer-app.js",
@@ -124,11 +126,12 @@ function run() {
   });
 
   const packageJson = JSON.parse(read("package.json"));
-  assert.deepEqual(Object.keys(packageJson.scripts), ["start", "test"]);
+  assert.deepEqual(Object.keys(packageJson.scripts), ["start", "install:target", "test"]);
   assert.equal(packageJson.scripts.start, "node scripts/start-installer-app.cjs");
+  assert.equal(packageJson.scripts["install:target"], "node scripts/install-ui-editor-to-target.cjs");
   assert.equal(
     packageJson.scripts.test,
-    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/target-app-adapter-manifest-check.test.cjs && node scripts/tests/target-app-adapter-release-gate.test.cjs && node scripts/tests/target-app-adapter-plan.test.cjs && node scripts/tests/target-app-adapter-plan-safety-check.test.cjs && node scripts/tests/target-app-installer-plan.test.cjs && node scripts/tests/target-app-installer-execution.test.cjs && node scripts/tests/target-app-installer-uninstall.test.cjs && node scripts/tests/target-app-registry-contract.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs && node scripts/tests/installer-app-start.test.cjs"
+    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/target-app-adapter-manifest-check.test.cjs && node scripts/tests/target-app-adapter-release-gate.test.cjs && node scripts/tests/target-app-adapter-plan.test.cjs && node scripts/tests/target-app-adapter-plan-safety-check.test.cjs && node scripts/tests/target-app-installer-plan.test.cjs && node scripts/tests/target-app-installer-execution.test.cjs && node scripts/tests/target-app-installer-uninstall.test.cjs && node scripts/tests/target-app-registry-contract.test.cjs && node scripts/tests/install-ui-editor-to-target-cli.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs && node scripts/tests/installer-app-start.test.cjs"
   );
 
   assertNoTerms(read("README.md"), FORBIDDEN_TERMS, "README");
