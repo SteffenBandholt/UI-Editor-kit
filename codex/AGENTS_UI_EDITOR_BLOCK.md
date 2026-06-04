@@ -37,6 +37,12 @@ Die Entwurfsentscheidung muss enthalten:
 - Nicht editorfaehige fachliche Aktionen
 - Pruefung mit `scripts/ui-editor-contract-check.cjs` oder klarer Hinweis, falls die Pruefung noch fehlt
 
+Filterleisten, Toolbars und headerartige Editierbereiche sind zusammengesetzte UI-Strukturen. Sie duerfen direkte Felder, direkte Selects, direkte Checkboxen, direkte Radio-Buttons, direkte einzelne Buttons, Gruppen, Untergruppen, Button-Gruppen, Radio-Gruppen und Checkbox-Gruppen enthalten.
+
+Gruppen sind optional und nur strukturabhaengig zu verwenden. Ein Button muss nicht kuenstlich gruppiert werden, wenn er real direkt zur Filterbar oder Toolbar gehoert. Die Parent-Struktur muss die reale deklarierte UI-Struktur abbilden.
+
+Diese Regeln gelten beim Neubau editorfaehiger UI und bei nachtraeglicher bewusster Registrierung bestehender UI-Elemente.
+
 ## Pflichtangaben je editorrelevantem Element
 
 Jedes editorrelevante Element muss nach dem UI-Elementkatalog klassifiziert werden.
@@ -68,13 +74,27 @@ Je nach Elementtyp sind weitere Angaben erforderlich, zum Beispiel:
 - Keine Metaspalte ohne Rolle.
 - Kein Button ohne klare Trennung zwischen UI-Element und fachlicher Aktion.
 - Keine Parent-Struktur raten.
+- Keine Parent-Struktur kuenstlich verschachteln.
 - Keine bestehende UI analysieren.
 - Keine bestehende UI scannen.
 - Keine automatische Bestandserkennung.
+- Keine automatische Elementerkennung.
 - Keine automatische UI-Elementliste erzeugen.
 - Keine bestehende Legacy-UI automatisch migrieren.
 - Keine Elemente erfinden.
 - Keine Fachdaten in IDs oder Metadaten schreiben.
+
+## Nachtraegliche bewusste Registrierung
+
+Bestehende UI-Elemente duerfen nachtraeglich bewusst registriert werden, wenn ein bekanntes bestehendes Element bewusst ausgewaehlt wird, eine stabile ID bekommt, einen Registry-Eintrag bekommt, der Render-Code einen passenden Marker bekommt, erlaubte Operationen festgelegt werden und Tests ergaenzt werden.
+
+Das ist keine UI-Analyse.
+
+Das ist keine automatische Bestandserkennung.
+
+Das ist kein Scan.
+
+Das ist keine Migration.
 
 ## Ausschluss fachlicher Aktionen als Editor-Ziele
 

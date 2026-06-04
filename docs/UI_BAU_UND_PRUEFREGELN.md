@@ -47,6 +47,10 @@ Ohne vollstaendige Entwurfsentscheidung gilt: STOPP.
 
 Bestehende UI darf nicht per UI-Analyse, Bestandsanalyse, UI-Erkennung oder UI-Scan nachtraeglich automatisch klassifiziert werden.
 
+Bestehende UI-Elemente duerfen aber nachtraeglich bewusst registriert werden, wenn das Element bekannt ist, bewusst ausgewaehlt wird, eine stabile ID bekommt, einen Registry-Eintrag bekommt, der Render-Code einen passenden Marker bekommt, erlaubte Operationen festgelegt werden und Tests ergaenzt werden.
+
+Nachtraegliche bewusste Registrierung ist keine UI-Analyse, keine automatische Bestandserkennung, kein Scan und keine Migration.
+
 ## 4. Beim UI-Bau
 
 Beim Bau der UI muss jedes editorrelevante Element klassifiziert und registriert werden.
@@ -119,7 +123,59 @@ Root
 
 Komplexe Komponenten wie Tabellen, Listen, Karten und Dialoge duerfen eigene Unterelemente besitzen, muessen diese aber ebenfalls registrieren.
 
-## 7. Tabellen-Regeln
+## 7. Filterleisten, Toolbars und Header-Editierbereiche
+
+Filterleisten, Toolbars und headerartige Editierbereiche sind zusammengesetzte UI-Strukturen.
+
+Diese Regel gilt sowohl beim Neubau einer editorfaehigen UI als auch bei nachtraeglicher bewusster Registrierung bestehender UI-Elemente.
+
+Sie duerfen direkte Felder, direkte Selects, direkte Checkboxen, direkte Radio-Buttons, direkte einzelne Buttons, Gruppen, Untergruppen, Button-Gruppen, Radio-Gruppen und Checkbox-Gruppen enthalten.
+
+Felder, Selects, Checkboxen und Radio-Buttons duerfen editorrelevante Elemente sein.
+
+Gruppen sind erlaubt, aber nicht zwingend. Gruppen sind nur zu verwenden, wenn die echte UI eine optische, fachliche oder layoutbezogene Gruppe bildet.
+
+Ein Button muss nicht kuenstlich gruppiert werden, wenn er real direkt zur Filterbar oder Toolbar gehoert. Buttons muessen nur dann in eine Gruppe, wenn die echte UI eine optische, fachliche oder layoutbezogene Button-Gruppe bildet.
+
+Die Parent-Struktur darf nicht geraten und nicht kuenstlich verschachtelt werden. Die Parent-Struktur muss die reale deklarierte UI-Struktur abbilden.
+
+Der UI-Editor darf Layout, Sichtbarkeit, Reihenfolge, Groesse oder Label bearbeiten, sofern die jeweilige Operation erlaubt ist.
+
+Fachwerte und Fachaktionen bleiben ausserhalb des UI-Editors. Der UI-Editor darf keine Filterwerte setzen, keine Checkbox fachlich umschalten, keine Radio-Auswahl fachlich aendern und keine Button-Fachaktion ausfuehren.
+
+Zulaessig ohne Gruppe:
+
+```text
+screen.root
+  screen.filterbar
+    screen.filterbar.search.input
+    screen.filterbar.status.select
+    screen.filterbar.action.reset
+```
+
+Zulaessig mit Gruppen:
+
+```text
+screen.root
+  screen.filterbar
+    screen.filterbar.group.search
+      screen.filterbar.search.input
+    screen.filterbar.group.actions
+      screen.filterbar.action.reset
+      screen.filterbar.action.refresh
+```
+
+Nachtraegliche Registrierung:
+
+```text
+Bestehende UI-Elemente duerfen nachtraeglich bewusst registriert werden.
+Das ist keine UI-Analyse.
+Das ist keine automatische Bestandserkennung.
+Das ist kein Scan.
+Das ist keine Migration.
+```
+
+## 8. Tabellen-Regeln
 
 Tabellen sind Composite-Elemente.
 
@@ -148,7 +204,7 @@ Metaspalten sind Normalfall und muessen klassifiziert werden.
 
 Der Editor darf nicht selbst entscheiden, ob eine Spalte Fachspalte, Metaspalte oder Aktionsspalte ist.
 
-## 8. Button- und Aktionsregeln
+## 9. Button- und Aktionsregeln
 
 Buttons koennen editorrelevante UI-Elemente sein.
 
@@ -169,7 +225,7 @@ Nicht editorfaehig sind insbesondere:
 - Datenbankaktion
 - fachlicher IPC-Aufruf
 
-## 9. Operationen
+## 10. Operationen
 
 Der Editor darf nur Operationen anbieten, die in `allowedOps` stehen.
 
@@ -179,7 +235,7 @@ Eine Operation darf nicht gleichzeitig in `allowedOps` und `lockedOps` stehen.
 
 Wenn eine Operation nicht ausdruecklich erlaubt ist, gilt sie als nicht erlaubt.
 
-## 10. Nach dem UI-Bau
+## 11. Nach dem UI-Bau
 
 Nach dem Bau oder Umbau einer editorfaehigen UI muss ein Vertragscheck laufen.
 
@@ -189,7 +245,7 @@ Eine UI ist nicht fertig, solange der Check fehlschlaegt.
 
 Wenn Fehler gefunden werden, muss Codex reparieren und den Check erneut ausfuehren.
 
-## 11. Mindestpruefungen
+## 12. Mindestpruefungen
 
 Der Vertragscheck muss mindestens pruefen:
 
@@ -207,7 +263,7 @@ Der Vertragscheck muss mindestens pruefen:
 - keine unzulaessigen Datensatz-, Personen- oder Terminwerte in IDs
 - keine unvollstaendige UI-Elementliste
 
-## 12. Reparaturpflicht
+## 13. Reparaturpflicht
 
 Wenn der Check fehlschlaegt, darf Codex die UI nicht als fertig melden.
 
@@ -220,15 +276,17 @@ Codex muss:
 
 Erst ein gruener Check gilt als abnahmefaehig.
 
-## 13. Was Codex nicht tun darf
+## 14. Was Codex nicht tun darf
 
 Codex darf beim Bau editorfaehiger UI nicht:
 
 - UI-Elemente ohne Klassifizierung bauen
 - Parent-Strukturen raten
+- Parent-Strukturen kuenstlich verschachteln
 - bestehende UI analysieren
 - bestehende UI scannen
 - automatische Bestandserkennung durchfuehren
+- automatische Elementerkennung durchfuehren
 - automatische UI-Elementlisten erzeugen
 - bestehende Legacy-UIs automatisch migrieren
 - Tabellen ohne Spaltenklassifizierung bauen
@@ -239,7 +297,7 @@ Codex darf beim Bau editorfaehiger UI nicht:
 - HTML, DOM oder eine Demo-Technik zur Kernarchitektur erklaeren
 - UI als fertig melden, wenn der Vertragscheck rot ist
 
-## 14. Abnahmebericht nach UI-Bau
+## 15. Abnahmebericht nach UI-Bau
 
 Nach jedem editorrelevanten UI-Bau muss Codex berichten:
 
@@ -253,10 +311,10 @@ Nach jedem editorrelevanten UI-Bau muss Codex berichten:
 - ob Reparaturen erforderlich waren
 - ob die UI editorfaehig abnahmefaehig ist
 
-## 15. Kernaussage
+## 16. Kernaussage
 
-Editorfaehige UI wird nicht nachtraeglich geraten.
+Editorfaehige UI wird nicht nachtraeglich geraten oder automatisch erkannt.
 
-Sie wird beim Bau geplant, klassifiziert, registriert und geprueft.
+Sie wird beim Neubau geplant, klassifiziert, registriert und geprueft oder bei bestehender UI nachtraeglich bewusst ausgewaehlt, stabil markiert, registriert und geprueft.
 
 Nur eine erfolgreich gepruefte UI-Elementliste ist Grundlage fuer den Editor.

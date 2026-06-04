@@ -132,6 +132,12 @@ Dialog, Modal oder vergleichbares Einblendfenster.
 
 Werkzeugleiste oder Aktionsleiste.
 
+Toolbars, Filterleisten und headerartige Editierbereiche sind zusammengesetzte UI-Strukturen. Sie koennen direkte Felder, direkte Selects, direkte Checkboxen, direkte Radio-Buttons, direkte einzelne Buttons, Gruppen, Untergruppen, Button-Gruppen, Radio-Gruppen und Checkbox-Gruppen enthalten.
+
+Gruppen sind nur zu verwenden, wenn die echte UI eine optische, fachliche oder layoutbezogene Gruppe bildet. Ein Button muss nicht kuenstlich gruppiert werden, wenn er real direkt zur Filterbar oder Toolbar gehoert.
+
+Die Parent-Struktur muss die reale deklarierte UI-Struktur abbilden und darf nicht geraten oder kuenstlich verschachtelt werden.
+
 ### `button`
 
 Schaltflaeche.
@@ -397,6 +403,8 @@ Der Button ist fuer den Editor sichtbar, aber seine fachliche Aktion ist keine E
 
 Beim Bau einer neuen editorfaehigen UI muss jedes relevante Element nach diesem Katalog klassifiziert werden.
 
+Diese Regel gilt ebenso fuer die nachtraegliche bewusste Registrierung bestehender UI-Elemente: Ein bekanntes bestehendes Element wird bewusst ausgewaehlt, bekommt eine stabile ID, einen Registry-Eintrag, einen passenden Marker im Render-Code, festgelegte erlaubte Operationen und ergaenzte Tests.
+
 Kein relevantes UI-Element ohne Eintrag in der UI-Elementliste.
 
 Keine Tabelle ohne klassifizierte Spalten.
@@ -404,3 +412,5 @@ Keine Tabelle ohne klassifizierte Spalten.
 Keine Metaspalte ohne Rolle.
 
 Keine fachliche Aktion als Editoroperation.
+
+Nachtraegliche bewusste Registrierung ist keine UI-Analyse, keine automatische Bestandserkennung, kein Scan, keine automatische Elementerkennung und keine Migration.

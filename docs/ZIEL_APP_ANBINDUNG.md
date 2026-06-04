@@ -20,6 +20,10 @@ Nicht registrierte Elemente sind fuer den Editor nicht vorhanden.
 
 Die Regelpaket-Installation ist nur ein Ziel-App-Regelpaket-Bootstrap. Sie analysiert, scannt, erkennt, registriert oder migriert keine bestehende UI.
 
+Eine Ziel-App darf bestehende bekannte UI-Elemente nachtraeglich bewusst registrieren. Dazu muss ein konkretes bestehendes Element bewusst ausgewaehlt werden, eine stabile ID bekommen, einen Registry-Eintrag bekommen, im Render-Code passend markiert werden, erlaubte Operationen bekommen und durch Tests abgesichert werden.
+
+Das ist keine UI-Analyse, keine automatische Bestandserkennung, kein Scan, keine automatische Elementerkennung und keine Migration.
+
 ## 3. Voraussetzungen in der Ziel-App
 
 Eine Ziel-App muss mindestens bereitstellen:
@@ -71,9 +75,13 @@ Sie muss alle editorrelevanten Elemente enthalten, insbesondere:
 - Karten
 - Dialoge
 - Toolbars
+- Filterleisten
+- headerartige Editierbereiche
 - Statusanzeigen
 
 Jedes Element muss nach dem UI-Elementkatalog klassifiziert werden.
+
+Filterleisten, Toolbars und headerartige Editierbereiche duerfen direkte Felder, direkte Selects, direkte Checkboxen, direkte Radio-Buttons, direkte einzelne Buttons, Gruppen, Untergruppen, Button-Gruppen, Radio-Gruppen und Checkbox-Gruppen enthalten. Gruppen sind optional und nur dann zu verwenden, wenn die echte UI eine Gruppe bildet. Die Parent-Struktur muss die reale deklarierte UI-Struktur abbilden.
 
 ## 6. Host-Adapter
 
@@ -167,6 +175,7 @@ Die Ziel-App darf dem Editor nicht erlauben:
 - bestehende UI zu scannen
 - eine automatische Bestandserkennung oder UI-Elementliste zu erzeugen
 - bestehende Legacy-UIs automatisch zu migrieren
+- nachtraegliche bewusste Registrierung als automatische Analyse, Scan, Erkennung oder Migration auszufuehren
 - Datenbankaktionen auszufuehren
 - fachliche Buttons auszufuehren
 - Speicher-, Loesch-, Upload-, Import- oder Exportaktionen als Editoroperation zu behandeln
