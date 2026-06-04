@@ -65,6 +65,7 @@ function assertNoForbiddenFragments(content) {
 function run() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-target-app-registry-contract-"));
   const targetAppPath = path.join(tempRoot, "target-app");
+  fs.mkdirSync(targetAppPath, { recursive: true });
   const installerPlan = createTargetAppInstallerPlan({
     targetAppPath,
     targetAppId: "neutral-target-app",

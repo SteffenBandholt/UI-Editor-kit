@@ -12,6 +12,7 @@ const {
   appendAgentsBlock,
   hasMarkedAgentsBlock,
   isSafeRelativePath,
+  createTargetAppInstallerPreflightReport,
   createTargetAppInstallerReport,
 } = require("./target-app-installer-artifacts.cjs");
 
@@ -80,11 +81,13 @@ function executeTargetAppInstallerPlan(inputs) {
   const normalized = normalizeExecutionInputs(inputs);
   const plan = normalized.installerPlan;
   const planValidation = validateTargetAppInstallerPlan(plan);
+  const preflightReport = createTargetAppInstallerPreflightReport({ installerPlan: plan });
   const confirmationValidation = validateExecutionConfirmation(normalized.confirmation);
   const safetyValidation = validateInstallableFileSafety(plan);
   const targetValidation = validateTargetWriteSet(plan);
   const errors = normalized.errors
     .concat(planValidation.errors || [])
+    .concat(preflightReport.errors)
     .concat(confirmationValidation.errors)
     .concat(safetyValidation.errors)
     .concat(targetValidation.errors);
@@ -94,6 +97,12 @@ function executeTargetAppInstallerPlan(inputs) {
       ok: false,
       errors: errors.map((issue) => cloneInstallerExecutionValue(issue)),
       writtenFiles: [],
+      report: createTargetAppInstallerReport(plan, {
+        phase: "install",
+        affectedFiles: TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES,
+        writtenFiles: [],
+        preflightReport,
+      }),
     };
   }
 
@@ -119,6 +128,7 @@ function executeTargetAppInstallerPlan(inputs) {
       phase: "install",
       affectedFiles: TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES,
       writtenFiles,
+      preflightReport,
     }),
   };
 }
@@ -160,6 +170,7 @@ function normalizeExecutionInputs(inputs) {
 
 function createExecutionPreview(plan) {
   const safePlan = isInstallerExecutionObject(plan) ? plan : {};
+  const preflightReport = createTargetAppInstallerPreflightReport({ installerPlan: safePlan });
 
   return {
     targetAppPath: typeof safePlan.targetAppPath === "string" ? safePlan.targetAppPath : undefined,
@@ -181,7 +192,9 @@ function createExecutionPreview(plan) {
       phase: "preview",
       affectedFiles: TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES,
       writtenFiles: [],
+      preflightReport,
     }),
+    preflight: preflightReport,
   };
 }
 

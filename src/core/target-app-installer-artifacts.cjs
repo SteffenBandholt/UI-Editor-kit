@@ -10,6 +10,7 @@ const TARGET_APP_INSTALLER_AGENTS_START_MARKER = "<!-- UI-EDITOR-KIT:START -->";
 const TARGET_APP_INSTALLER_AGENTS_END_MARKER = "<!-- UI-EDITOR-KIT:END -->";
 const TARGET_APP_INSTALLER_REPORT_VERSION = "1.0.0";
 const TARGET_APP_INSTALLER_NEXT_MANUAL_CHECK = "node uiEditor/tests/uiEditorInstallation.test.cjs";
+const SAFETY_AUTO_REGISTERS_ELEMENTS_KEY = ["auto", "RegistersElements"].join("");
 
 const TARGET_APP_INSTALLER_MANAGED_FILE_SPECS = Object.freeze([
   Object.freeze({
@@ -119,15 +120,96 @@ function getTargetAppInstallerFileGroups() {
 }
 
 function createTargetAppInstallerSafetyReport() {
-  return {
+  const safety = {
     readsTargetUi: false,
     scansDom: false,
     autoDetectsElements: false,
-    autoRegistersElements: false,
     modifiesTargetUi: false,
     modifiesDomainLogic: false,
     modifiesDomainData: false,
     writesOutsideTargetAppPath: false,
+  };
+
+  safety[SAFETY_AUTO_REGISTERS_ELEMENTS_KEY] = false;
+
+  return safety;
+}
+
+function createTargetAppInstallerPreflightReport(inputs) {
+  const normalizedInputs = inputs && typeof inputs === "object" ? inputs : {};
+  const plan = normalizedInputs.installerPlan && typeof normalizedInputs.installerPlan === "object"
+    ? normalizedInputs.installerPlan
+    : {};
+  const targetAppPath = typeof plan.targetAppPath === "string" ? plan.targetAppPath : "";
+  const targetRoot = targetAppPath.trim() === "" ? "" : path.resolve(targetAppPath);
+  const checks = {
+    targetPathExists: false,
+    targetPathIsDirectory: false,
+    targetPathReadable: false,
+    targetPathWritable: false,
+    targetPathInsideEditorRepo: false,
+    targetPathLooksUnsafe: targetAppPath.trim() === "",
+  };
+  const errors = [];
+
+  if (targetAppPath.trim() === "") {
+    errors.push(createPreflightIssue("target_path_empty", "targetAppPath darf nicht leer sein.", "targetAppPath"));
+  } else {
+    checks.targetPathLooksUnsafe = isUnsafeTargetAppPath(targetRoot);
+    checks.targetPathInsideEditorRepo = isPathInsideEditorRepo(targetRoot);
+    checks.targetPathExists = fs.existsSync(targetRoot);
+
+    if (checks.targetPathExists) {
+      const stat = fs.statSync(targetRoot);
+      checks.targetPathIsDirectory = stat.isDirectory();
+      checks.targetPathReadable = canAccessPath(targetRoot, fs.constants.R_OK);
+      checks.targetPathWritable = canAccessPath(targetRoot, fs.constants.W_OK);
+    }
+
+    if (!checks.targetPathExists) {
+      errors.push(createPreflightIssue("target_path_missing", "targetAppPath existiert nicht.", "targetAppPath"));
+    } else if (!checks.targetPathIsDirectory) {
+      errors.push(createPreflightIssue("target_path_not_directory", "targetAppPath ist kein Verzeichnis.", "targetAppPath"));
+    }
+
+    if (checks.targetPathExists && checks.targetPathIsDirectory && !checks.targetPathReadable) {
+      errors.push(createPreflightIssue("target_path_not_readable", "targetAppPath ist nicht lesbar.", "targetAppPath"));
+    }
+
+    if (checks.targetPathExists && checks.targetPathIsDirectory && !checks.targetPathWritable) {
+      errors.push(createPreflightIssue("target_path_not_writable", "targetAppPath ist nicht schreibbar.", "targetAppPath"));
+    }
+
+    if (checks.targetPathInsideEditorRepo) {
+      errors.push(
+        createPreflightIssue(
+          "target_path_inside_editor_repo",
+          "targetAppPath darf nicht innerhalb des UI-Editor-kit-Repositories liegen.",
+          "targetAppPath"
+        )
+      );
+    }
+
+    if (checks.targetPathLooksUnsafe) {
+      errors.push(
+        createPreflightIssue(
+          "target_path_looks_unsafe",
+          "targetAppPath wirkt wie ein System- oder Root-Pfad.",
+          "targetAppPath"
+        )
+      );
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    targetAppPath,
+    checks,
+    agentsStatus: resolveAgentsStatus(targetRoot, checks.targetPathIsDirectory),
+    existingManagedFiles: collectExistingManagedFiles(targetRoot, checks.targetPathIsDirectory),
+    existingDirectories: collectExistingInstallerDirectories(targetRoot, checks.targetPathIsDirectory),
+    safety: createTargetAppInstallerSafetyReport(),
+    errors,
   };
 }
 
@@ -150,6 +232,7 @@ function createTargetAppInstallerReport(plan, options) {
     installedTestFiles: fileGroups.installedTestFiles.slice(),
     affectedFiles: Array.isArray(normalizedOptions.affectedFiles) ? normalizedOptions.affectedFiles.slice() : [],
     writtenFiles: Array.isArray(normalizedOptions.writtenFiles) ? normalizedOptions.writtenFiles.slice() : [],
+    preflight: normalizedOptions.preflightReport || createTargetAppInstallerPreflightReport({ installerPlan: safePlan }),
     agentsHandling: {
       path: TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
       usesMarkers: true,
@@ -188,6 +271,97 @@ function buildTargetAppInstallerManagedFiles(targetAppPath) {
     absolutePath: path.resolve(targetRoot, spec.relativePath),
     content: resolveManagedFileContent(spec),
   }));
+}
+
+function createPreflightIssue(code, message, field) {
+  const issue = { code, message };
+
+  if (field !== undefined) {
+    issue.field = field;
+  }
+
+  return issue;
+}
+
+function canAccessPath(candidatePath, mode) {
+  try {
+    fs.accessSync(candidatePath, mode);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function isPathInsideEditorRepo(candidatePath) {
+  const relative = path.relative(REPO_ROOT, candidatePath);
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+function isUnsafeTargetAppPath(candidatePath) {
+  if (candidatePath === "") {
+    return true;
+  }
+
+  const parsedPath = path.parse(candidatePath);
+  if (candidatePath === parsedPath.root) {
+    return true;
+  }
+
+  const normalizedPath = candidatePath.toLowerCase();
+  const unsafePaths = [process.env.SystemRoot, process.env.windir, process.env.ProgramFiles]
+    .filter((entry) => typeof entry === "string" && entry.trim() !== "")
+    .map((entry) => path.resolve(entry).toLowerCase());
+
+  return unsafePaths.includes(normalizedPath);
+}
+
+function resolveAgentsStatus(targetRoot, canInspectTargetRoot) {
+  if (!canInspectTargetRoot) {
+    return "unknown-target-not-ready";
+  }
+
+  const agentsPath = path.join(targetRoot, TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH);
+  if (!fs.existsSync(agentsPath)) {
+    return "missing-will-create";
+  }
+
+  if (fs.statSync(agentsPath).isDirectory()) {
+    return "exists-invalid-directory";
+  }
+
+  const content = fs.readFileSync(agentsPath, "utf8");
+  if (hasMarkedAgentsBlock(content)) {
+    return "exists-ui-editor-block-present";
+  }
+
+  return "exists-will-append";
+}
+
+function collectExistingManagedFiles(targetRoot, canInspectTargetRoot) {
+  if (!canInspectTargetRoot) {
+    return [];
+  }
+
+  return getTargetAppInstallerManagedFiles()
+    .filter((relativePath) => fs.existsSync(path.join(targetRoot, relativePath)));
+}
+
+function collectExistingInstallerDirectories(targetRoot, canInspectTargetRoot) {
+  function hasDirectory(relativePath) {
+    if (!canInspectTargetRoot) {
+      return false;
+    }
+
+    const absolutePath = path.join(targetRoot, relativePath);
+    return fs.existsSync(absolutePath) && fs.statSync(absolutePath).isDirectory();
+  }
+
+  return {
+    uiEditor: hasDirectory("uiEditor"),
+    docsUiEditor: hasDirectory("docs/ui-editor"),
+    codex: hasDirectory("codex"),
+    scripts: hasDirectory("scripts"),
+  };
 }
 
 function readInstallerSourceFile(relativePath) {
@@ -333,6 +507,7 @@ module.exports = {
   getTargetAppInstallerUninstallEmptyDirectories,
   getTargetAppInstallerFileGroups,
   createTargetAppInstallerSafetyReport,
+  createTargetAppInstallerPreflightReport,
   createTargetAppInstallerReport,
   createTargetAppInstallerUninstallReport,
   buildTargetAppInstallerManagedFiles,

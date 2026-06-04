@@ -303,6 +303,8 @@ async function run() {
     assert.equal(response.body.preview.willScanUi, false);
     assert.equal(response.body.preview.willModifyTargetUi, false);
     assert.equal(response.body.preview.willRegisterElements, false);
+    assert.equal(response.body.preview.preflight.checks.targetPathExists, false);
+    assert.equal(response.body.preview.preflight.errors.some((error) => error.code === "target_path_missing"), true);
     assert.deepEqual(response.body.errors, []);
     assert.equal(fs.existsSync(targetRoot), false, "Preview darf keine Ziel-App-Dateien erzeugen.");
 
@@ -321,6 +323,7 @@ async function run() {
     assert.equal(blockedInstallResponse.body.ok, false);
     assert.deepEqual(blockedInstallResponse.body.writtenFiles, []);
     assert.equal(fs.existsSync(targetRoot), false, "Ohne vollstaendige Bestaetigung darf nichts geschrieben werden.");
+    fs.mkdirSync(targetRoot, { recursive: true });
 
     const installedFiles = [
       "AGENTS.md",

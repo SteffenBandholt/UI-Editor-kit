@@ -9,6 +9,7 @@ const path = require("node:path");
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const PLAN_MODULE_PATH = path.join(REPO_ROOT, "src/core/target-app-installer-plan.cjs");
 const EXECUTION_MODULE_PATH = path.join(REPO_ROOT, "src/core/target-app-installer-execution.cjs");
+const ARTIFACTS_MODULE_PATH = path.join(REPO_ROOT, "src/core/target-app-installer-artifacts.cjs");
 const UI_ELEMENT_MODEL_MODULE_PATH = path.join(REPO_ROOT, "src/core/ui-element-model.cjs");
 const UI_ELEMENT_VALIDATOR_MODULE_PATH = path.join(REPO_ROOT, "src/core/ui-element-validator.cjs");
 
@@ -66,13 +67,18 @@ function createTempTargetApp() {
 
 function createValidPlan(overrides) {
   const { targetAppPath } = createTempTargetApp();
-  return createTargetAppInstallerPlan({
+  const planInputs = {
     targetAppPath,
     targetAppId: "neutral-target-app",
     targetAppName: "Neutral Target App",
     selectedMode: "prepare-registry-structure",
     ...(overrides || {}),
-  });
+  };
+  const plan = createTargetAppInstallerPlan(planInputs);
+
+  fs.mkdirSync(plan.targetAppPath, { recursive: true });
+
+  return plan;
 }
 
 function createConfirmedInputs(installerPlan, confirmationOverrides) {
@@ -202,6 +208,20 @@ function assertInstallerReport(report, plan, phase) {
   assert.equal(report.safety.modifiesDomainData, false);
   assert.equal(report.safety.writesOutsideTargetAppPath, false);
   assert.equal(report.nextManualCheck, "node uiEditor/tests/uiEditorInstallation.test.cjs");
+  assert.equal(report.preflight.targetAppPath, plan.targetAppPath);
+  assert.equal(report.preflight.checks.targetPathExists, true);
+  assert.equal(report.preflight.checks.targetPathIsDirectory, true);
+  assert.equal(report.preflight.checks.targetPathReadable, true);
+  assert.equal(report.preflight.checks.targetPathWritable, true);
+  assert.equal(report.preflight.checks.targetPathInsideEditorRepo, false);
+  assert.equal(report.preflight.checks.targetPathLooksUnsafe, false);
+  assert.equal(report.preflight.safety.readsTargetUi, false);
+  assert.equal(report.preflight.safety.scansDom, false);
+  assert.equal(report.preflight.safety.autoDetectsElements, false);
+  assert.equal(report.preflight.safety.autoRegistersElements, false);
+  assert.equal(report.preflight.safety.modifiesTargetUi, false);
+  assert.equal(report.preflight.safety.modifiesDomainLogic, false);
+  assert.equal(report.preflight.safety.modifiesDomainData, false);
 }
 
 function run() {
@@ -224,6 +244,7 @@ function run() {
   assert.equal(previewResult.preview.willModifyTargetUi, false);
   assert.equal(previewResult.preview.willRegisterElements, false);
   assertInstallerReport(previewResult.preview.report, previewPlan, "preview");
+  assert.equal(previewResult.preview.preflight.agentsStatus, "missing-will-create");
   assert.deepEqual(previewResult.preview.report.writtenFiles, []);
   assert.equal(previewResult.preview.report.affectedFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
   assertNoFiles(previewPlan.targetAppPath, "Preview darf keine Dateien schreiben.");
@@ -237,6 +258,47 @@ function run() {
   assert.equal(unconfirmedResult.errors.some((error) => error.code === "missing_execution_confirmation_flag"), true);
   assertNoFiles(unconfirmedPlan.targetAppPath, "Ohne vollstaendige Bestaetigung darf nichts geschrieben werden.");
 
+  const missingTargetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-installer-missing-target-"));
+  const missingTargetPath = path.join(missingTargetRoot, "target-app");
+  const missingTargetPlan = createTargetAppInstallerPlan({
+    targetAppPath: missingTargetPath,
+    targetAppId: "missing-target-app",
+    targetAppName: "Missing Target App",
+    selectedMode: "prepare-registry-structure",
+  });
+  const missingTargetResult = executeTargetAppInstallerPlan(createConfirmedInputs(missingTargetPlan));
+  assert.equal(missingTargetResult.ok, false);
+  assert.equal(missingTargetResult.errors.some((error) => error.code === "target_path_missing"), true);
+  assert.equal(missingTargetResult.report.preflight.checks.targetPathExists, false);
+
+  const fileTargetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-installer-file-target-"));
+  const fileTargetPath = path.join(fileTargetRoot, "target-app.txt");
+  fs.writeFileSync(fileTargetPath, "not a directory", "utf8");
+  const fileTargetPlan = createTargetAppInstallerPlan({
+    targetAppPath: fileTargetPath,
+    targetAppId: "file-target-app",
+    targetAppName: "File Target App",
+    selectedMode: "prepare-registry-structure",
+  });
+  const fileTargetResult = executeTargetAppInstallerPlan(createConfirmedInputs(fileTargetPlan));
+  assert.equal(fileTargetResult.ok, false);
+  assert.equal(fileTargetResult.errors.some((error) => error.code === "target_path_not_directory"), true);
+  assert.equal(fileTargetResult.report.preflight.checks.targetPathIsDirectory, false);
+
+  const repoInsideTargetPath = path.join(REPO_ROOT, "tmp-preflight-target");
+  fs.mkdirSync(repoInsideTargetPath, { recursive: true });
+  const repoInsidePlan = createTargetAppInstallerPlan({
+    targetAppPath: repoInsideTargetPath,
+    targetAppId: "repo-inside-target-app",
+    targetAppName: "Repo Inside Target App",
+    selectedMode: "prepare-registry-structure",
+  });
+  const repoInsideResult = executeTargetAppInstallerPlan(createConfirmedInputs(repoInsidePlan));
+  assert.equal(repoInsideResult.ok, false);
+  assert.equal(repoInsideResult.errors.some((error) => error.code === "target_path_inside_editor_repo"), true);
+  assert.equal(repoInsideResult.report.preflight.checks.targetPathInsideEditorRepo, true);
+  fs.rmSync(repoInsideTargetPath, { recursive: true, force: true });
+
   const confirmedPlan = createValidPlan();
   const confirmedResult = executeTargetAppInstallerPlan(createConfirmedInputs(confirmedPlan));
   assert.equal(confirmedResult.ok, true);
@@ -244,6 +306,7 @@ function run() {
   assertInstallerReport(confirmedResult.report, confirmedPlan, "install");
   assert.deepEqual(confirmedResult.report.writtenFiles.slice().sort(), ALLOWED_FILES.slice().sort());
   assert.equal(confirmedResult.report.affectedFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
+  assert.equal(confirmedResult.report.preflight.agentsStatus, "missing-will-create");
   assertWrittenFilesAreAllowed(confirmedPlan.targetAppPath);
   assertMirroredSourceFiles(confirmedPlan.targetAppPath);
 
@@ -405,6 +468,10 @@ function run() {
   const existingResult = executeTargetAppInstallerPlan(createConfirmedInputs(existingPlan));
   assert.equal(existingResult.ok, false);
   assert.equal(existingResult.errors.some((error) => error.code === "target_file_already_exists"), true);
+  assert.equal(
+    existingResult.report.preflight.existingManagedFiles.includes("docs/ui-editor/EDITOR_BAUPLAN.md"),
+    true
+  );
   assert.equal(fs.readFileSync(path.join(existingPlan.targetAppPath, "docs/ui-editor/EDITOR_BAUPLAN.md"), "utf8"), "existing");
   assert.deepEqual(listFiles(existingPlan.targetAppPath), ["docs/ui-editor/EDITOR_BAUPLAN.md"]);
 
@@ -422,6 +489,7 @@ function run() {
   fs.writeFileSync(path.join(appendAgentsPlan.targetAppPath, "AGENTS.md"), "Bestehende Regel\n", "utf8");
   const appendAgentsResult = executeTargetAppInstallerPlan(createConfirmedInputs(appendAgentsPlan));
   assert.equal(appendAgentsResult.ok, true);
+  assert.equal(appendAgentsResult.report.preflight.agentsStatus, "exists-will-append");
   assert.equal(appendAgentsResult.writtenFiles.includes("AGENTS.md"), true);
   const appendedAgents = readInstalled(appendAgentsPlan.targetAppPath, "AGENTS.md");
   assert.equal(appendedAgents.startsWith("Bestehende Regel\n"), true);
@@ -437,6 +505,7 @@ function run() {
   );
   const existingAgentsBlockResult = executeTargetAppInstallerPlan(createConfirmedInputs(existingAgentsBlockPlan));
   assert.equal(existingAgentsBlockResult.ok, true);
+  assert.equal(existingAgentsBlockResult.report.preflight.agentsStatus, "exists-ui-editor-block-present");
   assert.equal(existingAgentsBlockResult.writtenFiles.includes("AGENTS.md"), false);
   const existingAgentsContent = readInstalled(existingAgentsBlockPlan.targetAppPath, "AGENTS.md");
   assert.equal(existingAgentsContent.match(/<!-- UI-EDITOR-KIT:START -->/gu).length, 1);
@@ -444,6 +513,7 @@ function run() {
 
   const moduleSource = fs.readFileSync(EXECUTION_MODULE_PATH, "utf8");
   assertNoForbiddenFragments(moduleSource, "target-app-installer-execution.cjs");
+  assertNoForbiddenFragments(fs.readFileSync(ARTIFACTS_MODULE_PATH, "utf8"), "target-app-installer-artifacts.cjs");
   [
     readme,
     registry,
