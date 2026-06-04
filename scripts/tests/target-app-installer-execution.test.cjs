@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const assert = require("node:assert/strict");
+const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -28,6 +29,7 @@ const MANAGED_FILES = Object.freeze([
   "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",
   "uiEditor/tests/uiEditorRegistry.test.cjs",
+  "uiEditor/tests/uiEditorInstallation.test.cjs",
   "docs/ui-editor/EDITOR_BAUPLAN.md",
   "docs/ui-editor/UI_ELEMENT_KATALOG.md",
   "docs/ui-editor/UI_BAU_UND_PRUEFREGELN.md",
@@ -163,6 +165,13 @@ function assertMirroredSourceFiles(targetAppPath) {
   });
 }
 
+function runInstalledInstallationTest(targetAppPath) {
+  return childProcess.spawnSync(process.execPath, ["uiEditor/tests/uiEditorInstallation.test.cjs"], {
+    cwd: targetAppPath,
+    encoding: "utf8",
+  });
+}
+
 function run() {
   assert.equal(typeof getTargetAppInstallerExecutionRequiredInputs, "function");
   assert.equal(typeof createTargetAppInstallerExecutionPreview, "function");
@@ -238,6 +247,7 @@ function run() {
   const launcherButtonCss = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.css");
   const rules = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRules.md");
   const contractTest = readInstalled(confirmedPlan.targetAppPath, "uiEditor/tests/uiEditorRegistry.test.cjs");
+  const installationTest = readInstalled(confirmedPlan.targetAppPath, "uiEditor/tests/uiEditorInstallation.test.cjs");
   const installationStatus = readInstalled(confirmedPlan.targetAppPath, "uiEditor/INSTALLATION_STATUS.md");
   const agentsFile = readInstalled(confirmedPlan.targetAppPath, "AGENTS.md");
 
@@ -287,6 +297,21 @@ function run() {
   assert.equal(contractTest.includes("uiEditorRegistry contract"), true);
   assert.equal(contractTest.includes('assert.deepEqual(uiEditorRegistry.uiScopes[0].elements[0].lockedOps, [])'), true);
   assert.equal(contractTest.includes('assert.equal(uiEditorRegistry.uiScopes[0].elements[1].role, "navigation")'), true);
+  assert.equal(installationTest.includes("uiEditorInstallation"), true);
+  [
+    ["write", "FileSync"].join(""),
+    ["mk", "dirSync"].join(""),
+    ["rm", "Sync"].join(""),
+    ["un", "linkSync"].join(""),
+    "querySelector",
+    "document.",
+    "window.",
+    ["D", "OMParser"].join(""),
+    "createElement",
+    "innerHTML",
+  ].forEach((fragment) => {
+    assert.equal(installationTest.includes(fragment), false, `Installationstest enthaelt verbotenes Fragment: ${fragment}`);
+  });
   assert.equal(installationStatus.includes("UI-Editor-Regelpaket installiert."), true);
   assert.equal(installationStatus.includes("Keine Ziel-UI analysiert."), true);
   assert.equal(installationStatus.includes("Keine Ziel-UI geaendert."), true);
@@ -301,6 +326,24 @@ function run() {
   assert.equal(agentsFile.includes("<!-- UI-EDITOR-KIT:START -->"), true);
   assert.equal(agentsFile.includes("<!-- UI-EDITOR-KIT:END -->"), true);
   assert.equal(agentsFile.includes(readRepo("codex/AGENTS_UI_EDITOR_BLOCK.md").trim()), true);
+
+  const installedTestResult = runInstalledInstallationTest(confirmedPlan.targetAppPath);
+  assert.equal(installedTestResult.status, 0, installedTestResult.stderr || installedTestResult.stdout);
+  assert.equal(installedTestResult.stdout.includes("TESTS OK: uiEditorInstallation"), true);
+
+  const missingFilePlan = createValidPlan();
+  const missingFileInstallResult = executeTargetAppInstallerPlan(createConfirmedInputs(missingFilePlan));
+  assert.equal(missingFileInstallResult.ok, true);
+  fs.rmSync(path.join(missingFilePlan.targetAppPath, "docs/ui-editor/EDITOR_BAUPLAN.md"), { force: true });
+  const missingFileTestResult = runInstalledInstallationTest(missingFilePlan.targetAppPath);
+  assert.notEqual(missingFileTestResult.status, 0);
+
+  const missingMarkerPlan = createValidPlan();
+  const missingMarkerInstallResult = executeTargetAppInstallerPlan(createConfirmedInputs(missingMarkerPlan));
+  assert.equal(missingMarkerInstallResult.ok, true);
+  fs.writeFileSync(path.join(missingMarkerPlan.targetAppPath, "AGENTS.md"), "# AGENTS\n\nOhne UI-Editor-Marker\n", "utf8");
+  const missingMarkerTestResult = runInstalledInstallationTest(missingMarkerPlan.targetAppPath);
+  assert.notEqual(missingMarkerTestResult.status, 0);
 
   const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-installer-outside-"));
   const outsidePlan = createValidPlan({ targetAppPath: path.join(outsideRoot, "target-app") });
@@ -363,7 +406,18 @@ function run() {
 
   const moduleSource = fs.readFileSync(EXECUTION_MODULE_PATH, "utf8");
   assertNoForbiddenFragments(moduleSource, "target-app-installer-execution.cjs");
-  [readme, registry, targetAppRegistry, launcherButton, launcherButtonCss, rules, contractTest, installationStatus, agentsFile].forEach(
+  [
+    readme,
+    registry,
+    targetAppRegistry,
+    launcherButton,
+    launcherButtonCss,
+    rules,
+    contractTest,
+    installationTest,
+    installationStatus,
+    agentsFile,
+  ].forEach(
     (content, index) => {
       assertNoForbiddenFragments(content, `installierte Datei ${index}`);
     }
