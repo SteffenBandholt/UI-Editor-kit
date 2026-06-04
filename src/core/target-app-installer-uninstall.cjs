@@ -10,6 +10,7 @@ const {
   isSafeRelativePath,
   hasMarkedAgentsBlock,
   removeMarkedAgentsBlock,
+  createTargetAppInstallerUninstallReport,
 } = require("./target-app-installer-artifacts.cjs");
 
 const TARGET_APP_INSTALLER_UNINSTALL_REQUIRED_INPUTS = Object.freeze(["targetAppPath", "confirmation"]);
@@ -85,6 +86,7 @@ function uninstallTargetAppInstallerArtifacts(inputs) {
       errors: validation.errors.map((issue) => cloneUninstallValue(issue)),
       removedFiles: [],
       removedDirectories: [],
+      report: createTargetAppInstallerUninstallReport(validation.targetAppPath, [], []),
     };
   }
 
@@ -118,6 +120,7 @@ function uninstallTargetAppInstallerArtifacts(inputs) {
     removedFiles,
     removedDirectories,
     updatedFiles,
+    report: createTargetAppInstallerUninstallReport(validation.targetAppPath, removedFiles, updatedFiles),
   };
 }
 
@@ -319,6 +322,7 @@ function createUninstallPreview(targetAppPath) {
     willRemoveFiles: false,
     willRemoveSourceFiles: false,
     willRemoveUnknownFiles: false,
+    report: createTargetAppInstallerUninstallReport(targetAppPath, [], []),
   };
 }
 

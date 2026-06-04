@@ -106,6 +106,7 @@ function assertNoForbiddenFragments(text, label) {
     "querySelector",
     "createElement",
     "innerHTML",
+    ["D", "OMParser"].join(""),
     "document.",
     "window.",
     "navigator.",
@@ -124,6 +125,28 @@ function assertNoForbiddenFragments(text, label) {
   forbiddenFragments.forEach((fragment) => {
     assert.equal(text.includes(fragment), false, `${label} enthaelt verbotenen Fragmenttext: ${fragment}`);
   });
+}
+
+function assertUninstallReport(report, targetAppPath, removedFiles, updatedFiles) {
+  assert.equal(report.reportVersion, "1.0.0");
+  assert.equal(report.phase, "uninstall");
+  assert.equal(report.targetAppPath, targetAppPath);
+  assert.deepEqual(report.removedManagedFiles.slice().sort(), removedFiles.slice().sort());
+  assert.deepEqual(report.updatedFiles.slice().sort(), updatedFiles.slice().sort());
+  assert.equal(report.agentsHandling.path, "AGENTS.md");
+  assert.equal(report.agentsHandling.deletesAgentsFile, false);
+  assert.equal(report.agentsHandling.removesMarkedBlockOnly, true);
+  assert.equal(report.agentsHandling.usesMarkers, true);
+  assert.equal(report.agentsHandling.startMarker, "<!-- UI-EDITOR-KIT:START -->");
+  assert.equal(report.agentsHandling.endMarker, "<!-- UI-EDITOR-KIT:END -->");
+  assert.equal(report.safety.readsTargetUi, false);
+  assert.equal(report.safety.scansDom, false);
+  assert.equal(report.safety.autoDetectsElements, false);
+  assert.equal(report.safety.autoRegistersElements, false);
+  assert.equal(report.safety.modifiesTargetUi, false);
+  assert.equal(report.safety.modifiesDomainLogic, false);
+  assert.equal(report.safety.modifiesDomainData, false);
+  assert.equal(report.safety.writesOutsideTargetAppPath, false);
 }
 
 function run() {
@@ -147,6 +170,7 @@ function run() {
   assert.equal(previewResult.preview.willRemoveFiles, false);
   assert.equal(previewResult.preview.willRemoveSourceFiles, false);
   assert.equal(previewResult.preview.willRemoveUnknownFiles, false);
+  assertUninstallReport(previewResult.preview.report, previewTarget, [], []);
   assert.deepEqual(listFiles(previewTarget), filesBeforePreview, "Preview darf nichts loeschen oder schreiben.");
 
   const unconfirmedTarget = createTempTargetApp();
@@ -177,6 +201,7 @@ function run() {
   assert.equal(uninstallResult.removedDirectories.includes("uiEditor"), true);
   assert.equal(uninstallResult.removedDirectories.includes("docs/ui-editor"), true);
   assert.deepEqual(uninstallResult.updatedFiles, ["AGENTS.md"]);
+  assertUninstallReport(uninstallResult.report, uninstallTarget, KNOWN_ARTIFACTS, ["AGENTS.md"]);
   assert.equal(exists(uninstallTarget, "uiEditor"), false, "Leere uiEditor-Ordner muessen entfernt werden.");
   assert.equal(exists(uninstallTarget, "docs/ui-editor"), false, "Leere ui-editor-Dokuordner muessen entfernt werden.");
   assert.equal(exists(uninstallTarget, "src/app.js"), true, "Dateien ausserhalb der Installer-Artefakte bleiben unangetastet.");
@@ -235,6 +260,7 @@ function run() {
   const agentsWithoutBlockResult = uninstallTargetAppInstallerArtifacts(createConfirmedInputs(agentsWithoutBlockTarget));
   assert.equal(agentsWithoutBlockResult.ok, true);
   assert.deepEqual(agentsWithoutBlockResult.updatedFiles, []);
+  assertUninstallReport(agentsWithoutBlockResult.report, agentsWithoutBlockTarget, KNOWN_ARTIFACTS, []);
   assert.equal(readInstalled(agentsWithoutBlockTarget, "AGENTS.md"), "# AGENTS\n\nEigene Regeln\n");
 
   assertNoForbiddenFragments(read("src/core/target-app-installer-uninstall.cjs"), "Uninstall-Core");

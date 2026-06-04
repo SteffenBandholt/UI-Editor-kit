@@ -384,6 +384,7 @@ function handleInstallerInstallRequest(request, response) {
         ok: executionResult.ok,
         plan,
         writtenFiles: executionResult.writtenFiles,
+        report: executionResult.report,
         errors: executionResult.errors,
       });
     })
@@ -440,6 +441,7 @@ function handleInstallerUninstallRequest(request, response) {
         ok: uninstallResult.ok,
         removedFiles: uninstallResult.removedFiles,
         removedDirectories: uninstallResult.removedDirectories,
+        report: uninstallResult.report,
         errors: uninstallResult.errors,
       });
     })

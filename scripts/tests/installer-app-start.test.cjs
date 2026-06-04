@@ -362,6 +362,16 @@ async function run() {
     assert.equal(installResponse.statusCode, 200);
     assert.equal(installResponse.body.ok, true);
     assert.deepEqual(installResponse.body.writtenFiles.slice().sort(), installedFiles.slice().sort());
+    assert.equal(installResponse.body.report.nextManualCheck, "node uiEditor/tests/uiEditorInstallation.test.cjs");
+    assert.equal(installResponse.body.report.safety.readsTargetUi, false);
+    assert.equal(installResponse.body.report.safety.scansDom, false);
+    assert.equal(installResponse.body.report.safety.autoDetectsElements, false);
+    assert.equal(installResponse.body.report.safety.autoRegistersElements, false);
+    assert.equal(installResponse.body.report.safety.modifiesTargetUi, false);
+    assert.equal(installResponse.body.report.safety.modifiesDomainLogic, false);
+    assert.equal(installResponse.body.report.safety.modifiesDomainData, false);
+    assert.equal(installResponse.body.report.safety.writesOutsideTargetAppPath, false);
+    assert.equal(installResponse.body.report.installedTestFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
     assert.deepEqual(collectRelativeFiles(targetRoot), installedFiles.slice().sort());
     const registry = fs.readFileSync(path.join(targetRoot, "uiEditor/uiEditorRegistry.js"), "utf8");
     assert.equal(registry.includes("uiEditor.root"), true);
@@ -425,6 +435,10 @@ async function run() {
     assert.equal(uninstallResponse.statusCode, 200);
     assert.equal(uninstallResponse.body.ok, true);
     assert.deepEqual(uninstallResponse.body.removedFiles.slice().sort(), removedFiles.slice().sort());
+    assert.equal(uninstallResponse.body.report.agentsHandling.deletesAgentsFile, false);
+    assert.equal(uninstallResponse.body.report.agentsHandling.removesMarkedBlockOnly, true);
+    assert.equal(uninstallResponse.body.report.safety.modifiesTargetUi, false);
+    assert.equal(uninstallResponse.body.report.safety.modifiesDomainData, false);
     assert.deepEqual(collectRelativeFiles(targetRoot), ["AGENTS.md"]);
     assert.equal(fs.readFileSync(path.join(targetRoot, "AGENTS.md"), "utf8").includes("<!-- UI-EDITOR-KIT:START -->"), false);
 

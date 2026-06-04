@@ -131,6 +131,7 @@ function assertNoForbiddenFragments(text, label) {
     "querySelector",
     "createElement",
     "innerHTML",
+    ["D", "OMParser"].join(""),
     "document.",
     "window.",
     "navigator.",
@@ -172,6 +173,37 @@ function runInstalledInstallationTest(targetAppPath) {
   });
 }
 
+function assertInstallerReport(report, plan, phase) {
+  assert.equal(report.reportVersion, "1.0.0");
+  assert.equal(report.phase, phase);
+  assert.equal(report.mode, "prepare-registry-structure");
+  assert.equal(report.targetAppId, plan.targetAppId);
+  assert.equal(report.targetAppName, plan.targetAppName);
+  assert.equal(report.targetAppPath, plan.targetAppPath);
+  assert.equal(report.installedRuleFiles.includes("docs/ui-editor/EDITOR_BAUPLAN.md"), true);
+  assert.equal(report.installedRuleFiles.includes("docs/ui-editor/UI_EDITOR_VERTRAG.md"), true);
+  assert.equal(report.installedCodexFiles.includes("codex/AGENTS_UI_EDITOR_BLOCK.md"), true);
+  assert.equal(report.installedCodexFiles.includes("codex/CODEX_STARTREGEL_UI_PDF.md"), true);
+  assert.deepEqual(report.installedCheckFiles, ["scripts/ui-editor-contract-check.cjs"]);
+  assert.equal(report.installedUiEditorFiles.includes("uiEditor/README.md"), true);
+  assert.equal(report.installedUiEditorFiles.includes("uiEditor/INSTALLATION_STATUS.md"), true);
+  assert.equal(report.installedTestFiles.includes("uiEditor/tests/uiEditorRegistry.test.cjs"), true);
+  assert.equal(report.installedTestFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
+  assert.equal(report.agentsHandling.path, "AGENTS.md");
+  assert.equal(report.agentsHandling.usesMarkers, true);
+  assert.equal(report.agentsHandling.startMarker, "<!-- UI-EDITOR-KIT:START -->");
+  assert.equal(report.agentsHandling.endMarker, "<!-- UI-EDITOR-KIT:END -->");
+  assert.equal(report.safety.readsTargetUi, false);
+  assert.equal(report.safety.scansDom, false);
+  assert.equal(report.safety.autoDetectsElements, false);
+  assert.equal(report.safety.autoRegistersElements, false);
+  assert.equal(report.safety.modifiesTargetUi, false);
+  assert.equal(report.safety.modifiesDomainLogic, false);
+  assert.equal(report.safety.modifiesDomainData, false);
+  assert.equal(report.safety.writesOutsideTargetAppPath, false);
+  assert.equal(report.nextManualCheck, "node uiEditor/tests/uiEditorInstallation.test.cjs");
+}
+
 function run() {
   assert.equal(typeof getTargetAppInstallerExecutionRequiredInputs, "function");
   assert.equal(typeof createTargetAppInstallerExecutionPreview, "function");
@@ -191,6 +223,9 @@ function run() {
   assert.equal(previewResult.preview.willScanUi, false);
   assert.equal(previewResult.preview.willModifyTargetUi, false);
   assert.equal(previewResult.preview.willRegisterElements, false);
+  assertInstallerReport(previewResult.preview.report, previewPlan, "preview");
+  assert.deepEqual(previewResult.preview.report.writtenFiles, []);
+  assert.equal(previewResult.preview.report.affectedFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
   assertNoFiles(previewPlan.targetAppPath, "Preview darf keine Dateien schreiben.");
 
   const unconfirmedPlan = createValidPlan();
@@ -206,6 +241,9 @@ function run() {
   const confirmedResult = executeTargetAppInstallerPlan(createConfirmedInputs(confirmedPlan));
   assert.equal(confirmedResult.ok, true);
   assert.deepEqual(confirmedResult.writtenFiles.slice().sort(), ALLOWED_FILES.slice().sort());
+  assertInstallerReport(confirmedResult.report, confirmedPlan, "install");
+  assert.deepEqual(confirmedResult.report.writtenFiles.slice().sort(), ALLOWED_FILES.slice().sort());
+  assert.equal(confirmedResult.report.affectedFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
   assertWrittenFilesAreAllowed(confirmedPlan.targetAppPath);
   assertMirroredSourceFiles(confirmedPlan.targetAppPath);
 

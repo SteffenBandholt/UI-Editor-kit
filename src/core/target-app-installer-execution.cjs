@@ -12,6 +12,7 @@ const {
   appendAgentsBlock,
   hasMarkedAgentsBlock,
   isSafeRelativePath,
+  createTargetAppInstallerReport,
 } = require("./target-app-installer-artifacts.cjs");
 
 const TARGET_APP_INSTALLER_EXECUTION_REQUIRED_INPUTS = Object.freeze(["installerPlan", "confirmation"]);
@@ -114,6 +115,11 @@ function executeTargetAppInstallerPlan(inputs) {
     ok: true,
     errors: [],
     writtenFiles,
+    report: createTargetAppInstallerReport(plan, {
+      phase: "install",
+      affectedFiles: TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES,
+      writtenFiles,
+    }),
   };
 }
 
@@ -171,6 +177,11 @@ function createExecutionPreview(plan) {
     willScanUi: false,
     willModifyTargetUi: false,
     willRegisterElements: false,
+    report: createTargetAppInstallerReport(safePlan, {
+      phase: "preview",
+      affectedFiles: TARGET_APP_INSTALLER_EXECUTION_ALLOWED_FILES,
+      writtenFiles: [],
+    }),
   };
 }
 

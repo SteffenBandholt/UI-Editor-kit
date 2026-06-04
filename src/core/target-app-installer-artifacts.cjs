@@ -8,6 +8,8 @@ const REPO_ROOT = path.resolve(__dirname, "../..");
 const TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH = "AGENTS.md";
 const TARGET_APP_INSTALLER_AGENTS_START_MARKER = "<!-- UI-EDITOR-KIT:START -->";
 const TARGET_APP_INSTALLER_AGENTS_END_MARKER = "<!-- UI-EDITOR-KIT:END -->";
+const TARGET_APP_INSTALLER_REPORT_VERSION = "1.0.0";
+const TARGET_APP_INSTALLER_NEXT_MANUAL_CHECK = "node uiEditor/tests/uiEditorInstallation.test.cjs";
 
 const TARGET_APP_INSTALLER_MANAGED_FILE_SPECS = Object.freeze([
   Object.freeze({
@@ -100,6 +102,82 @@ function getTargetAppInstallerInstallableFiles() {
 
 function getTargetAppInstallerUninstallEmptyDirectories() {
   return TARGET_APP_INSTALLER_UNINSTALL_EMPTY_DIRECTORIES.slice();
+}
+
+function getTargetAppInstallerFileGroups() {
+  const managedFiles = getTargetAppInstallerManagedFiles();
+
+  return {
+    installedRuleFiles: managedFiles.filter((relativePath) => relativePath.startsWith("docs/ui-editor/")),
+    installedCodexFiles: managedFiles.filter((relativePath) => relativePath.startsWith("codex/")),
+    installedCheckFiles: managedFiles.filter((relativePath) => relativePath === "scripts/ui-editor-contract-check.cjs"),
+    installedUiEditorFiles: managedFiles.filter(
+      (relativePath) => relativePath.startsWith("uiEditor/") && !relativePath.startsWith("uiEditor/tests/")
+    ),
+    installedTestFiles: managedFiles.filter((relativePath) => relativePath.startsWith("uiEditor/tests/")),
+  };
+}
+
+function createTargetAppInstallerSafetyReport() {
+  return {
+    readsTargetUi: false,
+    scansDom: false,
+    autoDetectsElements: false,
+    autoRegistersElements: false,
+    modifiesTargetUi: false,
+    modifiesDomainLogic: false,
+    modifiesDomainData: false,
+    writesOutsideTargetAppPath: false,
+  };
+}
+
+function createTargetAppInstallerReport(plan, options) {
+  const safePlan = plan && typeof plan === "object" ? plan : {};
+  const normalizedOptions = options && typeof options === "object" ? options : {};
+  const fileGroups = getTargetAppInstallerFileGroups();
+
+  return {
+    reportVersion: TARGET_APP_INSTALLER_REPORT_VERSION,
+    phase: typeof normalizedOptions.phase === "string" ? normalizedOptions.phase : "preview",
+    mode: typeof safePlan.selectedMode === "string" ? safePlan.selectedMode : "prepare-registry-structure",
+    targetAppId: typeof safePlan.targetAppId === "string" ? safePlan.targetAppId : undefined,
+    targetAppName: typeof safePlan.targetAppName === "string" ? safePlan.targetAppName : undefined,
+    targetAppPath: typeof safePlan.targetAppPath === "string" ? safePlan.targetAppPath : undefined,
+    installedRuleFiles: fileGroups.installedRuleFiles.slice(),
+    installedCodexFiles: fileGroups.installedCodexFiles.slice(),
+    installedCheckFiles: fileGroups.installedCheckFiles.slice(),
+    installedUiEditorFiles: fileGroups.installedUiEditorFiles.slice(),
+    installedTestFiles: fileGroups.installedTestFiles.slice(),
+    affectedFiles: Array.isArray(normalizedOptions.affectedFiles) ? normalizedOptions.affectedFiles.slice() : [],
+    writtenFiles: Array.isArray(normalizedOptions.writtenFiles) ? normalizedOptions.writtenFiles.slice() : [],
+    agentsHandling: {
+      path: TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
+      usesMarkers: true,
+      startMarker: TARGET_APP_INSTALLER_AGENTS_START_MARKER,
+      endMarker: TARGET_APP_INSTALLER_AGENTS_END_MARKER,
+    },
+    safety: createTargetAppInstallerSafetyReport(),
+    nextManualCheck: TARGET_APP_INSTALLER_NEXT_MANUAL_CHECK,
+  };
+}
+
+function createTargetAppInstallerUninstallReport(targetAppPath, removedFiles, updatedFiles) {
+  return {
+    reportVersion: TARGET_APP_INSTALLER_REPORT_VERSION,
+    phase: "uninstall",
+    targetAppPath: typeof targetAppPath === "string" ? targetAppPath : undefined,
+    removedManagedFiles: Array.isArray(removedFiles) ? removedFiles.slice() : [],
+    updatedFiles: Array.isArray(updatedFiles) ? updatedFiles.slice() : [],
+    agentsHandling: {
+      path: TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
+      deletesAgentsFile: false,
+      removesMarkedBlockOnly: true,
+      usesMarkers: true,
+      startMarker: TARGET_APP_INSTALLER_AGENTS_START_MARKER,
+      endMarker: TARGET_APP_INSTALLER_AGENTS_END_MARKER,
+    },
+    safety: createTargetAppInstallerSafetyReport(),
+  };
 }
 
 function buildTargetAppInstallerManagedFiles(targetAppPath) {
@@ -249,9 +327,14 @@ module.exports = {
   TARGET_APP_INSTALLER_AGENTS_RELATIVE_PATH,
   TARGET_APP_INSTALLER_AGENTS_START_MARKER,
   TARGET_APP_INSTALLER_AGENTS_END_MARKER,
+  TARGET_APP_INSTALLER_NEXT_MANUAL_CHECK,
   getTargetAppInstallerManagedFiles,
   getTargetAppInstallerInstallableFiles,
   getTargetAppInstallerUninstallEmptyDirectories,
+  getTargetAppInstallerFileGroups,
+  createTargetAppInstallerSafetyReport,
+  createTargetAppInstallerReport,
+  createTargetAppInstallerUninstallReport,
   buildTargetAppInstallerManagedFiles,
   readInstallerSourceFile,
   createMarkedAgentsBlock,
