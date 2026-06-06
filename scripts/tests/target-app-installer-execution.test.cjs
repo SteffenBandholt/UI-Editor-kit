@@ -358,8 +358,10 @@ function run() {
   assert.equal(installedLauncherElement.order, 10);
   assert.equal(installedLauncherElement.visible, true);
   assert.equal(installedLauncherElement.editable, true);
+  assert.equal(installedLauncherElement.area, "overlay");
+  assert.deepEqual(installedLauncherElement.position, { x: 24, y: 24 });
   assert.deepEqual(installedLauncherElement.allowedOps, ["inspect", "move", "hide", "show"]);
-  assert.deepEqual(installedLauncherElement.lockedOps, ["rename"]);
+  assert.deepEqual(installedLauncherElement.lockedOps, ["rename", "delete", "executeTargetAction", "modifyDomainData"]);
   assert.equal(validateUiElementList(installedElements).ok, true);
   installedElements.forEach((element) => {
     element.allowedOps.concat(element.lockedOps).forEach((operation) => {
@@ -397,8 +399,13 @@ function run() {
   assert.equal(registry.includes("order: 10"), true);
   assert.equal(registry.includes("visible: true"), true);
   assert.equal(registry.includes("editable: true"), true);
+  assert.equal(registry.includes('area: "overlay"'), true);
+  assert.equal(registry.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
   assert.equal(registry.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
-  assert.equal(registry.includes('lockedOps: Object.freeze(["rename"])'), true);
+  assert.equal(
+    registry.includes('lockedOps: Object.freeze(["rename", "delete", "executeTargetAction", "modifyDomainData"])'),
+    true
+  );
   assert.equal(targetAppRegistry.includes("getTargetAppRegistryContractInfo"), true);
   assert.equal(targetAppRegistry.includes('publicEntry: "uiEditor/targetAppRegistry.js"'), true);
   assert.equal(targetAppRegistry.includes('reason: "storage-not-configured"'), true);
@@ -409,12 +416,20 @@ function run() {
   assert.equal(launcherButton.includes('parentId: "uiEditor.root"'), true);
   assert.equal(launcherButton.includes("order: 10"), true);
   assert.equal(launcherButton.includes("visible: true"), true);
+  assert.equal(launcherButton.includes('area: "overlay"'), true);
   assert.equal(launcherButton.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
-  assert.equal(launcherButton.includes('lockedOps: Object.freeze(["rename"])'), true);
+  assert.equal(
+    launcherButton.includes('lockedOps: Object.freeze(["rename", "delete", "executeTargetAction", "modifyDomainData"])'),
+    true
+  );
   assert.equal(launcherButton.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
+  assert.equal(launcherButton.includes("uiEditorLauncherButton: createUiEditorLauncherButton()"), true);
   assert.equal(launcherButton.includes('if (typeof module === "object"'), true);
   assert.equal(launcherButton.includes("globalThis"), true);
   assert.equal(launcherButton.includes("\nmodule.exports = {\n"), false);
+  const installedLauncherButtonModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.js"));
+  assert.equal(installedLauncherButtonModule.uiEditorLauncherButton.id, "uiEditor.launcherButton");
+  assert.equal(installedLauncherButtonModule.uiEditorLauncherButton.area, "overlay");
   assertLauncherButtonIsEsmImportSafe(launcherButton);
   assert.equal(launcherButtonCss.includes(".ui-editor-launcher-button"), true);
   assert.equal(launcherButtonCss.includes("left: 24px"), true);

@@ -74,6 +74,9 @@ function run() {
     "unpin",
     "reset",
     "applyPreset",
+    "delete",
+    "executeTargetAction",
+    "modifyDomainData",
   ]);
 
   const exampleElement = {

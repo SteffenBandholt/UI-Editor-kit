@@ -127,7 +127,7 @@ function validateOperationsField(fieldName, element, errors, elementId) {
       );
     }
 
-    if (FORBIDDEN_OPERATION_SET.has(operation)) {
+    if (fieldName === "allowedOps" && FORBIDDEN_OPERATION_SET.has(operation)) {
       errors.push(
         createError(
           "forbidden_operation",
@@ -321,23 +321,21 @@ function validateParentStructure(elements, errors) {
 }
 
 function validateActionColumnOperations(element, errors, elementId) {
-  ["allowedOps", "lockedOps"].forEach((fieldName) => {
-    if (!Array.isArray(element[fieldName])) {
-      return;
-    }
+  if (!Array.isArray(element.allowedOps)) {
+    return;
+  }
 
-    element[fieldName].forEach((operation) => {
-      if (FORBIDDEN_OPERATION_SET.has(operation)) {
-        errors.push(
-          createError(
-            "forbidden_action_column_operation",
-            `Aktionsspalte darf keine fachliche Editoroperation fuehren: ${String(operation)}.`,
-            fieldName,
-            elementId
-          )
-        );
-      }
-    });
+  element.allowedOps.forEach((operation) => {
+    if (FORBIDDEN_OPERATION_SET.has(operation)) {
+      errors.push(
+        createError(
+          "forbidden_action_column_operation",
+          `Aktionsspalte darf keine fachliche Editoroperation fuehren: ${String(operation)}.`,
+          "allowedOps",
+          elementId
+        )
+      );
+    }
   });
 }
 

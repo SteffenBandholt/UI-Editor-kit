@@ -47,6 +47,9 @@ const UI_ELEMENT_OPERATIONS = Object.freeze([
   "unpin",
   "reset",
   "applyPreset",
+  "delete",
+  "executeTargetAction",
+  "modifyDomainData",
 ]);
 
 const UI_ELEMENT_REQUIRED_FIELDS = Object.freeze([

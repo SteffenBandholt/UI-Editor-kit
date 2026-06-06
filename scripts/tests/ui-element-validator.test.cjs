@@ -203,16 +203,15 @@ function run() {
   assert.ok(findError(forbiddenSaveResult.errors, "invalid_operation", "allowedOps"));
   assert.ok(findError(forbiddenSaveResult.errors, "forbidden_operation", "allowedOps"));
 
-  const forbiddenDeleteResult = validateUiElement(element({
+  const lockedDeleteResult = validateUiElement(element({
     id: "workspace.main.ops.delete",
     type: "button",
     role: "action",
     editable: false,
     lockedOps: ["delete"],
   }));
-  assert.equal(forbiddenDeleteResult.ok, false);
-  assert.ok(findError(forbiddenDeleteResult.errors, "invalid_operation", "lockedOps"));
-  assert.ok(findError(forbiddenDeleteResult.errors, "forbidden_operation", "lockedOps"));
+  assert.equal(lockedDeleteResult.ok, true);
+  assert.deepEqual(lockedDeleteResult.errors, []);
 
   const invalidListTypeResult = validateUiElementList("not-a-list");
   assert.equal(invalidListTypeResult.ok, false);
