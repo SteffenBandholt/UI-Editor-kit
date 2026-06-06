@@ -139,9 +139,25 @@ function run() {
   assert.deepEqual(getTargetAppBootstrapRequiredOptions(), ["targetAppId", "hostAdapter"]);
 
   const optionalOptions = getTargetAppBootstrapOptionalOptions();
-  assert.deepEqual(optionalOptions, ["layoutProfileId", "uiScope", "initialUiState"]);
+  assert.deepEqual(optionalOptions, [
+    "layoutProfileId",
+    "uiScope",
+    "availableScopes",
+    "activeScopeId",
+    "fallbackScopeId",
+    "hostContext",
+    "initialUiState",
+  ]);
   optionalOptions.push("mutated");
-  assert.deepEqual(getTargetAppBootstrapOptionalOptions(), ["layoutProfileId", "uiScope", "initialUiState"]);
+  assert.deepEqual(getTargetAppBootstrapOptionalOptions(), [
+    "layoutProfileId",
+    "uiScope",
+    "availableScopes",
+    "activeScopeId",
+    "fallbackScopeId",
+    "hostContext",
+    "initialUiState",
+  ]);
 
   assertFailure(createTargetAppBootstrap(), "invalid_target_app_bootstrap_options");
   assertFailure(createTargetAppBootstrap({ hostAdapter: createCountingHostAdapter(createValidRegistry(), {}) }), "invalid_target_app_id");
@@ -185,6 +201,7 @@ function run() {
   assert.equal(result.targetAppId, "neutral-app");
   assert.equal(result.layoutProfileId, "neutral-layout");
   assert.equal(result.uiScope, "workspace");
+  assert.equal(result.availableScopes, undefined);
   assert.deepEqual(result.capabilities, {
     hasRegistry: true,
     hasEditorCore: true,
@@ -218,6 +235,77 @@ function run() {
   const testHostResult = createTargetAppBootstrap({ targetAppId: "neutral-app", hostAdapter: testHostAdapter });
   assert.equal(testHostResult.ok, true);
   assert.equal(testHostAdapter.listSubmittedChangeRequests().length, 0);
+
+  const availableScopes = ["workspace.primary", "workspace.secondary", "workspace.fallback"];
+  const activeScopeResult = createTargetAppBootstrap({
+    targetAppId: "neutral-app",
+    hostAdapter,
+    uiScope: "workspace.default",
+    availableScopes,
+    activeScopeId: "workspace.secondary",
+    fallbackScopeId: "workspace.fallback",
+  });
+  assert.equal(activeScopeResult.ok, true);
+  assert.equal(activeScopeResult.uiScope, "workspace.secondary");
+  assert.deepEqual(activeScopeResult.availableScopes, availableScopes);
+  assert.notEqual(activeScopeResult.availableScopes, availableScopes);
+  activeScopeResult.availableScopes.push("mutated");
+  assert.deepEqual(availableScopes, ["workspace.primary", "workspace.secondary", "workspace.fallback"]);
+
+  const hostContextScopeResult = createTargetAppBootstrap({
+    targetAppId: "neutral-app",
+    hostAdapter,
+    uiScope: "workspace.default",
+    availableScopes,
+    hostContext: {
+      activeScopeId: "workspace.primary",
+      fallbackScopeId: "workspace.fallback",
+    },
+  });
+  assert.equal(hostContextScopeResult.ok, true);
+  assert.equal(hostContextScopeResult.uiScope, "workspace.primary");
+
+  const fallbackScopeResult = createTargetAppBootstrap({
+    targetAppId: "neutral-app",
+    hostAdapter,
+    uiScope: "workspace.default",
+    availableScopes,
+    activeScopeId: "workspace.unknown",
+    fallbackScopeId: "workspace.fallback",
+  });
+  assert.equal(fallbackScopeResult.ok, true);
+  assert.equal(fallbackScopeResult.uiScope, "workspace.fallback");
+
+  const unknownScopeResult = createTargetAppBootstrap({
+    targetAppId: "neutral-app",
+    hostAdapter,
+    uiScope: "workspace.default",
+    availableScopes,
+    activeScopeId: "workspace.unknown",
+    fallbackScopeId: "workspace.also-unknown",
+  });
+  assert.equal(unknownScopeResult.ok, true);
+  assert.equal(unknownScopeResult.uiScope, "workspace.default");
+
+  const noActiveScopeResult = createTargetAppBootstrap({
+    targetAppId: "neutral-app",
+    hostAdapter,
+    uiScope: "workspace.default",
+    availableScopes,
+    fallbackScopeId: "workspace.fallback",
+  });
+  assert.equal(noActiveScopeResult.ok, true);
+  assert.equal(noActiveScopeResult.uiScope, "workspace.fallback");
+
+  const legacyScopeResult = createTargetAppBootstrap({
+    targetAppId: "neutral-app",
+    hostAdapter,
+    uiScope: "workspace.default",
+  });
+  assert.equal(legacyScopeResult.ok, true);
+  assert.equal(legacyScopeResult.uiScope, "workspace.default");
+
+  assert.deepEqual(availableScopes, ["workspace.primary", "workspace.secondary", "workspace.fallback"]);
 
   const moduleText = fs.readFileSync(MODULE_PATH, "utf8");
   assertNoForbiddenFragments(moduleText, "target-app-bootstrap");

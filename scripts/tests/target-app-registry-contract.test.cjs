@@ -98,7 +98,12 @@ function run() {
     targetAppName: "Target App",
   });
   assert.deepEqual(contract.getAvailableUiScopes(), []);
+  assert.equal(contract.getActiveUiScope({ activeScopeId: "test.active-scope" }), "test.active-scope");
   assert.equal(contract.getActiveUiScope({ activeUiScope: "test.scope" }), "test.scope");
+  assert.equal(
+    contract.getActiveUiScope({ activeScopeId: "test.active-scope", activeUiScope: "test.legacy-scope" }),
+    "test.active-scope"
+  );
   assert.equal(contract.getActiveUiScope({}), null);
   assert.equal(contract.getActiveUiScope(), null);
   assert.deepEqual(contract.getUiRegistry("unknown.scope"), {

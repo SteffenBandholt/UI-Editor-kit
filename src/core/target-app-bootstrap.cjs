@@ -6,7 +6,15 @@ const { createEditorUiState } = require("./editor-ui-state.cjs");
 const { validateHostAdapterContract } = require("./host-adapter-contract.cjs");
 
 const TARGET_APP_BOOTSTRAP_REQUIRED_OPTIONS = Object.freeze(["targetAppId", "hostAdapter"]);
-const TARGET_APP_BOOTSTRAP_OPTIONAL_OPTIONS = Object.freeze(["layoutProfileId", "uiScope", "initialUiState"]);
+const TARGET_APP_BOOTSTRAP_OPTIONAL_OPTIONS = Object.freeze([
+  "layoutProfileId",
+  "uiScope",
+  "availableScopes",
+  "activeScopeId",
+  "fallbackScopeId",
+  "hostContext",
+  "initialUiState",
+]);
 
 function cloneNeutralValue(value) {
   if (Array.isArray(value)) {
@@ -45,6 +53,7 @@ function createFailureResult(options, errors) {
     targetAppId: isObject(options) ? cloneNeutralValue(options.targetAppId) : undefined,
     layoutProfileId: isObject(options) ? cloneNeutralValue(options.layoutProfileId) : undefined,
     uiScope: isObject(options) ? cloneNeutralValue(options.uiScope) : undefined,
+    availableScopes: isObject(options) ? cloneNeutralValue(options.availableScopes) : undefined,
     editorCore: null,
     uiState: null,
     treeViewModel: null,
@@ -107,9 +116,42 @@ function normalizeOptions(options) {
       hostAdapter: options.hostAdapter,
       layoutProfileId: cloneNeutralValue(options.layoutProfileId),
       uiScope: cloneNeutralValue(options.uiScope),
+      availableScopes: cloneNeutralValue(options.availableScopes),
+      activeScopeId: cloneNeutralValue(options.activeScopeId),
+      fallbackScopeId: cloneNeutralValue(options.fallbackScopeId),
+      hostContext: cloneNeutralValue(options.hostContext),
       initialUiState: cloneNeutralValue(options.initialUiState),
     },
   };
+}
+
+function normalizeScopeId(value) {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+function normalizeAvailableScopes(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry) => typeof entry === "string" && entry.trim() !== "");
+}
+
+function selectBootstrapUiScope(values) {
+  const availableScopes = normalizeAvailableScopes(values.availableScopes);
+  const hostContext = isObject(values.hostContext) ? values.hostContext : {};
+  const activeScopeId = normalizeScopeId(values.activeScopeId) || normalizeScopeId(hostContext.activeScopeId);
+  const fallbackScopeId = normalizeScopeId(values.fallbackScopeId) || normalizeScopeId(hostContext.fallbackScopeId);
+
+  if (activeScopeId && availableScopes.includes(activeScopeId)) {
+    return activeScopeId;
+  }
+
+  if (fallbackScopeId && availableScopes.includes(fallbackScopeId)) {
+    return fallbackScopeId;
+  }
+
+  return cloneNeutralValue(values.uiScope);
 }
 
 function normalizeHostAdapterErrors(contractResult) {
@@ -174,13 +216,15 @@ function createTargetAppBootstrap(options) {
   try {
     const uiState = createEditorUiState(normalizedOptions.initialUiState);
     const treeViewModel = createEditorTreeViewModel(editorCore);
+    const selectedUiScope = selectBootstrapUiScope(normalizedOptions);
 
     return {
       ok: true,
       errors: [],
       targetAppId: cloneNeutralValue(normalizedOptions.targetAppId),
       layoutProfileId: cloneNeutralValue(normalizedOptions.layoutProfileId),
-      uiScope: cloneNeutralValue(normalizedOptions.uiScope),
+      uiScope: cloneNeutralValue(selectedUiScope),
+      availableScopes: cloneNeutralValue(normalizedOptions.availableScopes),
       editorCore,
       uiState,
       treeViewModel: cloneNeutralValue(treeViewModel),
