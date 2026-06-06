@@ -30,6 +30,7 @@ const UI_ELEMENT_ROLES = Object.freeze([
   "visibility",
   "action",
   "navigation",
+  "editor-launcher",
   "system",
 ]);
 

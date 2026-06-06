@@ -380,7 +380,7 @@ async function run() {
     assert.equal(registry.includes("uiEditor.root"), true);
     assert.equal(registry.includes("uiEditor.launcherButton"), true);
     assert.equal(registry.includes('lockedOps: Object.freeze([])'), true);
-    assert.equal(registry.includes('role: "navigation"'), true);
+    assert.equal(registry.includes('role: "editor-launcher"'), true);
     assert.equal(registry.includes('parentId: "uiEditor.root"'), true);
     assert.equal(registry.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
     assert.equal(registry.includes("editable: true"), true);

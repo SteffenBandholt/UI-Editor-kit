@@ -179,6 +179,32 @@ function runInstalledInstallationTest(targetAppPath) {
   });
 }
 
+function assertLauncherButtonIsEsmImportSafe(launcherButtonSource) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-launcher-esm-"));
+  fs.writeFileSync(path.join(tempRoot, "package.json"), "{\"type\":\"module\"}\n", "utf8");
+  fs.writeFileSync(path.join(tempRoot, "uiEditorLauncherButton.js"), launcherButtonSource, "utf8");
+
+  const importResult = childProcess.spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      [
+        "import './uiEditorLauncherButton.js';",
+        "const artifact = globalThis.uiEditorLauncherButtonArtifact;",
+        "if (!artifact) throw new Error('global artifact missing');",
+        "if (artifact.createUiEditorLauncherButton().role !== 'editor-launcher') throw new Error('launcher role mismatch');",
+      ].join("\n"),
+    ],
+    {
+      cwd: tempRoot,
+      encoding: "utf8",
+    }
+  );
+
+  assert.equal(importResult.status, 0, importResult.stderr || importResult.stdout);
+}
+
 function assertInstallerReport(report, plan, phase) {
   assert.equal(report.reportVersion, "1.0.0");
   assert.equal(report.phase, phase);
@@ -327,7 +353,7 @@ function run() {
   assert.equal(installedLauncherElement.id, "uiEditor.launcherButton");
   assert.equal(installedLauncherElement.name, "UI-Editor Launcher");
   assert.equal(installedLauncherElement.type, "button");
-  assert.equal(installedLauncherElement.role, "navigation");
+  assert.equal(installedLauncherElement.role, "editor-launcher");
   assert.equal(installedLauncherElement.parentId, "uiEditor.root");
   assert.equal(installedLauncherElement.order, 10);
   assert.equal(installedLauncherElement.visible, true);
@@ -366,7 +392,7 @@ function run() {
   assert.equal(registry.includes("uiEditor.launcherButton"), true);
   assert.equal(registry.includes('name: "UI-Editor Launcher"'), true);
   assert.equal(registry.includes('type: "button"'), true);
-  assert.equal(registry.includes('role: "navigation"'), true);
+  assert.equal(registry.includes('role: "editor-launcher"'), true);
   assert.equal(registry.includes('parentId: "uiEditor.root"'), true);
   assert.equal(registry.includes("order: 10"), true);
   assert.equal(registry.includes("visible: true"), true);
@@ -379,13 +405,17 @@ function run() {
   assert.equal(launcherButton.includes("createUiEditorLauncherButton"), true);
   assert.equal(launcherButton.includes("uiEditor.launcherButton"), true);
   assert.equal(launcherButton.includes('name: "UI-Editor Launcher"'), true);
-  assert.equal(launcherButton.includes('role: "navigation"'), true);
+  assert.equal(launcherButton.includes('role: "editor-launcher"'), true);
   assert.equal(launcherButton.includes('parentId: "uiEditor.root"'), true);
   assert.equal(launcherButton.includes("order: 10"), true);
   assert.equal(launcherButton.includes("visible: true"), true);
   assert.equal(launcherButton.includes('allowedOps: Object.freeze(["inspect", "move", "hide", "show"])'), true);
   assert.equal(launcherButton.includes('lockedOps: Object.freeze(["rename"])'), true);
   assert.equal(launcherButton.includes("position: Object.freeze({ x: 24, y: 24 })"), true);
+  assert.equal(launcherButton.includes('if (typeof module === "object"'), true);
+  assert.equal(launcherButton.includes("globalThis"), true);
+  assert.equal(launcherButton.includes("\nmodule.exports = {\n"), false);
+  assertLauncherButtonIsEsmImportSafe(launcherButton);
   assert.equal(launcherButtonCss.includes(".ui-editor-launcher-button"), true);
   assert.equal(launcherButtonCss.includes("left: 24px"), true);
   assert.equal(launcherButtonCss.includes("top: 24px"), true);
@@ -404,7 +434,7 @@ function run() {
   assert.equal(rules.includes("Fachlogik und Fachdaten bleiben in der Ziel-App."), true);
   assert.equal(contractTest.includes("uiEditorRegistry contract"), true);
   assert.equal(contractTest.includes('assert.deepEqual(uiEditorRegistry.uiScopes[0].elements[0].lockedOps, [])'), true);
-  assert.equal(contractTest.includes('assert.equal(uiEditorRegistry.uiScopes[0].elements[1].role, "navigation")'), true);
+  assert.equal(contractTest.includes('assert.equal(uiEditorRegistry.uiScopes[0].elements[1].role, "editor-launcher")'), true);
   assert.equal(installationTest.includes("uiEditorInstallation"), true);
   [
     ["write", "FileSync"].join(""),

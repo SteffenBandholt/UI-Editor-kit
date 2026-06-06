@@ -57,6 +57,7 @@ function run() {
     "visibility",
     "action",
     "navigation",
+    "editor-launcher",
     "system",
   ]);
 
