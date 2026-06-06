@@ -158,6 +158,11 @@ function assertNoForbiddenFragments(text, label) {
   });
 }
 
+function getCssNumber(cssSource, propertyName) {
+  const match = cssSource.match(new RegExp(`${propertyName}:\\s*(-?\\d+)`, "u"));
+  return match ? Number(match[1]) : NaN;
+}
+
 function assertWrittenFilesAreAllowed(targetAppPath) {
   assert.deepEqual(listFiles(targetAppPath), ALLOWED_FILES.slice().sort());
 }
@@ -193,7 +198,10 @@ function assertLauncherButtonIsEsmImportSafe(launcherButtonSource) {
         "import './uiEditorLauncherButton.js';",
         "const artifact = globalThis.uiEditorLauncherButtonArtifact;",
         "if (!artifact) throw new Error('global artifact missing');",
+        "if (!artifact.uiEditorLauncherButton) throw new Error('launcher artifact object missing');",
         "if (artifact.createUiEditorLauncherButton().role !== 'editor-launcher') throw new Error('launcher role mismatch');",
+        "if (artifact.uiEditorLauncherButton.role !== 'editor-launcher') throw new Error('static launcher role mismatch');",
+        "if (artifact.uiEditorLauncherButton.area !== 'overlay') throw new Error('static launcher area mismatch');",
       ].join("\n"),
     ],
     {
@@ -432,8 +440,23 @@ function run() {
   assert.equal(installedLauncherButtonModule.uiEditorLauncherButton.area, "overlay");
   assertLauncherButtonIsEsmImportSafe(launcherButton);
   assert.equal(launcherButtonCss.includes(".ui-editor-launcher-button"), true);
-  assert.equal(launcherButtonCss.includes("left: 24px"), true);
-  assert.equal(launcherButtonCss.includes("top: 24px"), true);
+  assert.equal(launcherButtonCss.includes("position: fixed"), true);
+  assert.equal(launcherButtonCss.includes("inset-inline-end: 24px"), true);
+  assert.equal(launcherButtonCss.includes("ui-editor-launcher-status"), true);
+  assert.equal(launcherButtonCss.includes("white-space: pre-line"), true);
+  assert.equal(launcherButtonCss.includes("max-inline-size: 360px"), true);
+  assert.equal(launcherButtonCss.includes('[data-ui-editor-launcher-active="true"]'), true);
+  assert.equal(getCssNumber(launcherButtonCss, "z-index") > 12010, true);
+  assert.equal(launcherButtonCss.includes("left: 24px"), false);
+  assert.equal(launcherButtonCss.includes("inset-block-start: 24px"), true);
+  assert.equal(launcherButtonCss.includes("inline-size: auto"), true);
+  assert.equal(launcherButtonCss.includes("width: auto"), true);
+  assert.equal(launcherButtonCss.includes("min-inline-size: 44px"), true);
+  assert.equal(launcherButtonCss.includes("min-block-size: 44px"), true);
+  assert.equal(
+    launcherButtonCss.includes("left: 24px") && launcherButtonCss.includes("inset-inline-end: 24px"),
+    false
+  );
   assert.equal(rules.includes("Ziel-App-Regelpaket-Bootstrap"), true);
   assert.equal(rules.includes("Kein UI-Scan."), true);
   assert.equal(rules.includes("Keine bestehende UI analysieren."), true);
