@@ -9,6 +9,7 @@ const MODULE_PATH = path.join(REPO_ROOT, "src/core/target-contract.cjs");
 const {
   ERROR_CODES,
   validateTargetContract,
+  validateTargetSurfaceContracts,
   isVirtualElement,
 } = require(MODULE_PATH);
 
@@ -100,6 +101,25 @@ function createValidAreaGroupField() {
   };
 }
 
+function createValidSurface(prefix = "workspace") {
+  const doc = createFakeDocument();
+  const area = setTarget(doc.createElement("section"), `${prefix}.area`);
+  const group = setTarget(doc.createElement("div"), `${prefix}.group`);
+  const field = setTarget(doc.createElement("input"), `${prefix}.group.field`);
+  group.appendChild(field);
+  area.appendChild(group);
+  doc.body.appendChild(area);
+  return {
+    doc,
+    root: area,
+    elements: [
+      element(`${prefix}.area`, "area"),
+      element(`${prefix}.group`, "group", `${prefix}.area`),
+      element(`${prefix}.group.field`, "field", `${prefix}.group`),
+    ],
+  };
+}
+
 function assertNoForbiddenFragments() {
   const source = fs.readFileSync(MODULE_PATH, "utf8");
   for (const fragment of [
@@ -121,6 +141,7 @@ function assertNoForbiddenFragments() {
 
 function run() {
   assert.equal(typeof validateTargetContract, "function");
+  assert.equal(typeof validateTargetSurfaceContracts, "function");
   assert.equal(isVirtualElement({ virtual: true }), true);
   assert.equal(isVirtualElement({ isVirtual: true }), true);
   assert.equal(isVirtualElement({ domVirtual: true }), true);
@@ -239,6 +260,144 @@ function run() {
       ],
     });
     assert.deepEqual(result, { ok: true, errors: [] });
+  }
+
+  {
+    const surface = createValidSurface("workspace.surface");
+    const result = validateTargetSurfaceContracts({
+      surfaces: [
+        {
+          surfaceId: "surface",
+          rootId: "workspace.surface.area",
+          root: surface.root,
+          elements: surface.elements,
+        },
+      ],
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.surfaceResults.length, 1);
+    assert.equal(result.surfaceResults[0].surfaceId, "surface");
+    assert.equal(result.surfaceResults[0].ok, true);
+  }
+
+  {
+    const first = createValidSurface("workspace.first");
+    const second = createValidSurface("workspace.second");
+    const result = validateTargetSurfaceContracts({
+      surfaces: [
+        {
+          surfaceId: "first",
+          rootId: "workspace.first.area",
+          root: first.root,
+          elements: first.elements,
+        },
+        {
+          surfaceId: "second",
+          rootId: "workspace.second.area",
+          root: second.root,
+          elements: second.elements,
+        },
+      ],
+    });
+    assert.deepEqual(result, {
+      ok: true,
+      errors: [],
+      surfaceResults: [
+        { surfaceId: "first", rootId: "workspace.first.area", ok: true, errors: [] },
+        { surfaceId: "second", rootId: "workspace.second.area", ok: true, errors: [] },
+      ],
+    });
+  }
+
+  {
+    const first = createValidSurface("workspace.first");
+    const second = createValidSurface("workspace.second");
+    second.elements.push(element("workspace.second.group.missing", "field", "workspace.second.group"));
+    const result = validateTargetSurfaceContracts({
+      surfaces: [
+        { surfaceId: "first", rootId: "workspace.first.area", root: first.root, elements: first.elements },
+        { surfaceId: "second", rootId: "workspace.second.area", root: second.root, elements: second.elements },
+      ],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors.length, 1);
+    assert.equal(result.errors[0].code, ERROR_CODES.SURFACE_CONTRACT_FAILED);
+    assert.equal(result.errors[0].surfaceId, "second");
+    assert.equal(result.errors[0].error, ERROR_CODES.DOM_TARGET_MISSING);
+    assert.equal(result.errors[0].elementId, "workspace.second.group.missing");
+  }
+
+  {
+    const surface = createValidSurface("workspace.missingRoot");
+    const result = validateTargetSurfaceContracts({
+      surfaces: [
+        {
+          surfaceId: "missing-root",
+          rootId: "workspace.missingRoot.area",
+          root: null,
+          elements: surface.elements,
+        },
+      ],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].surfaceId, "missing-root");
+    assert.equal(result.errors[0].error, ERROR_CODES.INVALID_ROOT);
+  }
+
+  {
+    const doc = createFakeDocument();
+    const area = setTarget(doc.createElement("section"), "workspace.mismatch.area");
+    const group = setTarget(doc.createElement("div"), "workspace.mismatch.group");
+    const field = setTarget(doc.createElement("input"), "workspace.mismatch.group.field");
+    area.append(group, field);
+    doc.body.appendChild(area);
+    const result = validateTargetSurfaceContracts({
+      surfaces: [
+        {
+          surfaceId: "mismatch",
+          rootId: "workspace.mismatch.area",
+          root: area,
+          elements: [
+            element("workspace.mismatch.area", "area"),
+            element("workspace.mismatch.group", "group", "workspace.mismatch.area"),
+            element("workspace.mismatch.group.field", "field", "workspace.mismatch.group"),
+          ],
+        },
+      ],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(Boolean(result.errors.find((error) => error.surfaceId === "mismatch" && error.error === ERROR_CODES.DOM_PARENT_MISMATCH)), true);
+  }
+
+  {
+    const doc = createFakeDocument();
+    const area = setTarget(doc.createElement("section"), "workspace.virtual.area");
+    const field = setTarget(doc.createElement("input"), "workspace.virtual.group.field");
+    area.appendChild(field);
+    doc.body.appendChild(area);
+    const result = validateTargetSurfaceContracts({
+      allowVirtualElements: true,
+      surfaces: [
+        {
+          surfaceId: "virtual",
+          rootId: "workspace.virtual.area",
+          root: area,
+          elements: [
+            element("workspace.virtual.area", "area"),
+            element("workspace.virtual.group", "group", "workspace.virtual.area", { virtual: true }),
+            element("workspace.virtual.group.field", "field", "workspace.virtual.group"),
+          ],
+        },
+      ],
+    });
+    assert.deepEqual(result, {
+      ok: true,
+      errors: [],
+      surfaceResults: [
+        { surfaceId: "virtual", rootId: "workspace.virtual.area", ok: true, errors: [] },
+      ],
+    });
   }
 
   assertNoForbiddenFragments();

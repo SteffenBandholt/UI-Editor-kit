@@ -260,7 +260,9 @@ function assertTargetContractIsEsmImportSafe(targetContractSource) {
         "const artifact = globalThis.uiEditorTargetContractArtifact;",
         "if (!artifact) throw new Error('global artifact missing');",
         "if (typeof artifact.validateTargetContract !== 'function') throw new Error('validator missing');",
+        "if (typeof artifact.validateTargetSurfaceContracts !== 'function') throw new Error('surface validator missing');",
         "if (!artifact.ERROR_CODES.DOM_TARGET_MISSING) throw new Error('error codes missing');",
+        "if (!artifact.ERROR_CODES.SURFACE_CONTRACT_FAILED) throw new Error('surface error code missing');",
         "if (artifact.DEFAULT_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-id') throw new Error('default attribute mismatch');",
       ].join("\n"),
     ],
@@ -497,7 +499,9 @@ function run() {
   assert.equal(targetSelection.includes("globalThis"), true);
   assert.equal(targetSelection.includes("\nmodule.exports = {\n"), false);
   assert.equal(targetContract.includes("validateTargetContract"), true);
+  assert.equal(targetContract.includes("validateTargetSurfaceContracts"), true);
   assert.equal(targetContract.includes("ERROR_CODES"), true);
+  assert.equal(targetContract.includes("SURFACE_CONTRACT_FAILED"), true);
   assert.equal(targetContract.includes("DOM_TARGET_MISSING"), true);
   assert.equal(targetContract.includes("PARENT_ID_UNKNOWN"), true);
   assert.equal(targetContract.includes("DOM_PARENT_MISMATCH"), true);
@@ -539,8 +543,10 @@ function run() {
   assertTargetSelectionIsEsmImportSafe(targetSelection);
   const installedTargetContractModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/targetContract.js"));
   assert.equal(typeof installedTargetContractModule.validateTargetContract, "function");
+  assert.equal(typeof installedTargetContractModule.validateTargetSurfaceContracts, "function");
   assert.equal(installedTargetContractModule.DEFAULT_TARGET_ATTRIBUTE_NAME, "data-ui-editor-id");
   assert.equal(installedTargetContractModule.ERROR_CODES.DOM_TARGET_MISSING, "DOM_TARGET_MISSING");
+  assert.equal(installedTargetContractModule.ERROR_CODES.SURFACE_CONTRACT_FAILED, "SURFACE_CONTRACT_FAILED");
   assertTargetContractIsEsmImportSafe(targetContract);
   assert.equal(launcherButton.includes("createUiEditorLauncherButton"), true);
   assert.equal(launcherButton.includes("uiEditor.launcherButton"), true);

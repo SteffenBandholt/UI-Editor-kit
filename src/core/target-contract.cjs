@@ -13,6 +13,9 @@ const ERROR_CODES = Object.freeze({
   DOM_PARENT_MISMATCH: "DOM_PARENT_MISMATCH",
   GROUP_WITHOUT_DOM_WRAPPER: "GROUP_WITHOUT_DOM_WRAPPER",
   FIELD_NOT_INSIDE_GROUP: "FIELD_NOT_INSIDE_GROUP",
+  INVALID_SURFACES: "INVALID_SURFACES",
+  INVALID_SURFACE: "INVALID_SURFACE",
+  SURFACE_CONTRACT_FAILED: "SURFACE_CONTRACT_FAILED",
 });
 
 function isObject(value) {
@@ -200,9 +203,85 @@ function validateTargetContract(options = {}) {
   };
 }
 
+function normalizeSurface(surface) {
+  if (!isObject(surface)) return null;
+  const surfaceId = normalizeElementId(surface.surfaceId) || normalizeElementId(surface.id);
+  if (!surfaceId) return null;
+  return {
+    ...surface,
+    surfaceId,
+    rootId: normalizeElementId(surface.rootId),
+  };
+}
+
+function createSurfaceContractError(surface, error) {
+  return createError(
+    ERROR_CODES.SURFACE_CONTRACT_FAILED,
+    `Surface-Contract fehlgeschlagen: ${surface.surfaceId}`,
+    {
+      surfaceId: surface.surfaceId,
+      rootId: surface.rootId,
+      error: error?.code || "UNKNOWN_ERROR",
+      elementId: error?.elementId,
+      parentId: error?.parentId,
+      expectedParentId: error?.expectedParentId,
+      actualParentId: error?.actualParentId,
+      details: error,
+    }
+  );
+}
+
+function validateTargetSurfaceContracts(options = {}) {
+  const normalizedOptions = isObject(options) ? options : {};
+  const surfacesInput = Array.isArray(normalizedOptions.surfaces) ? normalizedOptions.surfaces : null;
+  const targetAttributeName = normalizedOptions.targetAttributeName;
+  const allowVirtualElements = normalizedOptions.allowVirtualElements;
+  const errors = [];
+  const surfaceResults = [];
+
+  if (!Array.isArray(surfacesInput)) {
+    errors.push(createError(ERROR_CODES.INVALID_SURFACES, "surfaces muss ein Array von Surface-Vertraegen sein."));
+    return { ok: false, errors, surfaceResults };
+  }
+
+  for (const rawSurface of surfacesInput) {
+    const surface = normalizeSurface(rawSurface);
+    if (!surface) {
+      errors.push(createError(ERROR_CODES.INVALID_SURFACE, "Surface braucht eine nicht-leere surfaceId."));
+      continue;
+    }
+
+    const result = validateTargetContract({
+      elements: surface.elements,
+      registry: surface.registry,
+      root: surface.root,
+      targetAttributeName,
+      allowVirtualElements,
+    });
+    const surfaceResult = {
+      surfaceId: surface.surfaceId,
+      rootId: surface.rootId,
+      ok: result.ok,
+      errors: result.errors,
+    };
+    surfaceResults.push(surfaceResult);
+
+    for (const error of result.errors) {
+      errors.push(createSurfaceContractError(surface, error));
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    surfaceResults,
+  };
+}
+
 module.exports = {
   DEFAULT_TARGET_ATTRIBUTE_NAME,
   ERROR_CODES,
   validateTargetContract,
+  validateTargetSurfaceContracts,
   isVirtualElement,
 };
