@@ -27,6 +27,7 @@ const MANAGED_FILES = Object.freeze([
   "uiEditor/uiEditorRegistry.js",
   "uiEditor/targetAppRegistry.js",
   "uiEditor/targetSelection.js",
+  "uiEditor/targetContract.js",
   "uiEditor/uiEditorLauncherButton.js",
   "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",
@@ -244,6 +245,34 @@ function assertTargetSelectionIsEsmImportSafe(targetSelectionSource) {
   assert.equal(importResult.status, 0, importResult.stderr || importResult.stdout);
 }
 
+function assertTargetContractIsEsmImportSafe(targetContractSource) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-target-contract-esm-"));
+  fs.writeFileSync(path.join(tempRoot, "package.json"), "{\"type\":\"module\"}\n", "utf8");
+  fs.writeFileSync(path.join(tempRoot, "targetContract.js"), targetContractSource, "utf8");
+
+  const importResult = childProcess.spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      [
+        "import './targetContract.js';",
+        "const artifact = globalThis.uiEditorTargetContractArtifact;",
+        "if (!artifact) throw new Error('global artifact missing');",
+        "if (typeof artifact.validateTargetContract !== 'function') throw new Error('validator missing');",
+        "if (!artifact.ERROR_CODES.DOM_TARGET_MISSING) throw new Error('error codes missing');",
+        "if (artifact.DEFAULT_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-id') throw new Error('default attribute mismatch');",
+      ].join("\n"),
+    ],
+    {
+      cwd: tempRoot,
+      encoding: "utf8",
+    }
+  );
+
+  assert.equal(importResult.status, 0, importResult.stderr || importResult.stdout);
+}
+
 function assertInstallerReport(report, plan, phase) {
   assert.equal(report.reportVersion, "1.0.0");
   assert.equal(report.phase, phase);
@@ -259,6 +288,7 @@ function assertInstallerReport(report, plan, phase) {
   assert.equal(report.installedUiEditorFiles.includes("uiEditor/README.md"), true);
   assert.equal(report.installedUiEditorFiles.includes("uiEditor/INSTALLATION_STATUS.md"), true);
   assert.equal(report.installedUiEditorFiles.includes("uiEditor/targetSelection.js"), true);
+  assert.equal(report.installedUiEditorFiles.includes("uiEditor/targetContract.js"), true);
   assert.equal(report.installedTestFiles.includes("uiEditor/tests/uiEditorRegistry.test.cjs"), true);
   assert.equal(report.installedTestFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
   assert.equal(report.agentsHandling.path, "AGENTS.md");
@@ -413,6 +443,7 @@ function run() {
   const registry = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRegistry.js");
   const targetAppRegistry = readInstalled(confirmedPlan.targetAppPath, "uiEditor/targetAppRegistry.js");
   const targetSelection = readInstalled(confirmedPlan.targetAppPath, "uiEditor/targetSelection.js");
+  const targetContract = readInstalled(confirmedPlan.targetAppPath, "uiEditor/targetContract.js");
   const launcherButton = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.js");
   const launcherButtonCss = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.css");
   const rules = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRules.md");
@@ -465,17 +496,40 @@ function run() {
   assert.equal(targetSelection.includes('if (typeof module === "object"'), true);
   assert.equal(targetSelection.includes("globalThis"), true);
   assert.equal(targetSelection.includes("\nmodule.exports = {\n"), false);
+  assert.equal(targetContract.includes("validateTargetContract"), true);
+  assert.equal(targetContract.includes("ERROR_CODES"), true);
+  assert.equal(targetContract.includes("DOM_TARGET_MISSING"), true);
+  assert.equal(targetContract.includes("PARENT_ID_UNKNOWN"), true);
+  assert.equal(targetContract.includes("DOM_PARENT_MISMATCH"), true);
+  assert.equal(targetContract.includes("GROUP_WITHOUT_DOM_WRAPPER"), true);
+  assert.equal(targetContract.includes("FIELD_NOT_INSIDE_GROUP"), true);
+  assert.equal(targetContract.includes("uiEditorTargetContractArtifact"), true);
+  assert.equal(targetContract.includes("data-ui-editor-id"), true);
+  assert.equal(targetContract.includes('if (typeof module === "object"'), true);
+  assert.equal(targetContract.includes("globalThis"), true);
+  assert.equal(targetContract.includes("\nmodule.exports = {\n"), false);
   assert.equal(targetSelection.includes("querySelectorAll"), false);
+  assert.equal(targetContract.includes("querySelectorAll"), false);
   assert.equal(targetSelection.includes("localStorage"), false);
+  assert.equal(targetContract.includes("localStorage"), false);
   assert.equal(targetSelection.includes("sessionStorage"), false);
+  assert.equal(targetContract.includes("sessionStorage"), false);
   assert.equal(targetSelection.includes("ipc"), false);
+  assert.equal(targetContract.includes("ipc"), false);
   assert.equal(targetSelection.includes("preload"), false);
+  assert.equal(targetContract.includes("preload"), false);
   assert.equal(targetSelection.includes("sqlite"), false);
+  assert.equal(targetContract.includes("sqlite"), false);
   assert.equal(targetSelection.includes("postgres"), false);
+  assert.equal(targetContract.includes("postgres"), false);
   assert.equal(targetSelection.includes("mysql"), false);
+  assert.equal(targetContract.includes("mysql"), false);
   assert.equal(targetSelection.includes("BBM"), false);
+  assert.equal(targetContract.includes("BBM"), false);
   assert.equal(targetSelection.includes("Restarbeiten"), false);
+  assert.equal(targetContract.includes("Restarbeiten"), false);
   assert.equal(targetSelection.includes("Protokoll"), false);
+  assert.equal(targetContract.includes("Protokoll"), false);
   const installedTargetSelectionModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/targetSelection.js"));
   assert.equal(typeof installedTargetSelectionModule.createTargetSelectionController, "function");
   assert.equal(typeof installedTargetSelectionModule.createTargetSelectionPanelController, "function");
@@ -483,6 +537,11 @@ function run() {
   assert.equal(installedTargetSelectionModule.HOVERED_TARGET_ATTRIBUTE_NAME, "data-ui-editor-hovered");
   assert.equal(installedTargetSelectionModule.SELECTED_TARGET_ATTRIBUTE_NAME, "data-ui-editor-selected");
   assertTargetSelectionIsEsmImportSafe(targetSelection);
+  const installedTargetContractModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/targetContract.js"));
+  assert.equal(typeof installedTargetContractModule.validateTargetContract, "function");
+  assert.equal(installedTargetContractModule.DEFAULT_TARGET_ATTRIBUTE_NAME, "data-ui-editor-id");
+  assert.equal(installedTargetContractModule.ERROR_CODES.DOM_TARGET_MISSING, "DOM_TARGET_MISSING");
+  assertTargetContractIsEsmImportSafe(targetContract);
   assert.equal(launcherButton.includes("createUiEditorLauncherButton"), true);
   assert.equal(launcherButton.includes("uiEditor.launcherButton"), true);
   assert.equal(launcherButton.includes('name: "UI-Editor Launcher"'), true);
@@ -671,6 +730,7 @@ function run() {
     registry,
     targetAppRegistry,
     targetSelection,
+    targetContract,
     launcherButton,
     launcherButtonCss,
     rules,
@@ -680,7 +740,7 @@ function run() {
     agentsFile,
   ].forEach(
     (content, index) => {
-      const contentForGuard = content === targetSelection
+      const contentForGuard = content === targetSelection || content === targetContract
         ? content.replace(/querySelector/gu, "directTargetLookup").replace(/DOM/gu, "targetTree")
         : content;
       assertNoForbiddenFragments(contentForGuard, `installierte Datei ${index}`);
@@ -689,9 +749,9 @@ function run() {
   assert.equal(registry.includes("kunde"), false);
   assert.equal(registry.includes("auftrag"), false);
   assert.equal(registry.includes("produkt"), false);
-  [registry, targetAppRegistry, targetSelection, launcherButton, launcherButtonCss, installationStatus, agentsFile].forEach(
+  [registry, targetAppRegistry, targetSelection, targetContract, launcherButton, launcherButtonCss, installationStatus, agentsFile].forEach(
     (content, index) => {
-      const forbiddenLookupFragment = content === targetSelection ? "querySelectorAll" : "querySelector";
+      const forbiddenLookupFragment = content === targetSelection || content === targetContract ? "querySelectorAll" : "querySelector";
       assert.equal(
         content.includes(forbiddenLookupFragment),
         false,
