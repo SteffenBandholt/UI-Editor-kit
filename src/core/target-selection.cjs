@@ -2,6 +2,9 @@
 
 const DEFAULT_TARGET_ATTRIBUTE_NAME = "data-ui-editor-id";
 const SELECTED_TARGET_ATTRIBUTE_NAME = "data-ui-editor-selected";
+const HOVERED_TARGET_ATTRIBUTE_NAME = "data-ui-editor-hovered";
+const PANEL_COLLAPSED_ATTRIBUTE_NAME = "data-ui-editor-panel-collapsed";
+const PANEL_HIDDEN_ATTRIBUTE_NAME = "data-ui-editor-panel-hidden";
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -136,6 +139,92 @@ function applyTargetMarker(targetElement) {
   return previousStyle;
 }
 
+function restoreHoverMarker(targetElement, previousStyle = null) {
+  if (!targetElement?.setAttribute || !targetElement?.style) return;
+  targetElement.setAttribute(HOVERED_TARGET_ATTRIBUTE_NAME, "false");
+  targetElement.style.outline = previousStyle?.outline || "";
+  targetElement.style.boxShadow = previousStyle?.boxShadow || "";
+  targetElement.style.position = previousStyle?.position || "";
+}
+
+function applyHoverMarker(targetElement) {
+  if (!targetElement?.setAttribute || !targetElement?.style) return null;
+  const previousStyle = {
+    outline: targetElement.style.outline || "",
+    boxShadow: targetElement.style.boxShadow || "",
+    position: targetElement.style.position || "",
+  };
+  targetElement.setAttribute(HOVERED_TARGET_ATTRIBUTE_NAME, "true");
+  targetElement.style.outline = "1px dashed #0ea5e9";
+  targetElement.style.boxShadow = "0 0 0 3px rgb(14 165 233 / 14%)";
+  if (!targetElement.style.position) {
+    targetElement.style.position = "relative";
+  }
+  return previousStyle;
+}
+
+function cloneSelection(activeScopeId, registryElement, targetElement) {
+  return {
+    activeScopeId,
+    elementId: registryElement?.id || null,
+    element: registryElement ? { ...registryElement } : null,
+    targetElement: targetElement || null,
+  };
+}
+
+function getViewportSize(viewport, fallbackElement) {
+  const width = Number.isFinite(viewport?.innerWidth)
+    ? viewport.innerWidth
+    : Number.isFinite(fallbackElement?.clientWidth)
+      ? fallbackElement.clientWidth
+      : 1024;
+  const height = Number.isFinite(viewport?.innerHeight)
+    ? viewport.innerHeight
+    : Number.isFinite(fallbackElement?.clientHeight)
+      ? fallbackElement.clientHeight
+      : 768;
+  return { width, height };
+}
+
+function getPanelSize(panelElement) {
+  const rect = typeof panelElement?.getBoundingClientRect === "function" ? panelElement.getBoundingClientRect() : null;
+  return {
+    width: Number.isFinite(rect?.width) && rect.width > 0
+      ? rect.width
+      : Number.isFinite(panelElement?.offsetWidth)
+        ? panelElement.offsetWidth
+        : 280,
+    height: Number.isFinite(rect?.height) && rect.height > 0
+      ? rect.height
+      : Number.isFinite(panelElement?.offsetHeight)
+        ? panelElement.offsetHeight
+        : 160,
+  };
+}
+
+function clampPanelPosition(position, panelElement, viewport, fallbackElement, edgeMargin) {
+  const viewportSize = getViewportSize(viewport, fallbackElement);
+  const panelSize = getPanelSize(panelElement);
+  const margin = Number.isFinite(edgeMargin) ? Math.max(0, edgeMargin) : 8;
+  const maxX = Math.max(margin, viewportSize.width - panelSize.width - margin);
+  const maxY = Math.max(margin, viewportSize.height - panelSize.height - margin);
+  return {
+    x: Math.min(Math.max(Number(position?.x) || margin, margin), maxX),
+    y: Math.min(Math.max(Number(position?.y) || margin, margin), maxY),
+  };
+}
+
+function setPanelPosition(panelElement, position) {
+  if (!panelElement?.style) return;
+  panelElement.style.position = "fixed";
+  panelElement.style.left = `${Math.round(position.x)}px`;
+  panelElement.style.top = `${Math.round(position.y)}px`;
+  panelElement.style.right = "auto";
+  panelElement.style.bottom = "auto";
+  panelElement.style.insetInlineEnd = "auto";
+  panelElement.style.insetBlockStart = "auto";
+}
+
 function createTargetSelectionController(options = {}) {
   const normalizedOptions = isObject(options) ? options : {};
   const targetAttributeName = normalizeAttributeName(normalizedOptions.targetAttributeName);
@@ -154,20 +243,26 @@ function createTargetSelectionController(options = {}) {
   const onSelectionChange = typeof normalizedOptions.onSelectionChange === "function"
     ? normalizedOptions.onSelectionChange
     : null;
+  const onHoverChange = typeof normalizedOptions.onHoverChange === "function"
+    ? normalizedOptions.onHoverChange
+    : null;
 
   let selectedTargetElement = null;
   let selectedRegistryElement = null;
   let selectedElementId = null;
   let selectedPreviousStyle = null;
+  let hoveredTargetElement = null;
+  let hoveredRegistryElement = null;
+  let hoveredElementId = null;
+  let hoveredPreviousStyle = null;
   let installed = false;
 
   function getSelection() {
-    return {
-      activeScopeId,
-      elementId: selectedElementId,
-      element: selectedRegistryElement ? { ...selectedRegistryElement } : null,
-      targetElement: selectedTargetElement,
-    };
+    return cloneSelection(activeScopeId, selectedRegistryElement, selectedTargetElement);
+  }
+
+  function getHover() {
+    return cloneSelection(activeScopeId, hoveredRegistryElement, hoveredTargetElement);
   }
 
   function notifySelectionChange() {
@@ -190,9 +285,51 @@ function createTargetSelectionController(options = {}) {
     }
   }
 
+  function notifyHoverChange() {
+    if (onHoverChange) {
+      onHoverChange(getHover());
+    }
+  }
+
+  function clearHover(optionsForClear = {}) {
+    const notify = optionsForClear.notify !== false;
+    if (hoveredTargetElement !== selectedTargetElement) {
+      restoreHoverMarker(hoveredTargetElement, hoveredPreviousStyle);
+    }
+    hoveredTargetElement = null;
+    hoveredRegistryElement = null;
+    hoveredElementId = null;
+    hoveredPreviousStyle = null;
+    if (notify) {
+      notifyHoverChange();
+    }
+  }
+
+  function setHoverTarget(targetElement, registryElement) {
+    if (!targetElement || !registryElement) {
+      clearHover();
+      return false;
+    }
+
+    if (hoveredTargetElement === targetElement && hoveredElementId === registryElement.id) {
+      return true;
+    }
+
+    clearHover({ notify: false });
+    hoveredTargetElement = targetElement;
+    hoveredRegistryElement = registryElement;
+    hoveredElementId = registryElement.id;
+    if (targetElement !== selectedTargetElement) {
+      hoveredPreviousStyle = applyHoverMarker(targetElement);
+    }
+    notifyHoverChange();
+    return true;
+  }
+
   function selectResolvedTarget(targetElement, registryElement) {
     if (!targetElement || !registryElement) return false;
 
+    clearHover({ notify: false });
     clearSelection();
     selectedTargetElement = targetElement;
     selectedRegistryElement = registryElement;
@@ -221,9 +358,24 @@ function createTargetSelectionController(options = {}) {
     return selected;
   }
 
+  function handlePointerMove(event) {
+    const resolvedTarget = resolveRegisteredTargetFromChain(event, registryIndex, targetAttributeName);
+    if (!resolvedTarget) {
+      clearHover();
+      return false;
+    }
+    return setHoverTarget(resolvedTarget.targetElement, resolvedTarget.registryElement);
+  }
+
+  function handlePointerLeave() {
+    clearHover();
+  }
+
   function install() {
     if (installed || !root?.addEventListener) return false;
     root.addEventListener("click", handleClick, true);
+    root.addEventListener("pointermove", handlePointerMove, true);
+    root.addEventListener("pointerleave", handlePointerLeave, true);
     installed = true;
     return true;
   }
@@ -231,7 +383,10 @@ function createTargetSelectionController(options = {}) {
   function uninstall() {
     if (!installed || !root?.removeEventListener) return false;
     root.removeEventListener("click", handleClick, true);
+    root.removeEventListener("pointermove", handlePointerMove, true);
+    root.removeEventListener("pointerleave", handlePointerLeave, true);
     installed = false;
+    clearHover({ notify: false });
     clearSelection();
     return true;
   }
@@ -242,21 +397,202 @@ function createTargetSelectionController(options = {}) {
     install,
     uninstall,
     handleClick,
+    handlePointerMove,
+    handlePointerLeave,
     clearSelection,
+    clearHover,
     getSelection,
+    getHover,
     selectTargetElement,
+  };
+}
+
+function createTargetSelectionPanelController(options = {}) {
+  const normalizedOptions = isObject(options) ? options : {};
+  const panelElement = normalizedOptions.panelElement || null;
+  const headerElement = normalizedOptions.headerElement || panelElement;
+  const contentElement = normalizedOptions.contentElement || null;
+  const collapseButton = normalizedOptions.collapseButton || null;
+  const hideButton = normalizedOptions.hideButton || null;
+  const reopenButton = normalizedOptions.reopenButton || null;
+  const doc = normalizedOptions.document || panelElement?.ownerDocument || null;
+  const viewport = normalizedOptions.window || normalizedOptions.viewport || null;
+  const edgeMargin = Number.isFinite(normalizedOptions.edgeMargin) ? normalizedOptions.edgeMargin : 8;
+
+  let installed = false;
+  let collapsed = false;
+  let hidden = false;
+  let dragging = false;
+  let dragStart = null;
+  let panelStart = null;
+
+  function getFallbackViewportElement() {
+    return doc?.documentElement || doc?.body || null;
+  }
+
+  function getPanelPosition() {
+    const rect = typeof panelElement?.getBoundingClientRect === "function" ? panelElement.getBoundingClientRect() : null;
+    return {
+      x: Number.isFinite(rect?.left) ? rect.left : Number.parseFloat(panelElement?.style?.left) || edgeMargin,
+      y: Number.isFinite(rect?.top) ? rect.top : Number.parseFloat(panelElement?.style?.top) || edgeMargin,
+    };
+  }
+
+  function applyClampedPosition(position) {
+    const clampedPosition = clampPanelPosition(
+      position,
+      panelElement,
+      viewport,
+      getFallbackViewportElement(),
+      edgeMargin
+    );
+    setPanelPosition(panelElement, clampedPosition);
+    return clampedPosition;
+  }
+
+  function clampCurrentPosition() {
+    if (!panelElement) return null;
+    return applyClampedPosition(getPanelPosition());
+  }
+
+  function setCollapsed(nextCollapsed) {
+    collapsed = Boolean(nextCollapsed);
+    panelElement?.setAttribute?.(PANEL_COLLAPSED_ATTRIBUTE_NAME, collapsed ? "true" : "false");
+    if (contentElement?.style) {
+      contentElement.style.display = collapsed ? "none" : "";
+    }
+    return collapsed;
+  }
+
+  function toggleCollapsed() {
+    return setCollapsed(!collapsed);
+  }
+
+  function setHidden(nextHidden) {
+    hidden = Boolean(nextHidden);
+    panelElement?.setAttribute?.(PANEL_HIDDEN_ATTRIBUTE_NAME, hidden ? "true" : "false");
+    if (panelElement?.style) {
+      panelElement.style.display = hidden ? "none" : "";
+    }
+    if (reopenButton?.style) {
+      reopenButton.style.display = hidden ? "" : "none";
+    }
+    return hidden;
+  }
+
+  function hide() {
+    return setHidden(true);
+  }
+
+  function show() {
+    return setHidden(false);
+  }
+
+  function handleDragStart(event) {
+    if (!panelElement) return false;
+    dragging = true;
+    dragStart = {
+      x: Number(event?.clientX) || 0,
+      y: Number(event?.clientY) || 0,
+    };
+    panelStart = getPanelPosition();
+    event?.preventDefault?.();
+    return true;
+  }
+
+  function handleDragMove(event) {
+    if (!dragging || !panelStart || !dragStart) return false;
+    const nextPosition = {
+      x: panelStart.x + ((Number(event?.clientX) || 0) - dragStart.x),
+      y: panelStart.y + ((Number(event?.clientY) || 0) - dragStart.y),
+    };
+    applyClampedPosition(nextPosition);
+    event?.preventDefault?.();
+    return true;
+  }
+
+  function handleDragEnd() {
+    if (!dragging) return false;
+    dragging = false;
+    dragStart = null;
+    panelStart = null;
+    clampCurrentPosition();
+    return true;
+  }
+
+  function addListener(target, type, handler) {
+    target?.addEventListener?.(type, handler);
+  }
+
+  function removeListener(target, type, handler) {
+    target?.removeEventListener?.(type, handler);
+  }
+
+  function install() {
+    if (installed || !panelElement) return false;
+    applyClampedPosition(getPanelPosition());
+    setCollapsed(collapsed);
+    setHidden(hidden);
+    addListener(headerElement, "pointerdown", handleDragStart);
+    addListener(doc, "pointermove", handleDragMove);
+    addListener(doc, "pointerup", handleDragEnd);
+    addListener(collapseButton, "click", toggleCollapsed);
+    addListener(hideButton, "click", hide);
+    addListener(reopenButton, "click", show);
+    addListener(viewport, "resize", clampCurrentPosition);
+    installed = true;
+    return true;
+  }
+
+  function uninstall() {
+    if (!installed) return false;
+    removeListener(headerElement, "pointerdown", handleDragStart);
+    removeListener(doc, "pointermove", handleDragMove);
+    removeListener(doc, "pointerup", handleDragEnd);
+    removeListener(collapseButton, "click", toggleCollapsed);
+    removeListener(hideButton, "click", hide);
+    removeListener(reopenButton, "click", show);
+    removeListener(viewport, "resize", clampCurrentPosition);
+    installed = false;
+    dragging = false;
+    return true;
+  }
+
+  return {
+    install,
+    uninstall,
+    clampCurrentPosition,
+    getState() {
+      return {
+        collapsed,
+        hidden,
+        dragging,
+        position: getPanelPosition(),
+      };
+    },
+    hide,
+    show,
+    setCollapsed,
+    setHidden,
+    toggleCollapsed,
   };
 }
 
 module.exports = {
   DEFAULT_TARGET_ATTRIBUTE_NAME,
+  HOVERED_TARGET_ATTRIBUTE_NAME,
+  PANEL_COLLAPSED_ATTRIBUTE_NAME,
+  PANEL_HIDDEN_ATTRIBUTE_NAME,
   SELECTED_TARGET_ATTRIBUTE_NAME,
+  applyHoverMarker,
   applyTargetMarker,
   createTargetSelectionController,
+  createTargetSelectionPanelController,
   findClosestTargetElement,
   collectTargetElementChain,
   getTargetElementId,
   normalizeRegistryElements,
   resolveRegisteredTargetFromChain,
+  restoreHoverMarker,
   restoreTargetMarker,
 };

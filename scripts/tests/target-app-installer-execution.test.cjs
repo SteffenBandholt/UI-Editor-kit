@@ -229,7 +229,9 @@ function assertTargetSelectionIsEsmImportSafe(targetSelectionSource) {
         "const artifact = globalThis.uiEditorTargetSelectionArtifact;",
         "if (!artifact) throw new Error('global artifact missing');",
         "if (typeof artifact.createTargetSelectionController !== 'function') throw new Error('controller missing');",
+        "if (typeof artifact.createTargetSelectionPanelController !== 'function') throw new Error('panel controller missing');",
         "if (artifact.DEFAULT_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-id') throw new Error('default attribute mismatch');",
+        "if (artifact.HOVERED_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-hovered') throw new Error('hover attribute mismatch');",
         "if (artifact.SELECTED_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-selected') throw new Error('selected attribute mismatch');",
       ].join("\n"),
     ],
@@ -449,9 +451,15 @@ function run() {
   assert.equal(targetAppRegistry.includes('publicEntry: "uiEditor/targetAppRegistry.js"'), true);
   assert.equal(targetAppRegistry.includes('reason: "storage-not-configured"'), true);
   assert.equal(targetSelection.includes("createTargetSelectionController"), true);
+  assert.equal(targetSelection.includes("createTargetSelectionPanelController"), true);
   assert.equal(targetSelection.includes("DEFAULT_TARGET_ATTRIBUTE_NAME"), true);
+  assert.equal(targetSelection.includes("HOVERED_TARGET_ATTRIBUTE_NAME"), true);
   assert.equal(targetSelection.includes("SELECTED_TARGET_ATTRIBUTE_NAME"), true);
   assert.equal(targetSelection.includes("data-ui-editor-id"), true);
+  assert.equal(targetSelection.includes("data-ui-editor-hovered"), true);
+  assert.equal(targetSelection.includes("data-ui-editor-panel-collapsed"), true);
+  assert.equal(targetSelection.includes("data-ui-editor-panel-hidden"), true);
+  assert.equal(targetSelection.includes("pointermove"), true);
   assert.equal(targetSelection.includes("closest"), true);
   assert.equal(targetSelection.includes("uiEditorTargetSelectionArtifact"), true);
   assert.equal(targetSelection.includes('if (typeof module === "object"'), true);
@@ -470,7 +478,9 @@ function run() {
   assert.equal(targetSelection.includes("Protokoll"), false);
   const installedTargetSelectionModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/targetSelection.js"));
   assert.equal(typeof installedTargetSelectionModule.createTargetSelectionController, "function");
+  assert.equal(typeof installedTargetSelectionModule.createTargetSelectionPanelController, "function");
   assert.equal(installedTargetSelectionModule.DEFAULT_TARGET_ATTRIBUTE_NAME, "data-ui-editor-id");
+  assert.equal(installedTargetSelectionModule.HOVERED_TARGET_ATTRIBUTE_NAME, "data-ui-editor-hovered");
   assert.equal(installedTargetSelectionModule.SELECTED_TARGET_ATTRIBUTE_NAME, "data-ui-editor-selected");
   assertTargetSelectionIsEsmImportSafe(targetSelection);
   assert.equal(launcherButton.includes("createUiEditorLauncherButton"), true);
@@ -499,6 +509,13 @@ function run() {
   assert.equal(launcherButtonCss.includes("position: fixed"), true);
   assert.equal(launcherButtonCss.includes("inset-inline-end: 24px"), true);
   assert.equal(launcherButtonCss.includes("ui-editor-launcher-status"), true);
+  assert.equal(launcherButtonCss.includes("ui-editor-launcher-status__header"), true);
+  assert.equal(launcherButtonCss.includes("ui-editor-launcher-status__content"), true);
+  assert.equal(launcherButtonCss.includes("ui-editor-launcher-status-reopen"), true);
+  assert.equal(launcherButtonCss.includes("pointer-events: auto"), true);
+  assert.equal(launcherButtonCss.includes("resize: both"), true);
+  assert.equal(launcherButtonCss.includes('data-ui-editor-panel-collapsed="true"'), true);
+  assert.equal(launcherButtonCss.includes('data-ui-editor-panel-hidden="true"'), true);
   assert.equal(launcherButtonCss.includes("white-space: pre-line"), true);
   assert.equal(launcherButtonCss.includes("max-inline-size: 360px"), true);
   assert.equal(launcherButtonCss.includes('[data-ui-editor-launcher-active="true"]'), true);
