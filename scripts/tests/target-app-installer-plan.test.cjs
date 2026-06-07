@@ -18,6 +18,7 @@ const EXPECTED_INSTALLABLE_FILES = Object.freeze([
   "uiEditor/README.md",
   "uiEditor/uiEditorRegistry.js",
   "uiEditor/targetAppRegistry.js",
+  "uiEditor/targetSelection.js",
   "uiEditor/uiEditorLauncherButton.js",
   "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",

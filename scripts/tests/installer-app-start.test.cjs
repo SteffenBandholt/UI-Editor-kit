@@ -330,6 +330,7 @@ async function run() {
       "uiEditor/README.md",
       "uiEditor/INSTALLATION_STATUS.md",
       "uiEditor/targetAppRegistry.js",
+      "uiEditor/targetSelection.js",
       "uiEditor/tests/uiEditorInstallation.test.cjs",
       "uiEditor/tests/uiEditorRegistry.test.cjs",
       "uiEditor/uiEditorLauncherButton.css",

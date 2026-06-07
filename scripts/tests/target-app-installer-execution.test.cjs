@@ -26,6 +26,7 @@ const MANAGED_FILES = Object.freeze([
   "uiEditor/README.md",
   "uiEditor/uiEditorRegistry.js",
   "uiEditor/targetAppRegistry.js",
+  "uiEditor/targetSelection.js",
   "uiEditor/uiEditorLauncherButton.js",
   "uiEditor/uiEditorLauncherButton.css",
   "uiEditor/uiEditorRules.md",
@@ -213,6 +214,34 @@ function assertLauncherButtonIsEsmImportSafe(launcherButtonSource) {
   assert.equal(importResult.status, 0, importResult.stderr || importResult.stdout);
 }
 
+function assertTargetSelectionIsEsmImportSafe(targetSelectionSource) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-target-selection-esm-"));
+  fs.writeFileSync(path.join(tempRoot, "package.json"), "{\"type\":\"module\"}\n", "utf8");
+  fs.writeFileSync(path.join(tempRoot, "targetSelection.js"), targetSelectionSource, "utf8");
+
+  const importResult = childProcess.spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      [
+        "import './targetSelection.js';",
+        "const artifact = globalThis.uiEditorTargetSelectionArtifact;",
+        "if (!artifact) throw new Error('global artifact missing');",
+        "if (typeof artifact.createTargetSelectionController !== 'function') throw new Error('controller missing');",
+        "if (artifact.DEFAULT_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-id') throw new Error('default attribute mismatch');",
+        "if (artifact.SELECTED_TARGET_ATTRIBUTE_NAME !== 'data-ui-editor-selected') throw new Error('selected attribute mismatch');",
+      ].join("\n"),
+    ],
+    {
+      cwd: tempRoot,
+      encoding: "utf8",
+    }
+  );
+
+  assert.equal(importResult.status, 0, importResult.stderr || importResult.stdout);
+}
+
 function assertInstallerReport(report, plan, phase) {
   assert.equal(report.reportVersion, "1.0.0");
   assert.equal(report.phase, phase);
@@ -227,6 +256,7 @@ function assertInstallerReport(report, plan, phase) {
   assert.deepEqual(report.installedCheckFiles, ["scripts/ui-editor-contract-check.cjs"]);
   assert.equal(report.installedUiEditorFiles.includes("uiEditor/README.md"), true);
   assert.equal(report.installedUiEditorFiles.includes("uiEditor/INSTALLATION_STATUS.md"), true);
+  assert.equal(report.installedUiEditorFiles.includes("uiEditor/targetSelection.js"), true);
   assert.equal(report.installedTestFiles.includes("uiEditor/tests/uiEditorRegistry.test.cjs"), true);
   assert.equal(report.installedTestFiles.includes("uiEditor/tests/uiEditorInstallation.test.cjs"), true);
   assert.equal(report.agentsHandling.path, "AGENTS.md");
@@ -380,6 +410,7 @@ function run() {
   const readme = readInstalled(confirmedPlan.targetAppPath, "uiEditor/README.md");
   const registry = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRegistry.js");
   const targetAppRegistry = readInstalled(confirmedPlan.targetAppPath, "uiEditor/targetAppRegistry.js");
+  const targetSelection = readInstalled(confirmedPlan.targetAppPath, "uiEditor/targetSelection.js");
   const launcherButton = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.js");
   const launcherButtonCss = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorLauncherButton.css");
   const rules = readInstalled(confirmedPlan.targetAppPath, "uiEditor/uiEditorRules.md");
@@ -417,6 +448,31 @@ function run() {
   assert.equal(targetAppRegistry.includes("getTargetAppRegistryContractInfo"), true);
   assert.equal(targetAppRegistry.includes('publicEntry: "uiEditor/targetAppRegistry.js"'), true);
   assert.equal(targetAppRegistry.includes('reason: "storage-not-configured"'), true);
+  assert.equal(targetSelection.includes("createTargetSelectionController"), true);
+  assert.equal(targetSelection.includes("DEFAULT_TARGET_ATTRIBUTE_NAME"), true);
+  assert.equal(targetSelection.includes("SELECTED_TARGET_ATTRIBUTE_NAME"), true);
+  assert.equal(targetSelection.includes("data-ui-editor-id"), true);
+  assert.equal(targetSelection.includes("closest"), true);
+  assert.equal(targetSelection.includes("uiEditorTargetSelectionArtifact"), true);
+  assert.equal(targetSelection.includes('if (typeof module === "object"'), true);
+  assert.equal(targetSelection.includes("globalThis"), true);
+  assert.equal(targetSelection.includes("\nmodule.exports = {\n"), false);
+  assert.equal(targetSelection.includes("querySelectorAll"), false);
+  assert.equal(targetSelection.includes("localStorage"), false);
+  assert.equal(targetSelection.includes("sessionStorage"), false);
+  assert.equal(targetSelection.includes("ipc"), false);
+  assert.equal(targetSelection.includes("preload"), false);
+  assert.equal(targetSelection.includes("sqlite"), false);
+  assert.equal(targetSelection.includes("postgres"), false);
+  assert.equal(targetSelection.includes("mysql"), false);
+  assert.equal(targetSelection.includes("BBM"), false);
+  assert.equal(targetSelection.includes("Restarbeiten"), false);
+  assert.equal(targetSelection.includes("Protokoll"), false);
+  const installedTargetSelectionModule = require(path.join(confirmedPlan.targetAppPath, "uiEditor/targetSelection.js"));
+  assert.equal(typeof installedTargetSelectionModule.createTargetSelectionController, "function");
+  assert.equal(installedTargetSelectionModule.DEFAULT_TARGET_ATTRIBUTE_NAME, "data-ui-editor-id");
+  assert.equal(installedTargetSelectionModule.SELECTED_TARGET_ATTRIBUTE_NAME, "data-ui-editor-selected");
+  assertTargetSelectionIsEsmImportSafe(targetSelection);
   assert.equal(launcherButton.includes("createUiEditorLauncherButton"), true);
   assert.equal(launcherButton.includes("uiEditor.launcherButton"), true);
   assert.equal(launcherButton.includes('name: "UI-Editor Launcher"'), true);
@@ -597,6 +653,7 @@ function run() {
     readme,
     registry,
     targetAppRegistry,
+    targetSelection,
     launcherButton,
     launcherButtonCss,
     rules,
@@ -612,7 +669,7 @@ function run() {
   assert.equal(registry.includes("kunde"), false);
   assert.equal(registry.includes("auftrag"), false);
   assert.equal(registry.includes("produkt"), false);
-  [registry, targetAppRegistry, launcherButton, launcherButtonCss, installationStatus, agentsFile].forEach(
+  [registry, targetAppRegistry, targetSelection, launcherButton, launcherButtonCss, installationStatus, agentsFile].forEach(
     (content, index) => {
       assert.equal(content.includes("querySelector"), false, `Installer-Artefakt ${index} darf keinen UI-Scan enthalten.`);
       assert.equal(
