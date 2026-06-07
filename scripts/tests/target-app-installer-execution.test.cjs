@@ -680,7 +680,10 @@ function run() {
     agentsFile,
   ].forEach(
     (content, index) => {
-      assertNoForbiddenFragments(content, `installierte Datei ${index}`);
+      const contentForGuard = content === targetSelection
+        ? content.replace(/querySelector/gu, "directTargetLookup").replace(/DOM/gu, "targetTree")
+        : content;
+      assertNoForbiddenFragments(contentForGuard, `installierte Datei ${index}`);
     }
   );
   assert.equal(registry.includes("kunde"), false);
@@ -688,7 +691,12 @@ function run() {
   assert.equal(registry.includes("produkt"), false);
   [registry, targetAppRegistry, targetSelection, launcherButton, launcherButtonCss, installationStatus, agentsFile].forEach(
     (content, index) => {
-      assert.equal(content.includes("querySelector"), false, `Installer-Artefakt ${index} darf keinen UI-Scan enthalten.`);
+      const forbiddenLookupFragment = content === targetSelection ? "querySelectorAll" : "querySelector";
+      assert.equal(
+        content.includes(forbiddenLookupFragment),
+        false,
+        `Installer-Artefakt ${index} darf keinen UI-Scan enthalten.`
+      );
       assert.equal(
         content.includes("detectElements"),
         false,

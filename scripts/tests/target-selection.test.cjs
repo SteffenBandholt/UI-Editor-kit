@@ -74,6 +74,19 @@ function createFakeDocument() {
           height: this.offsetHeight,
         };
       },
+      querySelector(selector) {
+        const attributeMatch = String(selector || "").match(/^\[([A-Za-z_][A-Za-z0-9_.:-]*)="((?:\\.|[^"])*)"\]$/u);
+        if (!attributeMatch) return null;
+        const attributeName = attributeMatch[1];
+        const attributeValue = attributeMatch[2].replace(/\\"/gu, '"').replace(/\\\\/gu, "\\");
+        const pending = [this];
+        while (pending.length > 0) {
+          const current = pending.shift();
+          if (current?.getAttribute?.(attributeName) === attributeValue) return current;
+          pending.push(...(current?.children || []));
+        }
+        return null;
+      },
       closest(selector) {
         const attributeMatch = String(selector || "").match(/^\[([A-Za-z_][A-Za-z0-9_.:-]*)\]$/u);
         if (!attributeMatch) return null;
@@ -112,6 +125,7 @@ function createFakeDocument() {
   doc.documentElement.clientWidth = 640;
   doc.documentElement.clientHeight = 480;
   doc.body = createNode("body", doc);
+  doc.querySelector = (...args) => doc.body.querySelector(...args);
   return doc;
 }
 
@@ -158,7 +172,7 @@ function createRegistry() {
       { id: "workspace.root", name: "Workspace", type: "root", role: "layout", parentId: null },
       { id: "workspace.toolbar", name: "Toolbar", type: "toolbar", role: "layout", parentId: "workspace.root" },
       { id: "workspace.toolbar.group", name: "Toolbar Group", type: "group", role: "layout", parentId: "workspace.toolbar" },
-      { id: "workspace.toolbar.action", name: "Action", type: "button", role: "action", parentId: "workspace.toolbar" },
+      { id: "workspace.toolbar.action", name: "Action", type: "button", role: "action", parentId: "workspace.toolbar.group" },
       { id: "workspace.content.text", name: "Text", type: "field", role: "content", parentId: "workspace.root" },
       { id: "workspace.content.longText", name: "Long Text", type: "field", role: "content", parentId: "workspace.content.text" },
       { id: "workspace.content.title", name: "Title", type: "field", role: "content", parentId: "workspace.content.text" },
@@ -451,6 +465,86 @@ function run() {
     assert.equal(controller.getSelection().elementId, "workspace.toolbar.group");
     assert.equal(parent.getAttribute("data-ui-editor-selected"), "true");
     assert.equal(unknownChild.getAttribute("data-ui-editor-selected"), null);
+  }
+
+  {
+    const doc = createFakeDocument();
+    const uiState = createEditorUiState();
+    const controller = createTargetSelectionController({
+      root: doc.body,
+      activeScopeId: "workspace.primary",
+      registry: createRegistry(),
+      uiState,
+    });
+    const detachedDomParent = doc.createElement("div");
+    detachedDomParent.setAttribute("data-ui-editor-id", "workspace.toolbar.group");
+    const childHost = doc.createElement("div");
+    const child = doc.createElement("button");
+    child.setAttribute("data-ui-editor-id", "workspace.toolbar.action");
+    childHost.appendChild(child);
+    doc.body.append(detachedDomParent, childHost);
+
+    controller.install();
+    doc.body.dispatchEvent(createClickEvent(child, { shiftKey: true }));
+
+    assert.equal(controller.getSelection().elementId, "workspace.toolbar.group");
+    assert.equal(controller.getSelection().hasTargetElement, true);
+    assert.equal(detachedDomParent.getAttribute("data-ui-editor-selected"), "true");
+    assert.equal(uiState.getState().selectedElementId, "workspace.toolbar.group");
+  }
+
+  {
+    const doc = createFakeDocument();
+    const uiState = createEditorUiState();
+    const selections = [];
+    const controller = createTargetSelectionController({
+      root: doc.body,
+      activeScopeId: "workspace.primary",
+      registry: createRegistry(),
+      uiState,
+      onSelectionChange: (selection) => selections.push(selection),
+    });
+    const childHost = doc.createElement("div");
+    const child = doc.createElement("button");
+    child.setAttribute("data-ui-editor-id", "workspace.toolbar.action");
+    childHost.appendChild(child);
+    doc.body.appendChild(childHost);
+
+    controller.install();
+    doc.body.dispatchEvent(createClickEvent(child, { altKey: true }));
+
+    assert.equal(controller.getSelection().elementId, "workspace.toolbar.group");
+    assert.equal(controller.getSelection().hasTargetElement, false);
+    assert.equal(controller.getSelection().targetElement, null);
+    assert.equal(controller.getSelection().message, "Registry-Gruppe gewaehlt, kein DOM-Wrapper gefunden.");
+    assert.equal(child.getAttribute("data-ui-editor-selected"), null);
+    assert.equal(uiState.getState().selectedElementId, "workspace.toolbar.group");
+    assert.equal(selections[0].elementId, "workspace.toolbar.group");
+    assert.equal(selections[0].hasTargetElement, false);
+  }
+
+  {
+    const doc = createFakeDocument();
+    const hovers = [];
+    const controller = createTargetSelectionController({
+      root: doc.body,
+      activeScopeId: "workspace.primary",
+      registry: createRegistry(),
+      onHoverChange: (selection) => hovers.push(selection),
+    });
+    const childHost = doc.createElement("div");
+    const child = doc.createElement("button");
+    child.setAttribute("data-ui-editor-id", "workspace.toolbar.action");
+    childHost.appendChild(child);
+    doc.body.appendChild(childHost);
+
+    controller.install();
+    doc.body.dispatchEvent(createPointerEvent("pointermove", child, { shiftKey: true }));
+
+    assert.equal(controller.getHover().elementId, "workspace.toolbar.group");
+    assert.equal(controller.getHover().hasTargetElement, false);
+    assert.equal(controller.getHover().message, "Registry-Gruppe gewaehlt, kein DOM-Wrapper gefunden.");
+    assert.equal(hovers[0].elementId, "workspace.toolbar.group");
   }
 
   {
