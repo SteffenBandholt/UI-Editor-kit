@@ -72,11 +72,52 @@ function getTargetElementId(targetElement, targetAttributeName = DEFAULT_TARGET_
   return normalizeElementId(targetElement.getAttribute(normalizeAttributeName(targetAttributeName)));
 }
 
+function collectTargetElementChain(event, targetAttributeName = DEFAULT_TARGET_ATTRIBUTE_NAME) {
+  const attributeName = normalizeAttributeName(targetAttributeName);
+  const chain = [];
+  let current = getEventTarget(event);
+
+  while (current && typeof current === "object") {
+    if (typeof current.getAttribute === "function") {
+      const elementId = normalizeElementId(current.getAttribute(attributeName));
+      if (elementId) {
+        chain.push({ element: current, elementId });
+      }
+    }
+    current = current.parentElement || null;
+  }
+
+  return chain;
+}
+
+function resolveRegisteredTargetFromChain(event, registryIndex, targetAttributeName = DEFAULT_TARGET_ATTRIBUTE_NAME) {
+  const chain = collectTargetElementChain(event, targetAttributeName)
+    .filter((entry) => registryIndex.has(entry.elementId));
+  if (chain.length === 0) return null;
+
+  const wantsParent = Boolean(event?.shiftKey || event?.altKey);
+  const selectedEntry = wantsParent && chain.length > 1 ? chain[1] : chain[0];
+  return {
+    targetElement: selectedEntry.element,
+    registryElement: registryIndex.get(selectedEntry.elementId),
+  };
+}
+
+function isEditableEventTarget(event) {
+  const target = getEventTarget(event);
+  if (!target) return false;
+  const tagName = typeof target.tagName === "string" ? target.tagName.toLowerCase() : "";
+  if (tagName === "input" || tagName === "textarea" || tagName === "select") return true;
+  if (typeof target.getAttribute === "function" && target.getAttribute("contenteditable") === "true") return true;
+  return false;
+}
+
 function restoreTargetMarker(targetElement, previousStyle = null) {
   if (!targetElement?.setAttribute || !targetElement?.style) return;
   targetElement.setAttribute(SELECTED_TARGET_ATTRIBUTE_NAME, "false");
   targetElement.style.outline = previousStyle?.outline || "";
   targetElement.style.boxShadow = previousStyle?.boxShadow || "";
+  targetElement.style.position = previousStyle?.position || "";
 }
 
 function applyTargetMarker(targetElement) {
@@ -84,10 +125,14 @@ function applyTargetMarker(targetElement) {
   const previousStyle = {
     outline: targetElement.style.outline || "",
     boxShadow: targetElement.style.boxShadow || "",
+    position: targetElement.style.position || "",
   };
   targetElement.setAttribute(SELECTED_TARGET_ATTRIBUTE_NAME, "true");
   targetElement.style.outline = "2px solid #2563eb";
   targetElement.style.boxShadow = "0 0 0 4px rgb(37 99 235 / 18%)";
+  if (!targetElement.style.position) {
+    targetElement.style.position = "relative";
+  }
   return previousStyle;
 }
 
@@ -112,13 +157,14 @@ function createTargetSelectionController(options = {}) {
 
   let selectedTargetElement = null;
   let selectedRegistryElement = null;
+  let selectedElementId = null;
   let selectedPreviousStyle = null;
   let installed = false;
 
   function getSelection() {
     return {
       activeScopeId,
-      elementId: selectedRegistryElement?.id || null,
+      elementId: selectedElementId,
       element: selectedRegistryElement ? { ...selectedRegistryElement } : null,
       targetElement: selectedTargetElement,
     };
@@ -126,7 +172,7 @@ function createTargetSelectionController(options = {}) {
 
   function notifySelectionChange() {
     if (typeof uiState?.selectElement === "function") {
-      uiState.selectElement(selectedRegistryElement?.id || null);
+      uiState.selectElement(selectedElementId);
     }
     if (onSelectionChange) {
       onSelectionChange(getSelection());
@@ -137,31 +183,39 @@ function createTargetSelectionController(options = {}) {
     restoreTargetMarker(selectedTargetElement, selectedPreviousStyle);
     selectedTargetElement = null;
     selectedRegistryElement = null;
+    selectedElementId = null;
     selectedPreviousStyle = null;
     if (typeof uiState?.clearSelection === "function") {
       uiState.clearSelection();
     }
   }
 
-  function selectTargetElement(targetElement) {
-    const elementId = getTargetElementId(targetElement, targetAttributeName);
-    const registryElement = elementId ? registryIndex.get(elementId) : null;
+  function selectResolvedTarget(targetElement, registryElement) {
     if (!targetElement || !registryElement) return false;
 
     clearSelection();
     selectedTargetElement = targetElement;
     selectedRegistryElement = registryElement;
+    selectedElementId = registryElement.id;
     selectedPreviousStyle = applyTargetMarker(targetElement);
     notifySelectionChange();
     return true;
   }
 
+  function selectTargetElement(targetElement) {
+    const elementId = getTargetElementId(targetElement, targetAttributeName);
+    const registryElement = elementId ? registryIndex.get(elementId) : null;
+    return selectResolvedTarget(targetElement, registryElement);
+  }
+
   function handleClick(event) {
-    const targetElement = findClosestTargetElement(event, targetAttributeName);
-    if (!targetElement) return false;
-    const selected = selectTargetElement(targetElement);
+    const resolvedTarget = resolveRegisteredTargetFromChain(event, registryIndex, targetAttributeName);
+    if (!resolvedTarget) return false;
+    const selected = selectResolvedTarget(resolvedTarget.targetElement, resolvedTarget.registryElement);
     if (selected) {
-      event?.preventDefault?.();
+      if (!isEditableEventTarget(event)) {
+        event?.preventDefault?.();
+      }
       event?.stopPropagation?.();
     }
     return selected;
@@ -200,7 +254,9 @@ module.exports = {
   applyTargetMarker,
   createTargetSelectionController,
   findClosestTargetElement,
+  collectTargetElementChain,
   getTargetElementId,
   normalizeRegistryElements,
+  resolveRegisteredTargetFromChain,
   restoreTargetMarker,
 };
