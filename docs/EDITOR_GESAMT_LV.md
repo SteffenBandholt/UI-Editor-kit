@@ -795,6 +795,56 @@ Abnahme:
 Abhaengigkeiten:
 E4, F1, F2, G1.
 
+## G3 - Preview-Runtime-Implementierung
+
+Status: offen
+
+Zweck:
+Die fachneutrale Preview-Runtime stellt die vorbereiteten Runtime-Funktionen technisch bereit.
+
+Bauteilbeschreibung:
+Die Implementierung umfasst Operationsermittlung, Zielmodell, temporaere Pending-ChangeRequests und einen oeffentlichen Runtime-Export unter `src/runtime/preview/index.cjs`.
+
+Mindestinhalt:
+- Preview-Operationen fuer erlaubte und gesperrte Operationen
+- Mapping von Preview-Operationen auf ChangeRequest-Operationen
+- Zielmodell fuer eigenes Element und registrierten Parent
+- temporaere In-Memory-Pending-ChangeRequests
+- neutraler Host-Kontext mit Fallback `unknown-host`
+- oeffentlicher CommonJS-Export
+- Runtime-Test und Guardrail-Test
+
+Qualitaetsanforderung:
+Die Runtime muss fachneutral bleiben. Sie darf keine Ziel-App anbinden, keine Speicherung ausfuehren, keine Fachlogik ausfuehren und keine PDF-/Drucklogik enthalten.
+
+Schnittstellen:
+- bestehender UI-Elementvertrag
+- bestehender ChangeRequest-Vertrag
+- spaetere HostContext-Uebergabe
+
+Nicht erlaubt:
+- konkrete Host-App-Integration
+- CoreShell-Anbindung
+- DOM-Panel oder Drag-Panel
+- konkrete Ziel-App-Registry
+- Speicherung
+- Datenbank
+- IPC
+- localStorage
+- Fachlogik
+- PDF oder Druck
+
+Abnahme:
+- Preview-Runtime-Module vorhanden
+- oeffentlicher Export funktioniert
+- Runtime-Test gruen
+- Guardrail-Test gruen
+- `npm test` gruen
+- `git diff --check` gruen
+
+Abhaengigkeiten:
+G2.
+
 ---
 
 # H - Layoutspeicherung

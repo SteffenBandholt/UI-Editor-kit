@@ -4,22 +4,22 @@
 
 Diese Notiz beschreibt, welche bereits vorbereiteten Preview-Runtime-Bausteine aus BBM als Referenz-App fachneutral mit dem UI-Editor-kit abgeglichen werden sollen.
 
-Dieses Paket uebernimmt noch keinen produktiven Code. Es legt nur fest, welche Dateien spaeter Kandidaten sind, welche Anpassungen vorher noetig sind und welche Teile ausgeschlossen bleiben.
+Die generische Runtime-Logik wurde kontrolliert in das UI-Editor-kit uebernommen. Produktive Host-App-Anbindung, Panel-/Drag-Orchestrierung, Speicherung und Fachlogik bleiben ausgeschlossen.
 
 ## Spaetere Uebernahme- oder Abgleichkandidaten
 
-Spaeter fachneutral zu pruefende BBM-Referenzdateien:
+Fachneutral abgeglichene BBM-Referenzdateien:
 
 - `src/renderer/editorRuntime/preview/editorPreviewOperations.js`
 - `src/renderer/editorRuntime/preview/editorPreviewTargetModel.js`
 - `src/renderer/editorRuntime/preview/editorPendingChangeRequests.js`
 - `src/renderer/editorRuntime/preview/index.js`
 
-Diese Dateien sind nur Kandidaten. Vor einer Uebernahme muss jede Datei gegen den Kit-Vertrag, den Zielpfad `src/runtime/preview/`, die CommonJS-Struktur und die Guardrail-Tests geprueft werden.
+Die Referenzdateien wurden nicht blind kopiert, sondern auf CommonJS, Kit-Pfade und neutrale Tests uebertragen.
 
 ## Anpassungen vor einer Uebernahme
 
-Vor einer spaeteren Uebernahme sind mindestens diese Anpassungen noetig:
+Bei der Uebernahme wurden diese Anpassungen vorgenommen:
 
 - Pfade auf `src/runtime/preview/` umstellen.
 - Modulformat an die bestehende Kit-Struktur angleichen.
@@ -34,7 +34,7 @@ Vor einer spaeteren Uebernahme sind mindestens diese Anpassungen noetig:
 
 ## Sinnvoll zu uebertragende Tests
 
-Spaeter sinngemaess ins Kit zu uebertragen:
+Sinngemaess ins Kit uebertragene Tests:
 
 - Operation nur erlaubt, wenn sie in `allowedOps` steht.
 - Operation gesperrt, wenn sie in `lockedOps` steht.
@@ -67,11 +67,11 @@ Nicht uebernehmen:
 - alte Editorpfade
 - automatische UI-Analyse, Scans oder Migration
 
-## Abnahmekriterien fuer eine spaetere echte Uebernahme
+## Abnahmekriterien fuer spaetere Erweiterungen
 
-Eine spaetere Codeuebernahme ist erst abnahmefaehig, wenn:
+Eine spaetere Erweiterung ist erst abnahmefaehig, wenn:
 
-- die LV-Position fuer die technische Runtime-Implementierung ergaenzt ist,
+- eine passende LV-Position ergaenzt ist,
 - der API-Vertrag weiterhin gilt,
 - alle neuen Runtime-Funktionen fachneutral getestet sind,
 - `npm test` gruen ist,

@@ -2,11 +2,11 @@
 
 ## Zweck
 
-Diese Datei legt den Zielvertrag fuer eine spaetere generische Preview-Runtime im UI-Editor-kit fest.
+Diese Datei legt den Zielvertrag fuer die generische Preview-Runtime im UI-Editor-kit fest.
 
 Die Preview-Runtime ist eine fachneutrale Laufzeitschicht fuer temporaere Editor-Vorschauen. Sie darf nur mit bereits klassifizierten Registry-Elementen, erlaubten Operationen und neutralen ChangeRequests arbeiten.
 
-Dieses Paket bereitet nur Zielstruktur, API-Vertrag, Test-Guardrails und Migrationsnotiz vor. Es uebernimmt noch keine produktive Runtime-Logik und bindet keine Host-App an.
+Die Runtime ist technisch implementiert, bleibt aber ohne produktive Host-App-Anbindung.
 
 ## Gewaehlter Zielpfad
 
@@ -22,23 +22,28 @@ Begruendung:
 - Preview ist eine spaetere Laufzeit-API und soll nicht als weiteres Core-Modell versteckt werden.
 - Der Pfad bleibt fachneutral und getrennt von Installer, Ziel-App-Bootstrap und konkreten Host-Adaptern.
 
-Aktuell existiert nur ein kleiner vorbereitender Einstieg:
+Aktuell existieren diese Runtime-Module:
 
 ```text
 src/runtime/preview/index.cjs
+src/runtime/preview/previewOperations.cjs
+src/runtime/preview/previewTargetModel.cjs
+src/runtime/preview/pendingChangeRequests.cjs
 ```
 
-Dieser Einstieg exportiert nur Status- und Planinformationen. Die spaeteren Runtime-Funktionen sind noch nicht implementiert.
+Der Index exportiert die oeffentlichen Preview-Runtime-Funktionen.
 
 ## Geplante Exporte
 
-Spaeter soll die Preview-Runtime diese fachneutralen Funktionen bereitstellen:
+Die Preview-Runtime stellt diese fachneutralen Funktionen bereit:
 
 - `getElementAllowedOps`
 - `getElementLockedOps`
 - `getChangeRequestOperation`
 - `isPreviewOperationAllowed`
 - `getNodeUiEditorId`
+- `findAncestorUiEditorElementById`
+- `normalizePreviewTargetMode`
 - `getPreviewTargetMode`
 - `resolvePreviewTargetElement`
 - `getPreviewTargetElement`
@@ -95,12 +100,11 @@ Eine Preview-Operation ist nur moeglich, wenn sie in `allowedOps` enthalten ist 
 
 `previewTargetMode` beschreibt, welche Art Ziel fuer eine Vorschau verwendet wird.
 
-Vorgesehene neutrale Werte:
+Neutrale Zielwerte:
 
-- `element`
-- `container`
 - `self`
-- `none`
+- `parent`
+- `auto`
 
 Die konkrete Ermittlung darf keine automatische UI-Erkennung oder Elementerfindung sein. Sie muss aus Registry, HostContext oder einem bereits bekannten Zielknoten kommen.
 
@@ -108,13 +112,7 @@ Die konkrete Ermittlung darf keine automatische UI-Erkennung oder Elementerfindu
 
 `previewTarget` beschreibt das aufgeloeste Vorschauziel.
 
-Erwartete neutrale Felder:
-
-- `targetElement`
-- `targetElementId`
-- `targetMode`
-- `sourceElementId`
-- `reason`
+Das Zielmodell arbeitet mit einem bereits uebergebenen Zielknoten und dem Registry-Element. Bei `previewTargetMode: self` bleibt der Zielknoten selbst das Preview-Ziel. Bei `previewTargetMode: parent` wird ein registrierter Parent ueber `data-ui-editor-id` gesucht.
 
 Wenn kein gueltiges Ziel aufgeloest werden kann, muss das Ergebnis kontrolliert leer oder fehlerhaft sein. Es darf kein Ziel geraten werden.
 
@@ -191,18 +189,32 @@ Diese Sammlung ist keine Speicherung.
 Ein `ChangeRequest` folgt dem bestehenden fachneutralen Modell:
 
 - `changeId`
+- `targetAppId`
+- `moduleId`
+- `scopeId`
 - `elementId`
+- `targetElementId`
 - `operation`
 - `payload`
 - `createdAt`
+- `updatedAt`
 - `source`
+- `persistent`
+- `previewTargetMode`
 
-Optionale Felder:
+Der Runtime-Kontext setzt `source` auf `preview` und `persistent` auf `false`.
 
-- `note`
-- `reason`
-- `scope`
-- `requestedBy`
+Operationen werden fuer ChangeRequests normalisiert:
+
+- `resizeWidth` wird `width`
+- `resizeHeight` wird `height`
+- `hide` und `show` werden `visibility`
+
+Pending-Requests werden je Ziel und normalisierter Operation dedupliziert:
+
+- `move` kumuliert `dx` und `dy`
+- `width` und `height` kumulieren `delta`
+- `visibility` ueberschreibt den sichtbaren Zustand
 
 Der Auftrag darf keine Fachdaten, keine Datenbankfelder und keine fachlichen Ausfuehrungsinformationen enthalten.
 

@@ -38,6 +38,8 @@ const PLANNED_EXPORTS = Object.freeze([
   "getChangeRequestOperation",
   "isPreviewOperationAllowed",
   "getNodeUiEditorId",
+  "findAncestorUiEditorElementById",
+  "normalizePreviewTargetMode",
   "getPreviewTargetMode",
   "resolvePreviewTargetElement",
   "getPreviewTargetElement",
@@ -69,20 +71,12 @@ function run() {
   assert.equal(fs.existsSync(PREVIEW_RUNTIME_INDEX), true, "Preview-Runtime-Index fehlt.");
 
   const previewRuntime = require(PREVIEW_RUNTIME_INDEX);
-  assert.equal(typeof previewRuntime.getPreviewRuntimeApiStatus, "function");
-  assert.equal(typeof previewRuntime.getPlannedPreviewRuntimeExports, "function");
-  assert.deepEqual(previewRuntime.getPlannedPreviewRuntimeExports(), PLANNED_EXPORTS);
-  assert.deepEqual(previewRuntime.getPreviewRuntimeApiStatus(), {
-    status: "planned",
-    targetPath: "src/runtime/preview",
-    hasProductiveRuntimeLogic: false,
-    hasHostAppIntegration: false,
-    hasStorageIntegration: false,
+  PLANNED_EXPORTS.forEach((exportName) => {
+    assert.equal(typeof previewRuntime[exportName], "function", `Preview-Runtime Export fehlt: ${exportName}`);
   });
-
-  const plannedExports = previewRuntime.getPlannedPreviewRuntimeExports();
-  plannedExports.push("mutated");
-  assert.deepEqual(previewRuntime.getPlannedPreviewRuntimeExports(), PLANNED_EXPORTS);
+  assert.equal(previewRuntime.UNKNOWN_PREVIEW_TARGET_APP_ID, "unknown-host");
+  assert.equal(Object.prototype.hasOwnProperty.call(previewRuntime, "getPreviewRuntimeApiStatus"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(previewRuntime, "getPlannedPreviewRuntimeExports"), false);
 
   listFiles(PREVIEW_RUNTIME_DIR).forEach((filePath) => {
     const relativePath = path.relative(REPO_ROOT, filePath);
