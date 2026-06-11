@@ -73,6 +73,7 @@ Aktueller Stand:
 - K20.2 erledigt: ESM-kompatibler Exportvertrag fuer die Preview-Runtime gegen G3 vorbereitet. Hotfix: `index.mjs` ist jetzt browserfaehiges natives ESM und importiert keine `.cjs`-Dateien mehr; keine BBM- oder Host-App-Integration.
 - K20.3 erledigt: Offizieller Package-Subpath `ui-editor-kit/runtime/preview` fuer die Preview-Runtime festgelegt. `package.json` exportiert `import` nach `index.mjs` und `require` nach `index.cjs`; keine BBM- oder Host-App-Integration.
 - K20.4 erledigt: Neutrale Panel-Runtime gegen neue LV-Position G4 vorbereitet. Panel-State, Position, ViewModel und Buttonmodell sind als CJS/ESM und Package-Subpath vorhanden; keine Host-App-Integration, kein DOM, kein Drag, keine Speicherung, keine Fachlogik.
+- K20.5 erledigt: Neutrale Hidden-Elements-Runtime gegen neue LV-Position G5 vorbereitet. Hidden-Element-Normalisierung, Button-ViewModel, Popover-ViewModel und Gesamt-ViewModel sind als CJS/ESM und Package-Subpath vorhanden; keine Host-App-Integration, kein DOM, keine Speicherung, keine Fachlogik.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -141,6 +142,7 @@ Bedeutung:
 | G2 | [A] | Preview-Runtime-API-Vorbereitung | API-Doku, Migrationsnotiz, vorbereitender Runtime-Pfad und Guardrail-Test vorhanden, `npm test` gruen | spaetere technische Runtime-Implementierung nur mit eigener LV-Ergaenzung |
 | G3 | [A] | Preview-Runtime-Implementierung | Runtime-Module, offizieller Package-Subpath, CommonJS-Export, browserfaehiger nativer ESM-Export, Runtime-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Erweiterungen nur mit eigener LV-Ergaenzung |
 | G4 | [A] | Panel-State- und Panel-ViewModel-Runtime | Panel-Runtime-Module, offizieller Package-Subpath, CommonJS-/ESM-Export, Runtime-Test, Package-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Panel-Erweiterungen nur mit eigener LV-Ergaenzung |
+| G5 | [A] | Hidden-Elements-ViewModel-Runtime | Hidden-Elements-Runtime-Module, offizieller Package-Subpath, CommonJS-/ESM-Export, Runtime-Test, Package-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Hidden-Elements-UI nur mit eigener LV-Ergaenzung |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
@@ -1042,6 +1044,35 @@ Nachweis:
 - `scripts/tests/panel-runtime-esm.test.cjs`
 - `scripts/tests/panel-runtime-package-export.test.cjs`
 - `scripts/tests/panel-runtime-guardrail.test.cjs`
+- `npm test` gruen.
+- `git diff --check` gruen.
+
+### K20.5 - Hidden-Elements-ViewModel-Runtime vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- G5
+
+Ergebnis:
+
+- `src/runtime/hiddenElements/` als neutraler Runtime-Pfad angelegt.
+- `hiddenElementsViewModel` normalisiert Elementdaten defensiv und ermittelt ausgeblendete Elemente aus `visible: false` oder `hidden: true`.
+- Das Button-ViewModel liefert Sichtbarkeit, Aktivzustand, Label und Anzahl fuer einen spaeteren kompakten Panel-Button.
+- Das Popover-ViewModel liefert einen neutralen Titel und Eintraege mit `action: "show"`.
+- CommonJS-Einstieg `src/runtime/hiddenElements/index.cjs` vorhanden.
+- Browserfaehiger nativer ESM-Einstieg `src/runtime/hiddenElements/index.mjs` vorhanden.
+- Package-Subpath `ui-editor-kit/runtime/hidden-elements` in `package.json` angelegt.
+- `docs/HIDDEN_ELEMENTS_RUNTIME_API.md` dokumentiert API, Eingabevertrag, ViewModel-Vertrag, Importvertrag, Nicht-Ziele und Tests.
+- Keine Host-App-Integration, kein DOM, kein Drag, keine Speicherung, keine Datenbank, kein IPC, kein localStorage, keine Fachlogik, keine PDF-/Drucklogik und keine alten Editorpfade eingefuehrt.
+
+Nachweis:
+
+- `scripts/tests/hidden-elements-runtime.test.cjs`
+- `scripts/tests/hidden-elements-runtime-esm.test.cjs`
+- `scripts/tests/hidden-elements-runtime-package-export.test.cjs`
+- `scripts/tests/hidden-elements-runtime-guardrail.test.cjs`
 - `npm test` gruen.
 - `git diff --check` gruen.
 

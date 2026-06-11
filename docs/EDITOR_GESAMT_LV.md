@@ -903,6 +903,59 @@ Abnahme:
 Abhaengigkeiten:
 G3.
 
+## G5 - Hidden-Elements-ViewModel-Runtime
+
+Status: gebaut
+
+Zweck:
+Die Hidden-Elements-Runtime stellt ein fachneutrales ViewModel fuer ausgeblendete UI-Editor-Elemente bereit.
+
+Bauteilbeschreibung:
+Die Implementierung umfasst defensive Normalisierung, Ermittlung ausgeblendeter Elemente, ein kompaktes Button-ViewModel, ein Popover-ViewModel und einen zusammenfassenden ViewModel-Einstieg.
+
+Mindestinhalt:
+- `src/runtime/hiddenElements/hiddenElementsViewModel.cjs`
+- `src/runtime/hiddenElements/hiddenElementsViewModel.mjs`
+- `src/runtime/hiddenElements/index.cjs`
+- `src/runtime/hiddenElements/index.mjs`
+- offizieller Package-Subpath `./runtime/hidden-elements` mit `import`- und `require`-Ziel
+- Runtime-Test, ESM-Test, Package-Export-Test und Guardrail-Test
+
+Qualitaetsanforderung:
+Die Hidden-Elements-Runtime muss rein datenbasiert bleiben. Sie darf keine UI rendern, keine DOM-Knoten erzeugen, kein Popover bauen, keine Host-App anbinden, keine Speicherung ausfuehren, keine Fachlogik ausfuehren und keine PDF-/Drucklogik enthalten.
+
+Schnittstellen:
+- neutrale Elementdaten mit `elementId`, `label`, `visible` und `canShow`
+- Package-Subpath `ui-editor-kit/runtime/hidden-elements`
+- spaetere Panel-Runtime- oder Host-Adapter-Verwendung
+
+Nicht erlaubt:
+- DOM
+- Drag
+- HTML-Strings
+- DOM-Knoten
+- Host-App-Integration
+- Speicherung
+- Datenbank
+- IPC
+- localStorage
+- Fachlogik
+- PDF-/Drucklogik
+
+Abnahme:
+- Hidden-Elements-Runtime-Module vorhanden
+- CommonJS-Export vorhanden
+- browserfaehiger nativer ESM-Export vorhanden
+- offizieller Package-Subpath per CommonJS und ESM testbar
+- Runtime-Test gruen
+- ESM-Test gruen
+- Package-Export-Test gruen
+- Guardrail-Test gruen
+- `npm test` gruen
+
+Abhaengigkeiten:
+G4.
+
 ---
 
 # H - Layoutspeicherung
