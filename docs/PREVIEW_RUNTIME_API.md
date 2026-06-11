@@ -35,7 +35,21 @@ src/runtime/preview/pendingChangeRequests.cjs
 `index.cjs` ist der bestehende CommonJS-Einstieg.
 `index.mjs` ist der ESM-kompatible Einstieg fuer spaeteren Verbrauch durch ESM-Hosts.
 
-Das Package bleibt aktuell `private` und definiert noch keine `main`-, `type`- oder `exports`-Felder. Der Importvertrag ist deshalb vorerst dateibasiert dokumentiert und noch keine produktive Package-Veroeffentlichung.
+Das Package bleibt aktuell `private` und definiert keinen Root-`main` und kein globales `type`-Feld.
+Der offizielle Preview-Runtime-Importvertrag ist als Package-Subpath in `package.json` festgelegt:
+
+```json
+{
+  "exports": {
+    "./runtime/preview": {
+      "import": "./src/runtime/preview/index.mjs",
+      "require": "./src/runtime/preview/index.cjs"
+    }
+  }
+}
+```
+
+Das ist noch keine produktive Package-Veroeffentlichung und keine Host-App-Integration.
 
 ## Oeffentliche Exporte
 
@@ -65,30 +79,42 @@ Die Funktionen duerfen nur vorhandene Registry- und HostContext-Daten auswerten.
 
 ## Importvertrag
 
-### CommonJS
+### Offizieller Package-Pfad
 
-Der CommonJS-Einstieg bleibt:
+Spaetere Verbraucher sollen die Preview-Runtime ueber diesen stabilen Package-Pfad nutzen:
 
-```js
-const previewRuntime = require("./src/runtime/preview/index.cjs");
+```text
+ui-editor-kit/runtime/preview
 ```
 
-Dieser Einstieg ist die technische Grundlage der bestehenden Kit-Tests.
+Dieser Subpath ist in `package.json` offiziell auf CommonJS und ESM abgebildet.
+
+### CommonJS
+
+Der offizielle CommonJS-Verbrauch ist:
+
+```js
+const previewRuntime = require("ui-editor-kit/runtime/preview");
+```
+
+Der interne Zielpfad fuer `require` ist `./src/runtime/preview/index.cjs`.
 
 ### ESM
 
-Der ESM-kompatible Einstieg ist:
+Der offizielle ESM-Verbrauch ist:
 
 ```js
 import {
   getChangeRequestOperation,
   upsertPreviewChangeRequest,
-} from "./src/runtime/preview/index.mjs";
+} from "ui-editor-kit/runtime/preview";
 ```
 
+Der interne Zielpfad fuer `import` ist `./src/runtime/preview/index.mjs`.
 Der ESM-Einstieg re-exportiert die oeffentliche API aus dem CommonJS-Einstieg und bietet zusaetzlich einen Default-Export an.
 
-Spaeterer BBM-Verbrauch soll nicht direkt auf interne Einzelmodule gehen, sondern auf den vertraglichen Preview-Runtime-Einstieg. Vor einer echten Umstellung muss noch entschieden werden, ob ein Package-Export in `package.json` ergaenzt wird oder ob eine andere Paket-/Build-Schicht den Einstieg bereitstellt.
+Spaeterer BBM-Verbrauch soll nicht direkt auf interne Einzelmodule gehen, sondern auf `ui-editor-kit/runtime/preview`.
+Vor einer echten Umstellung bleiben Versionierung, Bezugsweg und Ziel-App-Freigabe zu klaeren.
 
 ## Erwartete Datenstrukturen
 
@@ -286,3 +312,5 @@ Der Guardrail-Test `scripts/tests/preview-runtime-guardrail.test.cjs` prueft:
 - Keine Speicher-, Datei-, IPC-, Datenbank- oder Host-App-Integration ist enthalten.
 
 Der Test `scripts/tests/preview-runtime-esm.test.cjs` prueft den ESM-kompatiblen Einstieg und mindestens das fachliche Mapping `resizeWidth` zu `width`.
+
+Der Test `scripts/tests/preview-runtime-package-export.test.cjs` prueft den offiziellen Package-Subpath per CommonJS und ESM.

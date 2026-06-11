@@ -23,7 +23,15 @@ Fuer spaeteren ESM-Verbrauch existiert zusaetzlich ein ESM-kompatibler Preview-R
 src/runtime/preview/index.mjs
 ```
 
-Dieser Einstieg re-exportiert den bestehenden CommonJS-Vertrag. Dadurch bleibt die bestehende Kit-Struktur stabil, waehrend ESM-Hosts wie BBM spaeter gegen einen klaren Runtime-Einstieg migrieren koennen.
+Dieser Einstieg re-exportiert den bestehenden CommonJS-Vertrag.
+Der offizielle Package-Subpath fuer spaetere Verbraucher ist:
+
+```text
+ui-editor-kit/runtime/preview
+```
+
+`package.json` bildet diesen Subpath auf `./src/runtime/preview/index.mjs` fuer ESM und auf `./src/runtime/preview/index.cjs` fuer CommonJS ab.
+Dadurch bleibt die bestehende Kit-Struktur stabil, waehrend ESM-Hosts spaeter gegen einen klaren Runtime-Einstieg migrieren koennen.
 
 ## Anpassungen vor einer Uebernahme
 
@@ -32,6 +40,7 @@ Bei der Uebernahme wurden diese Anpassungen vorgenommen:
 - Pfade auf `src/runtime/preview/` umstellen.
 - Modulformat an die bestehende Kit-Struktur angleichen.
 - ESM-kompatiblen Einstieg fuer spaetere ESM-Hosts bereitstellen.
+- Offiziellen Package-Subpath `ui-editor-kit/runtime/preview` bereitstellen.
 - Exporte gegen `docs/PREVIEW_RUNTIME_API.md` abgleichen.
 - Keine Host-App-spezifischen Defaults uebernehmen.
 - Keine produktiven Integrationsaufrufe uebernehmen.
@@ -88,13 +97,18 @@ Eine spaetere Erweiterung ist erst abnahmefaehig, wenn:
 - keine produktive Host-App-Integration entstanden ist,
 - keine Speicherung, DB, IPC oder PDF-/Drucklogik eingefuehrt wurde.
 
-## Vor spaeterer BBM-Umstellung noch offen
+## Vor spaeterer Host-Umstellung noch offen
 
-Vor einer echten BBM-Import-Umstellung muss entschieden werden:
+Vor einer echten Host-Import-Umstellung ist der Importpfad festgelegt:
 
-- ob `package.json` einen offiziellen Package-Export fuer die Preview-Runtime erhaelt,
-- ob der spaetere Verbrauch ueber `src/runtime/preview/index.mjs` oder einen gebauten Dist-Pfad laeuft,
+```js
+import { getChangeRequestOperation } from "ui-editor-kit/runtime/preview";
+```
+
+Noch offen bleiben:
+
 - wie die Versionierung und Freigabe des privaten Kits erfolgt,
-- welche BBM-Tests nach der Umstellung direkt gegen den Kit-Einstieg laufen.
+- ob spaeter ein gebauter Dist-Pfad den heutigen `src`-Pfad ersetzt,
+- welche Host-Tests nach der Umstellung direkt gegen den Kit-Einstieg laufen.
 
 Weiterhin nicht Teil dieses Schritts sind Host-App-Integration, Panel/Drag, Speicherung, Datenbank, IPC, localStorage, Fachlogik sowie PDF/Druck.
