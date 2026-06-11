@@ -747,6 +747,54 @@ Abnahme:
 Abhaengigkeiten:
 C1, F2.
 
+## G2 - Preview-Runtime-API-Vorbereitung
+
+Status: offen
+
+Zweck:
+Die Preview-Runtime ist eine spaetere fachneutrale Laufzeitschicht fuer temporaere Editor-Vorschauen.
+
+Bauteilbeschreibung:
+Vor einer technischen Uebernahme aus einer Referenz-App muessen Zielstruktur, API-Vertrag, Datenstrukturen, Ausschluesse, Migrationsnotiz und Guardrail-Test im Kit vorbereitet werden.
+
+Mindestinhalt:
+- Zielpfad fuer die spaetere Runtime
+- dokumentierter API-Vertrag
+- dokumentierte Datenstrukturen fuer RegistryElement, Operationen, Preview-Ziel, HostContext und ChangeRequest
+- Migrationsnotiz fuer spaetere Referenzdateien
+- Guardrail gegen fach- oder host-spezifische Begriffe im Preview-Runtime-Pfad
+- keine produktive Funktionslogik
+
+Qualitaetsanforderung:
+Die Vorbereitung muss fachneutral bleiben und darf keine konkrete Ziel-App, keine Speicherung und keine Ausfuehrung anbinden.
+
+Schnittstellen:
+- bestehendes UI-Elementmodell
+- bestehender Editor-Core
+- bestehendes ChangeRequest-Modell
+- bestehender Host-Adapter-Vertrag
+
+Nicht erlaubt:
+- konkrete Host-App-Integration
+- Ziel-App-spezifische Sonderlogik
+- Speicherung
+- Datenbank
+- IPC
+- PDF oder Druck
+- automatische UI-Erkennung
+- 1:1-Codeuebernahme ohne Kit-Anpassung
+
+Abnahme:
+- API-Dokument vorhanden
+- Migrationsnotiz vorhanden
+- vorbereitender Runtime-Pfad vorhanden
+- Guardrail-Test vorhanden und in `npm test` eingebunden
+- `npm test` gruen
+- `git diff --check` gruen
+
+Abhaengigkeiten:
+E4, F1, F2, G1.
+
 ---
 
 # H - Layoutspeicherung

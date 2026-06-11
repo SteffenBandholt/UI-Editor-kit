@@ -68,6 +68,7 @@ Aktueller Stand:
 - K19.5 erledigt: Installer-App kann nach expliziter Bestaetigung die UI-Editor-Grundstruktur schreiben.
 - K19.8 erledigt: UI-Editor-Installer bringt eigenen Launcher-Button als installierbares Artefakt mit und registriert ihn als `uiEditor.launcherButton` mit Default-Position. Keine Ziel-App-Fachlogik, kein Scan, keine Speicherung, kein Editor-Panel.
 - K19.11 erledigt: Installer-Deinstallationsroutine vorbereitet; bekannte UI-Editor-Artefakte koennen nach expliziter Bestaetigung sicher entfernt werden.
+- K20.0 erledigt: Preview-Runtime-API-Vorbereitung gegen neue LV-Position G2. Zielstruktur, API-Vertrag, Migrationsnotiz und Guardrail sind vorbereitet; keine produktive Runtime-Logik und keine Host-App-Integration.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -133,6 +134,7 @@ Bedeutung:
 | F1 | [x] | Aenderungsauftrag-Datenmodell | Modell + Test vorhanden, `npm test` gruen | nach F1 F2 bauen |
 | F2 | [x] | Aenderungsauftrag pruefen | Validator + Test vorhanden, `npm test` gruen | nach F2 G1 vorbereiten |
 | G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
+| G2 | [A] | Preview-Runtime-API-Vorbereitung | API-Doku, Migrationsnotiz, vorbereitender Runtime-Pfad und Guardrail-Test vorhanden, `npm test` gruen | spaetere technische Runtime-Implementierung nur mit eigener LV-Ergaenzung |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
@@ -911,6 +913,28 @@ Ergebnis:
 - Die serverseitige Ordnerliste ist nur noch Fallback/sekundär.
 - Keine Ziel-App-Änderung durch Pfadauswahl, kein Scan, keine automatische UI-Erkennung, kein Editor-Panel.
 - `npm test` grün
+
+### K20.0 - Preview-Runtime-API vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- G2
+
+Ergebnis:
+
+- Zielpfad `src/runtime/preview/` fuer die spaetere Preview-Runtime festgelegt.
+- `docs/PREVIEW_RUNTIME_API.md` dokumentiert geplante Exporte, Datenstrukturen, Grenzen und Guardrail.
+- `docs/PREVIEW_RUNTIME_MIGRATION.md` dokumentiert spaetere Referenzdateien, Anpassungen, zu uebertragende Tests und ausgeschlossene Teile.
+- `src/runtime/preview/index.cjs` enthaelt nur Plan- und Statusinformationen, keine produktive Runtime-Logik.
+- `scripts/tests/preview-runtime-guardrail.test.cjs` prueft Zielpfad, geplante Exporte und fachneutrale Sperrbegriffe.
+- Keine produktive Host-App-Integration, keine Speicherung, keine Datenbank, kein IPC, keine Fachlogik und keine PDF-/Drucklogik eingefuehrt.
+
+Nachweis:
+
+- `npm test` gruen.
+- `git diff --check` gruen.
 
 ## 9. Gesperrte Nebenstrecken
 
