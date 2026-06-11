@@ -849,6 +849,60 @@ Abnahme:
 Abhaengigkeiten:
 G2.
 
+## G4 - Panel-State- und Panel-ViewModel-Runtime
+
+Status: gebaut
+
+Zweck:
+Die Panel-Runtime stellt ein fachneutrales Datenmodell fuer ein spaeteres UI-Editor-Panel bereit.
+
+Bauteilbeschreibung:
+Die Implementierung umfasst Panel-State, Panel-Position, Offen/Geschlossen-Zustand, neutrales Panel-ViewModel, Summary-Anzeige und ein datengetriebenes Buttonmodell.
+
+Mindestinhalt:
+- `src/runtime/panel/panelState.cjs`
+- `src/runtime/panel/panelState.mjs`
+- `src/runtime/panel/panelViewModel.cjs`
+- `src/runtime/panel/panelViewModel.mjs`
+- `src/runtime/panel/index.cjs`
+- `src/runtime/panel/index.mjs`
+- offizieller Package-Subpath `./runtime/panel` mit `import`- und `require`-Ziel
+- Runtime-Test und Guardrail-Test
+
+Qualitaetsanforderung:
+Die Panel-Runtime muss rein datenbasiert bleiben. Sie darf keine UI rendern, keine DOM-Knoten erzeugen, keinen Drag-Controller enthalten, keine Host-App anbinden, keine Speicherung ausfuehren, keine Fachlogik ausfuehren und keine PDF-/Drucklogik enthalten.
+
+Schnittstellen:
+- Registry-Element- oder Ziel-Daten als neutrale Eingabe
+- `allowedOps` und `lockedOps`
+- Pending-Change-Summary
+- Package-Subpath `ui-editor-kit/runtime/panel`
+
+Nicht erlaubt:
+- DOM-Panel
+- Drag-Controller
+- HTML-Strings
+- DOM-Knoten
+- Host-App-Integration
+- Speicherung
+- Datenbank
+- IPC
+- localStorage
+- Fachlogik
+- PDF-/Drucklogik
+
+Abnahme:
+- Panel-Runtime-Module vorhanden
+- CommonJS-Export vorhanden
+- browserfaehiger nativer ESM-Export vorhanden
+- offizieller Package-Subpath per CommonJS und ESM testbar
+- Runtime-Test gruen
+- Guardrail-Test gruen
+- `npm test` gruen
+
+Abhaengigkeiten:
+G3.
+
 ---
 
 # H - Layoutspeicherung

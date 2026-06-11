@@ -72,6 +72,7 @@ Aktueller Stand:
 - K20.1 erledigt: Preview-Runtime-Implementierung gegen neue LV-Position G3. Generische Operationen, Zielmodell, Pending-ChangeRequests und Exporte sind ins Kit uebernommen; keine Host-App-Integration, keine Speicherung, keine Fachlogik.
 - K20.2 erledigt: ESM-kompatibler Exportvertrag fuer die Preview-Runtime gegen G3 vorbereitet. Hotfix: `index.mjs` ist jetzt browserfaehiges natives ESM und importiert keine `.cjs`-Dateien mehr; keine BBM- oder Host-App-Integration.
 - K20.3 erledigt: Offizieller Package-Subpath `ui-editor-kit/runtime/preview` fuer die Preview-Runtime festgelegt. `package.json` exportiert `import` nach `index.mjs` und `require` nach `index.cjs`; keine BBM- oder Host-App-Integration.
+- K20.4 erledigt: Neutrale Panel-Runtime gegen neue LV-Position G4 vorbereitet. Panel-State, Position, ViewModel und Buttonmodell sind als CJS/ESM und Package-Subpath vorhanden; keine Host-App-Integration, kein DOM, kein Drag, keine Speicherung, keine Fachlogik.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -139,6 +140,7 @@ Bedeutung:
 | G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
 | G2 | [A] | Preview-Runtime-API-Vorbereitung | API-Doku, Migrationsnotiz, vorbereitender Runtime-Pfad und Guardrail-Test vorhanden, `npm test` gruen | spaetere technische Runtime-Implementierung nur mit eigener LV-Ergaenzung |
 | G3 | [A] | Preview-Runtime-Implementierung | Runtime-Module, offizieller Package-Subpath, CommonJS-Export, browserfaehiger nativer ESM-Export, Runtime-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Erweiterungen nur mit eigener LV-Ergaenzung |
+| G4 | [A] | Panel-State- und Panel-ViewModel-Runtime | Panel-Runtime-Module, offizieller Package-Subpath, CommonJS-/ESM-Export, Runtime-Test, Package-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Panel-Erweiterungen nur mit eigener LV-Ergaenzung |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
@@ -1012,6 +1014,34 @@ Nachweis:
 - `node scripts/tests/preview-runtime-esm.test.cjs` gruen.
 - `node scripts/tests/preview-runtime-package-export.test.cjs` gruen.
 - `node scripts/tests/preview-runtime-guardrail.test.cjs` gruen.
+- `npm test` gruen.
+- `git diff --check` gruen.
+
+### K20.4 - Panel-State und Panel-ViewModel-Runtime vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- G4
+
+Ergebnis:
+
+- `src/runtime/panel/` als neutraler Runtime-Pfad angelegt.
+- `panelState` stellt Default-State, defensive Positionsnormalisierung, Positionsupdate und Offen/Geschlossen-Update bereit.
+- `panelViewModel` erzeugt aus neutralen Daten ein ViewModel mit Ziel, Preview-Ziel, `allowedOps`, `lockedOps`, Pending-Summary, Reset-/Verwerfen-Faehigkeit, Status und Buttonmodell.
+- CommonJS-Einstieg `src/runtime/panel/index.cjs` vorhanden.
+- Browserfaehiger nativer ESM-Einstieg `src/runtime/panel/index.mjs` vorhanden.
+- Package-Subpath `ui-editor-kit/runtime/panel` in `package.json` angelegt.
+- `docs/PANEL_RUNTIME_API.md` dokumentiert API, State-Vertrag, ViewModel-Vertrag, Importvertrag, Nicht-Ziele und Tests.
+- Keine Host-App-Integration, kein DOM-Panel, kein Drag-Controller, keine Speicherung, keine Datenbank, kein IPC, kein localStorage, keine Fachlogik, keine PDF-/Drucklogik und keine alten Editorpfade eingefuehrt.
+
+Nachweis:
+
+- `scripts/tests/panel-runtime.test.cjs`
+- `scripts/tests/panel-runtime-esm.test.cjs`
+- `scripts/tests/panel-runtime-package-export.test.cjs`
+- `scripts/tests/panel-runtime-guardrail.test.cjs`
 - `npm test` gruen.
 - `git diff --check` gruen.
 
