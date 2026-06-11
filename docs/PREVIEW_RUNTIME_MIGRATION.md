@@ -17,12 +17,21 @@ Fachneutral abgeglichene BBM-Referenzdateien:
 
 Die Referenzdateien wurden nicht blind kopiert, sondern auf CommonJS, Kit-Pfade und neutrale Tests uebertragen.
 
+Fuer spaeteren ESM-Verbrauch existiert zusaetzlich ein ESM-kompatibler Preview-Runtime-Einstieg:
+
+```text
+src/runtime/preview/index.mjs
+```
+
+Dieser Einstieg re-exportiert den bestehenden CommonJS-Vertrag. Dadurch bleibt die bestehende Kit-Struktur stabil, waehrend ESM-Hosts wie BBM spaeter gegen einen klaren Runtime-Einstieg migrieren koennen.
+
 ## Anpassungen vor einer Uebernahme
 
 Bei der Uebernahme wurden diese Anpassungen vorgenommen:
 
 - Pfade auf `src/runtime/preview/` umstellen.
 - Modulformat an die bestehende Kit-Struktur angleichen.
+- ESM-kompatiblen Einstieg fuer spaetere ESM-Hosts bereitstellen.
 - Exporte gegen `docs/PREVIEW_RUNTIME_API.md` abgleichen.
 - Keine Host-App-spezifischen Defaults uebernehmen.
 - Keine produktiven Integrationsaufrufe uebernehmen.
@@ -78,3 +87,14 @@ Eine spaetere Erweiterung ist erst abnahmefaehig, wenn:
 - `git diff --check` gruen ist,
 - keine produktive Host-App-Integration entstanden ist,
 - keine Speicherung, DB, IPC oder PDF-/Drucklogik eingefuehrt wurde.
+
+## Vor spaeterer BBM-Umstellung noch offen
+
+Vor einer echten BBM-Import-Umstellung muss entschieden werden:
+
+- ob `package.json` einen offiziellen Package-Export fuer die Preview-Runtime erhaelt,
+- ob der spaetere Verbrauch ueber `src/runtime/preview/index.mjs` oder einen gebauten Dist-Pfad laeuft,
+- wie die Versionierung und Freigabe des privaten Kits erfolgt,
+- welche BBM-Tests nach der Umstellung direkt gegen den Kit-Einstieg laufen.
+
+Weiterhin nicht Teil dieses Schritts sind Host-App-Integration, Panel/Drag, Speicherung, Datenbank, IPC, localStorage, Fachlogik sowie PDF/Druck.

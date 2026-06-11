@@ -26,14 +26,18 @@ Aktuell existieren diese Runtime-Module:
 
 ```text
 src/runtime/preview/index.cjs
+src/runtime/preview/index.mjs
 src/runtime/preview/previewOperations.cjs
 src/runtime/preview/previewTargetModel.cjs
 src/runtime/preview/pendingChangeRequests.cjs
 ```
 
-Der Index exportiert die oeffentlichen Preview-Runtime-Funktionen.
+`index.cjs` ist der bestehende CommonJS-Einstieg.
+`index.mjs` ist der ESM-kompatible Einstieg fuer spaeteren Verbrauch durch ESM-Hosts.
 
-## Geplante Exporte
+Das Package bleibt aktuell `private` und definiert noch keine `main`-, `type`- oder `exports`-Felder. Der Importvertrag ist deshalb vorerst dateibasiert dokumentiert und noch keine produktive Package-Veroeffentlichung.
+
+## Oeffentliche Exporte
 
 Die Preview-Runtime stellt diese fachneutralen Funktionen bereit:
 
@@ -52,7 +56,39 @@ Die Preview-Runtime stellt diese fachneutralen Funktionen bereit:
 - `removePendingChangeRequestsForTarget`
 - `getPendingChangeRequestSummary`
 
+Zusaetzlich stehen diese Konstanten bereit:
+
+- `UNKNOWN_PREVIEW_TARGET_APP_ID`
+- `UI_EDITOR_ID_ATTRIBUTE`
+
 Die Funktionen duerfen nur vorhandene Registry- und HostContext-Daten auswerten. Sie duerfen keine Fachdaten lesen, keine Fachaktion ausfuehren und keine dauerhafte Aenderung speichern.
+
+## Importvertrag
+
+### CommonJS
+
+Der CommonJS-Einstieg bleibt:
+
+```js
+const previewRuntime = require("./src/runtime/preview/index.cjs");
+```
+
+Dieser Einstieg ist die technische Grundlage der bestehenden Kit-Tests.
+
+### ESM
+
+Der ESM-kompatible Einstieg ist:
+
+```js
+import {
+  getChangeRequestOperation,
+  upsertPreviewChangeRequest,
+} from "./src/runtime/preview/index.mjs";
+```
+
+Der ESM-Einstieg re-exportiert die oeffentliche API aus dem CommonJS-Einstieg und bietet zusaetzlich einen Default-Export an.
+
+Spaeterer BBM-Verbrauch soll nicht direkt auf interne Einzelmodule gehen, sondern auf den vertraglichen Preview-Runtime-Einstieg. Vor einer echten Umstellung muss noch entschieden werden, ob ein Package-Export in `package.json` ergaenzt wird oder ob eine andere Paket-/Build-Schicht den Einstieg bereitstellt.
 
 ## Erwartete Datenstrukturen
 
@@ -244,7 +280,9 @@ Der Pfad `src/runtime/preview/` muss fachneutral bleiben.
 
 Der Guardrail-Test `scripts/tests/preview-runtime-guardrail.test.cjs` prueft:
 
-- Zielpfad und vorbereitender Index existieren.
-- Der Index exportiert nur Plan- und Statusinformationen.
+- Zielpfad und Runtime-Indizes existieren.
+- Der CommonJS-Index exportiert die oeffentliche Runtime-API.
 - Der Preview-Runtime-Pfad enthaelt keine host- oder fachbezogenen Sperrbegriffe.
 - Keine Speicher-, Datei-, IPC-, Datenbank- oder Host-App-Integration ist enthalten.
+
+Der Test `scripts/tests/preview-runtime-esm.test.cjs` prueft den ESM-kompatiblen Einstieg und mindestens das fachliche Mapping `resizeWidth` zu `width`.

@@ -812,6 +812,7 @@ Mindestinhalt:
 - temporaere In-Memory-Pending-ChangeRequests
 - neutraler Host-Kontext mit Fallback `unknown-host`
 - oeffentlicher CommonJS-Export
+- ESM-kompatibler Exportvertrag fuer spaetere ESM-Hosts
 - Runtime-Test und Guardrail-Test
 
 Qualitaetsanforderung:
@@ -837,6 +838,7 @@ Nicht erlaubt:
 Abnahme:
 - Preview-Runtime-Module vorhanden
 - oeffentlicher Export funktioniert
+- ESM-kompatibler Einstieg importierbar
 - Runtime-Test gruen
 - Guardrail-Test gruen
 - `npm test` gruen
