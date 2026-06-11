@@ -7,6 +7,7 @@ const path = require("node:path");
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const PREVIEW_RUNTIME_DIR = path.join(REPO_ROOT, "src/runtime/preview");
 const PREVIEW_RUNTIME_INDEX = path.join(PREVIEW_RUNTIME_DIR, "index.cjs");
+const PREVIEW_RUNTIME_ESM_INDEX = path.join(PREVIEW_RUNTIME_DIR, "index.mjs");
 
 const FORBIDDEN_FRAGMENTS = Object.freeze([
   ["b", "bm"].join(""),
@@ -69,6 +70,7 @@ function assertNoForbiddenFragments(text, label) {
 function run() {
   assert.equal(fs.existsSync(PREVIEW_RUNTIME_DIR), true, "Preview-Runtime-Zielpfad fehlt.");
   assert.equal(fs.existsSync(PREVIEW_RUNTIME_INDEX), true, "Preview-Runtime-Index fehlt.");
+  assert.equal(fs.existsSync(PREVIEW_RUNTIME_ESM_INDEX), true, "Preview-Runtime-ESM-Index fehlt.");
 
   const previewRuntime = require(PREVIEW_RUNTIME_INDEX);
   PLANNED_EXPORTS.forEach((exportName) => {
@@ -83,6 +85,19 @@ function run() {
     const content = fs.readFileSync(filePath, "utf8");
     assertNoForbiddenFragments(content, relativePath);
   });
+
+  const esmIndexContent = fs.readFileSync(PREVIEW_RUNTIME_ESM_INDEX, "utf8");
+  assert.equal(esmIndexContent.includes(".cjs"), false, "ESM-Index darf keine CommonJS-Datei importieren.");
+  assert.equal(esmIndexContent.includes("require"), false, "ESM-Index darf kein require enthalten.");
+  assert.equal(esmIndexContent.includes("createRequire"), false, "ESM-Index darf kein createRequire enthalten.");
+
+  listFiles(PREVIEW_RUNTIME_DIR)
+    .filter((filePath) => filePath.endsWith(".mjs"))
+    .forEach((filePath) => {
+      const relativePath = path.relative(REPO_ROOT, filePath);
+      const content = fs.readFileSync(filePath, "utf8");
+      assertNoForbiddenFragments(content, relativePath);
+    });
 
   console.log("TESTS OK: preview-runtime-guardrail");
 }

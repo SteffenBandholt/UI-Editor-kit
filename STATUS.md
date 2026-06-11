@@ -70,7 +70,7 @@ Aktueller Stand:
 - K19.11 erledigt: Installer-Deinstallationsroutine vorbereitet; bekannte UI-Editor-Artefakte koennen nach expliziter Bestaetigung sicher entfernt werden.
 - K20.0 erledigt: Preview-Runtime-API-Vorbereitung gegen neue LV-Position G2. Zielstruktur, API-Vertrag, Migrationsnotiz und Guardrail sind vorbereitet; keine produktive Runtime-Logik und keine Host-App-Integration.
 - K20.1 erledigt: Preview-Runtime-Implementierung gegen neue LV-Position G3. Generische Operationen, Zielmodell, Pending-ChangeRequests und Exporte sind ins Kit uebernommen; keine Host-App-Integration, keine Speicherung, keine Fachlogik.
-- K20.2 erledigt: ESM-kompatibler Exportvertrag fuer die Preview-Runtime gegen G3 vorbereitet. `index.mjs` re-exportiert die oeffentliche Runtime-API aus dem CommonJS-Einstieg; keine BBM- oder Host-App-Integration.
+- K20.2 erledigt: ESM-kompatibler Exportvertrag fuer die Preview-Runtime gegen G3 vorbereitet. Hotfix: `index.mjs` ist jetzt browserfaehiges natives ESM und importiert keine `.cjs`-Dateien mehr; keine BBM- oder Host-App-Integration.
 - K20.3 erledigt: Offizieller Package-Subpath `ui-editor-kit/runtime/preview` fuer die Preview-Runtime festgelegt. `package.json` exportiert `import` nach `index.mjs` und `require` nach `index.cjs`; keine BBM- oder Host-App-Integration.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
@@ -138,7 +138,7 @@ Bedeutung:
 | F2 | [x] | Aenderungsauftrag pruefen | Validator + Test vorhanden, `npm test` gruen | nach F2 G1 vorbereiten |
 | G1 | [A] | Host-Adapter-Vertrag technisch vorbereitet | Vertrag + Testadapter vorhanden, `npm test` gruen | nach G1 H1/K16.0 |
 | G2 | [A] | Preview-Runtime-API-Vorbereitung | API-Doku, Migrationsnotiz, vorbereitender Runtime-Pfad und Guardrail-Test vorhanden, `npm test` gruen | spaetere technische Runtime-Implementierung nur mit eigener LV-Ergaenzung |
-| G3 | [A] | Preview-Runtime-Implementierung | Runtime-Module, offizieller Package-Subpath, CommonJS- und ESM-kompatibler Export, Runtime-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Erweiterungen nur mit eigener LV-Ergaenzung |
+| G3 | [A] | Preview-Runtime-Implementierung | Runtime-Module, offizieller Package-Subpath, CommonJS-Export, browserfaehiger nativer ESM-Export, Runtime-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Erweiterungen nur mit eigener LV-Ergaenzung |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
 | I2 | [A] | Elementdetails- und Operationsanzeige | neutrales Details-ViewModel + Test vorhanden, `npm test` gruen | nach I2 I3/K17.2 |
@@ -976,7 +976,7 @@ LV-Bezug:
 Ergebnis:
 
 - `src/runtime/preview/index.mjs` als ESM-kompatibler Einstieg angelegt.
-- Der ESM-Einstieg re-exportiert die oeffentliche Runtime-API aus `src/runtime/preview/index.cjs` und stellt zusaetzlich einen Default-Export bereit.
+- Hotfix: Der ESM-Einstieg ist jetzt browserfaehiges natives ESM, importiert nur noch `.mjs`-Runtime-Module und verweist nicht mehr auf `index.cjs`.
 - `scripts/tests/preview-runtime-esm.test.cjs` prueft den ESM-Import, die erwarteten Exporte, `UNKNOWN_PREVIEW_TARGET_APP_ID`, `UI_EDITOR_ID_ATTRIBUTE` und das Mapping `resizeWidth` zu `width`.
 - `package.json` bindet den ESM-Test in `npm test` ein, ohne `main`, `type` oder `exports` zu setzen.
 - `docs/PREVIEW_RUNTIME_API.md` und `docs/PREVIEW_RUNTIME_MIGRATION.md` dokumentieren CommonJS-Einstieg, ESM-kompatiblen Einstieg, spaeteren BBM-Verbrauch und weiterhin ausgeschlossene Bereiche.

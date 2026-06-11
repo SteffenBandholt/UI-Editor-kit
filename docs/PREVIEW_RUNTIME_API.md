@@ -28,12 +28,16 @@ Aktuell existieren diese Runtime-Module:
 src/runtime/preview/index.cjs
 src/runtime/preview/index.mjs
 src/runtime/preview/previewOperations.cjs
+src/runtime/preview/previewOperations.mjs
 src/runtime/preview/previewTargetModel.cjs
+src/runtime/preview/previewTargetModel.mjs
 src/runtime/preview/pendingChangeRequests.cjs
+src/runtime/preview/pendingChangeRequests.mjs
 ```
 
 `index.cjs` ist der bestehende CommonJS-Einstieg.
-`index.mjs` ist der ESM-kompatible Einstieg fuer spaeteren Verbrauch durch ESM-Hosts.
+`index.mjs` ist der browserfaehige native ESM-Einstieg fuer spaeteren Verbrauch durch ESM-Hosts und Renderer ohne Bundler.
+Der ESM-Einstieg darf keine `.cjs`-Dateien importieren und darf kein `require` oder `createRequire` enthalten.
 
 Das Package bleibt aktuell `private` und definiert keinen Root-`main` und kein globales `type`-Feld.
 Der offizielle Preview-Runtime-Importvertrag ist als Package-Subpath in `package.json` festgelegt:
@@ -111,7 +115,8 @@ import {
 ```
 
 Der interne Zielpfad fuer `import` ist `./src/runtime/preview/index.mjs`.
-Der ESM-Einstieg re-exportiert die oeffentliche API aus dem CommonJS-Einstieg und bietet zusaetzlich einen Default-Export an.
+Der ESM-Einstieg re-exportiert die oeffentliche API ausschliesslich aus echten `.mjs`-Runtime-Modulen und bietet zusaetzlich einen Default-Export an.
+Das ist wichtig fuer Browser-/Electron-Renderer ohne Bundler: Diese koennen native ES-Module laden, aber keine CommonJS-Dateien aus einem ESM-Importgraphen.
 
 Spaeterer BBM-Verbrauch soll nicht direkt auf interne Einzelmodule gehen, sondern auf `ui-editor-kit/runtime/preview`.
 Vor einer echten Umstellung bleiben Versionierung, Bezugsweg und Ziel-App-Freigabe zu klaeren.
@@ -308,6 +313,8 @@ Der Guardrail-Test `scripts/tests/preview-runtime-guardrail.test.cjs` prueft:
 
 - Zielpfad und Runtime-Indizes existieren.
 - Der CommonJS-Index exportiert die oeffentliche Runtime-API.
+- Der ESM-Index importiert keine `.cjs`-Dateien und nutzt kein `require`.
+- Alle `.mjs`-Runtime-Dateien bleiben fachneutral.
 - Der Preview-Runtime-Pfad enthaelt keine host- oder fachbezogenen Sperrbegriffe.
 - Keine Speicher-, Datei-, IPC-, Datenbank- oder Host-App-Integration ist enthalten.
 

@@ -803,7 +803,7 @@ Zweck:
 Die fachneutrale Preview-Runtime stellt die vorbereiteten Runtime-Funktionen technisch bereit.
 
 Bauteilbeschreibung:
-Die Implementierung umfasst Operationsermittlung, Zielmodell, temporaere Pending-ChangeRequests und einen oeffentlichen Runtime-Export unter `src/runtime/preview/index.cjs`, `src/runtime/preview/index.mjs` sowie dem Package-Subpath `ui-editor-kit/runtime/preview`.
+Die Implementierung umfasst Operationsermittlung, Zielmodell, temporaere Pending-ChangeRequests und einen oeffentlichen Runtime-Export unter `src/runtime/preview/index.cjs`, dem browserfaehigen nativen ESM-Einstieg `src/runtime/preview/index.mjs` sowie dem Package-Subpath `ui-editor-kit/runtime/preview`.
 
 Mindestinhalt:
 - Preview-Operationen fuer erlaubte und gesperrte Operationen
@@ -812,7 +812,7 @@ Mindestinhalt:
 - temporaere In-Memory-Pending-ChangeRequests
 - neutraler Host-Kontext mit Fallback `unknown-host`
 - oeffentlicher CommonJS-Export
-- ESM-kompatibler Exportvertrag fuer spaetere ESM-Hosts
+- browserfaehiger nativer ESM-Exportvertrag fuer spaetere ESM-Hosts und Renderer ohne Bundler
 - offizieller Package-Subpath `./runtime/preview` mit `import`- und `require`-Ziel
 - Runtime-Test und Guardrail-Test
 
@@ -839,7 +839,7 @@ Nicht erlaubt:
 Abnahme:
 - Preview-Runtime-Module vorhanden
 - oeffentlicher Export funktioniert
-- ESM-kompatibler Einstieg importierbar
+- browserfaehiger ESM-Einstieg importierbar und frei von `.cjs`/`require`
 - offizieller Package-Subpath per CommonJS und ESM testbar
 - Runtime-Test gruen
 - Guardrail-Test gruen

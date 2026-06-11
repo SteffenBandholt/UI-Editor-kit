@@ -15,7 +15,7 @@ Fachneutral abgeglichene BBM-Referenzdateien:
 - `src/renderer/editorRuntime/preview/editorPendingChangeRequests.js`
 - `src/renderer/editorRuntime/preview/index.js`
 
-Die Referenzdateien wurden nicht blind kopiert, sondern auf CommonJS, Kit-Pfade und neutrale Tests uebertragen.
+Die Referenzdateien wurden nicht blind kopiert, sondern auf CommonJS, browserfaehiges natives ESM, Kit-Pfade und neutrale Tests uebertragen.
 
 Fuer spaeteren ESM-Verbrauch existiert zusaetzlich ein ESM-kompatibler Preview-Runtime-Einstieg:
 
@@ -23,7 +23,15 @@ Fuer spaeteren ESM-Verbrauch existiert zusaetzlich ein ESM-kompatibler Preview-R
 src/runtime/preview/index.mjs
 ```
 
-Dieser Einstieg re-exportiert den bestehenden CommonJS-Vertrag.
+Dieser Einstieg re-exportiert die Runtime ausschliesslich aus echten `.mjs`-Modulen:
+
+```text
+src/runtime/preview/previewOperations.mjs
+src/runtime/preview/previewTargetModel.mjs
+src/runtime/preview/pendingChangeRequests.mjs
+```
+
+`index.mjs` darf keine `.cjs`-Dateien importieren und darf kein `require` oder `createRequire` enthalten. Der CommonJS-Einstieg `index.cjs` bleibt parallel fuer Node/CommonJS erhalten.
 Der offizielle Package-Subpath fuer spaetere Verbraucher ist:
 
 ```text
@@ -31,7 +39,7 @@ ui-editor-kit/runtime/preview
 ```
 
 `package.json` bildet diesen Subpath auf `./src/runtime/preview/index.mjs` fuer ESM und auf `./src/runtime/preview/index.cjs` fuer CommonJS ab.
-Dadurch bleibt die bestehende Kit-Struktur stabil, waehrend ESM-Hosts spaeter gegen einen klaren Runtime-Einstieg migrieren koennen.
+Dadurch bleibt die bestehende Kit-Struktur stabil, waehrend ESM-Hosts und Browser-/Electron-Renderer gegen einen klaren nativen ESM-Einstieg migrieren koennen.
 
 ## Anpassungen vor einer Uebernahme
 
@@ -39,7 +47,8 @@ Bei der Uebernahme wurden diese Anpassungen vorgenommen:
 
 - Pfade auf `src/runtime/preview/` umstellen.
 - Modulformat an die bestehende Kit-Struktur angleichen.
-- ESM-kompatiblen Einstieg fuer spaetere ESM-Hosts bereitstellen.
+- CommonJS-Einstieg fuer Node/CommonJS behalten.
+- Browserfaehigen nativen ESM-Einstieg fuer spaetere ESM-Hosts und Renderer bereitstellen.
 - Offiziellen Package-Subpath `ui-editor-kit/runtime/preview` bereitstellen.
 - Exporte gegen `docs/PREVIEW_RUNTIME_API.md` abgleichen.
 - Keine Host-App-spezifischen Defaults uebernehmen.
