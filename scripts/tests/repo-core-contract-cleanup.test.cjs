@@ -74,6 +74,15 @@ const MUST_EXIST = [
   "scripts/tests/panel-runtime-esm.test.cjs",
   "scripts/tests/panel-runtime-package-export.test.cjs",
   "scripts/tests/panel-runtime-guardrail.test.cjs",
+  "docs/SURFACE_RUNTIME_API.md",
+  "src/runtime/surface/index.cjs",
+  "src/runtime/surface/index.mjs",
+  "src/runtime/surface/surfaceModel.cjs",
+  "src/runtime/surface/surfaceModel.mjs",
+  "scripts/tests/surface-runtime.test.cjs",
+  "scripts/tests/surface-runtime-esm.test.cjs",
+  "scripts/tests/surface-runtime-package-export.test.cjs",
+  "scripts/tests/surface-runtime-guardrail.test.cjs",
   "scripts/start-installer-app.cjs",
   "src/installer-app/index.html",
   "src/installer-app/installer-app.js",
@@ -170,6 +179,10 @@ function run() {
       import: "./src/runtime/hiddenElements/index.mjs",
       require: "./src/runtime/hiddenElements/index.cjs",
     },
+    "./runtime/surface": {
+      import: "./src/runtime/surface/index.mjs",
+      require: "./src/runtime/surface/index.cjs",
+    },
   });
   assert.equal(Object.prototype.hasOwnProperty.call(packageJson, "main"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(packageJson, "type"), false);
@@ -177,7 +190,7 @@ function run() {
   assert.equal(packageJson.scripts["install:target"], "node scripts/install-ui-editor-to-target.cjs");
   assert.equal(
     packageJson.scripts.test,
-    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/target-selection.test.cjs && node scripts/tests/target-contract.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/target-app-adapter-manifest-check.test.cjs && node scripts/tests/target-app-adapter-release-gate.test.cjs && node scripts/tests/target-app-adapter-plan.test.cjs && node scripts/tests/target-app-adapter-plan-safety-check.test.cjs && node scripts/tests/target-app-installer-plan.test.cjs && node scripts/tests/target-app-installer-execution.test.cjs && node scripts/tests/target-app-installer-uninstall.test.cjs && node scripts/tests/target-app-registry-contract.test.cjs && node scripts/tests/install-ui-editor-to-target-cli.test.cjs && node scripts/tests/preview-runtime.test.cjs && node scripts/tests/preview-runtime-esm.test.cjs && node scripts/tests/preview-runtime-package-export.test.cjs && node scripts/tests/preview-runtime-guardrail.test.cjs && node scripts/tests/panel-runtime.test.cjs && node scripts/tests/panel-runtime-esm.test.cjs && node scripts/tests/panel-runtime-package-export.test.cjs && node scripts/tests/panel-runtime-guardrail.test.cjs && node scripts/tests/hidden-elements-runtime.test.cjs && node scripts/tests/hidden-elements-runtime-esm.test.cjs && node scripts/tests/hidden-elements-runtime-package-export.test.cjs && node scripts/tests/hidden-elements-runtime-guardrail.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs && node scripts/tests/installer-app-start.test.cjs"
+    "node scripts/ui-editor-contract-check.cjs --self-test && node scripts/tests/ui-element-model.test.cjs && node scripts/tests/ui-element-registry.test.cjs && node scripts/tests/ui-element-validator.test.cjs && node scripts/tests/editor-core.test.cjs && node scripts/tests/change-request-model.test.cjs && node scripts/tests/change-request-validator.test.cjs && node scripts/tests/host-adapter-contract.test.cjs && node scripts/tests/test-host-adapter.test.cjs && node scripts/tests/layout-state-model.test.cjs && node scripts/tests/layout-state-store.test.cjs && node scripts/tests/editor-ui-tree-view-model.test.cjs && node scripts/tests/editor-ui-state.test.cjs && node scripts/tests/target-selection.test.cjs && node scripts/tests/target-contract.test.cjs && node scripts/tests/editor-ui-details-view-model.test.cjs && node scripts/tests/editor-ui-change-draft-view-model.test.cjs && node scripts/tests/target-app-bootstrap.test.cjs && node scripts/tests/target-app-test-host-flow.test.cjs && node scripts/tests/neutral-minimal-host.test.cjs && node scripts/tests/target-app-adapter-manifest.test.cjs && node scripts/tests/target-app-adapter-manifest-check.test.cjs && node scripts/tests/target-app-adapter-release-gate.test.cjs && node scripts/tests/target-app-adapter-plan.test.cjs && node scripts/tests/target-app-adapter-plan-safety-check.test.cjs && node scripts/tests/target-app-installer-plan.test.cjs && node scripts/tests/target-app-installer-execution.test.cjs && node scripts/tests/target-app-installer-uninstall.test.cjs && node scripts/tests/target-app-registry-contract.test.cjs && node scripts/tests/install-ui-editor-to-target-cli.test.cjs && node scripts/tests/preview-runtime.test.cjs && node scripts/tests/preview-runtime-esm.test.cjs && node scripts/tests/preview-runtime-package-export.test.cjs && node scripts/tests/preview-runtime-guardrail.test.cjs && node scripts/tests/panel-runtime.test.cjs && node scripts/tests/panel-runtime-esm.test.cjs && node scripts/tests/panel-runtime-package-export.test.cjs && node scripts/tests/panel-runtime-guardrail.test.cjs && node scripts/tests/hidden-elements-runtime.test.cjs && node scripts/tests/hidden-elements-runtime-esm.test.cjs && node scripts/tests/hidden-elements-runtime-package-export.test.cjs && node scripts/tests/hidden-elements-runtime-guardrail.test.cjs && node scripts/tests/surface-runtime.test.cjs && node scripts/tests/surface-runtime-esm.test.cjs && node scripts/tests/surface-runtime-package-export.test.cjs && node scripts/tests/surface-runtime-guardrail.test.cjs && node scripts/tests/repo-core-contract-cleanup.test.cjs && node scripts/tests/installer-app-start.test.cjs"
   );
 
   const readme = read("README.md");
