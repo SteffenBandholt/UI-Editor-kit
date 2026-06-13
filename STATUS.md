@@ -73,6 +73,7 @@ Aktueller Stand:
 - K20.2 erledigt: ESM-kompatibler Exportvertrag fuer die Preview-Runtime gegen G3 vorbereitet. Hotfix: `index.mjs` ist jetzt browserfaehiges natives ESM und importiert keine `.cjs`-Dateien mehr; keine BBM- oder Host-App-Integration.
 - K20.3 erledigt: Offizieller Package-Subpath `ui-editor-kit/runtime/preview` fuer die Preview-Runtime festgelegt. `package.json` exportiert `import` nach `index.mjs` und `require` nach `index.cjs`; keine BBM- oder Host-App-Integration.
 - K20.4 erledigt: Neutrale Panel-Runtime gegen neue LV-Position G4 vorbereitet. Panel-State, Position, ViewModel und Buttonmodell sind als CJS/ESM und Package-Subpath vorhanden; keine Host-App-Integration, kein DOM, kein Drag, keine Speicherung, keine Fachlogik.
+- K20.6 erledigt: Neutraler Panel-Drag-Helper gegen neue LV-Position G4.1 vorbereitet. `buildPanelDragResult(...)`, `calculatePanelDragPosition(...)` und `normalizePanelDragInput(...)` kapseln Panel-Positionsrechnung ueber die DragRuntime fuer `css-pixels`; keine Host-App-Integration, keine DOM-/Mouse-/Pointer-Anbindung, keine Speicherung, keine Fachlogik.
 - K20.5 erledigt: Neutrale Hidden-Elements-Runtime gegen neue LV-Position G5 vorbereitet. Hidden-Element-Normalisierung, Button-ViewModel, Popover-ViewModel und Gesamt-ViewModel sind als CJS/ESM und Package-Subpath vorhanden; keine Host-App-Integration, kein DOM, keine Speicherung, keine Fachlogik.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
@@ -142,6 +143,7 @@ Bedeutung:
 | G2 | [A] | Preview-Runtime-API-Vorbereitung | API-Doku, Migrationsnotiz, vorbereitender Runtime-Pfad und Guardrail-Test vorhanden, `npm test` gruen | spaetere technische Runtime-Implementierung nur mit eigener LV-Ergaenzung |
 | G3 | [A] | Preview-Runtime-Implementierung | Runtime-Module, offizieller Package-Subpath, CommonJS-Export, browserfaehiger nativer ESM-Export, Runtime-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Erweiterungen nur mit eigener LV-Ergaenzung |
 | G4 | [A] | Panel-State- und Panel-ViewModel-Runtime | Panel-Runtime-Module, offizieller Package-Subpath, CommonJS-/ESM-Export, Runtime-Test, Package-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Panel-Erweiterungen nur mit eigener LV-Ergaenzung |
+| G4.1 | [A] | Neutraler Panel-Drag-Helper | Panel-Drag-Helper ueber `runtime/panel`, DragRuntime-Rechnung, CommonJS-/ESM-Export, Runtime-Test, Package-Test und Guardrail-Test vorhanden, `npm test` gruen | weitere Panel-Erweiterungen nur mit eigener LV-Ergaenzung |
 | G5 | [A] | Hidden-Elements-ViewModel-Runtime | Hidden-Elements-Runtime-Module, offizieller Package-Subpath, CommonJS-/ESM-Export, Runtime-Test, Package-Test und Guardrail-Test vorhanden, `npm test` gruen | spaetere Hidden-Elements-UI nur mit eigener LV-Ergaenzung |
 | H1 | [A] | Speichervertrag fuer Layoutdaten | Modell + In-Memory-Store + Tests vorhanden, `npm test` gruen | nach H1 I1/K17.0 |
 | I1 | [A] | Elementbaum-Anzeige | neutrales Tree-ViewModel + UI-State, `npm test` gruen | nach I1 I2/K17.1 |
@@ -1046,6 +1048,33 @@ Nachweis:
 - `scripts/tests/panel-runtime-guardrail.test.cjs`
 - `npm test` gruen.
 - `git diff --check` gruen.
+
+### K20.6 - Neutralen Panel-Drag-Helper vorbereiten
+
+Status: abgenommen
+
+LV-Bezug:
+
+- G4.1
+
+Ergebnis:
+
+- `src/runtime/panel/panelDrag.cjs` und `src/runtime/panel/panelDrag.mjs` ergaenzen die Panel-Runtime.
+- Neue Exporte ueber `ui-editor-kit/runtime/panel`: `PANEL_DRAG_COORDINATE_SYSTEM`, `normalizePanelDragInput`, `buildPanelDragResult` und `calculatePanelDragPosition`.
+- Der Helper nutzt intern `buildDragResult(...)` aus der neutralen DragRuntime und rechnet Panelpositionen fuer `coordinateSystem: "css-pixels"`.
+- Geprueft werden positive und negative Delta-Bewegung, Clamp links/oben und rechts/unten, unveraenderte Panelgroesse, `changed`, ungueltige Bounds, ungueltige Delta-Werte und Ablehnung anderer Coordinate-Systems.
+- Keine BBM- oder Host-App-Integration, keine DOM-/Mouse-/Pointer-Anbindung, keine UI-Aenderung, keine Speicherung, keine Datenbank, kein IPC, kein localStorage, keine Fachlogik und keine PDF-/Canvas-/Plan-Aktivierung eingefuehrt.
+
+Nachweis:
+
+- `scripts/tests/panel-runtime.test.cjs`
+- `scripts/tests/panel-runtime-esm.test.cjs`
+- `scripts/tests/panel-runtime-package-export.test.cjs`
+- `scripts/tests/panel-runtime-guardrail.test.cjs`
+- `scripts/tests/drag-runtime.test.cjs`
+- `scripts/tests/drag-runtime-esm.test.cjs`
+- `npm test`
+- `git diff --check`
 
 ### K20.5 - Hidden-Elements-ViewModel-Runtime vorbereiten
 

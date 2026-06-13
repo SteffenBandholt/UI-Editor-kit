@@ -14,6 +14,7 @@ Sie beschreibt nur:
 - vorbereitete Aenderungen als Summary
 - Reset-/Verwerfen-Faehigkeit
 - ein datengetriebenes Buttonmodell
+- neutrale Panel-Drag-Positionsberechnung auf Basis der DragRuntime
 
 Sie rendert keine UI.
 
@@ -37,6 +38,8 @@ src/runtime/panel/panelState.cjs
 src/runtime/panel/panelState.mjs
 src/runtime/panel/panelViewModel.cjs
 src/runtime/panel/panelViewModel.mjs
+src/runtime/panel/panelDrag.cjs
+src/runtime/panel/panelDrag.mjs
 ```
 
 ## Package-Subpath
@@ -71,6 +74,10 @@ Die Panel-Runtime exportiert:
 - `setPanelOpen`
 - `buildPanelViewModel`
 - `createPreviewButtons`
+- `PANEL_DRAG_COORDINATE_SYSTEM`
+- `normalizePanelDragInput`
+- `buildPanelDragResult`
+- `calculatePanelDragPosition`
 
 ## State-Vertrag
 
@@ -139,12 +146,80 @@ Die Panel-Runtime exportiert:
 Preview-Buttons werden aus `allowedOps`, `lockedOps` und vorhandenem Ziel abgeleitet.
 Reset und Verwerfen werden aus `canReset`, `canDiscard` oder der Summary abgeleitet.
 
+## Panel-Drag-Helper
+
+Der Panel-Drag-Helper kapselt nur die neutrale Positionsrechnung fuer schwebende Panels.
+Er nutzt intern die DragRuntime und akzeptiert fuer Panel-Drag aktuell ausschliesslich
+`coordinateSystem: "css-pixels"`.
+
+Beispieleingabe:
+
+```js
+{
+  panelId: "preview-panel",
+  startBounds: {
+    x: 100,
+    y: 80,
+    width: 320,
+    height: 240
+  },
+  delta: {
+    x: 30,
+    y: -20
+  },
+  viewportBounds: {
+    x: 0,
+    y: 0,
+    width: 1200,
+    height: 800
+  },
+  coordinateSystem: "css-pixels"
+}
+```
+
+`buildPanelDragResult(input)` liefert ein Ergebnisobjekt:
+
+```js
+{
+  ok: true,
+  errors: [],
+  panelId: "preview-panel",
+  bounds: {
+    x: 130,
+    y: 60,
+    width: 320,
+    height: 240
+  },
+  changed: true,
+  coordinateSystem: "css-pixels"
+}
+```
+
+Die Panelgroesse bleibt erhalten. Die Position wird gegen `viewportBounds`
+begrenzt, damit das Panel im sichtbaren Bereich bleibt.
+
+`calculatePanelDragPosition(input)` ist der neutrale Recheneinstieg fuer Hosts,
+die nur die neue Panelposition aus Startbounds, Delta und Viewport berechnen
+wollen.
+
+`normalizePanelDragInput(input)` normalisiert die Eingabe defensiv und bildet
+aus `viewportBounds` die DragRuntime-Constraints.
+
+Ungueltige Eingaben liefern `ok: false` mit Fehlerliste. Abgelehnt werden
+insbesondere ungueltige Bounds, ungueltige Delta-Werte und andere Coordinate-
+Systems als `css-pixels`.
+
+Der Helper bindet keine DOM-, Mouse- oder Pointer-Events an. Hosts bleiben fuer
+Startpositionsermittlung, Event-Anbindung, Style-Setzen, Speicherung und
+Lifecycle verantwortlich. Fuer PDF-, Canvas- oder Plan-Flaechen bleibt die
+generische DragRuntime der richtige Baustein, nicht der Panel-Helper.
+
 ## Nicht enthalten
 
 Nicht Teil der Panel-Runtime sind:
 
 - DOM-Panel
-- Drag-Controller
+- Drag-Controller oder Event-Anbindung
 - HTML-Strings
 - DOM-Knoten
 - Host-App-Integration

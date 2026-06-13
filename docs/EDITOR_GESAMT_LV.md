@@ -903,6 +903,58 @@ Abnahme:
 Abhaengigkeiten:
 G3.
 
+## G4.1 - Neutraler Panel-Drag-Helper
+
+Status: gebaut
+
+Zweck:
+Die Panel-Runtime stellt eine neutrale Hilfsrechnung fuer schwebende Panel-Positionen bereit.
+
+Bauteilbeschreibung:
+Die Implementierung kapselt Panel-Drag-Eingaben, normalisiert Startbounds, Delta und Viewportbounds und nutzt intern die DragRuntime fuer Apply- und Clamp-Rechnung. Sie akzeptiert fuer Panel-Drag nur `css-pixels`.
+
+Mindestinhalt:
+- `src/runtime/panel/panelDrag.cjs`
+- `src/runtime/panel/panelDrag.mjs`
+- Export ueber `src/runtime/panel/index.cjs`
+- Export ueber `src/runtime/panel/index.mjs`
+- Runtime-Test, ESM-Test, Package-Export-Test und Guardrail-Test
+
+Qualitaetsanforderung:
+Der Panel-Drag-Helper muss rein datenbasiert bleiben. Er darf keinen Drag-Controller enthalten, keine DOM-, Mouse- oder Pointer-Events anbinden, keine Host-App anbinden, keine Speicherung ausfuehren, keine Fachlogik ausfuehren und keine PDF-/Canvas-/Plan-Funktion aktivieren.
+
+Schnittstellen:
+- `panelId` als optionale Panelkennung
+- `startBounds`
+- `delta`
+- `viewportBounds`
+- `coordinateSystem: "css-pixels"`
+- Package-Subpath `ui-editor-kit/runtime/panel`
+
+Nicht erlaubt:
+- DOM-Events
+- Mouse- oder Pointer-Anbindung
+- UI-Rendering
+- Host-App-Integration
+- Speicherung
+- Datenbank
+- IPC
+- localStorage
+- Fachlogik
+- PDF-/Canvas-/Plan-Aktivierung
+
+Abnahme:
+- Panel-Drag-Helper in CommonJS und ESM vorhanden
+- Helper nutzt neutrale DragRuntime
+- offizieller Package-Subpath per CommonJS und ESM testbar
+- Runtime-Test gruen
+- Guardrail-Test gruen
+- `npm test` gruen
+- `git diff --check` gruen
+
+Abhaengigkeiten:
+G4 und DragRuntime.
+
 ## G5 - Hidden-Elements-ViewModel-Runtime
 
 Status: gebaut

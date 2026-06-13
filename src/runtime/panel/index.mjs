@@ -9,6 +9,12 @@ export {
   buildPanelViewModel,
   createPreviewButtons,
 } from "./panelViewModel.mjs";
+export {
+  PANEL_DRAG_COORDINATE_SYSTEM,
+  normalizePanelDragInput,
+  buildPanelDragResult,
+  calculatePanelDragPosition,
+} from "./panelDrag.mjs";
 
 import {
   PANEL_DEFAULT_POSITION,
@@ -21,6 +27,12 @@ import {
   buildPanelViewModel,
   createPreviewButtons,
 } from "./panelViewModel.mjs";
+import {
+  PANEL_DRAG_COORDINATE_SYSTEM,
+  normalizePanelDragInput,
+  buildPanelDragResult,
+  calculatePanelDragPosition,
+} from "./panelDrag.mjs";
 
 export default {
   PANEL_DEFAULT_POSITION,
@@ -30,4 +42,8 @@ export default {
   setPanelOpen,
   buildPanelViewModel,
   createPreviewButtons,
+  PANEL_DRAG_COORDINATE_SYSTEM,
+  normalizePanelDragInput,
+  buildPanelDragResult,
+  calculatePanelDragPosition,
 };

@@ -3,4 +3,5 @@
 module.exports = {
   ...require("./panelState.cjs"),
   ...require("./panelViewModel.cjs"),
+  ...require("./panelDrag.cjs"),
 };
