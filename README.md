@@ -114,6 +114,12 @@ Die Ziel-App ist nach der Installation noch nicht automatisch editorfaehig. Sie 
 
 Neue editorrelevante UI-/PDF-Strukturen duerfen erst nach einer UI-/PDF-Entwurfsentscheidung gebaut werden. Bestehende Legacy-UIs werden nicht automatisch analysiert, registriert oder migriert.
 
+## Minimal-Anbindung neuer Ziel-Apps
+
+Die kurze oeffentliche Anleitung fuer eine neue fachneutrale Ziel-App steht in `docs/M47_NEUE_ZIEL_APP_MINIMAL_ANBINDUNG.md`. Sie beschreibt den offiziellen Adapter-Pfad von Target-App ueber AdapterManifest, HostAdapter, Registry und RuntimeLauncher bis zu ViewModels und LayoutStateStore.
+
+Als neutraler Fixture-Verweis dient `scripts/fixtures/neutral-target-app/neutralTargetApp.cjs`; ein kleines ausfuehrbares Minimalbeispiel liegt unter `scripts/fixtures/minimal-target-app/minimal-target-app.cjs`. Neue Integrationen sollen die Runtime ueber `src/core/target-app-adapter-path.cjs` starten.
+
 ## Vertragscheck
 
 Der Vertragscheck prueft fachneutral nur vorhandene `data-ui-*` Metadaten gegen den UI-Editor-Vertrag.

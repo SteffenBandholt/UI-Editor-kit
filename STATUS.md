@@ -71,6 +71,7 @@ Aktueller Stand:
 - M41 erledigt: Kleine generische Runtime-/Launcher-Schicht erzeugt neutralen RuntimeStatus aus HostAdapter, optionalem AdapterManifest, Registry und LayoutState; keine Ziel-App-Aenderung, kein Scan, keine Fachlogik.
 - M42 erledigt: Fachneutrale Scope-, Selection-, Runtime-Status- und Layout-Control-ViewModels dokumentiert und getestet; keine Ziel-App-Integration, kein Scan, keine Fachlogik.
 - M46 erledigt: Offizieller fachneutraler Adapter-Pfad von AdapterManifest ueber HostAdapter, Registry, RuntimeLauncher, ViewModels und LayoutStateStore technisch abgesichert und dokumentiert.
+- M47 erledigt: Oeffentliche Minimal-Anleitung fuer neue fachneutrale Ziel-Apps dokumentiert; neutrales Minimalbeispiel und Test sichern offiziellen Adapter-Pfad, ViewModels und MemoryLayoutStateStore ab.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
