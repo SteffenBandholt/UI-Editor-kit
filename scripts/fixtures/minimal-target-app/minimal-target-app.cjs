@@ -1,7 +1,9 @@
 "use strict";
 
-const { createMemoryLayoutStateStore } = require("../../../src/core/layout-state-store.cjs");
-const { createTargetAppAdapterRuntime } = require("../../../src/core/target-app-adapter-path.cjs");
+const {
+  createMemoryLayoutStateStore,
+  createTargetAppAdapterRuntime,
+} = require("../../../src/index.cjs");
 const {
   createNeutralTargetAppHostAdapter,
   getNeutralTargetAppInfo,
