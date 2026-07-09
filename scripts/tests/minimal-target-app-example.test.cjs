@@ -59,7 +59,8 @@ function read(relativePath) {
 {
   const exampleSource = read("scripts/fixtures/minimal-target-app/minimal-target-app.cjs");
   assert.equal(exampleSource.includes("createTargetAppAdapterRuntime"), true);
-  assert.equal(exampleSource.includes("target-app-adapter-path.cjs"), true);
+  assert.equal(exampleSource.includes("src/index.cjs"), true);
+  assert.equal(exampleSource.includes("target-app-adapter-path.cjs"), false);
   assert.equal(exampleSource.includes("createMemoryLayoutStateStore"), true);
   assert.equal(exampleSource.includes("neutralTargetApp.cjs"), true);
 }

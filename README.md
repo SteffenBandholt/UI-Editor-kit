@@ -118,7 +118,14 @@ Neue editorrelevante UI-/PDF-Strukturen duerfen erst nach einer UI-/PDF-Entwurfs
 
 Die kurze oeffentliche Anleitung fuer eine neue fachneutrale Ziel-App steht in `docs/M47_NEUE_ZIEL_APP_MINIMAL_ANBINDUNG.md`. Sie beschreibt den offiziellen Adapter-Pfad von Target-App ueber AdapterManifest, HostAdapter, Registry und RuntimeLauncher bis zu ViewModels und LayoutStateStore.
 
-Als neutraler Fixture-Verweis dient `scripts/fixtures/neutral-target-app/neutralTargetApp.cjs`; ein kleines ausfuehrbares Minimalbeispiel liegt unter `scripts/fixtures/minimal-target-app/minimal-target-app.cjs`. Neue Integrationen sollen die Runtime ueber `src/core/target-app-adapter-path.cjs` starten.
+Als neutraler Fixture-Verweis dient `scripts/fixtures/neutral-target-app/neutralTargetApp.cjs`; ein kleines ausfuehrbares Minimalbeispiel liegt unter `scripts/fixtures/minimal-target-app/minimal-target-app.cjs`. Neue Integrationen sollen die Kit-Funktionen ueber den oeffentlichen Einstieg `src/index.cjs` beziehungsweise den Paket-Export laden.
+
+
+## Oeffentliche Core-API
+
+Der bevorzugte Import fuer Ziel-Apps ist ab M48 der oeffentliche CommonJS-Einstieg `src/index.cjs` beziehungsweise der Paket-Export. Dort liegen Runtime-Start, Adapter-Pfad, ViewModels und MemoryLayoutStateStore gesammelt als stabile Kit-API. Details stehen in `docs/M48_PUBLIC_CORE_API_EXPORTS.md`.
+
+Die Minimalanleitung bleibt `docs/M47_NEUE_ZIEL_APP_MINIMAL_ANBINDUNG.md`; das ausfuehrbare Minimalbeispiel liegt unter `scripts/fixtures/minimal-target-app/minimal-target-app.cjs` und nutzt fuer Kit-Funktionen den oeffentlichen Einstieg.
 
 ## Vertragscheck
 
