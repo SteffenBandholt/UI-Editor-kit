@@ -59,6 +59,12 @@ const MUST_EXIST = [
   "src/installer-app/installer-app.js",
   "src/installer-app/installer-app.css",
   "scripts/tests/installer-app-start.test.cjs",
+  "src/core/layout-state-contract.cjs",
+  "src/core/layout-state-store.cjs",
+  "src/core/layout-state-model.cjs",
+  "scripts/tests/layout-state-model.test.cjs",
+  "scripts/tests/layout-state-store.test.cjs",
+  "docs/M45_LAYOUT_STATE_STORAGE_VERSIONING.md",
 ];
 
 const MUST_NOT_EXIST = [
