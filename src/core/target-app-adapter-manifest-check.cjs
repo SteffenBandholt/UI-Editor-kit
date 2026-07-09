@@ -9,6 +9,7 @@ const {
 const NEUTRAL_MINIMAL_HOST_EXPECTATION = Object.freeze({
   targetAppId: "neutral-minimal-host",
   uiScope: "workspace",
+  layoutScope: "workspace.layout",
   layoutProfileId: "neutral-minimal-layout",
   allowedExecutionModes: Object.freeze(["disabled", "dry-run", "test-host"]),
   allowedPersistenceModes: Object.freeze(["none", "memory-only"]),
@@ -82,6 +83,7 @@ function getNeutralMinimalHostManifestExpectation() {
   return cloneCheckValue({
     targetAppId: NEUTRAL_MINIMAL_HOST_EXPECTATION.targetAppId,
     uiScope: NEUTRAL_MINIMAL_HOST_EXPECTATION.uiScope,
+    layoutScope: NEUTRAL_MINIMAL_HOST_EXPECTATION.layoutScope,
     layoutProfileId: NEUTRAL_MINIMAL_HOST_EXPECTATION.layoutProfileId,
     elementTypes: elementExpectation.elementTypes,
     roles: elementExpectation.roles,
@@ -101,6 +103,7 @@ function createNeutralMinimalHostAdapterManifest(values) {
     adapterName: NEUTRAL_MINIMAL_HOST_MANIFEST_DEFAULTS.adapterName,
     adapterVersion: NEUTRAL_MINIMAL_HOST_MANIFEST_DEFAULTS.adapterVersion,
     uiScope: expectation.uiScope,
+    layoutScope: expectation.layoutScope,
     layoutProfileId: expectation.layoutProfileId,
     supportedElementTypes: expectation.elementTypes,
     supportedRoles: expectation.roles,

@@ -124,7 +124,7 @@ function createNeutralMinimalChangeRequest(values) {
     changeId: safeValues.changeId || "neutral-minimal-change-001",
     elementId: safeValues.elementId || "workspace.content",
     operation: safeValues.operation || "resize",
-    payload: cloneNeutralValue(safeValues.payload || { size: "neutral" }),
+    payload: cloneNeutralValue(safeValues.payload || { width: 320 }),
     createdAt: safeValues.createdAt || "2026-06-01T00:00:00.000Z",
     source: safeValues.source || "neutral-minimal-host",
     note: safeValues.note || "neutral-minimal-check",

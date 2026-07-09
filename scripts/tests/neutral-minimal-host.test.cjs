@@ -78,7 +78,7 @@ function createLockedChangeRequest() {
     changeId: "neutral-minimal-change-locked",
     elementId: "workspace.header",
     operation: "hide",
-    payload: { state: "neutral" },
+    payload: { width: 320 },
   });
 }
 
@@ -87,7 +87,7 @@ function createUnknownElementChangeRequest() {
     changeId: "neutral-minimal-change-unknown",
     elementId: "workspace.unknown",
     operation: "inspect",
-    payload: { state: "neutral" },
+    payload: { width: 320 },
   });
 }
 
@@ -152,7 +152,7 @@ function run() {
     changeId: "neutral-minimal-change-001",
     elementId: "workspace.content",
     operation: "resize",
-    payload: { size: "neutral" },
+    payload: { width: 320 },
     createdAt: "2026-06-01T00:00:00.000Z",
     source: "neutral-minimal-host",
     note: "neutral-minimal-check",
@@ -183,7 +183,7 @@ function run() {
   assert.equal(lockedFlowResult.submittedChangeRequests.length, 0);
   assert.equal(lockedFlowResult.flow.changeDraftViewModel.canSubmit, false);
   assert.equal(
-    lockedFlowResult.flow.changeDraftViewModel.validation.errors.some((error) => error.code === "operation_not_allowed"),
+    lockedFlowResult.flow.changeDraftViewModel.validation.errors.some((error) => error.code === "operation_locked"),
     true
   );
 

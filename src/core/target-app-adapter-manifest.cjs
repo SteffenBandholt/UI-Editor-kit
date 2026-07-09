@@ -5,6 +5,7 @@ const TARGET_APP_ADAPTER_MANIFEST_REQUIRED_FIELDS = Object.freeze([
   "adapterName",
   "adapterVersion",
   "uiScope",
+  "layoutScope",
   "layoutProfileId",
   "supportedElementTypes",
   "supportedRoles",
@@ -22,6 +23,10 @@ const TARGET_APP_ADAPTER_MANIFEST_OPTIONAL_FIELDS = Object.freeze([
   "manifestVersion",
   "createdAt",
   "updatedAt",
+  "uiToLayoutScope",
+  "saveLayoutState",
+  "loadLayoutState",
+  "resetLayoutState",
   "notes",
 ]);
 
@@ -46,6 +51,9 @@ const FORBIDDEN_TARGET_APP_ADAPTER_MANIFEST_FIELDS = Object.freeze([
   "personalData",
   "documentData",
   "productiveData",
+  "domScan",
+  "autoDetect",
+  "autoRegister",
 ]);
 
 const TARGET_APP_ADAPTER_MANIFEST_ALLOWED_MODES = Object.freeze({
@@ -59,6 +67,7 @@ const STRING_FIELDS = Object.freeze([
   "adapterName",
   "adapterVersion",
   "uiScope",
+  "layoutScope",
   "layoutProfileId",
   "persistenceMode",
   "executionMode",

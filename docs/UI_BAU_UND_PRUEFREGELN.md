@@ -318,3 +318,12 @@ Editorfaehige UI wird nicht nachtraeglich geraten oder automatisch erkannt.
 Sie wird beim Neubau geplant, klassifiziert, registriert und geprueft oder bei bestehender UI nachtraeglich bewusst ausgewaehlt, stabil markiert, registriert und geprueft.
 
 Nur eine erfolgreich gepruefte UI-Elementliste ist Grundlage fuer den Editor.
+
+## M39-Pruefregeln fuer Ziel-App-Vertrag v1.0
+
+- Jede editorfaehige Ziel-App liefert Registry, HostAdapter, LayoutState, UI-Scope und Layout-Scope selbst.
+- Der Editor darf keine Scope-Beziehungen, Elemente, Operationen oder Registry-Eintraege erraten.
+- Aenderungs-Payloads duerfen nur neutrale Layoutwerte enthalten: `x`, `y`, `width`, `height`, `spacing`, `order`; `visibility`/`visible` und `label` nur mit ausdruecklicher Freigabe.
+- Verboten sind Fachwerte, Datensatz-IDs, SQL/DB, fachliches Speichern/Loeschen/Upload/Import/Export, Fachstatuswerte und personenbezogene oder projektbezogene Daten.
+- Save, Load und Reset pruefen nur Layoutdaten und duerfen keine Fachlogik starten.
+- Blockaden muessen fachneutral gemeldet werden, z. B. mit `unknown_scope`, `unknown_element`, `wrong_scope`, `no_selection`, `operation_not_allowed`, `operation_locked`, `invalid_payload`, `forbidden_field` oder `target_rejected_change`.

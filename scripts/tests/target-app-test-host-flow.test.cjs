@@ -181,7 +181,7 @@ function run() {
   assert.equal(deniedResult.submitResult, null);
   assert.equal(deniedResult.submittedChangeRequests.length, 0);
   assertFailure(deniedResult, "change_draft_not_submittable");
-  assert.equal(deniedResult.changeDraftViewModel.validation.errors.some((error) => error.code === "operation_not_allowed"), true);
+  assert.equal(deniedResult.changeDraftViewModel.validation.errors.some((error) => error.code === "operation_locked"), true);
 
   const unknownElementResult = createTargetAppTestHostFlow({
     targetAppId: "neutral-app",

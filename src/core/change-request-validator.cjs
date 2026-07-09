@@ -5,6 +5,20 @@ const {
   getForbiddenChangeRequestFields,
 } = require("./change-request-model.cjs");
 
+const ALLOWED_LAYOUT_PAYLOAD_FIELDS = Object.freeze([
+  "x",
+  "y",
+  "width",
+  "height",
+  "spacing",
+  "order",
+  "visibility",
+  "visible",
+  "label",
+]);
+
+const CONDITIONAL_LAYOUT_PAYLOAD_FIELDS = Object.freeze(["visibility", "visible", "label"]);
+
 function isPlainRequestObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -63,6 +77,32 @@ function findForbiddenFields(value, pathPrefix) {
   });
 }
 
+function validatePayloadFields(changeRequest, errors) {
+  if (!hasOwn(changeRequest, "payload") || !isPlainRequestObject(changeRequest.payload)) {
+    return;
+  }
+
+  Object.keys(changeRequest.payload).forEach((fieldName) => {
+    if (!ALLOWED_LAYOUT_PAYLOAD_FIELDS.includes(fieldName)) {
+      errors.push(createError(changeRequest, "invalid_payload", `payload enthaelt keinen neutralen Layoutwert: ${fieldName}`, {
+        field: `payload.${fieldName}`,
+      }));
+      return;
+    }
+
+    if (CONDITIONAL_LAYOUT_PAYLOAD_FIELDS.includes(fieldName)) {
+      const allowedPayloadFields = Array.isArray(changeRequest.allowedPayloadFields)
+        ? changeRequest.allowedPayloadFields
+        : [];
+      if (!allowedPayloadFields.includes(fieldName)) {
+        errors.push(createError(changeRequest, "forbidden_field", `payload.${fieldName} braucht eine ausdrueckliche Ziel-App-Freigabe.`, {
+          field: `payload.${fieldName}`,
+        }));
+      }
+    }
+  });
+}
+
 function validateChangeRequestShape(changeRequest) {
   const errors = [];
 
@@ -96,6 +136,8 @@ function validateChangeRequestShape(changeRequest) {
       field: fieldName,
     }));
   });
+
+  validatePayloadFields(changeRequest, errors);
 
   return createResult(errors);
 }
@@ -160,7 +202,7 @@ function validateChangeRequest(changeRequest, editorCore) {
     const locked = isOperationLocked(elementDetails, operation);
     errors.push(createError(
       changeRequest,
-      "operation_not_allowed",
+      locked ? "operation_locked" : "operation_not_allowed",
       locked
         ? `Operation ist fuer dieses Element gesperrt: ${operation}`
         : `Operation ist fuer dieses Element nicht erlaubt: ${operation}`,
@@ -172,6 +214,8 @@ function validateChangeRequest(changeRequest, editorCore) {
 }
 
 module.exports = {
+  ALLOWED_LAYOUT_PAYLOAD_FIELDS,
+  CONDITIONAL_LAYOUT_PAYLOAD_FIELDS,
   validateChangeRequest,
   validateChangeRequestShape,
 };
