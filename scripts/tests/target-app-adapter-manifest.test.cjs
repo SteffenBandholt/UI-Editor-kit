@@ -30,6 +30,7 @@ function createCompleteValues() {
     adapterName: "neutral-adapter",
     adapterVersion: "1.0.0",
     uiScope: "neutral-workspace",
+    layoutScope: "neutral-layout-scope",
     layoutProfileId: "neutral-layout-profile",
     supportedElementTypes: ["root", "container", "area"],
     supportedRoles: ["root", "layout"],
@@ -79,6 +80,7 @@ function run() {
     "adapterName",
     "adapterVersion",
     "uiScope",
+    "layoutScope",
     "layoutProfileId",
     "supportedElementTypes",
     "supportedRoles",
@@ -99,6 +101,10 @@ function run() {
     "manifestVersion",
     "createdAt",
     "updatedAt",
+    "uiToLayoutScope",
+    "saveLayoutState",
+    "loadLayoutState",
+    "resetLayoutState",
     "notes",
   ]);
 
@@ -107,6 +113,7 @@ function run() {
   assert.equal(getForbiddenTargetAppAdapterManifestFields().includes("mutated"), false);
   assert.equal(getForbiddenTargetAppAdapterManifestFields().includes("recordId"), true);
   assert.equal(getForbiddenTargetAppAdapterManifestFields().includes("database"), true);
+  assert.equal(getForbiddenTargetAppAdapterManifestFields().includes("autoDetect"), true);
 
   const allowedModes = getTargetAppAdapterManifestAllowedModes();
   allowedModes.persistenceModes.push("mutated");

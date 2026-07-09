@@ -54,9 +54,7 @@ function changeRequest(overrides) {
     operation: "resize",
     payload: {
       width: 320,
-      nested: {
-        unit: "px",
-      },
+      spacing: 12,
     },
     createdAt: "2026-01-02T03:04:05.000Z",
     source: "editor-ui-test",
@@ -188,7 +186,7 @@ function run() {
   assert.equal(deniedOperation.canSubmit, false);
 
   const lockedOperation = createEditorChangeDraftViewModel(core, changeRequest({ operation: "hide" }));
-  assertRejectedWith(lockedOperation.validation, "operation_not_allowed");
+  assertRejectedWith(lockedOperation.validation, "operation_locked");
   assert.equal(lockedOperation.operationSummary.isAllowed, false);
   assert.equal(lockedOperation.operationSummary.isLocked, true);
   assert.equal(lockedOperation.operationSummary.isAvailable, false);
@@ -199,22 +197,19 @@ function run() {
   assert.equal(viewModel.source, validRequest.source);
   assert.equal(viewModel.createdAt, validRequest.createdAt);
 
-  assert.deepEqual(payloadFieldNames(viewModel), ["nested", "width"]);
-  assert.deepEqual(viewModel.payloadRows.find((row) => row.field === "nested").value, { unit: "px" });
+  assert.deepEqual(payloadFieldNames(viewModel), ["spacing", "width"]);
+  assert.equal(viewModel.payloadRows.find((row) => row.field === "spacing").value, 12);
 
   const requestWithForbiddenPayload = changeRequest({
     payload: {
       width: 320,
       recordId: "not-shown",
-      nested: {
-        database: "not-shown",
-        unit: "px",
-      },
+      spacing: 12,
     },
   });
   const forbiddenPayloadViewModel = createEditorChangeDraftViewModel(core, requestWithForbiddenPayload);
   assert.equal(payloadFieldNames(forbiddenPayloadViewModel).includes("recordId"), false);
-  assert.deepEqual(forbiddenPayloadViewModel.payloadRows.find((row) => row.field === "nested").value, { unit: "px" });
+  assert.equal(forbiddenPayloadViewModel.payloadRows.find((row) => row.field === "spacing").value, 12);
   assertRejectedWith(forbiddenPayloadViewModel.validation, "forbidden_field");
 
   const elementDetails = core.getElementDetails("workspace.panel.main");
@@ -254,11 +249,11 @@ function run() {
   viewModel.validation.errors.push({ code: "mutated" });
   assert.deepEqual(core.listElements(), elementsBeforeMutation);
 
-  const originalRequest = changeRequest({ payload: { width: 111, nested: { unit: "px" } } });
+  const originalRequest = changeRequest({ payload: { width: 111, spacing: 12 } });
   const originalSnapshot = JSON.stringify(originalRequest);
   const mutableViewModel = createEditorChangeDraftViewModel(core, originalRequest, { includeRawChangeRequest: true });
   mutableViewModel.rawChangeRequest.payload.width = 222;
-  mutableViewModel.payloadRows.find((row) => row.field === "nested").value.unit = "rem";
+  mutableViewModel.payloadRows.find((row) => row.field === "spacing").value = 16;
   assert.equal(JSON.stringify(originalRequest), originalSnapshot);
 
   const spyCore = createSpyCore();

@@ -122,7 +122,8 @@ function assertNoForbiddenFragments(text, label) {
 }
 
 function run() {
-  const { validateChangeRequest, validateChangeRequestShape } = loadValidatorModule();
+  const { ALLOWED_LAYOUT_PAYLOAD_FIELDS, validateChangeRequest, validateChangeRequestShape } = loadValidatorModule();
+  assert.deepEqual(Array.from(ALLOWED_LAYOUT_PAYLOAD_FIELDS), ["x", "y", "width", "height", "spacing", "order", "visibility", "visible", "label"]);
 
   const realCore = createRealCore();
   assert.deepEqual(validateChangeRequest(validChangeRequest(), realCore), { ok: true, errors: [] });
@@ -140,6 +141,9 @@ function run() {
 
   assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: "wide" }), realCore), "invalid_payload", "payload");
   assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: [] }), realCore), "invalid_payload", "payload");
+  assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: { status: "open" } }), realCore), "invalid_payload", "payload.status");
+  assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: { label: "Neutral" } }), realCore), "forbidden_field", "payload.label");
+  assert.equal(validateChangeRequest(validChangeRequest({ payload: { label: "Neutral" }, allowedPayloadFields: ["label"] }), realCore).ok, true);
 
   assertRejectedWith(validateChangeRequest(validChangeRequest({ recordId: "rec-001" }), realCore), "forbidden_field", "recordId");
   assertRejectedWith(validateChangeRequest(validChangeRequest({ database: "not-allowed" }), realCore), "forbidden_field", "database");
@@ -198,8 +202,8 @@ function run() {
 
   const lockedCore = createStubCore({ canPerform: false, lockedOps: ["move"] });
   const lockedResult = validateChangeRequest(validChangeRequest({ operation: "move" }), lockedCore);
-  assertRejectedWith(lockedResult, "operation_not_allowed", "operation");
-  assert.match(findError(lockedResult, "operation_not_allowed", "operation").message, /gesperrt/);
+  assertRejectedWith(lockedResult, "operation_locked", "operation");
+  assert.match(findError(lockedResult, "operation_locked", "operation").message, /gesperrt/);
 
   assert.deepEqual(validateChangeRequest(validChangeRequest({ operation: "inspect" }), createStubCore()), {
     ok: true,
@@ -213,7 +217,7 @@ function run() {
   const unknownOperationResult = validateChangeRequest(validChangeRequest({ operation: "unknownOperation" }), createStubCore({ canPerform: false }));
   assertRejectedWith(unknownOperationResult, "operation_not_allowed", "operation");
 
-  const requestBeforeValidation = validChangeRequest({ payload: { nested: { width: 10 } } });
+  const requestBeforeValidation = validChangeRequest({ payload: { width: 10 } });
   const requestSnapshot = JSON.stringify(requestBeforeValidation);
   const immutableCore = createStubCore();
   const coreKeysBefore = Object.keys(immutableCore).sort();
@@ -231,7 +235,7 @@ function run() {
       },
     },
   });
-  assert.equal(validateChangeRequest(requestWithCallablePayload, createStubCore()).ok, true);
+  assertRejectedWith(validateChangeRequest(requestWithCallablePayload, createStubCore()), "invalid_payload", "payload.run");
   assert.equal(executed, false);
 
   assert.deepEqual(validateChangeRequestShape(validChangeRequest()), { ok: true, errors: [] });

@@ -207,3 +207,11 @@ Diese Sprache besteht aus:
 - Vertragscheck
 
 Ohne diese Voraussetzungen darf der Editor in der Ziel-App nicht produktiv arbeiten.
+
+## M39: generischer Ziel-App-Vertrag v1.0
+
+M39 macht aus dem Pilotabgleich den generischen Ziel-App-Vertrag v1.0. Eine Ziel-App muss Registry, HostAdapter, LayoutState, UI-Scope, Layout-Scope, erlaubte Operationen, gesperrte Operationen und Layout-only Save/Load/Reset-Verhalten explizit bereitstellen.
+
+Der UI-Scope beschreibt die sichtbare Oberflaeche der Ziel-App. Der Layout-Scope beschreibt den Speicher-/Profilbereich fuer Layoutzustaende. Eine Abbildung von UI-Scope auf Layout-Scope ist erlaubt, muss aber von der Ziel-App explizit geliefert werden; der Editor darf sie nicht erraten.
+
+Der HostAdapter muss mindestens `getRegistry()`, `getCurrentLayoutState()` und `submitChangeRequest()` anbieten. `saveLayoutState()`, `loadLayoutState()`, `resetLayoutState()` und `getAdapterManifest()` sind optionale generische Erweiterungen fuer Ziel-Apps, die Layout-Persistenz oder Manifestpruefungen anbieten.

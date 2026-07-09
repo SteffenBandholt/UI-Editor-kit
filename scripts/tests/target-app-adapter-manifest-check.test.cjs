@@ -44,6 +44,7 @@ function run() {
   assert.deepEqual(expectation, {
     targetAppId: "neutral-minimal-host",
     uiScope: "workspace",
+    layoutScope: "workspace.layout",
     layoutProfileId: "neutral-minimal-layout",
     elementTypes: ["area", "root"],
     roles: ["layout"],
@@ -61,6 +62,7 @@ function run() {
   assert.deepEqual(getNeutralMinimalHostManifestExpectation(), {
     targetAppId: "neutral-minimal-host",
     uiScope: "workspace",
+    layoutScope: "workspace.layout",
     layoutProfileId: "neutral-minimal-layout",
     elementTypes: ["area", "root"],
     roles: ["layout"],
@@ -76,6 +78,7 @@ function run() {
     adapterName: "neutral-minimal-host-adapter",
     adapterVersion: "1.0.0",
     uiScope: "workspace",
+    layoutScope: "workspace.layout",
     layoutProfileId: "neutral-minimal-layout",
     supportedElementTypes: ["area", "root"],
     supportedRoles: ["layout"],

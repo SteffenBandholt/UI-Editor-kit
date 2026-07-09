@@ -331,3 +331,9 @@ M39 sollte nicht BBM nachbauen. M39 sollte den generischen Vertrag im Produktrep
 - klare Nicht-Ziele: kein Scan, keine automatische Erkennung, keine automatische Registry-Befuellung, keine Fachlogik, keine PDF-/Druck-/Mail-/Audio-Funktion
 
 BBM bleibt dafuer nur Referenznachweis. Das Produkt bleibt das `UI-Editor-kit`.
+
+## M39-Fortschreibung
+
+M38 hat BBM als Pilotstand abgeglichen. M39 ueberfuehrt diese Erfahrung in den generischen Ziel-App-Vertrag v1.0 fuer beliebige Ziel-Apps.
+
+BBM-Erfahrungen dienen dabei nur als Referenznachweis. Es wird keine BBM-Produktlogik, keine Restarbeiten-Fachlogik und keine Protokoll-Fachlogik in den UI-Editor-Vertrag uebernommen.
