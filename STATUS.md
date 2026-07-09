@@ -68,6 +68,7 @@ Aktueller Stand:
 - K19.5 erledigt: Installer-App kann nach expliziter Bestaetigung die UI-Editor-Grundstruktur schreiben.
 - K19.8 erledigt: UI-Editor-Installer bringt eigenen Launcher-Button als installierbares Artefakt mit und registriert ihn als `uiEditor.launcherButton` mit Default-Position. Keine Ziel-App-Fachlogik, kein Scan, keine Speicherung, kein Editor-Panel.
 - K19.11 erledigt: Installer-Deinstallationsroutine vorbereitet; bekannte UI-Editor-Artefakte koennen nach expliziter Bestaetigung sicher entfernt werden.
+- M41 erledigt: Kleine generische Runtime-/Launcher-Schicht erzeugt neutralen RuntimeStatus aus HostAdapter, optionalem AdapterManifest, Registry und LayoutState; keine Ziel-App-Aenderung, kein Scan, keine Fachlogik.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
