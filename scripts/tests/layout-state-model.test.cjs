@@ -3,207 +3,60 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const contract = require("../../src/core/layout-state-contract.cjs");
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
-const MODEL_PATH = path.join(REPO_ROOT, "src/core/layout-state-model.cjs");
+const MODULE_PATH = path.join(__dirname, "../../src/core/layout-state-contract.cjs");
 
-function loadModelModule() {
-  delete require.cache[MODEL_PATH];
-  return require(MODEL_PATH);
-}
-
-function completeValues() {
+function state(overrides = {}) {
   return {
-    layoutProfileId: "layout-profile-default",
-    targetAppId: "target-app-technical",
-    uiScope: "workspace-main",
-    elementId: "workspace.main.area",
-    changeId: "change-001",
-    operation: "resize",
-    layoutValue: {
-      width: 320,
-      placement: { x: 4, y: 8 },
-      flags: ["compact"],
-    },
-    version: 7,
-    createdAt: "2026-06-01T00:00:00.000Z",
-    updatedAt: "2026-06-01T00:10:00.000Z",
-    source: "contract-test",
-    note: "neutral layout value",
-    previousVersion: 6,
-    appliedBy: "editor-test",
+    schemaVersion: 1,
+    targetAppId: "neutral-target-app",
+    uiScope: "scope.alpha",
+    layoutScope: "layout.alpha",
+    layoutProfileId: "layout.alpha.profile",
+    version: 1,
+    source: "saved",
+    elements: { "scope.alpha.header": { x: 1, y: 2, width: 300, height: 80, spacing: 8, order: 1 } },
+    changes: [{ x: 2, y: 3 }],
+    layoutValues: { "scope.alpha.group.primary": { width: 420, height: 180 } },
+    ...overrides,
   };
 }
-
-function assertNoForbiddenFragments(text, label) {
-  const forbiddenFragments = [
-    "node:fs",
-    "node:path",
-    "writeFile",
-    "readFile",
-    "mkdir",
-    "sqlite",
-    "postgres",
-    "mysql",
-    "indexedDB",
-    "document.",
-    "window.",
-    "querySelector",
-    "createElement",
-    "innerHTML",
-    "Browser",
-    "HTML",
-    "DOM",
-    "Mini-Inspector",
-    "Host-App-Demo",
-    "Layoutdiagnose",
-    "data-ui",
-    "Demo",
-    ["B", "BM"].join(""),
-    ["Proto", "koll"].join(""),
-    ["Rest", "arbeiten"].join(""),
-    ["T", "OP"].join(""),
-    ["Bau", "vorhaben"].join(""),
-  ];
-
-  forbiddenFragments.forEach((fragment) => {
-    assert.equal(text.includes(fragment), false, `${label} enthaelt verbotenen Fragmenttext: ${fragment}`);
-  });
-}
-
+function codes(result) { return result.errors.map((error) => error.code); }
+function hasCode(result, code) { return codes(result).includes(code); }
 function run() {
-  const {
-    LAYOUT_STATE_REQUIRED_FIELDS,
-    LAYOUT_STATE_OPTIONAL_FIELDS,
-    LAYOUT_STATE_FIELDS,
-    FORBIDDEN_LAYOUT_STATE_FIELDS,
-    normalizeLayoutStateRecord,
-    createLayoutStateRecord,
-    getLayoutStateFields,
-    getForbiddenLayoutStateFields,
-  } = loadModelModule();
+  assert.equal(contract.SUPPORTED_LAYOUT_SCHEMA_VERSION, 1);
+  assert.deepEqual(contract.LAYOUT_STATE_REQUIRED_FIELDS, ["schemaVersion", "targetAppId", "uiScope", "layoutScope", "layoutProfileId"]);
+  assert.equal(contract.validateLayoutState(state()).ok, true);
+  const revisionOnly = state({ revision: 2 });
+  delete revisionOnly.version;
+  assert.equal(contract.validateLayoutState(revisionOnly).ok, true);
+  assert.equal(contract.validateLayoutState(null).ok, false);
+  assert.equal(hasCode(contract.validateLayoutState({}), "unsupported_layout_schema_version"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ schemaVersion: 2 })), "unsupported_layout_schema_version"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ targetAppId: "" })), "invalid_layout_state"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ version: 0 })), "invalid_layout_state"), true);
+  const missingRevision = state();
+  delete missingRevision.version;
+  delete missingRevision.revision;
+  assert.equal(hasCode(contract.validateLayoutState(missingRevision), "invalid_layout_state"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ source: "unknown" })), "invalid_layout_state"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ recordId: "neutral-record" })), "invalid_layout_state"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ elements: { a: { width: 10, unknownNeutral: true } } })), "invalid_layout_state"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ changes: [{ width: 10, action: "run" }] })), "invalid_layout_state"), true);
+  assert.equal(hasCode(contract.validateLayoutState(state({ elements: { a: { label: "Title" } } })), "invalid_layout_state"), true);
+  assert.equal(contract.validateLayoutState(state({ elements: { a: { label: "Title", visible: true } } }), { allowedPayloadFields: ["label", "visible"] }).ok, true);
 
-  assert.deepEqual(LAYOUT_STATE_REQUIRED_FIELDS, [
-    "layoutProfileId",
-    "targetAppId",
-    "uiScope",
-    "elementId",
-    "changeId",
-    "operation",
-    "layoutValue",
-    "version",
-    "createdAt",
-    "updatedAt",
-  ]);
-  assert.deepEqual(getLayoutStateFields().required, LAYOUT_STATE_REQUIRED_FIELDS);
+  const normalized = contract.normalizeLayoutState(state({ extra: true }));
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, "extra"), false);
+  const cloned = contract.createLayoutState(state());
+  cloned.elements["scope.alpha.header"].width = 1;
+  assert.equal(state().elements["scope.alpha.header"].width, 300);
+  assert.equal(contract.getLayoutStateProfileKey(state()), "neutral-target-app\u001fscope.alpha\u001flayout.alpha\u001flayout.alpha.profile");
+  assert.equal(contract.assertCompatibleLayoutProfile(state(), { uiScope: "scope.beta" }).errors[0].code, "incompatible_layout_profile");
 
-  assert.deepEqual(LAYOUT_STATE_OPTIONAL_FIELDS, ["source", "note", "previousVersion", "appliedBy"]);
-  assert.deepEqual(getLayoutStateFields().optional, LAYOUT_STATE_OPTIONAL_FIELDS);
-
-  assert.deepEqual(FORBIDDEN_LAYOUT_STATE_FIELDS, [
-    "fachDaten",
-    "businessData",
-    "database",
-    "sql",
-    "recordId",
-    "entity",
-    "tableName",
-    "save",
-    "delete",
-    "submit",
-    "upload",
-    "customer",
-    "project",
-    "task",
-    "statusText",
-    "amount",
-    "price",
-  ]);
-  assert.deepEqual(getForbiddenLayoutStateFields(), FORBIDDEN_LAYOUT_STATE_FIELDS);
-
-  const fieldResult = getLayoutStateFields();
-  fieldResult.required.push("mutated");
-  fieldResult.optional.push("mutated");
-  assert.equal(getLayoutStateFields().required.includes("mutated"), false);
-  assert.equal(getLayoutStateFields().optional.includes("mutated"), false);
-
-  const forbiddenResult = getForbiddenLayoutStateFields();
-  forbiddenResult.push("mutated");
-  assert.equal(getForbiddenLayoutStateFields().includes("mutated"), false);
-
-  assert.deepEqual(LAYOUT_STATE_FIELDS, [...LAYOUT_STATE_REQUIRED_FIELDS, ...LAYOUT_STATE_OPTIONAL_FIELDS]);
-
-  const values = completeValues();
-  assert.deepEqual(createLayoutStateRecord(values), values);
-
-  const withUnknown = {
-    ...completeValues(),
-    unknown: "removed",
-    anotherUnknown: true,
-  };
-  const normalized = normalizeLayoutStateRecord(withUnknown);
-  assert.equal(Object.prototype.hasOwnProperty.call(normalized, "unknown"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(normalized, "anotherUnknown"), false);
-  assert.deepEqual(Object.keys(normalized), LAYOUT_STATE_FIELDS);
-
-  const partial = normalizeLayoutStateRecord({ elementId: "workspace.only", layoutValue: { width: 10 } });
-  assert.deepEqual(partial, { elementId: "workspace.only", layoutValue: { width: 10 } });
-  assert.equal(Object.prototype.hasOwnProperty.call(partial, "layoutProfileId"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(partial, "version"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(partial, "createdAt"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(partial, "updatedAt"), false);
-
-  const input = completeValues();
-  const record = createLayoutStateRecord(input);
-  assert.notEqual(record.layoutValue, input.layoutValue);
-  assert.notEqual(record.layoutValue.placement, input.layoutValue.placement);
-  assert.notEqual(record.layoutValue.flags, input.layoutValue.flags);
-  input.layoutValue.placement.x = 99;
-  input.layoutValue.flags.push("mutated");
-  assert.deepEqual(record.layoutValue, {
-    width: 320,
-    placement: { x: 4, y: 8 },
-    flags: ["compact"],
-  });
-
-  const fachNeutral = createLayoutStateRecord({
-    ...completeValues(),
-    recordId: "not-copied",
-    tableName: "not-copied",
-    database: "not-copied",
-    project: "not-copied",
-    task: "not-copied",
-    layoutValue: {
-      width: 10,
-      recordId: "not-copied",
-      nested: { tableName: "not-copied", height: 12 },
-    },
-  });
-  ["recordId", "tableName", "database", "project", "task"].forEach((fieldName) => {
-    assert.equal(Object.prototype.hasOwnProperty.call(fachNeutral, fieldName), false);
-  });
-  assert.deepEqual(fachNeutral.layoutValue, { width: 10, nested: { height: 12 } });
-
-  assert.equal(Object.prototype.hasOwnProperty.call(normalizeLayoutStateRecord({ elementId: "only" }), "version"), false);
-  assert.deepEqual(normalizeLayoutStateRecord({ layoutValue: { width: 10 } }), { layoutValue: { width: 10 } });
-  assert.equal(Object.prototype.hasOwnProperty.call(normalizeLayoutStateRecord({ elementId: "only" }), "createdAt"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(normalizeLayoutStateRecord({ elementId: "only" }), "updatedAt"), false);
-
-  let sideEffectExecuted = false;
-  const operationOnlyValue = createLayoutStateRecord({
-    ...completeValues(),
-    writeFile() {
-      sideEffectExecuted = true;
-    },
-  });
-  assert.equal(operationOnlyValue.operation, "resize");
-  assert.equal(sideEffectExecuted, false);
-  assert.equal(Object.prototype.hasOwnProperty.call(operationOnlyValue, "writeFile"), false);
-
-  const moduleText = fs.readFileSync(MODEL_PATH, "utf8");
-  assertNoForbiddenFragments(moduleText, "layout-state-model");
-
+  const source = fs.readFileSync(MODULE_PATH, "utf8").toLowerCase();
+  ["query" + "selector", "doc" + "ument.", "win" + "dow.", "p" + "df", "m" + "ail", "au" + "dio"].forEach((term) => assert.equal(source.includes(term), false));
   console.log("TESTS OK: layout-state-model");
 }
-
 run();

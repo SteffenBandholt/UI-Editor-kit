@@ -972,3 +972,16 @@ M2 ist abgeschlossen; weitere K12.x-Pakete sind ohne ausdrueckliche LV-Ergaenzun
 Nach K13.3 ist M3 abgeschlossen; keine weiteren K13.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 Nach K14.1 ist M4 abgeschlossen; keine weiteren K14.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
 Nach K15.0 ist M5 abgeschlossen; keine weiteren K15.x-Pakete ohne ausdrueckliche LV-Ergaenzung.
+
+
+### M45 - Layout-State-Speicherung, Reset und Versionierung
+
+Status: gebaut
+
+Ergebnis:
+
+- Fachneutraler LayoutState-Vertrag mit Schema-Version 1, Profil-Schluessel und neutralen Layoutwerten ergaenzt.
+- Memory-LayoutStore fuer Save, Load, Reset und Profilauflistung ergaenzt.
+- Layout-Control-ViewModel fuer Save-/Load-/Reset-Verfuegbarkeit und Layout-Blockcodes erweitert.
+- Neutrales Testziel mit `scope.alpha / layout.alpha` und `scope.beta / layout.beta` fuer Scope-Isolation genutzt.
+- Keine produktive Persistenz, keine Ziel-App-Fachlogik, keine automatische Oberflaechen-Erkennung.

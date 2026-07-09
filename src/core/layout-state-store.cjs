@@ -1,98 +1,69 @@
 "use strict";
 
-const { normalizeLayoutStateRecord } = require("./layout-state-model.cjs");
+const {
+  validateLayoutState,
+  normalizeLayoutState,
+  getLayoutStateProfileKey,
+  assertCompatibleLayoutProfile,
+} = require("./layout-state-contract.cjs");
 
-const LAYOUT_STATE_FILTER_FIELDS = Object.freeze([
-  "layoutProfileId",
+const LAYOUT_STATE_SELECTOR_FIELDS = Object.freeze([
   "targetAppId",
   "uiScope",
-  "elementId",
+  "layoutScope",
+  "layoutProfileId",
 ]);
 
-function hasOwn(source, key) {
-  return Boolean(source) && Object.prototype.hasOwnProperty.call(source, key);
+function isPlainObject(value) { return Boolean(value) && typeof value === "object" && !Array.isArray(value); }
+function clone(value) { return normalizeLayoutState(value); }
+function resultError(code, message, details) { return { ok: false, status: code, errors: [{ code, message, ...(details || {}) }] }; }
+function normalizeSelector(selector) {
+  if (!isPlainObject(selector)) return null;
+  const unknown = Object.keys(selector).find((fieldName) => !LAYOUT_STATE_SELECTOR_FIELDS.includes(fieldName));
+  if (unknown) return { error: resultError("invalid_layout_state", `Selector-Feld ist nicht erlaubt: ${unknown}`, { field: unknown }) };
+  const missing = LAYOUT_STATE_SELECTOR_FIELDS.find((fieldName) => typeof selector[fieldName] !== "string" || selector[fieldName].trim() === "");
+  if (missing) return { error: resultError("invalid_layout_state", `Selector-Feld fehlt: ${missing}`, { field: missing }) };
+  return LAYOUT_STATE_SELECTOR_FIELDS.reduce((entry, fieldName) => { entry[fieldName] = selector[fieldName]; return entry; }, {});
 }
-
-function cloneRecord(record) {
-  return normalizeLayoutStateRecord(record);
+function createMemoryLayoutStateStore(options) {
+  const safeOptions = isPlainObject(options) ? options : {};
+  const validationOptions = { allowedPayloadFields: safeOptions.allowedPayloadFields || [] };
+  const records = new Map();
+  function saveLayoutState(layoutState) {
+    const validation = validateLayoutState(layoutState, validationOptions);
+    if (!validation.ok) return { ok: false, status: validation.errors[0].code, errors: validation.errors };
+    const normalized = normalizeLayoutState(layoutState);
+    const key = getLayoutStateProfileKey(normalized);
+    records.set(key, clone(normalized));
+    return { ok: true, status: "layout_state_saved", layoutState: clone(normalized) };
+  }
+  function loadLayoutState(selector) {
+    const normalizedSelector = normalizeSelector(selector);
+    if (!normalizedSelector || normalizedSelector.error) return normalizedSelector ? normalizedSelector.error : resultError("invalid_layout_state", "Selector muss ein Objekt sein.");
+    const key = getLayoutStateProfileKey(normalizedSelector);
+    if (!records.has(key)) return resultError("layout_profile_not_found", "Layout-Profil wurde nicht gefunden.");
+    const layoutState = records.get(key);
+    const compatible = assertCompatibleLayoutProfile(layoutState, normalizedSelector);
+    if (!compatible.ok) return { ok: false, status: "incompatible_layout_profile", errors: compatible.errors };
+    return { ok: true, status: "layout_state_loaded", layoutState: clone(layoutState) };
+  }
+  function resetLayoutState(selector) {
+    const normalizedSelector = normalizeSelector(selector);
+    if (!normalizedSelector || normalizedSelector.error) return normalizedSelector ? normalizedSelector.error : resultError("invalid_layout_state", "Selector muss ein Objekt sein.");
+    const key = getLayoutStateProfileKey(normalizedSelector);
+    if (!records.has(key)) return resultError("layout_profile_not_found", "Layout-Profil wurde nicht gefunden.");
+    records.delete(key);
+    return { ok: true, status: "layout_state_reset", reset: "removed" };
+  }
+  function listLayoutProfiles(selector) {
+    const partial = isPlainObject(selector) ? selector : {};
+    const unknown = Object.keys(partial).find((fieldName) => !LAYOUT_STATE_SELECTOR_FIELDS.includes(fieldName));
+    if (unknown) return { ok: false, status: "invalid_layout_state", errors: [{ code: "invalid_layout_state", field: unknown, message: `Selector-Feld ist nicht erlaubt: ${unknown}` }] };
+    const profiles = Array.from(records.values())
+      .filter((state) => Object.keys(partial).every((fieldName) => state[fieldName] === partial[fieldName]))
+      .map((state) => LAYOUT_STATE_SELECTOR_FIELDS.reduce((entry, fieldName) => { entry[fieldName] = state[fieldName]; return entry; }, {}));
+    return { ok: true, status: "layout_profiles_listed", profiles };
+  }
+  return { saveLayoutState, loadLayoutState, resetLayoutState, listLayoutProfiles };
 }
-
-function normalizeFilter(filter) {
-  if (filter === undefined || filter === null) {
-    return {};
-  }
-
-  if (typeof filter !== "object" || Array.isArray(filter)) {
-    throw new TypeError("Layout-State-Filter muss ein Objekt sein.");
-  }
-
-  const filterKeys = Object.keys(filter);
-  const unknownFilterKey = filterKeys.find((key) => !LAYOUT_STATE_FILTER_FIELDS.includes(key));
-  if (unknownFilterKey) {
-    throw new TypeError(`Layout-State-Filter ist nicht erlaubt: ${unknownFilterKey}`);
-  }
-
-  const normalized = {};
-  LAYOUT_STATE_FILTER_FIELDS.forEach((fieldName) => {
-    if (hasOwn(filter, fieldName)) {
-      normalized[fieldName] = filter[fieldName];
-    }
-  });
-
-  return normalized;
-}
-
-function matchesFilter(record, filter) {
-  return Object.keys(filter).every((fieldName) => record[fieldName] === filter[fieldName]);
-}
-
-function createLayoutStateStore() {
-  let records = [];
-
-  function saveLayoutStateRecord(record) {
-    const normalizedRecord = normalizeLayoutStateRecord(record);
-    const storedRecord = cloneRecord(normalizedRecord);
-    records.push(storedRecord);
-    return cloneRecord(storedRecord);
-  }
-
-  function listLayoutStateRecords(filter) {
-    const normalizedFilter = normalizeFilter(filter);
-    return records
-      .filter((record) => matchesFilter(record, normalizedFilter))
-      .map((record) => cloneRecord(record));
-  }
-
-  function getLatestLayoutStateRecord(filter) {
-    const matches = listLayoutStateRecords(filter);
-    if (matches.length === 0) {
-      return null;
-    }
-
-    return cloneRecord(matches[matches.length - 1]);
-  }
-
-  function clearLayoutStateRecords() {
-    records = [];
-  }
-
-  function resetLayoutState(filter) {
-    const normalizedFilter = normalizeFilter(filter);
-    const beforeCount = records.length;
-    records = records.filter((record) => !matchesFilter(record, normalizedFilter));
-    return beforeCount - records.length;
-  }
-
-  return {
-    saveLayoutStateRecord,
-    listLayoutStateRecords,
-    getLatestLayoutStateRecord,
-    clearLayoutStateRecords,
-    resetLayoutState,
-  };
-}
-
-module.exports = {
-  LAYOUT_STATE_FILTER_FIELDS,
-  createLayoutStateStore,
-};
+module.exports = { LAYOUT_STATE_SELECTOR_FIELDS, createMemoryLayoutStateStore };
