@@ -21,6 +21,8 @@ Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor
 
 `v0.2.0` ist der M49 Release-Fixstand fuer den oeffentlichen Core. Der oeffentliche Einstieg laeuft ueber `package.json` `main`/`exports` nach `src/index.cjs`. Details stehen im [CHANGELOG](CHANGELOG.md), in der [Minimal-Anbindung M47](docs/M47_NEUE_ZIEL_APP_MINIMAL_ANBINDUNG.md) und in den [Public-Core-API-Exports M48](docs/M48_PUBLIC_CORE_API_EXPORTS.md).
 
+M50 bereitet den Release-Tag fuer `v0.2.0` vor. Die fertigen Release Notes stehen in [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md), die Tag- und GitHub-Release-Checkliste in [docs/M50_RELEASE_TAG_CHECKLIST.md](docs/M50_RELEASE_TAG_CHECKLIST.md). Die lokale Readiness-Pruefung laeuft mit `npm run release:check`.
+
 ## Grundsatz
 
 Der Editor kennt keine Fachmodule.
