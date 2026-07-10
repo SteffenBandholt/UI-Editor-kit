@@ -1,5 +1,6 @@
 {
   "name": "ui-editor-kit",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "start": "node scripts/start-installer-app.cjs",

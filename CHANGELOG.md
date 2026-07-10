@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0
+
+M49 Release-Fixstand fuer den oeffentlichen Core des UI-Editor-kit.
+
+- Aktueller Release-Stand: stabile interne Release-Basis nach M39 bis M48; keine npm-Veroeffentlichung und kein Git-Tag.
+- M39: Ziel-App-Vertrag v1.0 als fachneutrale Grundlage abgeschlossen.
+- M41: generischer RuntimeLauncher vorhanden.
+- M42: Scope-, Selection-, Runtime-Status- und Layout-Control-ViewModels vorhanden.
+- M44: neutrales Testziel fuer fachneutrale Regressionen vorhanden.
+- M45: LayoutState-Vertrag und MemoryLayoutStateStore vorhanden.
+- M46: offizieller Adapter-/Installer-Pfad dokumentiert und getestet.
+- M47: oeffentliche Minimal-Anleitung und ausfuehrbares Minimalbeispiel fuer neue fachneutrale Ziel-Apps vorhanden.
+- M48: oeffentliche CommonJS-Core-API ueber `src/index.cjs`, `main` und `exports` vorhanden.
+- Oeffentliche API: Runtime-Start, Adapter-Pfad, ViewModels, LayoutState-Vertrag und MemoryLayoutStateStore werden ueber den Paket-Einstieg gebuendelt.
+- Minimalintegration: neue Ziel-Apps liefern explizit AdapterManifest, HostAdapter und Registry; das Kit startet daraus Runtime und ViewModels.
+- Adapter-Pfad: Target-App -> AdapterManifest -> HostAdapter -> Registry -> RuntimeLauncher -> ViewModels -> LayoutStateStore.
+- LayoutState / LayoutStore: Save, Load und Reset bleiben an den fachneutralen LayoutState-Vertrag und kompatible Stores gebunden.
+- Neutrale Tests: vorhandene Tests unter `scripts/tests/` sichern Core, Runtime, ViewModels, LayoutState, Adapter-Pfad, Minimalbeispiel und Public API ab.
+- Klare Nicht-Ziele: keine Fachlogik, keine konkrete Ziel-App-Abhaengigkeit, keine automatische UI-Erkennung, kein DOM-Scan, keine automatische Registry-Befuellung, keine echte Persistenz, keine npm-Veroeffentlichung.
+
 ## 0.1.1
 
 - Bootstrap-Auftrag fuer Ziel-Apps enthalten.
