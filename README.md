@@ -13,11 +13,13 @@ Diese Struktur ist die Quelle der Wahrheit fuer den fachneutralen UI-/PDF-Editor
 
 ## Aktueller Stand
 
-`0.1.1`
+`0.2.0`
 
 `v0.1.0` bleibt der historische Erststand.
 
-`v0.1.1` ist der empfohlene Referenzstand fuer neue Apps, weil er den Bootstrap-Auftrag enthaelt.
+`v0.1.1` bleibt der Referenzstand inklusive Bootstrap-Auftrag.
+
+`v0.2.0` ist der M49 Release-Fixstand fuer den oeffentlichen Core. Der oeffentliche Einstieg laeuft ueber `package.json` `main`/`exports` nach `src/index.cjs`. Details stehen im [CHANGELOG](CHANGELOG.md), in der [Minimal-Anbindung M47](docs/M47_NEUE_ZIEL_APP_MINIMAL_ANBINDUNG.md) und in den [Public-Core-API-Exports M48](docs/M48_PUBLIC_CORE_API_EXPORTS.md).
 
 ## Grundsatz
 

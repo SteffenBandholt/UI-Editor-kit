@@ -1,4 +1,4 @@
-﻿# STATUS - UI-Editor-kit
+# STATUS - UI-Editor-kit
 
 ## 1. Zweck
 
@@ -73,6 +73,7 @@ Aktueller Stand:
 - M46 erledigt: Offizieller fachneutraler Adapter-Pfad von AdapterManifest ueber HostAdapter, Registry, RuntimeLauncher, ViewModels und LayoutStateStore technisch abgesichert und dokumentiert.
 - M47 erledigt: Oeffentliche Minimal-Anleitung fuer neue fachneutrale Ziel-Apps dokumentiert; neutrales Minimalbeispiel und Test sichern offiziellen Adapter-Pfad, ViewModels und MemoryLayoutStateStore ab.
 - M48 erledigt: Oeffentliche CommonJS-Core-API `src/index.cjs` stabilisiert; Package-Einstieg, Minimalbeispiel, Doku und Tests nutzen den bevorzugten Public-API-Pfad.
+- M49 erledigt: Release-Fixstand `0.2.0` fuer den oeffentlichen Core vorbereitet; Changelog, Release-Doku, README, Package-Version und Pflichtpruefungen bilden die stabile interne Release-Basis.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
