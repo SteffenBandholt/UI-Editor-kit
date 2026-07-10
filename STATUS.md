@@ -74,6 +74,7 @@ Aktueller Stand:
 - M47 erledigt: Oeffentliche Minimal-Anleitung fuer neue fachneutrale Ziel-Apps dokumentiert; neutrales Minimalbeispiel und Test sichern offiziellen Adapter-Pfad, ViewModels und MemoryLayoutStateStore ab.
 - M48 erledigt: Oeffentliche CommonJS-Core-API `src/index.cjs` stabilisiert; Package-Einstieg, Minimalbeispiel, Doku und Tests nutzen den bevorzugten Public-API-Pfad.
 - M49 erledigt: Release-Fixstand `0.2.0` fuer den oeffentlichen Core vorbereitet; Changelog, Release-Doku, README, Package-Version und Pflichtpruefungen bilden die stabile interne Release-Basis.
+- M50 vorbereitet: Release-Dateien, Release Notes, Tag-/GitHub-Release-Checkliste, Readiness-Skript und Tests fuer `v0.2.0` vorbereitet; Git-Tag noch nicht erstellt und GitHub-Release noch nicht veroeffentlicht.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
