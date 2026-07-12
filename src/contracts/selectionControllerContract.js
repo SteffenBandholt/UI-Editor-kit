@@ -75,13 +75,38 @@ function validateSelectionControllerContract(controller) {
   return createResult(errors);
 }
 
+function normalizeSelectedElementId(value) {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const selectedElementId = value.trim();
+  return selectedElementId === "" ? null : selectedElementId;
+}
+
+function readSelectedElementId(host) {
+  if (!host || typeof host.getSelectedElementId !== "function") {
+    return null;
+  }
+
+  try {
+    return normalizeSelectedElementId(host.getSelectedElementId());
+  } catch (_error) {
+    return null;
+  }
+}
+
 function createSelectionStateSnapshot(host, partialState) {
-  const selectedElementId = host && typeof host.getSelectedElementId === "function" ? host.getSelectedElementId() : null;
+  const selectedElementId = readSelectedElementId(host);
   const state = partialState || {};
   return Object.freeze({
     active: Boolean(state.active),
     hoveredElementId: state.hoveredElementId || null,
-    selectedElementId: selectedElementId || null,
+    selectedElementId,
     boundTargetCount: Number.isFinite(state.boundTargetCount) ? state.boundTargetCount : 0,
     unavailableElementIds: Array.isArray(state.unavailableElementIds) ? state.unavailableElementIds.slice() : [],
   });

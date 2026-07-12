@@ -97,8 +97,18 @@ assert.equal(validateSelectionControllerContract({ start() {}, stop() {} }).ok, 
 let selected = "host.truth";
 const snapshot = createSelectionStateSnapshot({ getSelectedElementId: () => selected }, { active: true, selectedElementId: "ignored", hoveredElementId: "hover" });
 assert.equal(snapshot.selectedElementId, "host.truth");
+assert.equal(snapshot.hoveredElementId, "hover");
+selected = "";
+assert.equal(createSelectionStateSnapshot({ getSelectedElementId: () => selected }, { selectedElementId: "ignored" }).selectedElementId, null);
 selected = null;
 assert.equal(createSelectionStateSnapshot({ getSelectedElementId: () => selected }, {}).selectedElementId, null);
+selected = 123;
+assert.equal(createSelectionStateSnapshot({ getSelectedElementId: () => selected }, {}).selectedElementId, null);
+selected = { elementId: "object.invalid" };
+assert.equal(createSelectionStateSnapshot({ getSelectedElementId: () => selected }, {}).selectedElementId, null);
+selected = Promise.resolve("async.invalid");
+assert.equal(createSelectionStateSnapshot({ getSelectedElementId: () => selected }, {}).selectedElementId, null);
+assert.equal(createSelectionStateSnapshot({ getSelectedElementId: () => { throw new Error("selection failed"); } }, {}).selectedElementId, null);
 
 const sourceFiles = [
   "src/contracts/selectionTargetContract.js",

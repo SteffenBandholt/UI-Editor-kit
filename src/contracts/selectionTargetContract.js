@@ -15,6 +15,7 @@ const SelectionContractErrorCodes = Object.freeze({
   INVALID_HOST_CALLBACK: "invalid_selection_host_callback",
   INVALID_CONTROLLER: "invalid_selection_controller",
   MISSING_CONTROLLER_METHOD: "missing_selection_controller_method",
+  INVALID_SELECTED_ELEMENT_ID: "invalid_selected_element_id",
 });
 
 function createResult(errors, details) {
