@@ -1,6 +1,6 @@
 "use strict";
 
-const DEFAULTS = Object.freeze({ zIndex: 2147483000, borderWidth: 2, borderRadius: 4, showLabel: true });
+const DEFAULTS = Object.freeze({ zIndex: 2147483000, borderWidth: 2, borderRadius: 4, showLabel: true, autoUpdate: true });
 
 function defaultLabel(prefix, target) {
   const label = target && target.label ? target.label : "Element";
@@ -15,6 +15,7 @@ function createSelectionOverlayBase(defaultOptions = {}) {
   let labelNode = null;
   let currentRef = null;
   let currentTarget = null;
+  const viewportListeners = [];
 
   function ensure(documentRef) {
     if (frame) return;
@@ -33,6 +34,34 @@ function createSelectionOverlayBase(defaultOptions = {}) {
     doc.body.appendChild(frame);
   }
 
+  function addViewportListener(target, type, listener, capture) {
+    if (!target || typeof target.addEventListener !== "function") return;
+    target.addEventListener(type, listener, capture);
+    viewportListeners.push([target, type, listener, capture]);
+  }
+
+  function removeViewportListeners() {
+    while (viewportListeners.length) {
+      const [target, type, listener, capture] = viewportListeners.pop();
+      if (target && typeof target.removeEventListener === "function") target.removeEventListener(type, listener, capture);
+    }
+  }
+
+  function handleViewportChange() {
+    try {
+      update();
+    } catch (_error) {
+      clear();
+    }
+  }
+
+  function ensureViewportListeners() {
+    if (options.autoUpdate === false || viewportListeners.length > 0 || !doc) return;
+    addViewportListener(doc, "scroll", handleViewportChange, true);
+    const win = options.window || doc.defaultView;
+    addViewportListener(win, "resize", handleViewportChange, false);
+  }
+
   function update() {
     if (!frame || !currentRef) return;
     const rect = currentRef.getBoundingClientRect();
@@ -43,21 +72,24 @@ function createSelectionOverlayBase(defaultOptions = {}) {
     frame.style.display = "block";
   }
 
-  function show({ ref, target, document: documentRef } = {}) {
+  function show({ ref, target, document: documentRef, window: windowRef } = {}) {
     if (!ref || typeof ref.getBoundingClientRect !== "function") throw new Error("SelectionOverlay benoetigt eine gueltige Element-Referenz.");
     currentRef = ref;
     currentTarget = target || null;
+    if (windowRef && options.window !== windowRef) options.window = windowRef;
     ensure(documentRef || ref.ownerDocument);
     if (labelNode) {
       const text = typeof options.labelFormatter === "function" ? options.labelFormatter(currentTarget) : defaultLabel(options.labelPrefix, currentTarget);
       labelNode.textContent = text;
       labelNode.style.display = options.showLabel === false ? "none" : "block";
     }
+    ensureViewportListeners();
     update();
   }
 
   function clear() {
     currentRef = null; currentTarget = null;
+    removeViewportListeners();
     if (frame) frame.style.display = "none";
   }
 
