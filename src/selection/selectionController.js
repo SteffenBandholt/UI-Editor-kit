@@ -7,10 +7,19 @@ const { createSelectedOverlay } = require("./selectedOverlay.js");
 
 const SelectionRuntimeErrorCodes = Object.freeze({ INVALID_HOST: "invalid_host", LISTENER_SOURCE_MISSING: "listener_source_missing", RESOLVER_FAILED: "resolver_failed", SELECTION_FAILED: "selection_failed", SYNC_FAILED: "sync_failed", OVERLAY_FAILED: "overlay_failed", DESTROYED: "destroyed" });
 
+function safeCall(callback, payload) {
+  if (typeof callback !== "function") return;
+  try {
+    callback(payload);
+  } catch (_error) {
+    // Externe Beobachter duerfen die Runtime nicht abbrechen und werden nicht erneut gemeldet.
+  }
+}
+
 function report(options, host, error) {
-  if (options && typeof options.onError === "function") options.onError(error);
-  else if (host && typeof host.onError === "function") host.onError(error);
-  else if (host && typeof host.onStateChange === "function") host.onStateChange({ error });
+  safeCall(options && options.onError, error);
+  safeCall(host && host.onError, error);
+  safeCall(host && host.onStateChange, { error });
 }
 function makeError(code, message, cause) { const error = new Error(message); error.code = code; if (cause) error.cause = cause; return error; }
 function normalizeId(value) { return typeof value === "string" && value.trim() !== "" ? value.trim() : null; }
@@ -26,7 +35,7 @@ function createSelectionController(options = {}) {
   let boundTargetCount = 0, unavailableElementIds = [];
   const listeners = [];
 
-  function emitState(extra) { if (typeof host.onStateChange === "function") host.onStateChange(Object.assign({}, getState(), extra || {})); }
+  function emitState(extra) { safeCall(host.onStateChange, Object.assign({}, getState(), extra || {})); }
   function getTargets() {
     const raw = typeof host.listSelectableTargets === "function" ? host.listSelectableTargets() : host.listSelectableElementIds().map((elementId) => ({ elementId }));
     return Array.isArray(raw) ? raw.map((target) => typeof target === "string" ? { elementId: target } : target).filter(Boolean) : [];
