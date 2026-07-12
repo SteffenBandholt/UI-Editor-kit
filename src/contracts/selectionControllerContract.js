@@ -51,6 +51,8 @@ function validateSelectionHost(host) {
     "isExcludedTarget",
     "onStateChange",
     "onSelection",
+    "onError",
+    "getInteractionRoot",
   ].forEach((method) => validateOptionalFunction(host, method, errors));
 
   if (typeof host.listSelectableElementIds !== "function" && typeof host.listSelectableTargets !== "function") {
