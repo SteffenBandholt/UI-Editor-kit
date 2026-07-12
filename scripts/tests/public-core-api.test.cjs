@@ -32,6 +32,11 @@ const expectedExports = [
   "validateSelectionHost",
   "validateSelectionControllerContract",
   "createSelectionStateSnapshot",
+  "createSelectionController",
+  "createHoverOverlay",
+  "createSelectedOverlay",
+  "resolveSelectionTarget",
+  "SelectionRuntimeErrorCodes",
 ];
 const forbiddenPublicApiPatterns = [
   /BBM/i,
@@ -49,7 +54,7 @@ assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
   if (name === "SELECTION_CONTRACT_VERSION") {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (name === "SelectionContractErrorCodes") {
+  } else if (name === "SelectionContractErrorCodes" || name === "SelectionRuntimeErrorCodes") {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);

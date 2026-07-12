@@ -24,6 +24,10 @@ const {
   validateSelectionTargetContract,
   validateElementRefResolver,
 } = require("./contracts/selectionTargetContract.js");
+const { createSelectionController, SelectionRuntimeErrorCodes } = require("./selection/selectionController.js");
+const { createHoverOverlay } = require("./selection/hoverOverlay.js");
+const { createSelectedOverlay } = require("./selection/selectedOverlay.js");
+const { resolveSelectionTarget } = require("./selection/targetResolver.js");
 const {
   validateSelectionHost,
   validateSelectionControllerContract,
@@ -52,4 +56,9 @@ module.exports = Object.freeze({
   validateSelectionHost,
   validateSelectionControllerContract,
   createSelectionStateSnapshot,
+  createSelectionController,
+  createHoverOverlay,
+  createSelectedOverlay,
+  resolveSelectionTarget,
+  SelectionRuntimeErrorCodes,
 });

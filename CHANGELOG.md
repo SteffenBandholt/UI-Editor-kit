@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- M58: generische Selection-Runtime mit expliziten Element-Refs, deterministischem TargetResolver, Hover-/SelectedOverlays und additiven Public-Core-Exports ergaenzt.
+- M58: Runtime-Lifecycle, Fehlerverhalten, InteractionRoot-Erweiterung und BBM-Migrationsplan dokumentiert; Paketversion bleibt 0.2.0.
 - M57: neutraler Selection-Target-Vertrag `selection-target-contract-v1.0` dokumentiert und ueber Public-Core-API validierbar gemacht.
 - M57: Registry-Metadaten, ElementRefResolver, SelectionHost, Controller-Form, Overlay-Rollen und Sicherheitsgrenzen ohne vollstaendige Runtime festgelegt.
 
