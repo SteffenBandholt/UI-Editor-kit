@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- M57: neutraler Selection-Target-Vertrag `selection-target-contract-v1.0` dokumentiert und ueber Public-Core-API validierbar gemacht.
+- M57: Registry-Metadaten, ElementRefResolver, SelectionHost, Controller-Form, Overlay-Rollen und Sicherheitsgrenzen ohne vollstaendige Runtime festgelegt.
+
 ## 0.2.0
 
 M49 Release-Fixstand fuer den oeffentlichen Core des UI-Editor-kit.

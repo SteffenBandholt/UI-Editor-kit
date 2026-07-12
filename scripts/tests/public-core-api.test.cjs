@@ -25,6 +25,13 @@ const expectedExports = [
   "getLayoutStateProfileKey",
   "assertCompatibleLayoutProfile",
   "createMemoryLayoutStateStore",
+  "SELECTION_CONTRACT_VERSION",
+  "SelectionContractErrorCodes",
+  "validateSelectionTargetContract",
+  "validateElementRefResolver",
+  "validateSelectionHost",
+  "validateSelectionControllerContract",
+  "createSelectionStateSnapshot",
 ];
 const forbiddenPublicApiPatterns = [
   /BBM/i,
@@ -39,7 +46,15 @@ const forbiddenPublicApiPatterns = [
 
 assert.equal(fs.existsSync(publicApiPath), true, "src/index.cjs fehlt");
 assert.deepEqual(Object.keys(publicApi), expectedExports);
-expectedExports.forEach((name) => assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`));
+expectedExports.forEach((name) => {
+  if (name === "SELECTION_CONTRACT_VERSION") {
+    assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
+  } else if (name === "SelectionContractErrorCodes") {
+    assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
+  } else {
+    assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);
+  }
+});
 
 const publicApiSource = fs.readFileSync(publicApiPath, "utf8");
 forbiddenPublicApiPatterns.forEach((pattern) => {

@@ -18,6 +18,17 @@ const {
   assertCompatibleLayoutProfile,
 } = require("./core/layout-state-contract.cjs");
 const { createMemoryLayoutStateStore } = require("./core/layout-state-store.cjs");
+const {
+  SELECTION_CONTRACT_VERSION,
+  SelectionContractErrorCodes,
+  validateSelectionTargetContract,
+  validateElementRefResolver,
+} = require("./contracts/selectionTargetContract.js");
+const {
+  validateSelectionHost,
+  validateSelectionControllerContract,
+  createSelectionStateSnapshot,
+} = require("./contracts/selectionControllerContract.js");
 
 module.exports = Object.freeze({
   validateTargetAppAdapterPath,
@@ -34,4 +45,11 @@ module.exports = Object.freeze({
   getLayoutStateProfileKey,
   assertCompatibleLayoutProfile,
   createMemoryLayoutStateStore,
+  SELECTION_CONTRACT_VERSION,
+  SelectionContractErrorCodes,
+  validateSelectionTargetContract,
+  validateElementRefResolver,
+  validateSelectionHost,
+  validateSelectionControllerContract,
+  createSelectionStateSnapshot,
 });
