@@ -37,7 +37,7 @@ Das Artefakt wird deterministisch aus den bestehenden M57/M58-Quellen erzeugt:
 npm run build:selection-runtime:browser
 ```
 
-Der Build liest die bestehenden Selection-Contract- und Selection-Runtime-Quellen unter `src/contracts/` und `src/selection/`, entfernt CommonJS-Huellcode und schreibt ein eigenstaendiges ESM-Artefakt nach `dist/selection-runtime.browser.mjs`. Es gibt keinen manuell gepflegten zweiten Runtime-Fork.
+Der Build liest die bestehenden Selection-Contract- und Selection-Runtime-Quellen unter `src/contracts/` und `src/selection/`, entfernt CommonJS-Huellcode und schreibt ein eigenstaendiges ESM-Artefakt nach `dist/selection-runtime.browser.mjs`. Es gibt keinen manuell gepflegten zweiten Runtime-Fork. Der Freshness-Check `npm run check:selection-runtime:browser` erzeugt den erwarteten Inhalt im Speicher und bricht ab, wenn das eingecheckte Artefakt vom aktuellen Quellstand abweicht.
 
 ## Integrationsbeispiel mit relativem Pfad
 

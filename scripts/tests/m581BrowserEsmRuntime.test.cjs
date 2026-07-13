@@ -3,12 +3,14 @@
 const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const ARTIFACT = path.join(REPO_ROOT, "dist/selection-runtime.browser.mjs");
 const PACKAGE_JSON = path.join(REPO_ROOT, "package.json");
+const BUILD_SCRIPT = path.join(REPO_ROOT, "scripts/build/build-selection-runtime-browser-esm.cjs");
 
 function read(relativePath) {
   return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
@@ -21,6 +23,48 @@ function makeElement(rect) {
     getBoundingClientRect: () => rect || { left: 0, top: 0, width: 10, height: 10 },
   };
   return element;
+}
+
+
+function runNode(args, options) {
+  return childProcess.spawnSync(process.execPath, args, { cwd: REPO_ROOT, encoding: "utf8", ...(options || {}) });
+}
+
+function assertSuccessful(result, label) {
+  assert.equal(result.status, 0, `${label} failed:\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`);
+}
+
+function assertArtifactFreshnessAndDeterminism() {
+  const original = fs.readFileSync(ARTIFACT, "utf8");
+
+  const checkBeforeBuild = runNode([BUILD_SCRIPT, "--check"]);
+  assertSuccessful(checkBeforeBuild, "Browser-ESM freshness check");
+  assert.equal(fs.readFileSync(ARTIFACT, "utf8"), original, "--check darf das Repositoryartefakt nicht veraendern.");
+
+  const firstBuild = runNode([BUILD_SCRIPT]);
+  assertSuccessful(firstBuild, "Browser-ESM first build");
+  const firstGenerated = fs.readFileSync(ARTIFACT, "utf8");
+  assert.equal(firstGenerated, original, "Eingechecktes Browser-ESM-Artefakt ist nicht frisch.");
+
+  const secondBuild = runNode([BUILD_SCRIPT]);
+  assertSuccessful(secondBuild, "Browser-ESM second build");
+  const secondGenerated = fs.readFileSync(ARTIFACT, "utf8");
+  assert.equal(secondGenerated, firstGenerated, "Zwei Builds muessen byteidentisch sein.");
+
+  assert.equal(/\r/u.test(secondGenerated), false, "Browser-ESM-Artefakt muss reproduzierbare LF-Zeilenenden verwenden.");
+  assert.equal(/\r\n/u.test(secondGenerated), false, "Browser-ESM-Artefakt darf keine CRLF-Zeilenenden enthalten.");
+  assert.equal(/\b20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/u.test(secondGenerated), false, "Browser-ESM-Artefakt darf keine Zeitstempel enthalten.");
+  assert.equal(secondGenerated.includes(REPO_ROOT), false, "Browser-ESM-Artefakt darf keinen Rechner-/Workspace-Pfad enthalten.");
+  assert.equal(/\/workspace\//u.test(secondGenerated), false, "Browser-ESM-Artefakt darf keinen Workspace-Pfad enthalten.");
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-editor-kit-m581-"));
+  const tempArtifact = path.join(tempDir, "selection-runtime.browser.mjs");
+  fs.writeFileSync(tempArtifact, `${secondGenerated}\n// stale temporary mutation\n`, "utf8");
+  const staleBefore = fs.readFileSync(tempArtifact, "utf8");
+  const staleCheck = runNode([BUILD_SCRIPT, "--check", "--artifact", tempArtifact]);
+  assert.notEqual(staleCheck.status, 0, "--check muss bei absichtlich veraendertem temporaerem Artefakt fehlschlagen.");
+  assert.equal(fs.readFileSync(tempArtifact, "utf8"), staleBefore, "--check darf ein abweichendes Artefakt nicht ueberschreiben.");
+  assert.equal(fs.readFileSync(ARTIFACT, "utf8"), secondGenerated, "Temporaerer Negativtest darf das echte Repositoryartefakt nicht dauerhaft veraendern.");
 }
 
 function createListenerRoot() {
@@ -37,6 +81,7 @@ function createListenerRoot() {
 
 (async () => {
   assert.equal(fs.existsSync(ARTIFACT), true, "Browser-ESM-Artefakt fehlt.");
+  assertArtifactFreshnessAndDeterminism();
 
   const runtime = await import(pathToFileURL(ARTIFACT).href);
   [
