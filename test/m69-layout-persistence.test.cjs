@@ -1,0 +1,11 @@
+"use strict";
+const { assert, createRegistry, createHost, createStorage, context } = require("./m69-test-helpers.cjs");
+const { createUiEditorRuntime, RUNTIME_ERROR_CODES } = require("../src/index.cjs");
+const storage=createStorage(); let host=createHost(); let rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:host,layoutStorage:storage,targetContext:context});
+rt.beginSession(); rt.applyChange({elementId:"demo.card",operation:"move",payload:{x:10},changeId:"c1",createdAt:"n",source:"test"}); assert.equal(rt.saveLayout().status.changedCount,0); assert.equal(storage.readResult(context).entries[0].x,10);
+host=createHost(); rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:host,layoutStorage:storage,targetContext:context}); assert.equal(rt.loadLayout().ok,true); assert.equal(host.dump()["demo.card"].x,10); assert.equal(rt.getSessionStatus().changedCount,0);
+const other={...context,layoutProfileId:"alternate"}; storage.write(other,[{elementId:"demo.card",x:99}]); assert.equal(storage.readResult(context).entries[0].x,10); assert.equal(storage.readResult(other).entries[0].x,99);
+const unavailable=createStorage(); unavailable.available=false; rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:createHost(),layoutStorage:unavailable,targetContext:context}); rt.beginSession(); assert.equal(rt.saveLayout().code,RUNTIME_ERROR_CODES.STORAGE_UNAVAILABLE);
+const volatile=createStorage(); volatile.persistent=false; rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:createHost(),layoutStorage:volatile,targetContext:context}); rt.beginSession(); assert.equal(rt.saveLayout().code,RUNTIME_ERROR_CODES.STORAGE_NOT_PERSISTENT);
+const bad=createStorage(); bad.write=function(){return {ok:true};}; rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:createHost(),layoutStorage:bad,targetContext:context}); rt.beginSession(); rt.applyChange({elementId:"demo.card",operation:"move",payload:{x:1},changeId:"c",createdAt:"n",source:"t"}); assert.equal(rt.saveLayout().code,RUNTIME_ERROR_CODES.STORAGE_VERIFY_FAILED);
+console.log("m69 layout persistence ok");

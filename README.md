@@ -125,6 +125,13 @@ Die kurze oeffentliche Anleitung fuer eine neue fachneutrale Ziel-App steht in `
 Als neutraler Fixture-Verweis dient `scripts/fixtures/neutral-target-app/neutralTargetApp.cjs`; ein kleines ausfuehrbares Minimalbeispiel liegt unter `scripts/fixtures/minimal-target-app/minimal-target-app.cjs`. Neue Integrationen sollen die Kit-Funktionen ueber den oeffentlichen Einstieg `src/index.cjs` beziehungsweise den Paket-Export laden.
 
 
+
+## Programmatische Runtime ab M69
+
+Ab M69 exportiert der oeffentliche Einstieg zusaetzlich `createUiEditorRuntime`. Die Runtime ist noch eine programmatische API fuer Ziel-App-Adapter und Tests: Sie verwaltet Session, Baseline, neutrale Layoutentries, Save/Load, Reset, Discard und Reapply ohne eigene DOM-Suche und ohne eigene Persistenzimplementierung. Details stehen in `docs/M69_GENERIC_RUNTIME.md`.
+
+Das generische Bedienpanel ist nicht Teil von M69. Es bleibt der naechste Schritt fuer M70.
+
 ## Oeffentliche Core-API
 
 Der bevorzugte Import fuer Ziel-Apps ist ab M48 der oeffentliche CommonJS-Einstieg `src/index.cjs` beziehungsweise der Paket-Export. Dort liegen Runtime-Start, Adapter-Pfad, ViewModels und MemoryLayoutStateStore gesammelt als stabile Kit-API. Details stehen in `docs/M48_PUBLIC_CORE_API_EXPORTS.md`.

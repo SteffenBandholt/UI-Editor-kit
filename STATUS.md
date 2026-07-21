@@ -76,6 +76,7 @@ Aktueller Stand:
 - M49 erledigt: Release-Fixstand `0.2.0` fuer den oeffentlichen Core vorbereitet; Changelog, Release-Doku, README, Package-Version und Pflichtpruefungen bilden die stabile interne Release-Basis.
 - M50 vorbereitet: Release-Dateien, Release Notes, Tag-/GitHub-Release-Checkliste, Readiness-Skript und Tests fuer `v0.2.0` vorbereitet; Git-Tag noch nicht erstellt und GitHub-Release noch nicht veroeffentlicht.
 - M68 gebaut: Generische Produktgrenze, BBM-Referenzinventar M63C-M67, Public-API-Zielbild und Folgepakete M69-M73 dokumentiert; `0.2.0` bleibt Core-Release und ist noch nicht der vollstaendige visuelle Editor.
+- M69 gebaut: Generische Runtime und Session-/Layout-API programmatisch umgesetzt; O3/M70 bleibt das naechste generische Bedienpanel-Paket.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -150,7 +151,7 @@ Bedeutung:
 | K1 | [A] | Kern-Testlauf | `npm test` gruen | vor jedem Commit ausfuehren |
 | K2 | [A] | Regression gegen falsche Nebenstrecken | Cleanup-Test prueft MUST_NOT_EXIST | fortlaufend |
 | O1/M68 | [x] | Generische Produktgrenze und Ueberfuehrungsplan | `docs/M68_GENERIC_PRODUCT_BOUNDARY.md`, `test/m68-generic-product-boundary.test.cjs` | nach M68 M69 Runtime bauen |
-| O2/M69 | [ ] | Generische Runtime und Session-/Layout-API | offen | nach M68 |
+| O2/M69 | [A] | Generische Runtime und Session-/Layout-API | `node test/m69-runtime-context.test.cjs`, `node test/m69-session-runtime.test.cjs`, `node test/m69-layout-persistence.test.cjs`, `node test/m69-reset-runtime.test.cjs`, `node test/m69-runtime-boundary.test.cjs`, `npm test` gruen | nach M69 O3/M70 |
 | O3/M70 | [ ] | Generisches Bedienpanel und ViewModels | offen | nach M69 |
 | O4/M71 | [ ] | Generischer Browser-Host und Referenzadapter | offen | nach M70 |
 | O5/M72 | [ ] | Unabhaengige Browser-Referenzanwendung | offen | nach M71 |

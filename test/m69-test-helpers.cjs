@@ -1,0 +1,15 @@
+"use strict";
+const assert = require("assert");
+const { createUiElementRegistry } = require("../src/core/ui-element-registry.cjs");
+function createRegistry(){ const r=createUiElementRegistry(); [
+ {id:"demo.card",name:"Card",type:"card",role:"layout",parentId:null,order:1,visible:true,editable:true,allowedOps:["move","resize"],lockedOps:[]},
+ {id:"demo.card.title",name:"Title",type:"label",role:"content",parentId:"demo.card",order:2,visible:true,editable:true,allowedOps:["move"],lockedOps:[]},
+ {id:"demo.table",name:"Table",type:"table",role:"content",parentId:null,order:3,visible:true,editable:true,allowedOps:["resize"],lockedOps:[]},
+ {id:"demo.locked",name:"Locked",type:"card",role:"layout",parentId:null,order:4,visible:true,editable:false,allowedOps:["move"],lockedOps:[]},
+ {id:"demo.capability",name:"Capability",type:"card",role:"layout",parentId:null,order:5,visible:true,editable:true,allowedOps:[],capabilities:["move"],lockedOps:[]},
+].forEach(e=>r.registerElement(e)); return r; }
+function createHost(initial){ const state=new Map(Object.entries(initial||{})); const calls=[]; let fail={}; return { calls, fail, replaceRefs(){ calls.push(["replaceRefs"]); }, validateElementRef(id){ calls.push(["validate",id]); if(fail.missing===id) return {ok:false,reason:"missing"}; return {ok:true}; }, captureElementLayoutState(id){ calls.push(["capture",id]); return state.has(id) ? JSON.parse(JSON.stringify(state.get(id))) : null; }, applyLayoutEntry(id,entry){ calls.push(["apply",id,entry]); if(fail.apply===id) return {ok:false,reason:"apply failed"}; state.set(id, JSON.parse(JSON.stringify(entry))); return {ok:true}; }, clearElementLayout(id){ calls.push(["clear",id]); if(fail.clear===id) return {ok:false,reason:"clear failed"}; state.delete(id); return {ok:true}; }, restoreElementLayoutState(id,snap){ calls.push(["restore",id]); if(snap) state.set(id, JSON.parse(JSON.stringify(snap))); else state.delete(id); return {ok:true}; }, getCurrentLayoutEntry(id){ return state.has(id) ? JSON.parse(JSON.stringify(state.get(id))) : null; }, dump(){ return Object.fromEntries(state); } }; }
+function key(c){ return [c.targetAppId,c.moduleId,c.scopeId,c.layoutProfileId].join("|"); }
+function createStorage(){ const data=new Map(); const calls=[]; return { available:true, persistent:true, calls, data, readResult(c){ calls.push(["read",key(c)]); return { ok:true, entries: JSON.parse(JSON.stringify(data.get(key(c))||[]))}; }, write(c,entries){ calls.push(["write",key(c),entries]); data.set(key(c), JSON.parse(JSON.stringify(entries||[]))); return {ok:true}; }, clear(c){ calls.push(["clear",key(c)]); data.set(key(c), []); return {ok:true}; }, deleteEntry(c,id){ calls.push(["delete",key(c),id]); data.set(key(c),(data.get(key(c))||[]).filter(e=>e.elementId!==id)); return {ok:true}; } }; }
+const context={targetAppId:"neutral-reference-app",moduleId:"main-module",scopeId:"main-layout",layoutProfileId:"default"};
+module.exports={ assert, createRegistry, createHost, createStorage, context };
