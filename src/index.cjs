@@ -37,6 +37,13 @@ const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = require("./panel/panel-
 const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
+const { createElementRefRegistry } = require("./browser/element-ref-registry.cjs");
+const { createBrowserHostAdapter } = require("./browser/browser-host-adapter.cjs");
+const { createBrowserSelectionHost } = require("./browser/browser-selection-host.cjs");
+const { createBrowserOverlayHost } = require("./browser/browser-overlay-host.cjs");
+const { createBrowserLayoutStorage } = require("./browser/browser-layout-storage.cjs");
+const { createUiEditorBrowserBridge } = require("./browser/ui-editor-browser-bridge.cjs");
+const { BROWSER_ERROR_CODES } = require("./browser/browser-result.cjs");
 const {
   validateSelectionHost,
   validateSelectionControllerContract,
@@ -44,6 +51,13 @@ const {
 } = require("./contracts/selectionControllerContract.js");
 
 module.exports = Object.freeze({
+  createElementRefRegistry,
+  createBrowserHostAdapter,
+  createBrowserSelectionHost,
+  createBrowserOverlayHost,
+  createBrowserLayoutStorage,
+  createUiEditorBrowserBridge,
+  BROWSER_ERROR_CODES,
   createUiEditorRuntime,
   validateLayoutEntryForElement,
   createUiEditorPanelController,

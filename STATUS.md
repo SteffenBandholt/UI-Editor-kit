@@ -77,7 +77,8 @@ Aktueller Stand:
 - M50 vorbereitet: Release-Dateien, Release Notes, Tag-/GitHub-Release-Checkliste, Readiness-Skript und Tests fuer `v0.2.0` vorbereitet; Git-Tag noch nicht erstellt und GitHub-Release noch nicht veroeffentlicht.
 - M68 gebaut: Generische Produktgrenze, BBM-Referenzinventar M63C-M67, Public-API-Zielbild und Folgepakete M69-M73 dokumentiert; `0.2.0` bleibt Core-Release und ist noch nicht der vollstaendige visuelle Editor.
 - M69 gebaut: Generische Runtime und Session-/Layout-API programmatisch umgesetzt.
-- M70 gebaut: Generisches Bedienpanel, neutrale Panel-ViewModels, Dialog-/Statusmodell und Panel-Controller umgesetzt; O4/M71 bleibt der naechste Browser-Host- und Overlay-Schritt.
+- M70 gebaut: Generisches Bedienpanel, neutrale Panel-ViewModels, Dialog-/Statusmodell und Panel-Controller umgesetzt.
+- M71 gebaut: Generischer Browser-Host, explizite ElementRefs, SelectionHost, OverlayHost, BrowserStorageAdapter und BrowserBridge fachneutral umgesetzt; O5/M72 bleibt der naechste Schritt fuer die unabhaengige Browser-Referenzanwendung.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -154,8 +155,8 @@ Bedeutung:
 | O1/M68 | [x] | Generische Produktgrenze und Ueberfuehrungsplan | `docs/M68_GENERIC_PRODUCT_BOUNDARY.md`, `test/m68-generic-product-boundary.test.cjs` | nach M68 M69 Runtime bauen |
 | O2/M69 | [A] | Generische Runtime und Session-/Layout-API | `node test/m69-runtime-context.test.cjs`, `node test/m69-session-runtime.test.cjs`, `node test/m69-layout-persistence.test.cjs`, `node test/m69-reset-runtime.test.cjs`, `node test/m69-runtime-boundary.test.cjs`, `npm test` gruen | nach M69 O3/M70 |
 | O3/M70 | [A] | Generisches Bedienpanel und ViewModels | `node test/m70-panel-controller.test.cjs`, `node test/m70-panel-view-model.test.cjs`, `node test/m70-panel-dialogs.test.cjs`, `node test/m70-panel-renderer.test.cjs`, `node test/m70-panel-boundary.test.cjs`, `npm test` gruen | nach M70 O4/M71 |
-| O4/M71 | [ ] | Generischer Browser-Host und Referenzadapter | offen | naechster Schritt nach M70 |
-| O5/M72 | [ ] | Unabhaengige Browser-Referenzanwendung | offen | nach M71 |
+| O4/M71 | [A] | Generischer Browser-Host und Referenzadapter | `node test/m71-element-ref-registry.test.cjs`, `node test/m71-browser-host-adapter.test.cjs`, `node test/m71-selection-host.test.cjs`, `node test/m71-overlay-host.test.cjs`, `node test/m71-browser-storage.test.cjs`, `node test/m71-browser-bridge.test.cjs`, `node test/m71-browser-boundary.test.cjs`, `npm test` gruen | nach M71 O5/M72 |
+| O5/M72 | [ ] | Unabhaengige Browser-Referenzanwendung | offen | naechster Schritt nach M71 |
 | O6/M73 | [ ] | Release Candidate und zweite Zielanwendung | offen | nach M72 |
 
 ## 6. Meilenstein-Gates

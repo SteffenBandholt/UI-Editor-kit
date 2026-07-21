@@ -11,6 +11,13 @@ const publicApi = require(publicApiPath);
 const { createNeutralTargetAppHostAdapter } = require("../fixtures/neutral-target-app/neutralTargetApp.cjs");
 
 const expectedExports = [
+  "createElementRefRegistry",
+  "createBrowserHostAdapter",
+  "createBrowserSelectionHost",
+  "createBrowserOverlayHost",
+  "createBrowserLayoutStorage",
+  "createUiEditorBrowserBridge",
+  "BROWSER_ERROR_CODES",
   "createUiEditorRuntime",
   "validateLayoutEntryForElement",
   "createUiEditorPanelController",
@@ -67,7 +74,7 @@ assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
   if (name === "SELECTION_CONTRACT_VERSION") {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (["SelectionContractErrorCodes", "SelectionRuntimeErrorCodes", "RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_MODES", "PANEL_DIRECTIONS"].includes(name)) {
+  } else if (["SelectionContractErrorCodes", "SelectionRuntimeErrorCodes", "RUNTIME_ERROR_CODES", "BROWSER_ERROR_CODES", "PANEL_INTENTS", "PANEL_MODES", "PANEL_DIRECTIONS"].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);
