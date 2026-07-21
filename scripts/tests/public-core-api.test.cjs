@@ -13,6 +13,13 @@ const { createNeutralTargetAppHostAdapter } = require("../fixtures/neutral-targe
 const expectedExports = [
   "createUiEditorRuntime",
   "validateLayoutEntryForElement",
+  "createUiEditorPanelController",
+  "createUiEditorPanelViewModel",
+  "createUiEditorPanel",
+  "createPanelMessageCatalog",
+  "PANEL_INTENTS",
+  "PANEL_MODES",
+  "PANEL_DIRECTIONS",
   "RUNTIME_ERROR_CODES",
   "normalizeTargetContext",
   "validateTargetContext",
@@ -60,7 +67,7 @@ assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
   if (name === "SELECTION_CONTRACT_VERSION") {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (name === "SelectionContractErrorCodes" || name === "SelectionRuntimeErrorCodes" || name === "RUNTIME_ERROR_CODES") {
+  } else if (["SelectionContractErrorCodes", "SelectionRuntimeErrorCodes", "RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_MODES", "PANEL_DIRECTIONS"].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);
