@@ -1,0 +1,16 @@
+"use strict";
+const { assert, createRegistry, createHost, createStorage, context } = require("./m69-test-helpers.cjs");
+const { createUiEditorRuntime, RUNTIME_ERROR_CODES } = require("../src/index.cjs");
+const host=createHost({"demo.card":{elementId:"demo.card",x:0}}); const rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:host,layoutStorage:createStorage(),targetContext:context});
+assert.equal(rt.beginSession().status.changedCount,0);
+assert.equal(rt.applyChange({elementId:"demo.card",operation:"move",payload:{x:5,y:6},changeId:"c1",createdAt:"n",source:"test"}).status.changedCount,1);
+assert.equal(rt.applyChange({elementId:"demo.table",operation:"resize",payload:{width:100},changeId:"c2",createdAt:"n",source:"test"}).status.changedCount,2);
+assert.equal(rt.applyChange({elementId:"demo.table",operation:"move",payload:{x:1},changeId:"c3",createdAt:"n",source:"test"}).code,RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED);
+assert.equal(rt.applyChange({elementId:"demo.capability",operation:"move",payload:{x:1},changeId:"c4",createdAt:"n",source:"test"}).code,RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED);
+assert.equal(rt.applyChange({elementId:"demo.locked",operation:"move",payload:{x:1},changeId:"c5",createdAt:"n",source:"test"}).code,RUNTIME_ERROR_CODES.ELEMENT_NOT_EDITABLE);
+assert.equal(rt.applyChange({elementId:"missing",operation:"move",payload:{x:1},changeId:"c6",createdAt:"n",source:"test"}).code,RUNTIME_ERROR_CODES.UNKNOWN_ELEMENT);
+assert.equal(rt.discardElementChanges("demo.card").status.changedCount,1); assert.deepEqual(host.dump()["demo.card"],{elementId:"demo.card",x:0});
+assert.equal(rt.discardAllChanges().status.changedCount,0);
+rt.applyChange({elementId:"demo.card",operation:"move",payload:{x:9},changeId:"c7",createdAt:"n",source:"test"}); rt.resetSessionBaselineElement("demo.card"); assert.equal(rt.getSessionStatus().changedCount,0);
+rt.applyChange({elementId:"demo.card.title",operation:"move",payload:{x:2},changeId:"c8",createdAt:"n",source:"test"}); rt.resetSessionBaseline(); assert.equal(rt.endSession().status.active,false); assert.equal(rt.applyChange({elementId:"demo.card",operation:"move",payload:{x:1},changeId:"c9",createdAt:"n",source:"test"}).code,RUNTIME_ERROR_CODES.SESSION_NOT_ACTIVE);
+console.log("m69 session runtime ok");

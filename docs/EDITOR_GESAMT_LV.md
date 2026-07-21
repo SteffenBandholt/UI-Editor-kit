@@ -1022,10 +1022,13 @@ Abnahme:
 
 ## O2 / M69 - Generische Runtime und Session-/Layout-API
 
-Status: offen
+Status: abgenommen
 
 Zweck:
 Generische Runtime fuer Session, Layoutaenderung, Save, Load, Gesamtreset, Einzelreset, Baseline und strukturierte Fehlercodes im UI-Editor-kit bauen.
+
+Nachweis:
+`src/runtime/*`, `docs/M69_GENERIC_RUNTIME.md` und die M69-Testdateien pruefen Kontextisolation, Sessionsemantik, Persistenz, Reset, Reapply und Boundary-Regeln. O3/M70 bleibt offen und baut spaeter das generische Bedienpanel.
 
 ## O3 / M70 - Generisches Bedienpanel und ViewModels
 

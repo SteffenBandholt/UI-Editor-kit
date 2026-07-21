@@ -11,6 +11,12 @@ const publicApi = require(publicApiPath);
 const { createNeutralTargetAppHostAdapter } = require("../fixtures/neutral-target-app/neutralTargetApp.cjs");
 
 const expectedExports = [
+  "createUiEditorRuntime",
+  "validateLayoutEntryForElement",
+  "RUNTIME_ERROR_CODES",
+  "normalizeTargetContext",
+  "validateTargetContext",
+  "normalizeLayoutEntry",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -54,7 +60,7 @@ assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
   if (name === "SELECTION_CONTRACT_VERSION") {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (name === "SelectionContractErrorCodes" || name === "SelectionRuntimeErrorCodes") {
+  } else if (name === "SelectionContractErrorCodes" || name === "SelectionRuntimeErrorCodes" || name === "RUNTIME_ERROR_CODES") {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);
