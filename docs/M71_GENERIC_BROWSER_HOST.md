@@ -22,7 +22,7 @@ Die Ziel-App liefert Registry, ElementRefs, TargetContext, Storage-Namespace, Au
 
 ## Transform- und Ownership-Strategie
 
-M71 überschreibt bestehende Ziel-App-Transforms nicht. Editor-eigene Verschiebungen werden über CSS Custom Properties `--ui-editor-x`, `--ui-editor-y` und eine eigene Property `--ui-editor-transform` beschrieben. Breite, Höhe und Sichtbarkeit werden über `--ui-editor-width`, `--ui-editor-height`, `--ui-editor-visible` und eine interne WeakMap als Editor-eigene Änderungen markiert. `clearElementLayout()` entfernt nur diese Editor-Anteile und lässt fremde Inline-Styles erhalten.
+M71 überschreibt bestehende Ziel-App-Transforms nicht blind. Vor der ersten Editoränderung sichert der BrowserHost den Ziel-App-Ursprung je Element: Inline-`transform`, Inline-`width`, Inline-`height`, `hidden` und vorhandene `--ui-editor-*` Custom Properties. Move setzt anschließend eine kontrollierte wirksame Transformzeile: `transform: var(--ui-editor-target-transform, none) translate(var(--ui-editor-x, 0px), var(--ui-editor-y, 0px))`. Der ursprüngliche Ziel-App-Transform wird in `--ui-editor-target-transform` abgelegt, sodass beispielsweise `rotate(3deg)` weiterhin wirkt. Mehrfaches Apply ersetzt dieselbe kontrollierte Transformzeile und verschachtelt keine Transformstrings. `clearElementLayout()` stellt exakt den gesicherten Ziel-App-Ursprung wieder her; Capture/Restore bleibt davon getrennt und stellt den konkret erfassten Zwischenzustand für Runtime-Rollback wieder her.
 
 ## SelectionHost
 
@@ -30,15 +30,15 @@ M71 überschreibt bestehende Ziel-App-Transforms nicht. Editor-eigene Verschiebu
 
 ## OverlayHost
 
-`createBrowserOverlayHost()` rendert einen neutralen Auswahlrahmen im expliziten Overlay-MountTarget. Das Overlay ist layoutneutral, verwendet `pointer-events: none`, ist thematisierbar und berechnet seine Position über injizierbare Rect-Reader. Scroll-/Resize-Listener werden nur über den übergebenen Window-Adapter registriert und in `destroy()` entfernt.
+`createBrowserOverlayHost()` rendert einen neutralen Auswahlrahmen im expliziten Overlay-MountTarget. Das Overlay ist layoutneutral, verwendet `pointer-events: none`, ist thematisierbar und berechnet seine Position über injizierbare Rect-Reader. Die Koordinaten sind relativ zum MountTarget: `left = elementRect.left - mountRect.left + mount.scrollLeft`, `top = elementRect.top - mountRect.top + mount.scrollTop`. Window-Scroll wird nicht doppelt addiert, weil Element- und Mount-Rects Viewportkoordinaten sind. Scroll-/Resize-Listener werden nur über den übergebenen Window-Adapter registriert und in `destroy()` entfernt.
 
 ## BrowserStorage
 
-`createBrowserLayoutStorage()` nutzt nur die injizierte Storage-Schnittstelle `getItem`, `setItem`, `removeItem`. Der Schlüssel lautet `ui-editor-layout::<targetAppId>::<moduleId>::<scopeId>::<layoutProfileId>`. Gespeichert wird Schema Version 1 mit `context`, `entries` und `savedAt`. Ungültiges JSON, falsche Schema-Version und Storage-Fehler werden strukturiert blockiert; es gibt keinen Memory-Fallback.
+`createBrowserLayoutStorage()` nutzt nur die injizierte Storage-Schnittstelle `getItem`, `setItem`, `removeItem`. Der Schlüssel lautet `ui-editor-layout::<targetAppId>::<moduleId>::<scopeId>::<layoutProfileId>`. Gespeichert wird Schema Version 1 mit `context`, `entries` und `savedAt`. Ungültiges JSON, falsche Schema-Version, ungültige Contexts, ungültige Element-IDs und Storage-Fehler werden strukturiert blockiert; es gibt keinen Memory-Fallback. Persistierte Entries müssen JSON-datenförmig sein und dürfen keine DOM-Refs enthalten.
 
 ## Bridge
 
-`createUiEditorBrowserBridge()` verbindet SelectionHost, PanelController und OverlayHost: Auswahl ruft `controller.selectElement()` und `overlayHost.show()` auf, Clear versteckt das Overlay und Layout-/Load-/Reset-/Discard-/Reapply-Ereignisse aktualisieren das Overlay ohne Runtime-Fachlogik zu duplizieren.
+`createUiEditorBrowserBridge()` verbindet SelectionHost, PanelController und OverlayHost: Auswahl ruft `controller.selectElement()` und `overlayHost.show()` auf, Clear versteckt das Overlay. Zusätzlich beobachtet die Bridge `controller.subscribe(...)` und aktualisiert das Overlay nach abgeschlossenen Controlleraktionen, wenn `busy` wieder `false` ist. Dadurch werden D-Pad Move, Width, Height, Load, Reset, Discard und Reapply abgedeckt, ohne Runtime- oder Controlleroperationen zu duplizieren.
 
 ## Cleanup
 
