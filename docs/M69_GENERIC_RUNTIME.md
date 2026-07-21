@@ -90,19 +90,19 @@ Optional kann `reapplyLayoutEntries(entries)` angeboten werden. Snapshots duerfe
 
 ## Save und Load
 
-`saveLayout` schreibt den aktuellen Sessionzustand, kontrollliest ihn und macht erst danach den aktuellen Zustand zur neuen Baseline. `loadLayout` liest nur den aktuellen Kontext, validiert Entries gegen Registry und HostAdapter, wendet sie sichtbar an und setzt geladenen Zustand als Session und Baseline. Ungueltige oder fremde Elemente werden blockiert, damit die Zielanwendung korrigieren kann.
+`saveLayout` schreibt den aktuellen Sessionzustand, kontrollliest ihn und macht erst danach den aktuellen Zustand zur neuen Baseline. Bei Verify-Fehlern wird der vorherige persistente Zustand bestmoeglich wiederhergestellt; Session und Baseline bleiben unveraendert. `loadLayout` liest nur den aktuellen Kontext, validiert alle Entries vollstaendig gegen Registry, erlaubte neutrale Layoutanwendung und HostAdapter-Refs, sichert Session, Baseline und sichtbare Snapshots, wendet erst danach sichtbar an und setzt geladenen Zustand als Session und Baseline. Das geladene Layout ist die vollstaendige Abweichungswahrheit: zuvor vorhandene, aber im geladenen Layout fehlende editierbare Entries werden sichtbar entfernt. Ungueltige oder fremde Elemente werden blockiert, damit kein Teilzustand sichtbar bleibt.
 
 ## Reset und Discard
 
-`discardElementChanges` und `discardAllChanges` kehren zur Sessionbaseline zurueck und veraendern Persistenz nicht. `resetElementToDefaults` entfernt nur ein angegebenes Element sichtbar, in Session, Baseline und Persistenz. `resetLayoutToDefaults` entfernt alle editierbaren Abweichungen fuer den aktuellen Kontext. Die Ziel-App-CSS-/Registry-Wahrheit bleibt der Standard; die Runtime erfindet keine Pixeldefaults.
+`discardElementChanges` und `discardAllChanges` kehren zur Sessionbaseline zurueck und veraendern Persistenz nicht. `resetElementToDefaults` entfernt nur ein angegebenes Element sichtbar, in Session, Baseline und Persistenz und rollt bei Persistenz-Verify-Fehlern nur dieses Element zurueck. `resetLayoutToDefaults` entfernt alle editierbaren Abweichungen fuer den aktuellen Kontext und rollt bei Clear-, Verify- oder Hostfehlern sichtbaren Zustand, Session, Baseline und Persistenz bestmoeglich zurueck. Die Ziel-App-CSS-/Registry-Wahrheit bleibt der Standard; die Runtime erfindet keine Pixeldefaults.
 
 ## Rollback
 
-Vor sichtbaren oder destruktiven Schritten sichert die Runtime relevante Sessionentries, Baselineentries, Host-Snapshots und bei Persistenzaenderungen den alten persistenten Zustand. Bei Fehlern erfolgt ein bestmoeglicher Rollback. Wenn ein Rollback scheitert, darf kein vollstaendiger Erfolg behauptet werden.
+Vor sichtbaren oder destruktiven Schritten sichert die Runtime relevante Sessionentries, Baselineentries, Host-Snapshots und bei Persistenzaenderungen den alten persistenten Zustand. Bei Fehlern erfolgt ein bestmoeglicher Rollback. Wenn ein Rollback scheitert, wird das Ergebnis mit `rollbackComplete: false`, `ROLLBACK_FAILED`-Warnung und `rollbackErrors` gemeldet; der urspruengliche Fehlercode bleibt erhalten.
 
 ## Fehlercodes
 
-`RUNTIME_ERROR_CODES` enthaelt neutrale Codes wie `INVALID_TARGET_CONTEXT`, `INVALID_REGISTRY`, `INVALID_HOST_ADAPTER`, `UNKNOWN_SCOPE`, `UNKNOWN_ELEMENT`, `ELEMENT_NOT_EDITABLE`, `OPERATION_NOT_ALLOWED`, `SESSION_NOT_ACTIVE`, `STORAGE_UNAVAILABLE`, `STORAGE_NOT_PERSISTENT`, `STORAGE_READ_FAILED`, `STORAGE_WRITE_FAILED`, `STORAGE_CLEAR_FAILED`, `STORAGE_VERIFY_FAILED`, `ELEMENT_REF_MISSING`, `HOST_APPLY_FAILED`, `HOST_CLEAR_FAILED`, `ROLLBACK_FAILED` und `INVALID_LAYOUT_ENTRY`.
+`RUNTIME_ERROR_CODES` enthaelt neutrale Codes wie `INVALID_TARGET_CONTEXT`, `INVALID_REGISTRY`, `INVALID_HOST_ADAPTER`, `UNKNOWN_SCOPE`, `UNKNOWN_ELEMENT`, `ELEMENT_NOT_EDITABLE`, `OPERATION_NOT_ALLOWED`, `SESSION_NOT_ACTIVE`, `STORAGE_UNAVAILABLE`, `STORAGE_NOT_PERSISTENT`, `STORAGE_READ_FAILED`, `STORAGE_WRITE_FAILED`, `STORAGE_CLEAR_FAILED`, `STORAGE_VERIFY_FAILED`, `ELEMENT_REF_MISSING`, `HOST_APPLY_FAILED`, `HOST_CAPTURE_FAILED`, `HOST_READ_FAILED`, `HOST_CLEAR_FAILED`, `ROLLBACK_FAILED` und `INVALID_LAYOUT_ENTRY`.
 
 ## Nicht-Ziele
 

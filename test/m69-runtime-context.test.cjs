@@ -6,6 +6,7 @@ assert.equal(rt.beginSession().ok,true); assert.equal(rt.getSessionStatus().chan
 assert.equal(createUiEditorRuntime({registry:createRegistry(),hostAdapter:createHost(),layoutStorage:createStorage(),targetContext:{...context,targetAppId:""}}).beginSession().code,RUNTIME_ERROR_CODES.INVALID_TARGET_CONTEXT);
 assert.equal(normalizeTargetContext({...context,layoutProfileId:""}).layoutProfileId,"default");
 assert.equal(rt.beginSession("other-scope").code,RUNTIME_ERROR_CODES.UNKNOWN_SCOPE);
+const failingHost=createHost(); failingHost.fail.read="demo.card"; assert.equal(createUiEditorRuntime({registry:createRegistry(),hostAdapter:failingHost,layoutStorage:createStorage(),targetContext:context}).beginSession().code,RUNTIME_ERROR_CODES.HOST_READ_FAILED);
 const s=createStorage(); rt=createUiEditorRuntime({registry:createRegistry(),hostAdapter:createHost(),layoutStorage:s,targetContext:context}); rt.beginSession(); rt.applyChange({elementId:"demo.card",operation:"move",payload:{x:1},changeId:"c",createdAt:"n",source:"t"}); assert.equal(rt.saveLayout().ok,true);
 const other={...context,scopeId:"other-layout"}; assert.deepEqual(s.readResult(other).entries,[]);
 console.log("m69 runtime context ok");
