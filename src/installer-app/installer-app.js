@@ -2,7 +2,7 @@
 
 const SELECTED_MODE = "prepare-registry-structure";
 const QUICK_TARGETS = Object.freeze({
-  "BBM-Produktiv": Object.freeze({ targetAppId: "bbm-produktiv", targetAppName: "BBM-Produktiv" }),
+  "Neutral Demo App": Object.freeze({ targetAppId: "neutral-demo-app", targetAppName: "Neutral Demo App" }),
   "UI-Editor-Testziel": Object.freeze({ targetAppId: "neutral-target-app", targetAppName: "Neutral Target App" }),
 });
 const CONFIRMATION_FLAGS = Object.freeze([
