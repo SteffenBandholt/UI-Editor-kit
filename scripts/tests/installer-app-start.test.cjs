@@ -159,15 +159,15 @@ async function run() {
 
   const buttonLabels = collectButtonLabels(indexSource);
   [
-    "BBM-Produktiv C:\\01_Projekte\\BBM-Produktiv",
+    "Neutral Demo App C:\\01_Projekte\\Neutral-Demo-App",
     "UI-Editor-Testziel C:\\01_Projekte\\UI-Editor-Testziel",
     "Ordner auswählen",
     "Ordnerliste laden",
     "Eine Ebene höher",
     "Diesen Ordner verwenden",
     "Installer-Plan prüfen",
-    "Deinstallation prüfen",
     "Grundstruktur installieren",
+    "Deinstallation prüfen",
     "UI-Editor-Artefakte deinstallieren",
   ].forEach((label) => {
     assert.equal(buttonLabels.includes(label), true, `Button fehlt: ${label}`);
@@ -227,13 +227,13 @@ async function run() {
   assert.equal(appSource.includes("fetch("), true);
   assert.equal(appSource.includes("deriveTargetAppData"), true);
   assert.equal(appSource.includes("createSlug"), true);
-  assert.equal(appSource.includes("BBM-Produktiv"), true);
+  assert.equal(appSource.includes("Neutral Demo App"), true);
   assert.equal(appSource.includes("neutral-target-app"), true);
   assert.equal(appSource.includes("getJson(`/api/installer/directories?path="), true);
   assert.equal(indexSource.includes("written-files-output"), true);
   assert.equal(indexSource.includes("removed-files-output"), true);
 
-  assert.equal(serverSource.includes("BBM-Produktiv"), false, "Server darf keine BBM-Sonderlogik enthalten.");
+  assert.equal(serverSource.includes("Neutral Demo App"), false, "Server darf keine Schnellwahl-Sonderlogik enthalten.");
   assert.equal(packageJson.dependencies, undefined, "Keine externen npm-Abhängigkeiten für den Ordnerdialog erlauben.");
   assert.equal(indexSource.indexOf("Ordner auswählen") < indexSource.indexOf("Erweiterte Pfadauswahl öffnen"), true);
   assertNoFragments(uiSource, ["querySelectorAll", "writeFile", "mkdir", "readdir", "executeTargetAppInstallerPlan"], "Installer-UI");

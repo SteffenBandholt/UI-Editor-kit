@@ -996,6 +996,67 @@ Enthaelt:
 
 ---
 
+# O - Produktfertigstellungsstrecke M68 bis M73
+
+## O1 / M68 - Generische Produktgrenze und Ueberfuehrungsplan
+
+Status: gebaut
+
+Zweck:
+M68 inventarisiert die extern in BBM bewaehrten M63C-M67-Funktionen und ordnet jede wesentliche Funktion verbindlich der Produktgrenze Core, Kit-UI/Runtime, Ziel-App HostAdapter, Ziel-App Registry oder ausschliesslich BBM zu.
+
+Mindestinhalt:
+- `docs/M68_GENERIC_PRODUCT_BOUNDARY.md` mit Funktionsmatrix, Public-API-Zielstruktur, Datenfluss, Persistenzvertrag, Ref-/Selection-Vertrag, verbotenen Abhaengigkeiten und Abnahmekriterien fuer BBM-Unabhaengigkeit
+- Guardrail-Test gegen DOM-Scan-Entscheidung, automatische Registry-Erkennung und produktive BBM-Begriffe
+- Klarstellung, dass Release `0.2.0` den Core betrifft, aber noch nicht den vollstaendigen visuellen Editor als eigenstaendiges Produkt
+
+Nicht erlaubt:
+- BBM-Code kopieren
+- BBM-Repo aendern
+- Runtime oder Bedienoberflaeche aus BBM gross uebernehmen
+
+Abnahme:
+- `npm test` gruen
+- `npm pack --dry-run` gruen
+- `git diff --check` gruen
+
+## O2 / M69 - Generische Runtime und Session-/Layout-API
+
+Status: offen
+
+Zweck:
+Generische Runtime fuer Session, Layoutaenderung, Save, Load, Gesamtreset, Einzelreset, Baseline und strukturierte Fehlercodes im UI-Editor-kit bauen.
+
+## O3 / M70 - Generisches Bedienpanel und ViewModels
+
+Status: offen
+
+Zweck:
+Fachneutrales Bedienpanel mit Moduswahl, D-Pad, Dialog-/Status-ViewModels und Auswahlzustand bauen.
+
+## O4 / M71 - Generischer Browser-Host und Referenzadapter
+
+Status: offen
+
+Zweck:
+Browser-Host, expliziten Ref-Vertrag, Overlay-/SelectionHost und Persistenz-Referenzadapter ohne Ziel-App-Fachlogik bauen.
+
+## O5 / M72 - Unabhaengige Browser-Referenzanwendung
+
+Status: offen
+
+Zweck:
+Eine Browser-Referenzanwendung ausserhalb BBM bereitstellen, die Registry, HostAdapter, Refs und Storage selbst liefert.
+
+## O6 / M73 - Release Candidate und zweite Zielanwendung
+
+Status: offen
+
+Zweck:
+Public API, Integrationshandbuch, Packaging und Abnahmetest fuer eine zweite Zielanwendung stabilisieren.
+
+---
+
 # N - Regel fuer kuenftige Auftraege
 
 Jeder neue Auftrag muss nennen:
