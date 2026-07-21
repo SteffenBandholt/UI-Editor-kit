@@ -6,7 +6,7 @@ M70 stellt ein fachneutrales Bedienpanel fuer die M69-Runtime bereit. Das Panel 
 
 ## Abgrenzung zur Runtime
 
-Die Runtime bleibt fuer Session, Layoutentries, Save, Load, Discard, Reset, Rollback und HostAdapter-Aufrufe verantwortlich. Der Panel-Controller ruft nur oeffentliche Runtime-Methoden auf. Fuer relative D-Pad-Aenderungen nutzt M70 `runtime.inspectElement(elementId)` als reine Lese-API mit `currentEntry`, `baselineEntry`, `changed`, `allowedOps` und `effectiveOps`.
+Die Runtime bleibt fuer Session, Layoutentries, Save, Load, Discard, Reset, Rollback und HostAdapter-Aufrufe verantwortlich. Der Panel-Controller ruft nur oeffentliche Runtime-Methoden auf. Fuer relative D-Pad-Aenderungen nutzt M70 `runtime.inspectElement(elementId)` als reine Lese-API mit `currentEntry`, `effectiveLayout`, `baselineEntry`, `changed`, `allowedOps` und `effectiveOps`. `effectiveLayout` ist der nutzbare aktuelle Host-/Layoutwert fuer relative Groessenaenderungen; fehlende Breiten oder Hoehen werden nicht als `0` interpretiert.
 
 ## Abgrenzung zum Ziel-App-Host
 
@@ -26,7 +26,7 @@ Die Logik verwendet ausschliesslich `move`, `width` und `height`. `move` ist nur
 
 ## D-Pad
 
-Die Richtungen sind `up`, `down`, `left`, `right` und `center`. Die Standardschrittweite betraegt `5` und ist konfigurierbar. Move veraendert x/y, Width nur width und Height nur height. Mindestwerte aus `minWidth` oder `minHeight` werden respektiert; ohne Registry-Grenze gilt eine technische Untergrenze von `1`.
+Die Richtungen sind `up`, `down`, `left`, `right` und `center`. Die Standardschrittweite betraegt `5` und ist konfigurierbar. Move veraendert x/y; fehlende x/y duerfen als neutrale Abweichung `0` behandelt werden. Width und Height arbeiten dagegen nur mit endlichen aktuellen Werten aus `effectiveLayout`; fehlt dieser Wert, wird `CURRENT_VALUE_UNAVAILABLE` gemeldet und keine Runtimeaenderung ausgefuehrt. Mindestwerte aus `minWidth` oder `minHeight` werden respektiert; ohne Registry-Grenze gilt eine technische Untergrenze von `1`.
 
 Der Mittelpunkt `↶` bedeutet ausschliesslich: Sitzungsänderungen dieses Elements verwerfen. Er ruft `runtime.discardElementChanges(elementId)` auf, speichert nicht und loescht keinen persistenten Eintrag.
 
@@ -39,7 +39,7 @@ Der Mittelpunkt `↶` bedeutet ausschliesslich: Sitzungsänderungen dieses Eleme
 
 ## Dialoge
 
-Dialogtypen sind `reset-element` und `reset-layout`. Dialoge sind neutrale ViewModels. Oeffnen veraendert Runtime und Auswahl nicht. Bestaetigen ruft genau eine Runtimeoperation auf, Abbrechen veraendert nichts.
+Dialogtypen sind `reset-element` und `reset-layout`. Dialoge sind neutrale ViewModels. Oeffnen veraendert Runtime und Auswahl nicht. Bestaetigen ruft genau eine Runtimeoperation auf, Abbrechen veraendert nichts. Nach dem Oeffnen setzt der Renderer den Fokus bewusst auf den sicheren Abbrechen-Button. Beim Schliessen merkt der Renderer ein stabiles `data-focus-key` und fokussiert nach dem Re-Render den neu erzeugten Ausloeser innerhalb des Panelroots.
 
 ## Persistenzstatus
 

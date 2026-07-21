@@ -652,11 +652,12 @@ function createUiEditorRuntime(options) {
     const sessionEntries = normalizeEntries(session.getSessionEntries());
     const baselineEntries = normalizeEntries(session.getBaselineEntries());
     const currentEntry = normalizeLayoutEntry(current.value) || sessionEntries.get(elementId) || { elementId };
+    const effectiveLayout = clone(current.value) || clone(currentEntry);
     const baselineEntry = baselineEntries.get(elementId) || null;
     const allowedOps = Array.isArray(element.allowedOps) ? element.allowedOps.slice() : [];
     const lockedOps = Array.isArray(element.lockedOps) ? element.lockedOps : [];
     const effectiveOps = (Array.isArray(element.effectiveOps) ? element.effectiveOps : allowedOps).filter((op) => !lockedOps.includes(op));
-    return okResult(undefined, { elementId, currentEntry, baselineEntry, changed: JSON.stringify(currentEntry || null) !== JSON.stringify(baselineEntry || null), allowedOps, effectiveOps });
+    return okResult(undefined, { elementId, currentEntry, effectiveLayout, baselineEntry, changed: JSON.stringify(currentEntry || null) !== JSON.stringify(baselineEntry || null), allowedOps, effectiveOps });
   }
 
   function reapplyCurrentLayoutState(scopeId) {
