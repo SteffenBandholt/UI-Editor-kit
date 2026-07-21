@@ -28,7 +28,7 @@ const { createSelectionController, SelectionRuntimeErrorCodes } = require("./sel
 const { createHoverOverlay } = require("./selection/hoverOverlay.js");
 const { createSelectedOverlay } = require("./selection/selectedOverlay.js");
 const { resolveSelectionTarget } = require("./selection/targetResolver.js");
-const { createUiEditorRuntime } = require("./runtime/ui-editor-runtime.cjs");
+const { createUiEditorRuntime, validateLayoutEntryForElement } = require("./runtime/ui-editor-runtime.cjs");
 const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
@@ -40,6 +40,7 @@ const {
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
+  validateLayoutEntryForElement,
   RUNTIME_ERROR_CODES,
   normalizeTargetContext,
   validateTargetContext,

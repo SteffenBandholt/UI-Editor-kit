@@ -12,6 +12,7 @@ const { createNeutralTargetAppHostAdapter } = require("../fixtures/neutral-targe
 
 const expectedExports = [
   "createUiEditorRuntime",
+  "validateLayoutEntryForElement",
   "RUNTIME_ERROR_CODES",
   "normalizeTargetContext",
   "validateTargetContext",

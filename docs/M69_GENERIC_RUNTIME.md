@@ -6,7 +6,7 @@ M69 ergaenzt das UI-Editor-kit um eine fachneutrale programmatische Runtime. Sie
 
 ## Public API
 
-Der oeffentliche Einstieg exportiert `createUiEditorRuntime(options)` sowie `RUNTIME_ERROR_CODES`.
+Der oeffentliche Einstieg exportiert `createUiEditorRuntime(options)`, `validateLayoutEntryForElement(entry, registryElement)` sowie `RUNTIME_ERROR_CODES`.
 
 ```js
 const { createUiEditorRuntime } = require("ui-editor-kit");
@@ -47,6 +47,8 @@ Methoden:
 Die Runtime fuehrt pro `targetContext` eine aktive oder inaktive Session. `baselineEntries` sind die neutrale Rueckkehrlinie fuer Discard-Operationen. `sessionEntries` sind aktuelle Editor-Abweichungen. Fehlende Entries bedeuten Ziel-App-Standard. `changedElementIds`, `changedCount`, `changedByElementId` und `baselineVersion` werden strukturiert berechnet, ohne sichtbare Texte als Logikschluessel zu verwenden.
 
 ## Layoutentry-Modell
+
+Ein Layoutentry enthaelt ausschliesslich bekannte neutrale Felder und wird feldweise gegen Registry-Operationen validiert: `x`/`y` erfordern `move`, `width`/`height` erfordern `resize`, `visible: true` erfordert `show` und `visible: false` erfordert `hide`; gesperrte Operationen blockieren das gesamte Entry. Ein persistenter Entry ist keine vertrauenswuerdige Eingabe.
 
 Ein Layoutentry enthaelt ausschliesslich bekannte neutrale Felder:
 

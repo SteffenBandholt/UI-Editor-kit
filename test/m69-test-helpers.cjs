@@ -2,7 +2,7 @@
 const assert = require("assert");
 const { createUiElementRegistry } = require("../src/core/ui-element-registry.cjs");
 function createRegistry(){ const r=createUiElementRegistry(); [
- {id:"demo.card",name:"Card",type:"card",role:"layout",parentId:null,order:1,visible:true,editable:true,allowedOps:["move","resize"],lockedOps:[]},
+ {id:"demo.card",name:"Card",type:"card",role:"layout",parentId:null,order:1,visible:true,editable:true,allowedOps:["move"],lockedOps:[]},
  {id:"demo.card.title",name:"Title",type:"label",role:"content",parentId:"demo.card",order:2,visible:true,editable:true,allowedOps:["move"],lockedOps:[]},
  {id:"demo.table",name:"Table",type:"table",role:"content",parentId:null,order:3,visible:true,editable:true,allowedOps:["resize"],lockedOps:[]},
  {id:"demo.locked",name:"Locked",type:"card",role:"layout",parentId:null,order:4,visible:true,editable:false,allowedOps:["move"],lockedOps:[]},

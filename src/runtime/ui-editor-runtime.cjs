@@ -35,10 +35,6 @@ function withRollbackInfo(result, rollback) {
   };
 }
 
-function failWithRollback(code, reason, rollback) {
-  return withRollbackInfo(blockedResult(code, reason), rollback);
-}
-
 function callResult(fn, code) {
   try {
     const result = fn();
@@ -51,24 +47,18 @@ function callResult(fn, code) {
   }
 }
 
-function registryList(registry) {
-  if (!isFn(registry, "listElements")) return [];
-  try {
-    return registry.listElements();
-  } catch (error) {
-    void error;
-    return [];
+function registryListResult(registry) {
+  if (!isFn(registry, "listElements")) {
+    return blockedResult(RUNTIME_ERROR_CODES.INVALID_REGISTRY, "registry.listElements is required.");
   }
+  return callResult(() => registry.listElements(), RUNTIME_ERROR_CODES.REGISTRY_READ_FAILED);
 }
 
-function registryGet(registry, id) {
-  if (!isFn(registry, "getElementById")) return null;
-  try {
-    return registry.getElementById(id);
-  } catch (error) {
-    void error;
-    return null;
+function registryGetResult(registry, id) {
+  if (!isFn(registry, "getElementById")) {
+    return blockedResult(RUNTIME_ERROR_CODES.INVALID_REGISTRY, "registry.getElementById is required.");
   }
+  return callResult(() => registry.getElementById(id), RUNTIME_ERROR_CODES.REGISTRY_READ_FAILED);
 }
 
 function validateRegistry(registry) {
@@ -145,7 +135,9 @@ function writeStorage(storage, context, entries, code) {
 }
 
 function validateElement(registry, id) {
-  const element = registryGet(registry, id);
+  const result = registryGetResult(registry, id);
+  if (!result.ok) return result;
+  const element = result.value;
   if (!element) return blockedResult(RUNTIME_ERROR_CODES.UNKNOWN_ELEMENT, "unknown element.");
   if (element.editable === false) {
     return blockedResult(RUNTIME_ERROR_CODES.ELEMENT_NOT_EDITABLE, "element is not editable.");
@@ -153,26 +145,42 @@ function validateElement(registry, id) {
   return okResult(element);
 }
 
-function validateApplyOperation(element) {
-  const allowedOps = Array.isArray(element.effectiveOps)
+function getAllowedOps(element) {
+  return Array.isArray(element.effectiveOps)
     ? element.effectiveOps
     : (Array.isArray(element.allowedOps) ? element.allowedOps : []);
+}
+
+function isOperationAllowed(element, operation) {
   const lockedOps = Array.isArray(element.lockedOps) ? element.lockedOps : [];
-  if (lockedOps.includes("move") && lockedOps.includes("resize")) {
-    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout apply operations are locked.");
+  return !lockedOps.includes(operation) && getAllowedOps(element).includes(operation);
+}
+
+function validateLayoutEntryForElement(entry, registryElement) {
+  const normalized = normalizeLayoutEntry(entry);
+  if (!normalized) {
+    return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry is invalid or empty.");
   }
-  if (!allowedOps.includes("move") && !allowedOps.includes("resize")) {
-    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "no neutral layout apply operation is allowed.");
+  if (normalized.elementId !== registryElement.id) {
+    return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry elementId does not match registry element.");
   }
-  return okResult();
+  if ((Object.prototype.hasOwnProperty.call(normalized, "x") || Object.prototype.hasOwnProperty.call(normalized, "y")) && !isOperationAllowed(registryElement, "move")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires move operation.");
+  }
+  if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
+    const visibilityOperation = normalized.visible === false ? "hide" : "show";
+    if (!isOperationAllowed(registryElement, visibilityOperation)) {
+      return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires ${visibilityOperation} operation.`);
+    }
+  }
+  return okResult(normalized);
 }
 
 function operationAllowed(element, operation) {
-  const allowedOps = Array.isArray(element.effectiveOps)
-    ? element.effectiveOps
-    : (Array.isArray(element.allowedOps) ? element.allowedOps : []);
-  const lockedOps = Array.isArray(element.lockedOps) ? element.lockedOps : [];
-  return !lockedOps.includes(operation) && allowedOps.includes(operation);
+  return isOperationAllowed(element, operation);
 }
 
 function captureHostState(host, elementId) {
@@ -245,6 +253,43 @@ function createUiEditorRuntime(options) {
     return okResult();
   }
 
+
+  function listRegistryElements() {
+    const listed = registryListResult(registry);
+    if (!listed.ok) return listed;
+    if (!Array.isArray(listed.value)) {
+      return blockedResult(RUNTIME_ERROR_CODES.INVALID_REGISTRY, "registry.listElements must return an array.");
+    }
+    return okResult(listed.value);
+  }
+
+  function validateEntryForHost(entry) {
+    const elementResult = validateElement(registry, entry && entry.elementId);
+    if (!elementResult.ok) return elementResult;
+    const entryResult = validateLayoutEntryForElement(entry, elementResult.value);
+    if (!entryResult.ok) return entryResult;
+    const ref = validateHostRef(host, entryResult.value.elementId);
+    if (!ref.ok) return ref;
+    return okResult({ entry: entryResult.value, element: elementResult.value });
+  }
+
+  function validateEntriesForHost(entries) {
+    const validatedEntries = [];
+    const seen = new Set();
+    for (const rawEntry of entries) {
+      const normalized = normalizeLayoutEntry(rawEntry);
+      if (!normalized) return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry is invalid or empty.");
+      if (seen.has(normalized.elementId)) {
+        return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entries contain duplicate elementId.");
+      }
+      seen.add(normalized.elementId);
+      const validated = validateEntryForHost(normalized);
+      if (!validated.ok) return validated;
+      validatedEntries.push(validated.value.entry);
+    }
+    return okResult(validatedEntries);
+  }
+
   function status(scopeId) {
     const preflightResult = preflight(scopeId, false);
     return preflightResult.ok ? session.status() : preflightResult;
@@ -261,21 +306,27 @@ function createUiEditorRuntime(options) {
       });
     }
 
+    const listed = listRegistryElements();
+    if (!listed.ok) return listed;
     const entries = [];
-    for (const element of registryList(registry)) {
+    for (const element of listed.value) {
       const current = readHostEntry(host, element.id);
       if (!current.ok) return current;
       const normalized = normalizeLayoutEntry(current.value);
-      if (normalized) entries.push(normalized);
+      if (normalized) {
+        const entryResult = validateLayoutEntryForElement(normalized, element);
+        if (!entryResult.ok) return entryResult;
+        entries.push(entryResult.value);
+      }
     }
 
     return okResult(undefined, { status: session.begin(entries) });
   }
 
   function applyEntryToHost(entry) {
-    const ref = validateHostRef(host, entry.elementId);
-    if (!ref.ok) return ref;
-    return callResult(() => host.applyLayoutEntry(entry.elementId, entry), RUNTIME_ERROR_CODES.HOST_APPLY_FAILED);
+    const validated = validateEntryForHost(entry);
+    if (!validated.ok) return validated;
+    return callResult(() => host.applyLayoutEntry(validated.value.entry.elementId, validated.value.entry), RUNTIME_ERROR_CODES.HOST_APPLY_FAILED);
   }
 
   function clearEntryFromHost(elementId, registryElement) {
@@ -304,12 +355,14 @@ function createUiEditorRuntime(options) {
     if (!entry) {
       return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "changeRequest payload contains no neutral layout entry.");
     }
+    const entryValidation = validateLayoutEntryForElement(entry, elementResult.value);
+    if (!entryValidation.ok) return entryValidation;
 
     const snapshot = captureHostState(host, changeRequest.elementId);
     if (!snapshot.ok) return snapshot;
     const oldSessionEntries = session.getSessionEntries();
     const applied = callResult(
-      () => host.applyLayoutEntry(changeRequest.elementId, entry),
+      () => host.applyLayoutEntry(changeRequest.elementId, entryValidation.value),
       RUNTIME_ERROR_CODES.HOST_APPLY_FAILED
     );
     if (!applied.ok) {
@@ -322,8 +375,14 @@ function createUiEditorRuntime(options) {
       session.setSessionEntries(oldSessionEntries);
       return withRollbackInfo(current, restoreHostSnapshots(host, { [changeRequest.elementId]: snapshot.value }));
     }
-    session.setEntry(normalizeLayoutEntry(current.value) || entry);
-    return okResult(entry, { status: session.status() });
+    const currentEntry = normalizeLayoutEntry(current.value) || entryValidation.value;
+    const currentValidation = validateLayoutEntryForElement(currentEntry, elementResult.value);
+    if (!currentValidation.ok) {
+      session.setSessionEntries(oldSessionEntries);
+      return withRollbackInfo(currentValidation, restoreHostSnapshots(host, { [changeRequest.elementId]: snapshot.value }));
+    }
+    session.setEntry(currentValidation.value);
+    return okResult(currentValidation.value, { status: session.status() });
   }
 
   function discardElementChanges() {
@@ -352,7 +411,9 @@ function createUiEditorRuntime(options) {
     const oldSessionEntries = session.getSessionEntries();
     const baselineEntries = session.getBaselineEntries();
     const baselineById = normalizeEntries(baselineEntries);
-    const editableElements = registryList(registry).filter((element) => element.editable !== false);
+    const listed = listRegistryElements();
+    if (!listed.ok) return listed;
+    const editableElements = listed.value.filter((element) => element.editable !== false);
     const snapshots = {};
 
     for (const element of editableElements) {
@@ -395,11 +456,13 @@ function createUiEditorRuntime(options) {
     const persistent = storagePersistent(storage);
     if (!persistent.ok) return persistent;
 
-    const oldPersistent = readStorage(storage, context);
-    if (!oldPersistent.ok) return oldPersistent;
     const oldSessionEntries = session.getSessionEntries();
     const oldBaselineEntries = session.getBaselineEntries();
-    const entries = session.getSessionEntries();
+    const validatedEntries = validateEntriesForHost(oldSessionEntries);
+    if (!validatedEntries.ok) return validatedEntries;
+    const oldPersistent = readStorage(storage, context);
+    if (!oldPersistent.ok) return oldPersistent;
+    const entries = validatedEntries.value;
 
     const written = writeStorage(storage, context, entries);
     if (!written.ok) return written;
@@ -424,13 +487,9 @@ function createUiEditorRuntime(options) {
         return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "loaded layout entries contain duplicate elementId.");
       }
       seen.add(entry.elementId);
-      const element = validateElement(registry, entry.elementId);
-      if (!element.ok) return element;
-      const operation = validateApplyOperation(element.value);
-      if (!operation.ok) return operation;
-      const ref = validateHostRef(host, entry.elementId);
-      if (!ref.ok) return ref;
-      normalizedEntries.push(entry);
+      const validated = validateEntryForHost(entry);
+      if (!validated.ok) return validated;
+      normalizedEntries.push(validated.value.entry);
     }
     return okResult(normalizedEntries);
   }
@@ -451,7 +510,9 @@ function createUiEditorRuntime(options) {
     const loadedById = normalizeEntries(loadedEntries);
     const previousIds = new Set([...normalizeEntries(oldSessionEntries).keys(), ...normalizeEntries(oldBaselineEntries).keys()]);
     const affectedIds = new Set([...loadedById.keys(), ...previousIds]);
-    const editableById = new Map(registryList(registry).filter((element) => element.editable !== false).map((element) => [element.id, element]));
+    const listed = listRegistryElements();
+    if (!listed.ok) return listed;
+    const editableById = new Map(listed.value.filter((element) => element.editable !== false).map((element) => [element.id, element]));
     const snapshots = {};
 
     for (const elementId of affectedIds) {
@@ -496,7 +557,9 @@ function createUiEditorRuntime(options) {
     if (!oldPersistent.ok) return oldPersistent;
     const oldSessionEntries = session.getSessionEntries();
     const oldBaselineEntries = session.getBaselineEntries();
-    const editableElements = registryList(registry).filter((element) => element.editable !== false);
+    const listed = listRegistryElements();
+    if (!listed.ok) return listed;
+    const editableElements = listed.value.filter((element) => element.editable !== false);
     const snapshots = {};
 
     function rollbackFrom(errorResult) {
@@ -570,14 +633,16 @@ function createUiEditorRuntime(options) {
   function reapplyCurrentLayoutState(scopeId) {
     const preflightResult = preflight(scopeId, true);
     if (!preflightResult.ok) return preflightResult;
+    const validatedEntries = validateEntriesForHost(session.getSessionEntries());
+    if (!validatedEntries.ok) return validatedEntries;
     if (isFn(host, "reapplyLayoutEntries")) {
       const reapplied = callResult(
-        () => host.reapplyLayoutEntries(session.getSessionEntries()),
+        () => host.reapplyLayoutEntries(validatedEntries.value),
         RUNTIME_ERROR_CODES.HOST_APPLY_FAILED
       );
       if (!reapplied.ok) return reapplied;
     } else {
-      for (const entry of session.getSessionEntries()) {
+      for (const entry of validatedEntries.value) {
         const applied = applyEntryToHost(entry);
         if (!applied.ok) return applied;
       }
@@ -608,4 +673,4 @@ function createUiEditorRuntime(options) {
   };
 }
 
-module.exports = { createUiEditorRuntime };
+module.exports = { createUiEditorRuntime, validateLayoutEntryForElement };
