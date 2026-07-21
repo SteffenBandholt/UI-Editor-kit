@@ -29,6 +29,11 @@ const { createHoverOverlay } = require("./selection/hoverOverlay.js");
 const { createSelectedOverlay } = require("./selection/selectedOverlay.js");
 const { resolveSelectionTarget } = require("./selection/targetResolver.js");
 const { createUiEditorRuntime, validateLayoutEntryForElement } = require("./runtime/ui-editor-runtime.cjs");
+const { createUiEditorPanelController } = require("./panel/ui-editor-panel-controller.cjs");
+const { createUiEditorPanelViewModel } = require("./panel/ui-editor-panel-view-model.cjs");
+const { createUiEditorPanel } = require("./panel/ui-editor-panel-renderer.cjs");
+const { createPanelMessageCatalog } = require("./panel/panel-message-catalog.cjs");
+const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = require("./panel/panel-intents.cjs");
 const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
@@ -41,6 +46,13 @@ const {
 module.exports = Object.freeze({
   createUiEditorRuntime,
   validateLayoutEntryForElement,
+  createUiEditorPanelController,
+  createUiEditorPanelViewModel,
+  createUiEditorPanel,
+  createPanelMessageCatalog,
+  PANEL_INTENTS,
+  PANEL_MODES,
+  PANEL_DIRECTIONS,
   RUNTIME_ERROR_CODES,
   normalizeTargetContext,
   validateTargetContext,

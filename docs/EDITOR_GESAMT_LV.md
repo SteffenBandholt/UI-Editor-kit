@@ -1028,14 +1028,17 @@ Zweck:
 Generische Runtime fuer Session, Layoutaenderung, Save, Load, Gesamtreset, Einzelreset, Baseline und strukturierte Fehlercodes im UI-Editor-kit bauen.
 
 Nachweis:
-`src/runtime/*`, `docs/M69_GENERIC_RUNTIME.md` und die M69-Testdateien pruefen Kontextisolation, Sessionsemantik, Persistenz, Reset, Reapply und Boundary-Regeln. O3/M70 bleibt offen und baut spaeter das generische Bedienpanel.
+`src/runtime/*`, `docs/M69_GENERIC_RUNTIME.md` und die M69-Testdateien pruefen Kontextisolation, Sessionsemantik, Persistenz, Reset, Reapply und Boundary-Regeln. O3/M70 baut darauf das generische Bedienpanel.
 
 ## O3 / M70 - Generisches Bedienpanel und ViewModels
 
-Status: offen
+Status: abgenommen
 
 Zweck:
 Fachneutrales Bedienpanel mit Moduswahl, D-Pad, Dialog-/Status-ViewModels und Auswahlzustand bauen.
+
+Nachweis:
+`src/panel/*`, `docs/M70_GENERIC_PANEL.md` und die M70-Testdateien pruefen Auswahl, Modi, D-Pad, Persistenzstatus, Dialoge, strukturierte Statusmeldungen, Renderer-Cleanup und Boundary-Regeln. O4/M71 bleibt offen und ist der naechste Schritt fuer Browser-Host, echte Refs, Auswahlrahmen und Overlay.
 
 ## O4 / M71 - Generischer Browser-Host und Referenzadapter
 

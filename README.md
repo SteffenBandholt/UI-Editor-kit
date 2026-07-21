@@ -161,3 +161,20 @@ Siehe:
 ## Status
 
 Startversion des fachneutralen Kits. Der Editor-Core wird schrittweise ergaenzt.
+
+## M69/M70 programmatische Runtime und generisches Panel
+
+Das Paket exportiert eine fachneutrale Runtime (`createUiEditorRuntime`) sowie ab M70 ein kleines generisches Bedienpanel. Die Runtime verwaltet Session, neutrale Layoutentries, Save, Load, Discard, Reset und Rollback. Das Panel besteht aus Controller, ViewModel, Message-Catalog und Renderer:
+
+```js
+const {
+  createUiEditorRuntime,
+  createUiEditorPanelController,
+  createUiEditorPanelViewModel,
+  createUiEditorPanel,
+} = require("ui-editor-kit");
+```
+
+Der Panel-Controller liest Registry und Runtime-Status, verwaltet Auswahl, Modus (`move`, `width`, `height`), Schrittweite, Busy-Status, Dialoge und strukturierte Ergebnisse. Benutzeraktionen werden in neutrale Runtime-Aufrufe uebersetzt. Der Renderer erzeugt nur sein eigenes Panel-DOM im uebergebenen MountTarget.
+
+M70 enthaelt noch keinen produktiven Browser-Host fuer echte Ziel-App-Elemente. Echte Browser-Refs, Auswahlrahmen, SelectionHost und Overlay folgen in M71.

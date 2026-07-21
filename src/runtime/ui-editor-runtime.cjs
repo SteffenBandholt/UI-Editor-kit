@@ -630,6 +630,35 @@ function createUiEditorRuntime(options) {
     return okResult(undefined, { status: session.status() });
   }
 
+  function getPersistenceStatus() {
+    const available = storageAvailable(storage);
+    return {
+      available: available.ok,
+      persistent: available.ok && storagePersistent(storage).ok,
+      code: available.ok ? (storagePersistent(storage).ok ? "PERSISTENT" : RUNTIME_ERROR_CODES.STORAGE_NOT_PERSISTENT) : available.code,
+    };
+  }
+
+  function inspectElement() {
+    const { scopeId, elementId } = parseScoped(arguments);
+    const preflightResult = preflight(scopeId, false);
+    if (!preflightResult.ok) return preflightResult;
+    const elementResult = registryGetResult(registry, elementId);
+    if (!elementResult.ok) return elementResult;
+    const element = elementResult.value;
+    if (!element) return blockedResult(RUNTIME_ERROR_CODES.UNKNOWN_ELEMENT, "unknown element.");
+    const current = readHostEntry(host, elementId);
+    if (!current.ok) return current;
+    const sessionEntries = normalizeEntries(session.getSessionEntries());
+    const baselineEntries = normalizeEntries(session.getBaselineEntries());
+    const currentEntry = normalizeLayoutEntry(current.value) || sessionEntries.get(elementId) || { elementId };
+    const baselineEntry = baselineEntries.get(elementId) || null;
+    const allowedOps = Array.isArray(element.allowedOps) ? element.allowedOps.slice() : [];
+    const lockedOps = Array.isArray(element.lockedOps) ? element.lockedOps : [];
+    const effectiveOps = (Array.isArray(element.effectiveOps) ? element.effectiveOps : allowedOps).filter((op) => !lockedOps.includes(op));
+    return okResult(undefined, { elementId, currentEntry, baselineEntry, changed: JSON.stringify(currentEntry || null) !== JSON.stringify(baselineEntry || null), allowedOps, effectiveOps });
+  }
+
   function reapplyCurrentLayoutState(scopeId) {
     const preflightResult = preflight(scopeId, true);
     if (!preflightResult.ok) return preflightResult;
@@ -668,6 +697,8 @@ function createUiEditorRuntime(options) {
     loadLayout,
     resetLayoutToDefaults,
     resetElementToDefaults,
+    inspectElement,
+    getPersistenceStatus,
     reapplyCurrentLayoutState,
     endSession,
   };
