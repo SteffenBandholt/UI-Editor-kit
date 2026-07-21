@@ -37,11 +37,18 @@ const { createUiEditorPanelController } = require("../src/index.cjs");
   controller.selectElement("demo.locked");
   assert.equal(controller.getState().editable, false);
 
-  const naturalWidth = setup({ "demo.table": { elementId: "demo.table", width: 200, height: 50 } });
-  const naturalWidthController = createUiEditorPanelController({ runtime: naturalWidth.runtime, registry: naturalWidth.registry });
+  const naturalWidthChanges = [];
+  const naturalWidthRuntime = {
+    getSessionStatus() { return { ok: true, active: true, changedCount: 0, changedElementIds: [] }; },
+    getPersistenceStatus() { return { available: true, persistent: true }; },
+    inspectElement() { return { ok: true, currentEntry: { elementId: "demo.table" }, effectiveLayout: { elementId: "demo.table", width: 200, height: 50 }, allowedOps: ["resize"], effectiveOps: ["resize"] }; },
+    applyChange(changeRequest) { naturalWidthChanges.push(changeRequest); return { ok: true, status: { active: true, changedCount: 1, changedElementIds: ["demo.table"] } }; },
+  };
+  const naturalWidthController = createUiEditorPanelController({ runtime: naturalWidthRuntime, registry });
   naturalWidthController.selectElement("demo.table");
   await naturalWidthController.activateDirection("right");
-  assert.equal(naturalWidth.host.dump()["demo.table"].width, 205);
+  assert.equal(naturalWidthChanges.length, 1);
+  assert.deepEqual(naturalWidthChanges[0].payload, { width: 205, height: 50 });
 
   const missingWidthRuntime = {
     getSessionStatus() { return { ok: true, active: true, changedCount: 0, changedElementIds: [] }; },
@@ -54,18 +61,35 @@ const { createUiEditorPanelController } = require("../src/index.cjs");
   await missingWidthController.activateDirection("right");
   assert.equal(missingWidthController.getState().lastResult.code, "CURRENT_VALUE_UNAVAILABLE");
 
-  const naturalHeight = setup({ "demo.table": { elementId: "demo.table", width: 25, height: 200 } });
-  const naturalHeightController = createUiEditorPanelController({ runtime: naturalHeight.runtime, registry: naturalHeight.registry });
+  const naturalHeightChanges = [];
+  const naturalHeightRuntime = {
+    getSessionStatus() { return { ok: true, active: true, changedCount: 0, changedElementIds: [] }; },
+    getPersistenceStatus() { return { available: true, persistent: true }; },
+    inspectElement() { return { ok: true, currentEntry: { elementId: "demo.table" }, effectiveLayout: { elementId: "demo.table", width: 25, height: 200 }, allowedOps: ["resize"], effectiveOps: ["resize"] }; },
+    applyChange(changeRequest) { naturalHeightChanges.push(changeRequest); return { ok: true, status: { active: true, changedCount: 1, changedElementIds: ["demo.table"] } }; },
+  };
+  const naturalHeightController = createUiEditorPanelController({ runtime: naturalHeightRuntime, registry });
   naturalHeightController.selectElement("demo.table");
   naturalHeightController.setMode("height");
   await naturalHeightController.activateDirection("down");
-  assert.equal(naturalHeight.host.dump()["demo.table"].height, 205);
+  assert.equal(naturalHeightChanges.length, 1);
+  assert.deepEqual(naturalHeightChanges[0].payload, { height: 205, width: 25 });
 
   const throwingRegistry = { getElementById() { throw new Error("registry boom"); } };
   const throwingController = createUiEditorPanelController({ runtime, registry: throwingRegistry });
   assert.doesNotThrow(() => throwingController.selectElement("demo.card"));
   assert.equal(throwingController.getState().lastResult.code, "REGISTRY_READ_FAILED");
   assert.equal(throwingController.getState().selectedElementId, null);
+
+  const inspectRegistryFailRuntime = {
+    getSessionStatus() { return { ok: true, active: true, changedCount: 0, changedElementIds: [] }; },
+    getPersistenceStatus() { return { available: true, persistent: true }; },
+    inspectElement() { return { ok: false, blocked: true, code: "REGISTRY_READ_FAILED", messageKey: "REGISTRY_READ_FAILED" }; },
+  };
+  const keepSelectionController = createUiEditorPanelController({ runtime: inspectRegistryFailRuntime, registry });
+  keepSelectionController.selectElement("demo.card");
+  assert.equal(keepSelectionController.getState().lastResult.code, "REGISTRY_READ_FAILED");
+  assert.equal(keepSelectionController.getState().selectedElementId, null);
 
   let applied = 0;
   const minThrowRuntime = {
@@ -81,6 +105,22 @@ const { createUiEditorPanelController } = require("../src/index.cjs");
   await minThrowController.activateDirection("right");
   assert.equal(minThrowController.getState().lastResult.code, "REGISTRY_READ_FAILED");
   assert.equal(applied, 0);
+
+  let heightApplied = 0;
+  const minHeightThrowRuntime = {
+    getSessionStatus() { return { ok: true, active: true, changedCount: 0, changedElementIds: [] }; },
+    getPersistenceStatus() { return { available: true, persistent: true }; },
+    inspectElement() { return { ok: true, currentEntry: { elementId: "demo.table", height: 20 }, effectiveLayout: { elementId: "demo.table", height: 20 }, allowedOps: ["resize"], effectiveOps: ["resize"] }; },
+    applyChange() { heightApplied += 1; return { ok: true }; },
+  };
+  const minHeightThrowRegistry = { getElementById(id) { if (id === "demo.table") return { id, name: "Table", editable: true, allowedOps: ["resize"], lockedOps: [] }; return null; } };
+  const minHeightThrowController = createUiEditorPanelController({ runtime: minHeightThrowRuntime, registry: minHeightThrowRegistry });
+  minHeightThrowController.selectElement("demo.table");
+  minHeightThrowController.setMode("height");
+  minHeightThrowRegistry.getElementById = () => { throw new Error("min height read failed"); };
+  await minHeightThrowController.activateDirection("down");
+  assert.equal(minHeightThrowController.getState().lastResult.code, "REGISTRY_READ_FAILED");
+  assert.equal(heightApplied, 0);
 
   console.log("m70 panel controller ok");
 })();

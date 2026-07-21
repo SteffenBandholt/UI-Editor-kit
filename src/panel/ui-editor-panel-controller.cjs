@@ -255,6 +255,11 @@ function createUiEditorPanelController(options) {
         return getState();
       }
       const inspected = isFn(runtime, "inspectElement") ? (() => { try { return runtime.inspectElement(elementId); } catch (error) { return blocked(PANEL_ERROR_CODES.UNKNOWN_ERROR, error.message); } })() : null;
+      if (inspected && inspected.ok === false && inspected.code === RUNTIME_ERROR_CODES.REGISTRY_READ_FAILED) {
+        state.lastResult = inspected;
+        emit();
+        return getState();
+      }
       applySelection(element, inspected);
       state.lastResult = inspected && inspected.ok === false ? inspected : null;
       emit();
