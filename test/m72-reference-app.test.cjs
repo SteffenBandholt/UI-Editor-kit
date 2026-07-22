@@ -1,0 +1,11 @@
+"use strict";
+const {assert,createDoc,memoryStorage}=require("./m72-reference-test-helpers.cjs");
+const {createReferenceApp,REF_BINDINGS}=require("../examples/browser-reference/reference-app.cjs");
+const doc=createDoc(); const app=createReferenceApp({documentAdapter:doc,windowAdapter:{localStorage:memoryStorage(),addEventListener(){},removeEventListener(){}},root:doc.getElementById("reference-app")});
+assert.equal(app.runtime.getSessionStatus().active,true);
+assert.deepEqual(app.elementRefs.listIds().sort(),REF_BINDINGS.map(x=>x[0]).sort());
+assert.ok(doc.getElementById("reference-panel").children.length>0);
+assert.ok(doc.getElementById("reference-stage"));
+assert.equal(app.registry.getElementById("demo.card").minWidth,160);
+app.destroy();
+console.log("m72 reference app ok");

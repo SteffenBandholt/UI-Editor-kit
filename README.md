@@ -183,3 +183,15 @@ M70 enthaelt noch keinen produktiven Browser-Host fuer echte Ziel-App-Elemente. 
 Ab M71 exportiert das Paket eine fachneutrale Browser-Host-Schicht fuer echte HTMLElement-Refs: `createElementRefRegistry`, `createBrowserHostAdapter`, `createBrowserSelectionHost`, `createBrowserOverlayHost`, `createBrowserLayoutStorage` und `createUiEditorBrowserBridge`. Die Ziel-App muss jedes editierbare Element explizit registrieren und eigene Auswahlereignisse bewusst an den SelectionHost uebergeben. Der BrowserHost scannt kein DOM, nutzt kein globales `localStorage` und kennt keine Ziel-App-Fachlogik. Details stehen in `docs/M71_GENERIC_BROWSER_HOST.md`.
 
 M71 bindet noch keine konkrete sichtbare Referenzanwendung produktiv an. Die unabhaengige Browser-Referenzanwendung folgt in M72.
+
+## M72 Browser-Referenzanwendung
+
+Ab M72 enthaelt das Kit eine eigenstaendige, neutrale Browser-Referenzanwendung unter `examples/browser-reference/`. Sie ist eine sichtbare Bedien- und Integrationsreferenz fuer Runtime, Panel, BrowserHostAdapter, ElementRefs, SelectionHost, OverlayHost, BrowserStorage und BrowserBridge.
+
+Start:
+
+```bash
+npm run reference:browser
+```
+
+Die Referenzanwendung ist keine Produktiv-Ziel-App, enthaelt keine externe Fachanbindung und verwendet den UI-Editor ausschliesslich ueber die oeffentliche API. Sie enthaelt keine externe Produktanbindung. Details stehen in `docs/M72_BROWSER_REFERENCE_APP.md`; die manuelle Abnahme steht in `docs/M72_REFERENCE_APP_CHECKLIST.md`.

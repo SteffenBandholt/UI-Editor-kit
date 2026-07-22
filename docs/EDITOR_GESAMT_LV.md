@@ -1082,3 +1082,30 @@ Ohne LV-Position kein Auftrag.
 Ohne Abnahmekriterien kein Auftrag.
 
 Ohne gruene Tests kein Haken in `STATUS.md`.
+
+
+## O5/M72 - Unabhaengige Browser-Referenzanwendung
+
+Status: gebaut
+
+Zweck:
+Eine eigenstaendige neutrale Browser-Referenzanwendung weist Runtime, Panel, BrowserHostAdapter, ElementRefs, SelectionHost, OverlayHost, BrowserStorage und BrowserBridge sichtbar nach.
+
+Abnahme:
+- M72-Referenztests gruen
+- `npm run reference:build` erzeugt ein Browserbundle
+- `npm run reference:browser` startet lokal
+- manuelle Checkliste dokumentiert
+
+Nicht erlaubt:
+- externe Fachanbindung
+- automatische DOM-Suche
+- direkte Sessiondaten-Manipulation
+- CDN-Abhaengigkeiten
+
+## O6/M73 - Release Candidate und zweite Zielanwendung
+
+Status: offen
+
+Zweck:
+Nach M72 folgt der Release-Candidate-Schritt.
