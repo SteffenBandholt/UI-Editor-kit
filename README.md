@@ -178,3 +178,8 @@ const {
 Der Panel-Controller liest Registry und Runtime-Status, verwaltet Auswahl, Modus (`move`, `width`, `height`), Schrittweite, Busy-Status, Dialoge und strukturierte Ergebnisse. Benutzeraktionen werden in neutrale Runtime-Aufrufe uebersetzt. Der Renderer erzeugt nur sein eigenes Panel-DOM im uebergebenen MountTarget.
 
 M70 enthaelt noch keinen produktiven Browser-Host fuer echte Ziel-App-Elemente. Echte Browser-Refs, Auswahlrahmen, SelectionHost und Overlay folgen in M71.
+## Generische Browser-Integration ab M71
+
+Ab M71 exportiert das Paket eine fachneutrale Browser-Host-Schicht fuer echte HTMLElement-Refs: `createElementRefRegistry`, `createBrowserHostAdapter`, `createBrowserSelectionHost`, `createBrowserOverlayHost`, `createBrowserLayoutStorage` und `createUiEditorBrowserBridge`. Die Ziel-App muss jedes editierbare Element explizit registrieren und eigene Auswahlereignisse bewusst an den SelectionHost uebergeben. Der BrowserHost scannt kein DOM, nutzt kein globales `localStorage` und kennt keine Ziel-App-Fachlogik. Details stehen in `docs/M71_GENERIC_BROWSER_HOST.md`.
+
+M71 bindet noch keine konkrete sichtbare Referenzanwendung produktiv an. Die unabhaengige Browser-Referenzanwendung folgt in M72.

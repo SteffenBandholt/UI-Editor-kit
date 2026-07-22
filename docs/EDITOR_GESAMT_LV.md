@@ -1038,14 +1038,17 @@ Zweck:
 Fachneutrales Bedienpanel mit Moduswahl, D-Pad, Dialog-/Status-ViewModels und Auswahlzustand bauen.
 
 Nachweis:
-`src/panel/*`, `docs/M70_GENERIC_PANEL.md` und die M70-Testdateien pruefen Auswahl, Modi, D-Pad, Persistenzstatus, Dialoge, strukturierte Statusmeldungen, Renderer-Cleanup und Boundary-Regeln. O4/M71 bleibt offen und ist der naechste Schritt fuer Browser-Host, echte Refs, Auswahlrahmen und Overlay.
+`src/panel/*`, `docs/M70_GENERIC_PANEL.md` und die M70-Testdateien pruefen Auswahl, Modi, D-Pad, Persistenzstatus, Dialoge, strukturierte Statusmeldungen, Renderer-Cleanup und Boundary-Regeln. O4/M71 baut darauf den Browser-Host, echte Refs, Auswahlrahmen und Overlay.
 
 ## O4 / M71 - Generischer Browser-Host und Referenzadapter
 
-Status: offen
+Status: abgenommen
 
 Zweck:
 Browser-Host, expliziten Ref-Vertrag, Overlay-/SelectionHost und Persistenz-Referenzadapter ohne Ziel-App-Fachlogik bauen.
+
+Nachweis:
+`src/browser/*`, `docs/M71_GENERIC_BROWSER_HOST.md` und die M71-Testdateien pruefen explizite Refs, BrowserHostAdapter, SelectionHost, OverlayHost, BrowserStorage, BrowserBridge, Cleanup und Boundary-Regeln. O5/M72 bleibt offen und ist der naechste Schritt fuer die unabhaengige Browser-Referenzanwendung.
 
 ## O5 / M72 - Unabhaengige Browser-Referenzanwendung
 
