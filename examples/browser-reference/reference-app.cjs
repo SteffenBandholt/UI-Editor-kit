@@ -26,6 +26,38 @@ function resolveBrowserStorage(windowAdapter) {
     return { ok: false, storage: null, code: "STORAGE_UNAVAILABLE" };
   }
 }
+
+function operationEnabled(element, operation) {
+  const allowedOps = Array.isArray(element && element.effectiveOps) ? element.effectiveOps : (Array.isArray(element && element.allowedOps) ? element.allowedOps : []);
+  const lockedOps = Array.isArray(element && element.lockedOps) ? element.lockedOps : [];
+  return allowedOps.includes(operation) && !lockedOps.includes(operation);
+}
+function filterReferenceLayoutEntry(entry, element) {
+  if (!entry || !element) return entry;
+  const filtered = { elementId: entry.elementId };
+  if (operationEnabled(element, "move")) {
+    if (Object.prototype.hasOwnProperty.call(entry, "x")) filtered.x = entry.x;
+    if (Object.prototype.hasOwnProperty.call(entry, "y")) filtered.y = entry.y;
+  }
+  if (operationEnabled(element, "resize")) {
+    if (Object.prototype.hasOwnProperty.call(entry, "width")) filtered.width = entry.width;
+    if (Object.prototype.hasOwnProperty.call(entry, "height")) filtered.height = entry.height;
+  }
+  if (operationEnabled(element, "show") || operationEnabled(element, "hide")) {
+    if (Object.prototype.hasOwnProperty.call(entry, "visible")) filtered.visible = entry.visible;
+  }
+  return filtered;
+}
+function createReferenceHostAdapter(baseHostAdapter, registry) {
+  return {
+    ...baseHostAdapter,
+    getCurrentLayoutEntry(elementId) {
+      const result = baseHostAdapter.getCurrentLayoutEntry(elementId);
+      if (!result || result.ok === false) return result;
+      return { ...result, value: filterReferenceLayoutEntry(result.value, registry.getElementById(elementId)) };
+    },
+  };
+}
 function displayBootstrapError(root, code) {
   if (!root) return;
   root.innerHTML = `<main class="reference-shell"><section class="reference-errors" role="alert">Referenzanwendung konnte nicht gestartet werden. Ergebniscode: ${safeText(code)}</section></main>`;
@@ -101,7 +133,7 @@ function createReferenceApp(options) {
   let hostAdapter;
   let runtime;
   try {
-    hostAdapter = createBrowserHostAdapter({ elementRefs, windowAdapter });
+    hostAdapter = createReferenceHostAdapter(createBrowserHostAdapter({ elementRefs, windowAdapter }), registry);
     runtime = createUiEditorRuntime({ registry, hostAdapter, layoutStorage: storage, targetContext });
   } catch (_error) {
     throw referenceError("RUNTIME_HOST_INIT_FAILED", "runtime or host initialization failed");
@@ -166,4 +198,4 @@ function createReferenceApp(options) {
 }
 
 if (typeof window !== "undefined") { window.createReferenceApp = createReferenceApp; window.startReferenceApp = startReferenceApp; }
-module.exports = { createReferenceApp, startReferenceApp, resolveBrowserStorage, DOM_IDS, REF_BINDINGS };
+module.exports = { createReferenceApp, startReferenceApp, resolveBrowserStorage, createReferenceHostAdapter, DOM_IDS, REF_BINDINGS };

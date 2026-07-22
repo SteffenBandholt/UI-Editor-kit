@@ -313,7 +313,11 @@ function createUiEditorRuntime(options) {
       const current = readHostEntry(host, element.id);
       if (!current.ok) return current;
       const normalized = normalizeLayoutEntry(current.value);
-      if (normalized) entries.push(normalized);
+      if (normalized) {
+        const entryResult = validateLayoutEntryForElement(normalized, element);
+        if (!entryResult.ok) return entryResult;
+        entries.push(entryResult.value);
+      }
     }
 
     return okResult(undefined, { status: session.begin(entries) });
@@ -372,8 +376,13 @@ function createUiEditorRuntime(options) {
       return withRollbackInfo(current, restoreHostSnapshots(host, { [changeRequest.elementId]: snapshot.value }));
     }
     const currentEntry = normalizeLayoutEntry(current.value) || entryValidation.value;
-    session.setEntry(currentEntry);
-    return okResult(currentEntry, { status: session.status() });
+    const currentValidation = validateLayoutEntryForElement(currentEntry, elementResult.value);
+    if (!currentValidation.ok) {
+      session.setSessionEntries(oldSessionEntries);
+      return withRollbackInfo(currentValidation, restoreHostSnapshots(host, { [changeRequest.elementId]: snapshot.value }));
+    }
+    session.setEntry(currentValidation.value);
+    return okResult(currentValidation.value, { status: session.status() });
   }
 
   function discardElementChanges() {
