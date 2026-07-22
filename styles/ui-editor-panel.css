@@ -1,0 +1,38 @@
+.ui-editor-panel-root {
+  box-sizing: border-box;
+  width: min(320px, 100vw);
+  max-height: 100vh;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #c7cbd1;
+  border-radius: 12px;
+  background: #fff;
+  color: #172033;
+  box-shadow: 0 14px 42px rgba(15, 23, 42, .22);
+  font: 14px/1.35 system-ui, sans-serif;
+}
+.ui-editor-panel-handle {
+  margin: -12px -12px 10px;
+  padding: 10px 12px;
+  border-radius: 11px 11px 0 0;
+  background: #273247;
+  color: #fff;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  font-weight: 700;
+}
+.ui-editor-panel-layers,
+.ui-editor-panel-modes,
+.ui-editor-panel-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.ui-editor-panel-root button,
+.ui-editor-panel-root input { font: inherit; }
+.ui-editor-panel-root button[aria-pressed="true"] { background: #273247; color: #fff; }
+.ui-editor-panel-dpad { display: grid; grid-template-columns: repeat(3, 42px); justify-content: center; gap: 4px; margin: 12px 0; }
+.ui-editor-panel-dpad button:first-child { grid-column: 2; }
+.ui-editor-panel-step { display: flex; align-items: center; gap: 8px; }
+.ui-editor-panel-step input { width: 64px; }
+.ui-editor-panel-status { margin-top: 10px; padding: 8px; border-radius: 7px; background: #f1f4f8; }
+.ui-editor-panel-status-error,
+.ui-editor-panel-status-blocked { background: #fee2e2; color: #8b1d1d; }
+.ui-editor-panel-dialog { margin-top: 10px; padding: 10px; border: 1px solid #e0a223; background: #fff8e6; }

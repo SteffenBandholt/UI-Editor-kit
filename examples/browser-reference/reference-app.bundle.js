@@ -7,8 +7,8 @@ const {
   createBrowserLayoutStorage, createUiEditorBrowserBridge, createUiEditorRuntime,
   createUiEditorPanelController, createUiEditorPanel,
 } = __require(1);
-const { createReferenceRegistry } = __require(42);
-const { REFERENCE_PROFILES, createReferenceTargetContext } = __require(43);
+const { createReferenceRegistry } = __require(43);
+const { REFERENCE_PROFILES, createReferenceTargetContext } = __require(44);
 
 const DOM_IDS = Object.freeze({
   card: "reference-demo-card", heading: "reference-demo-heading", action: "reference-demo-action", info: "reference-demo-info", locked: "reference-demo-locked",
@@ -239,17 +239,18 @@ const { createUiEditorPanelController } = __require(30);
 const { createUiEditorPanelViewModel } = __require(33);
 const { createUiEditorPanel } = __require(34);
 const { createPanelMessageCatalog } = __require(32);
-const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = __require(31);
+const { PANEL_INTENTS, PANEL_LAYERS, PANEL_MODES, PANEL_DIRECTIONS } = __require(31);
+const { createPanelPositionStore } = __require(35);
 const { RUNTIME_ERROR_CODES } = __require(26);
 const { normalizeTargetContext, validateTargetContext } = __require(28);
 const { normalizeLayoutEntry } = __require(29);
-const { createElementRefRegistry } = __require(35);
-const { createBrowserHostAdapter } = __require(37);
-const { createBrowserSelectionHost } = __require(38);
-const { createBrowserOverlayHost } = __require(39);
-const { createBrowserLayoutStorage } = __require(40);
-const { createUiEditorBrowserBridge } = __require(41);
-const { BROWSER_ERROR_CODES } = __require(36);
+const { createElementRefRegistry } = __require(36);
+const { createBrowserHostAdapter } = __require(38);
+const { createBrowserSelectionHost } = __require(39);
+const { createBrowserOverlayHost } = __require(40);
+const { createBrowserLayoutStorage } = __require(41);
+const { createUiEditorBrowserBridge } = __require(42);
+const { BROWSER_ERROR_CODES } = __require(37);
 const {
   validateSelectionHost,
   validateSelectionControllerContract,
@@ -271,8 +272,10 @@ module.exports = Object.freeze({
   createUiEditorPanel,
   createPanelMessageCatalog,
   PANEL_INTENTS,
+  PANEL_LAYERS,
   PANEL_MODES,
   PANEL_DIRECTIONS,
+  createPanelPositionStore,
   RUNTIME_ERROR_CODES,
   normalizeTargetContext,
   validateTargetContext,
@@ -3310,6 +3313,9 @@ function validateElement(registry, id) {
 }
 
 function getAllowedOps(element) {
+  if (element && element.operations && typeof element.operations === "object") {
+    return Object.keys(element.operations).filter((key) => element.operations[key] === true);
+  }
   return Array.isArray(element.effectiveOps)
     ? element.effectiveOps
     : (Array.isArray(element.allowedOps) ? element.allowedOps : []);
@@ -3325,17 +3331,43 @@ function validateLayoutEntryForElement(entry, registryElement) {
   if (!normalized) {
     return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry is invalid or empty.");
   }
-  if (normalized.elementId !== registryElement.id) {
+  const registryId = registryElement.elementId || registryElement.id;
+  if (normalized.elementId !== registryId) {
     return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry elementId does not match registry element.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "x") || Object.prototype.hasOwnProperty.call(normalized, "y")) && !isOperationAllowed(registryElement, "move")) {
+  const elementValues = normalized.element || normalized;
+  const textValues = normalized.text || {};
+  const limits = registryElement.limits || registryElement;
+  const bounds = [
+    [elementValues, "x", "minX", "maxX"], [elementValues, "y", "minY", "maxY"],
+    [elementValues, "width", "minWidth", "maxWidth"], [elementValues, "height", "minHeight", "maxHeight"],
+    [textValues, "offsetX", "minTextOffsetX", "maxTextOffsetX"], [textValues, "offsetY", "minTextOffsetY", "maxTextOffsetY"],
+    [textValues, "fontSize", "minFontSize", "maxFontSize"],
+  ];
+  for (const [values, field, minKey, maxKey] of bounds) {
+    if (!Object.prototype.hasOwnProperty.call(values, field)) continue;
+    if (!Number.isFinite(values[field])) return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, `${field} must be a finite number.`);
+    if ((Number.isFinite(limits[minKey]) && values[field] < limits[minKey]) || (Number.isFinite(limits[maxKey]) && values[field] > limits[maxKey])) {
+      return blockedResult(RUNTIME_ERROR_CODES.VALUE_OUT_OF_RANGE, `${field} exceeds registered limits.`, { value: { field, min: limits[minKey], max: limits[maxKey] } });
+    }
+  }
+  if ((Object.prototype.hasOwnProperty.call(elementValues, "x") || Object.prototype.hasOwnProperty.call(elementValues, "y")) && !isOperationAllowed(registryElement, "move")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires move operation.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
-    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
+  if (Object.prototype.hasOwnProperty.call(elementValues, "width") && !(isOperationAllowed(registryElement, "resizeWidth") || isOperationAllowed(registryElement, "resize"))) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resizeWidth operation.");
   }
-  if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
-    const visibilityOperation = normalized.visible === false ? "hide" : "show";
+  if (Object.prototype.hasOwnProperty.call(elementValues, "height") && !(isOperationAllowed(registryElement, "resizeHeight") || isOperationAllowed(registryElement, "resize"))) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resizeHeight operation.");
+  }
+  if ((Object.prototype.hasOwnProperty.call(textValues, "offsetX") || Object.prototype.hasOwnProperty.call(textValues, "offsetY")) && !isOperationAllowed(registryElement, "textMove")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textMove operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(textValues, "fontSize") && !isOperationAllowed(registryElement, "textResize")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textResize operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(elementValues, "visible")) {
+    const visibilityOperation = elementValues.visible === false ? "hide" : "show";
     if (!isOperationAllowed(registryElement, visibilityOperation)) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires ${visibilityOperation} operation.`);
     }
@@ -3474,7 +3506,7 @@ function createUiEditorRuntime(options) {
     if (!listed.ok) return listed;
     const entries = [];
     for (const element of listed.value) {
-      const current = readHostEntry(host, element.id);
+      const current = readHostEntry(host, element.elementId || element.id);
       if (!current.ok) return current;
       const normalized = normalizeLayoutEntry(current.value);
       if (normalized) {
@@ -3511,7 +3543,10 @@ function createUiEditorRuntime(options) {
 
     const elementResult = validateElement(registry, changeRequest.elementId);
     if (!elementResult.ok) return elementResult;
-    if (!["move", "resize"].includes(changeRequest.operation) || !operationAllowed(elementResult.value, changeRequest.operation)) {
+    const requestedOperation = changeRequest.operation;
+    const allowed = operationAllowed(elementResult.value, requestedOperation) ||
+      ((requestedOperation === "resizeWidth" || requestedOperation === "resizeHeight") && operationAllowed(elementResult.value, "resize"));
+    if (!["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize"].includes(requestedOperation) || !allowed) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
     }
 
@@ -3581,14 +3616,16 @@ function createUiEditorRuntime(options) {
     const snapshots = {};
 
     for (const element of editableElements) {
-      const snapshot = captureHostState(host, element.id);
+      const elementId = element.elementId || element.id;
+      const snapshot = captureHostState(host, elementId);
       if (!snapshot.ok) return snapshot;
-      snapshots[element.id] = snapshot.value;
+      snapshots[elementId] = snapshot.value;
     }
 
     for (const element of editableElements) {
-      const entry = baselineById.get(element.id);
-      const applied = entry ? applyEntryToHost(entry) : clearEntryFromHost(element.id, element);
+      const elementId = element.elementId || element.id;
+      const entry = baselineById.get(elementId);
+      const applied = entry ? applyEntryToHost(entry) : clearEntryFromHost(elementId, element);
       if (!applied.ok) {
         session.setSessionEntries(oldSessionEntries);
         return withRollbackInfo(applied, restoreHostSnapshots(host, snapshots));
@@ -3676,7 +3713,7 @@ function createUiEditorRuntime(options) {
     const affectedIds = new Set([...loadedById.keys(), ...previousIds]);
     const listed = listRegistryElements();
     if (!listed.ok) return listed;
-    const editableById = new Map(listed.value.filter((element) => element.editable !== false).map((element) => [element.id, element]));
+    const editableById = new Map(listed.value.filter((element) => element.editable !== false).map((element) => [element.elementId || element.id, element]));
     const snapshots = {};
 
     for (const elementId of affectedIds) {
@@ -3735,10 +3772,11 @@ function createUiEditorRuntime(options) {
     }
 
     for (const element of editableElements) {
-      const snapshot = captureHostState(host, element.id);
+      const elementId = element.elementId || element.id;
+      const snapshot = captureHostState(host, elementId);
       if (!snapshot.ok) return rollbackFrom(snapshot);
-      snapshots[element.id] = snapshot.value;
-      const cleared = clearEntryFromHost(element.id, element);
+      snapshots[elementId] = snapshot.value;
+      const cleared = clearEntryFromHost(elementId, element);
       if (!cleared.ok) return rollbackFrom(cleared);
     }
 
@@ -3818,7 +3856,7 @@ function createUiEditorRuntime(options) {
     const currentEntry = normalizeLayoutEntry(current.value) || sessionEntries.get(elementId) || { elementId };
     const effectiveLayout = clone(current.value) || clone(currentEntry);
     const baselineEntry = baselineEntries.get(elementId) || null;
-    const allowedOps = Array.isArray(element.allowedOps) ? element.allowedOps.slice() : [];
+    const allowedOps = getAllowedOps(element);
     const lockedOps = Array.isArray(element.lockedOps) ? element.lockedOps : [];
     const effectiveOps = (Array.isArray(element.effectiveOps) ? element.effectiveOps : allowedOps).filter((op) => !lockedOps.includes(op));
     return okResult(undefined, { elementId, currentEntry, effectiveLayout, baselineEntry, changed: JSON.stringify(currentEntry || null) !== JSON.stringify(baselineEntry || null), allowedOps, effectiveOps });
@@ -3898,6 +3936,7 @@ const RUNTIME_ERROR_CODES = Object.freeze({
   HOST_CLEAR_FAILED: "HOST_CLEAR_FAILED",
   ROLLBACK_FAILED: "ROLLBACK_FAILED",
   INVALID_LAYOUT_ENTRY: "INVALID_LAYOUT_ENTRY",
+  VALUE_OUT_OF_RANGE: "VALUE_OUT_OF_RANGE",
   ALREADY_ACTIVE: "ALREADY_ACTIVE",
 });
 
@@ -3941,12 +3980,25 @@ module.exports = { normalizeTargetContext, validateTargetContext, assertScope };
 },
 29:function(module,exports,__require){
 "use strict";
-const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible"]);
+const ELEMENT_FIELDS = Object.freeze(["x", "y", "width", "height", "visible"]);
+const TEXT_FIELDS = Object.freeze(["offsetX", "offsetY", "fontSize"]);
+const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", ...ELEMENT_FIELDS, "element", "text"]);
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function normalizeLayoutEntry(entry) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.elementId !== "string" || entry.elementId.trim() === "") return null;
   const normalized = { elementId: entry.elementId };
-  for (const field of LAYOUT_ENTRY_FIELDS) if (field !== "elementId" && Object.prototype.hasOwnProperty.call(entry, field)) normalized[field] = clone(entry[field]);
+  const nested = Object.prototype.hasOwnProperty.call(entry, "element") || Object.prototype.hasOwnProperty.call(entry, "text");
+  if (nested) {
+    const element = {};
+    const text = {};
+    for (const field of ELEMENT_FIELDS) if (entry.element && Object.prototype.hasOwnProperty.call(entry.element, field)) element[field] = clone(entry.element[field]);
+    for (const field of TEXT_FIELDS) if (entry.text && Object.prototype.hasOwnProperty.call(entry.text, field)) text[field] = clone(entry.text[field]);
+    if (Object.keys(element).length > 0) normalized.element = element;
+    if (Object.keys(text).length > 0) normalized.text = text;
+  } else {
+    // M68-M72 layout entries remain readable; new integrations should use element/text.
+    for (const field of ELEMENT_FIELDS) if (Object.prototype.hasOwnProperty.call(entry, field)) normalized[field] = clone(entry[field]);
+  }
   return Object.keys(normalized).length === 1 ? null : normalized;
 }
 function normalizeEntries(entries) {
@@ -3980,13 +4032,13 @@ function createSessionState(clock) {
     resetBaselineElement(id) { if (session.has(id)) baseline.set(id, clone(session.get(id))); else baseline.delete(id); baselineVersion = String(now()); return status(); },
   };
 }
-module.exports = { LAYOUT_ENTRY_FIELDS, normalizeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };
+module.exports = { ELEMENT_FIELDS, TEXT_FIELDS, LAYOUT_ENTRY_FIELDS, normalizeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };
 
 },
 30:function(module,exports,__require){
 "use strict";
 const { RUNTIME_ERROR_CODES } = __require(26);
-const { PANEL_MODES } = __require(31);
+const { PANEL_LAYERS, PANEL_MODES } = __require(31);
 const { createPanelMessageCatalog } = __require(32);
 
 const PANEL_ERROR_CODES = Object.freeze({
@@ -4015,7 +4067,9 @@ function okWithCode(result, successCode) {
 }
 
 function opsFor(element) {
-  const allowedOps = Array.isArray(element && element.allowedOps) ? element.allowedOps.slice() : [];
+  const allowedOps = element && element.operations && typeof element.operations === "object"
+    ? Object.keys(element.operations).filter((key) => element.operations[key] === true)
+    : (Array.isArray(element && element.allowedOps) ? element.allowedOps.slice() : []);
   const lockedOps = Array.isArray(element && element.lockedOps) ? element.lockedOps : [];
   const sourceEffective = Array.isArray(element && element.effectiveOps) ? element.effectiveOps : allowedOps;
   return {
@@ -4027,7 +4081,15 @@ function opsFor(element) {
 function modesFrom(effectiveOps) {
   const modes = [];
   if (effectiveOps.includes("move")) modes.push(PANEL_MODES.MOVE);
-  if (effectiveOps.includes("resize")) modes.push(PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT);
+  if (effectiveOps.includes("resize") || effectiveOps.includes("resizeWidth")) modes.push(PANEL_MODES.WIDTH);
+  if (effectiveOps.includes("resize") || effectiveOps.includes("resizeHeight")) modes.push(PANEL_MODES.HEIGHT);
+  return modes;
+}
+
+function textModesFrom(effectiveOps) {
+  const modes = [];
+  if (effectiveOps.includes("textMove")) modes.push(PANEL_MODES.TEXT_POSITION);
+  if (effectiveOps.includes("textResize")) modes.push(PANEL_MODES.TEXT_SIZE);
   return modes;
 }
 
@@ -4048,7 +4110,10 @@ function createUiEditorPanelController(options) {
     editable: false,
     allowedOps: [],
     effectiveOps: [],
+    modernOperations: false,
     availableModes: [],
+    availableTextModes: [],
+    layer: PANEL_LAYERS.ELEMENT,
     mode: cfg.initialMode || PANEL_MODES.MOVE,
     stepSize: Number(cfg.stepSize) || 5,
     dialog: { open: false },
@@ -4105,13 +4170,17 @@ function createUiEditorPanelController(options) {
       ? { allowedOps: inspectResult.allowedOps, effectiveOps: inspectResult.effectiveOps }
       : {};
     const operationState = opsFor({ ...element, ...inspectedOps });
-    state.selectedElementId = element.id;
-    state.selectedElementName = element.name || element.id;
+    state.selectedElementId = element.elementId || element.id;
+    state.selectedElementName = element.displayName || element.name || state.selectedElementId;
     state.editable = element.editable !== false;
     state.allowedOps = operationState.allowedOps;
     state.effectiveOps = operationState.effectiveOps;
+    state.modernOperations = !!(element.operations && typeof element.operations === "object");
     state.availableModes = state.editable ? modesFrom(operationState.effectiveOps) : [];
-    if (!state.availableModes.includes(state.mode)) state.mode = state.availableModes[0] || PANEL_MODES.MOVE;
+    state.availableTextModes = state.editable ? textModesFrom(operationState.effectiveOps) : [];
+    if (state.layer === PANEL_LAYERS.TEXT && state.availableTextModes.length === 0) state.layer = PANEL_LAYERS.ELEMENT;
+    const modes = state.layer === PANEL_LAYERS.TEXT ? state.availableTextModes : state.availableModes;
+    if (!modes.includes(state.mode)) state.mode = modes[0] || PANEL_MODES.MOVE;
   }
 
   function getState() {
@@ -4170,51 +4239,85 @@ function createUiEditorPanelController(options) {
   function minFor(field) {
     const elementResult = safeRegistryGet(state.selectedElementId);
     if (!elementResult.ok) return elementResult;
-    const value = elementResult.value && elementResult.value[field];
-    return { ok: true, value: Number.isFinite(value) ? value : 1 };
+    const limits = elementResult.value && elementResult.value.limits;
+    const value = elementResult.value && (elementResult.value[field] ?? (limits && limits[field]));
+    return { ok: true, value: Number.isFinite(value) ? value : undefined };
   }
 
   function createChange(direction) {
     if (!state.selectedElementId) return blocked(PANEL_ERROR_CODES.NO_SELECTION, "no element selected.");
-    if (!state.availableModes.includes(state.mode)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
+    const activeModes = state.layer === PANEL_LAYERS.TEXT ? state.availableTextModes : state.availableModes;
+    if (!activeModes.includes(state.mode)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
 
     const inspected = inspectSelected();
     if (inspected && inspected.ok === false) return inspected;
     const layout = effectiveLayoutFrom(inspected);
+    const elementLayout = layout.element || layout;
+    const textLayout = layout.text || {};
     const step = state.stepSize;
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
-      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - step };
-      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + step };
-      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - step };
-      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + step };
+      if (direction === "left") payload = { x: (Number.isFinite(elementLayout.x) ? elementLayout.x : 0) - step };
+      else if (direction === "right") payload = { x: (Number.isFinite(elementLayout.x) ? elementLayout.x : 0) + step };
+      else if (direction === "up") payload = { y: (Number.isFinite(elementLayout.y) ? elementLayout.y : 0) - step };
+      else if (direction === "down") payload = { y: (Number.isFinite(elementLayout.y) ? elementLayout.y : 0) + step };
       else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for move.");
+      if (state.modernOperations) payload = { element: payload };
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
 
     if (state.mode === PANEL_MODES.WIDTH) {
       if (!["left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for width.");
-      if (!Number.isFinite(layout.width)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current width is unavailable.", { field: "width" });
+      if (!Number.isFinite(elementLayout.width)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current width is unavailable.", { field: "width" });
       const min = minFor("minWidth");
       if (!min.ok) return min;
-      const width = layout.width + (direction === "left" ? -step : step);
-      if (width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
-      payload = { width };
-      if (Number.isFinite(layout.height)) payload.height = layout.height;
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+      const max = minFor("maxWidth");
+      const width = elementLayout.width + (direction === "left" ? -step : step);
+      if (Number.isFinite(min.value) && width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
+      if (Number.isFinite(max.value) && width > max.value) return blocked("MAX_SIZE_REACHED", "maximum width reached.", { field: "width", max: max.value });
+      payload = state.modernOperations ? { element: { width } } : { width, ...(Number.isFinite(elementLayout.height) ? { height: elementLayout.height } : {}) };
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: state.effectiveOps.includes("resizeWidth") ? "resizeWidth" : "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
 
     if (state.mode === PANEL_MODES.HEIGHT) {
       if (!["up", "down"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for height.");
-      if (!Number.isFinite(layout.height)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current height is unavailable.", { field: "height" });
+      if (!Number.isFinite(elementLayout.height)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current height is unavailable.", { field: "height" });
       const min = minFor("minHeight");
       if (!min.ok) return min;
-      const height = layout.height + (direction === "up" ? -step : step);
-      if (height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
-      payload = { height };
-      if (Number.isFinite(layout.width)) payload.width = layout.width;
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+      const max = minFor("maxHeight");
+      const height = elementLayout.height + (direction === "up" ? -step : step);
+      if (Number.isFinite(min.value) && height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
+      if (Number.isFinite(max.value) && height > max.value) return blocked("MAX_SIZE_REACHED", "maximum height reached.", { field: "height", max: max.value });
+      payload = state.modernOperations ? { element: { height } } : { height, ...(Number.isFinite(elementLayout.width) ? { width: elementLayout.width } : {}) };
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: state.effectiveOps.includes("resizeHeight") ? "resizeHeight" : "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+    }
+
+    if (state.mode === PANEL_MODES.TEXT_POSITION) {
+      const currentX = Number.isFinite(textLayout.offsetX) ? textLayout.offsetX : 0;
+      const currentY = Number.isFinite(textLayout.offsetY) ? textLayout.offsetY : 0;
+      const limits = safeRegistryGet(state.selectedElementId).value?.limits || {};
+      let offsetX = currentX, offsetY = currentY;
+      if (direction === "left") offsetX -= step;
+      else if (direction === "right") offsetX += step;
+      else if (direction === "up") offsetY -= step;
+      else if (direction === "down") offsetY += step;
+      else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
+      if (Number.isFinite(limits.minTextOffsetX)) offsetX = Math.max(offsetX, limits.minTextOffsetX);
+      if (Number.isFinite(limits.maxTextOffsetX)) offsetX = Math.min(offsetX, limits.maxTextOffsetX);
+      if (Number.isFinite(limits.minTextOffsetY)) offsetY = Math.max(offsetY, limits.minTextOffsetY);
+      if (Number.isFinite(limits.maxTextOffsetY)) offsetY = Math.min(offsetY, limits.maxTextOffsetY);
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX, offsetY } }, source: "ui-editor-panel" });
+    }
+
+    if (state.mode === PANEL_MODES.TEXT_SIZE) {
+      if (!["left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text size.");
+      const current = Number.isFinite(textLayout.fontSize) ? textLayout.fontSize : 16;
+      const min = minFor("minFontSize"), max = minFor("maxFontSize");
+      const fontSize = current + (direction === "left" ? -step : step);
+      if (Number.isFinite(min.value) && fontSize < min.value) return blocked("MIN_SIZE_REACHED", "minimum font size reached.");
+      if (Number.isFinite(max.value) && fontSize > max.value) return blocked("MAX_SIZE_REACHED", "maximum font size reached.");
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textResize", payload: { text: { fontSize } }, source: "ui-editor-panel" });
     }
 
     return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not allowed.");
@@ -4257,19 +4360,29 @@ function createUiEditorPanelController(options) {
       state.editable = false;
       state.allowedOps = [];
       state.effectiveOps = [];
+      state.modernOperations = false;
       state.availableModes = [];
+      state.availableTextModes = [];
+      state.layer = PANEL_LAYERS.ELEMENT;
       state.lastResult = blocked(PANEL_ERROR_CODES.NO_SELECTION, "no element selected.");
       emit();
       return getState();
     },
     setMode(mode) {
-      if (![PANEL_MODES.MOVE, PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT].includes(mode) || !state.availableModes.includes(mode)) {
+      const available = state.layer === PANEL_LAYERS.TEXT ? state.availableTextModes : state.availableModes;
+      if (!Object.values(PANEL_MODES).includes(mode) || !available.includes(mode)) {
         state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not available.");
       } else {
         state.mode = mode;
       }
       emit();
       return getState();
+    },
+    setLayer(layer) {
+      if (layer === PANEL_LAYERS.TEXT && state.availableTextModes.length === 0) state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "text editing is not registered.");
+      else if (!Object.values(PANEL_LAYERS).includes(layer)) state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layer is not available.");
+      else { state.layer = layer; const modes = layer === PANEL_LAYERS.TEXT ? state.availableTextModes : state.availableModes; state.mode = modes.includes(state.mode) ? state.mode : (modes[0] || PANEL_MODES.MOVE); }
+      emit(); return getState();
     },
     setStepSize(stepSize) {
       state.stepSize = Math.max(1, Number(stepSize) || 5);
@@ -4281,6 +4394,7 @@ function createUiEditorPanelController(options) {
     save() { return run(() => runtime.saveLayout(), "LAYOUT_SAVED"); },
     load() { return run(() => runtime.loadLayout(), "LAYOUT_LOADED"); },
     discardAll() { return run(() => runtime.discardAllChanges(), "ALL_CHANGES_DISCARDED"); },
+    close() { if (typeof cfg.onClose === "function") cfg.onClose(); return getState(); },
     requestResetElement() {
       if (!state.selectedElementId) state.lastResult = blocked(PANEL_ERROR_CODES.NO_SELECTION, "no element selected.");
       else state.dialog = { open: true, type: "reset-element", title: messages.get("RESET_ELEMENT_TITLE"), message: messages.get("RESET_ELEMENT_MESSAGE"), confirmLabel: "Element auf Standard zurücksetzen", cancelLabel: "Abbrechen", destructive: true, elementId: state.selectedElementId, elementName: state.selectedElementName };
@@ -4317,16 +4431,18 @@ module.exports = { createUiEditorPanelController, PANEL_ERROR_CODES };
 },
 31:function(module,exports,__require){
 "use strict";
-const PANEL_MODES = Object.freeze({ MOVE: "move", WIDTH: "width", HEIGHT: "height" });
+const PANEL_LAYERS = Object.freeze({ ELEMENT: "element", TEXT: "text" });
+const PANEL_MODES = Object.freeze({ MOVE: "move", WIDTH: "width", HEIGHT: "height", TEXT_POSITION: "text-position", TEXT_SIZE: "text-size" });
 const PANEL_DIRECTIONS = Object.freeze({ UP: "up", DOWN: "down", LEFT: "left", RIGHT: "right", CENTER: "center" });
 const PANEL_INTENTS = Object.freeze({
   SELECT_ELEMENT: "select-element", CLEAR_SELECTION: "clear-selection", SET_MODE: "set-mode", SET_STEP_SIZE: "set-step-size",
+  SET_LAYER: "set-layer", CLOSE: "close-editor",
   DPAD_UP: "dpad-up", DPAD_DOWN: "dpad-down", DPAD_LEFT: "dpad-left", DPAD_RIGHT: "dpad-right", DPAD_CENTER: "dpad-center",
   SAVE: "save-layout", LOAD: "load-layout", DISCARD_ALL: "discard-all-session-changes",
   REQUEST_RESET_ELEMENT: "request-reset-element-defaults", CONFIRM_RESET_ELEMENT: "confirm-reset-element-defaults", CANCEL_RESET_ELEMENT: "cancel-reset-element-defaults",
   REQUEST_RESET_LAYOUT: "request-reset-layout-defaults", CONFIRM_RESET_LAYOUT: "confirm-reset-layout-defaults", CANCEL_RESET_LAYOUT: "cancel-reset-layout-defaults",
 });
-module.exports = { PANEL_MODES, PANEL_DIRECTIONS, PANEL_INTENTS };
+module.exports = { PANEL_LAYERS, PANEL_MODES, PANEL_DIRECTIONS, PANEL_INTENTS };
 
 },
 32:function(module,exports,__require){
@@ -4350,7 +4466,7 @@ module.exports = { createPanelMessageCatalog };
 },
 33:function(module,exports,__require){
 "use strict";
-const { PANEL_MODES, PANEL_INTENTS } = __require(31);
+const { PANEL_LAYERS, PANEL_MODES, PANEL_INTENTS } = __require(31);
 const { createPanelMessageCatalog } = __require(32);
 function button(label, intent, enabled, reasonCode, extra) { return { enabled: !!enabled, visible: true, label, intent, ...(reasonCode ? { reasonCode } : {}), ...(extra || {}) }; }
 function statusFrom(result, messages) {
@@ -4359,30 +4475,54 @@ function statusFrom(result, messages) {
   const key = result.messageKey || code;
   const incomplete = result.rollbackComplete === false;
   const kind = incomplete ? "warning" : result.blocked ? "blocked" : result.ok === false ? "error" : "success";
-  return { kind, code: incomplete ? "ROLLBACK_INCOMPLETE" : code, messageKey: incomplete ? "ROLLBACK_INCOMPLETE" : key, message: result.message || messages.get(incomplete ? "ROLLBACK_INCOMPLETE" : key), ...(Object.prototype.hasOwnProperty.call(result,"rollbackComplete") ? { rollbackComplete: result.rollbackComplete } : {}), ...(result.rollbackErrors ? { details: result.rollbackErrors } : result.details ? { details: result.details } : {}) };
+  return { kind, code: incomplete ? "ROLLBACK_INCOMPLETE" : code, messageKey: incomplete ? "ROLLBACK_INCOMPLETE" : key, message: result.message || result.reason || messages.get(incomplete ? "ROLLBACK_INCOMPLETE" : key), ...(Object.prototype.hasOwnProperty.call(result,"rollbackComplete") ? { rollbackComplete: result.rollbackComplete } : {}), ...(result.rollbackErrors ? { details: result.rollbackErrors } : result.details ? { details: result.details } : {}) };
 }
 function createUiEditorPanelViewModel(options) {
   const cfg = options || {}; const state = cfg.controllerState || {}; let messages = state.messages || cfg.messages || createPanelMessageCatalog(); if (!messages || typeof messages.get !== "function") messages = createPanelMessageCatalog(messages && messages.messages ? messages.messages : messages);
   const selected = !!state.selectedElementId; const editable = selected && state.editable !== false;
-  const availableModes = Array.isArray(state.availableModes) ? state.availableModes : [];
+  const elementModes = Array.isArray(state.availableModes) ? state.availableModes : [];
+  const textModes = Array.isArray(state.availableTextModes) ? state.availableTextModes : [];
+  const layer = state.layer || PANEL_LAYERS.ELEMENT;
+  const availableModes = layer === PANEL_LAYERS.TEXT ? textModes : elementModes;
   const busy = !!state.busy; const persistence = cfg.persistenceStatus || state.persistenceStatus || { available: true, persistent: true };
-  const hasMove = availableModes.includes(PANEL_MODES.MOVE), hasWidth = availableModes.includes(PANEL_MODES.WIDTH), hasHeight = availableModes.includes(PANEL_MODES.HEIGHT);
   const enabledBase = selected && editable && !busy;
+  const directionEnabled = (direction) => {
+    if (!enabledBase) return false;
+    if ([PANEL_MODES.MOVE, PANEL_MODES.TEXT_POSITION].includes(state.mode)) return true;
+    if ([PANEL_MODES.WIDTH, PANEL_MODES.TEXT_SIZE].includes(state.mode)) return ["left", "right"].includes(direction);
+    if (state.mode === PANEL_MODES.HEIGHT) return ["up", "down"].includes(direction);
+    return false;
+  };
   const dpad = {
-    up: button("↑", PANEL_INTENTS.DPAD_UP, enabledBase && (state.mode === PANEL_MODES.MOVE || state.mode === PANEL_MODES.HEIGHT), enabledBase ? undefined : "NO_SELECTION", { direction: "up", ariaLabel: "Nach oben" }),
-    down: button("↓", PANEL_INTENTS.DPAD_DOWN, enabledBase && (state.mode === PANEL_MODES.MOVE || state.mode === PANEL_MODES.HEIGHT), enabledBase ? undefined : "NO_SELECTION", { direction: "down", ariaLabel: "Nach unten" }),
-    left: button("←", PANEL_INTENTS.DPAD_LEFT, enabledBase && (state.mode === PANEL_MODES.MOVE || state.mode === PANEL_MODES.WIDTH), enabledBase ? undefined : "NO_SELECTION", { direction: "left", ariaLabel: "Nach links oder kleiner" }),
-    right: button("→", PANEL_INTENTS.DPAD_RIGHT, enabledBase && (state.mode === PANEL_MODES.MOVE || state.mode === PANEL_MODES.WIDTH), enabledBase ? undefined : "NO_SELECTION", { direction: "right", ariaLabel: "Nach rechts oder größer" }),
+    up: button("↑", PANEL_INTENTS.DPAD_UP, directionEnabled("up"), enabledBase ? undefined : "NO_SELECTION", { direction: "up", ariaLabel: "Nach oben" }),
+    down: button("↓", PANEL_INTENTS.DPAD_DOWN, directionEnabled("down"), enabledBase ? undefined : "NO_SELECTION", { direction: "down", ariaLabel: "Nach unten" }),
+    left: button("←", PANEL_INTENTS.DPAD_LEFT, directionEnabled("left"), enabledBase ? undefined : "NO_SELECTION", { direction: "left", ariaLabel: "Nach links oder kleiner" }),
+    right: button("→", PANEL_INTENTS.DPAD_RIGHT, directionEnabled("right"), enabledBase ? undefined : "NO_SELECTION", { direction: "right", ariaLabel: "Nach rechts oder größer" }),
     center: button("↶", PANEL_INTENTS.DPAD_CENTER, enabledBase, enabledBase ? undefined : "NO_SELECTION", { direction: "center", ariaLabel: "Änderungen dieses Elements verwerfen" }),
   };
-  return { selection: { selected, elementId: state.selectedElementId || null, name: state.selectedElementName || "", editable, allowedOps: state.allowedOps || [], effectiveOps: state.effectiveOps || [], availableModes },
-    modes: [
-      { id: PANEL_MODES.MOVE, label: "Verschieben", enabled: enabledBase && hasMove, active: state.mode === PANEL_MODES.MOVE },
-      { id: PANEL_MODES.WIDTH, label: "Breite", enabled: enabledBase && hasWidth, active: state.mode === PANEL_MODES.WIDTH },
-      { id: PANEL_MODES.HEIGHT, label: "Höhe", enabled: enabledBase && hasHeight, active: state.mode === PANEL_MODES.HEIGHT },
-    ], dpad,
-    actions: { save: button("Speichern", PANEL_INTENTS.SAVE, !busy && persistence.available && persistence.persistent, !persistence.available ? "STORAGE_UNAVAILABLE" : !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined), load: button("Laden", PANEL_INTENTS.LOAD, !busy && persistence.available, !persistence.available ? "STORAGE_UNAVAILABLE" : undefined), discardAll: button("Alle Änderungen verwerfen", PANEL_INTENTS.DISCARD_ALL, !busy), resetElement: button("Element auf Standard zurücksetzen", PANEL_INTENTS.REQUEST_RESET_ELEMENT, enabledBase && persistence.persistent, !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined), resetLayout: button("Standardlayout wiederherstellen", PANEL_INTENTS.REQUEST_RESET_LAYOUT, !busy && persistence.persistent, !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined) },
-    session: cfg.runtimeStatus || state.runtimeStatus || { active: false, changedCount: 0, changedElementIds: [] }, persistence, dialog: state.dialog || { open: false }, status: statusFrom(cfg.lastResult || state.lastResult, messages), busy };
+  const allModes = [
+    { id: PANEL_MODES.MOVE, label: "Verschieben" }, { id: PANEL_MODES.WIDTH, label: "Breite" }, { id: PANEL_MODES.HEIGHT, label: "Höhe" },
+    { id: PANEL_MODES.TEXT_POSITION, label: "Position" }, { id: PANEL_MODES.TEXT_SIZE, label: "Größe" },
+  ];
+  return {
+    selection: { selected, elementId: state.selectedElementId || null, name: state.selectedElementName || "", editable, allowedOps: state.allowedOps || [], effectiveOps: state.effectiveOps || [], availableModes },
+    layer,
+    layers: [
+      { id: PANEL_LAYERS.ELEMENT, label: "ELEMENT", enabled: enabledBase && elementModes.length > 0, active: layer === PANEL_LAYERS.ELEMENT },
+      { id: PANEL_LAYERS.TEXT, label: "TEXT", enabled: enabledBase && textModes.length > 0, active: layer === PANEL_LAYERS.TEXT },
+    ],
+    modes: allModes.filter((mode) => layer === PANEL_LAYERS.TEXT ? mode.id.startsWith("text-") : !mode.id.startsWith("text-")).map((mode) => ({ ...mode, enabled: enabledBase && availableModes.includes(mode.id), active: state.mode === mode.id })),
+    dpad, stepSize: state.stepSize || 5,
+    actions: {
+      save: button("Speichern", PANEL_INTENTS.SAVE, !busy && persistence.available && persistence.persistent, !persistence.available ? "STORAGE_UNAVAILABLE" : !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined),
+      load: button("Laden", PANEL_INTENTS.LOAD, !busy && persistence.available, !persistence.available ? "STORAGE_UNAVAILABLE" : undefined),
+      discardAll: button("Alle Änderungen verwerfen", PANEL_INTENTS.DISCARD_ALL, !busy),
+      resetElement: button("Gespeicherte Elementwerte löschen", PANEL_INTENTS.REQUEST_RESET_ELEMENT, enabledBase && persistence.persistent, !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined),
+      resetLayout: button("Gesamtes Layout zurücksetzen", PANEL_INTENTS.REQUEST_RESET_LAYOUT, !busy && persistence.persistent, !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined),
+      close: button("Editor schließen", PANEL_INTENTS.CLOSE, !busy),
+    },
+    session: cfg.runtimeStatus || state.runtimeStatus || { active: false, changedCount: 0, changedElementIds: [] }, persistence, dialog: state.dialog || { open: false }, status: statusFrom(cfg.lastResult || state.lastResult, messages), busy,
+  };
 }
 module.exports = { createUiEditorPanelViewModel, statusFrom };
 
@@ -4395,141 +4535,75 @@ function createUiEditorPanel(options) {
   const cfg = options || {};
   if (!cfg.controller) throw new Error("controller is required");
   if (!cfg.mountTarget) throw new Error("mountTarget is required");
-
   const doc = cfg.documentAdapter || cfg.mountTarget.ownerDocument || document;
+  const win = cfg.windowAdapter || (typeof window !== "undefined" ? window : null);
   const root = doc.createElement("section");
   root.className = "ui-editor-panel-root";
   root.setAttribute("aria-label", "UI-Editor Bedienpanel");
+  if (root.style) { root.style.position = "fixed"; root.style.zIndex = "2147483647"; }
   cfg.mountTarget.appendChild(root);
+  let dialogReturnFocusKey = null, focusAfterRenderKey = null, destroyed = false;
+  let position = { x: 16, y: 16 }, drag = null;
 
-  let dialogReturnFocusKey = null;
-  let focusAfterRenderKey = null;
-  let dialogWasOpen = false;
-
-  function findByFocusKey(focusKey) {
-    const stack = [root];
-    while (stack.length > 0) {
-      const node = stack.shift();
-      if (node && node.dataset && node.dataset.focusKey === focusKey) return node;
-      if (node && node.children) Array.prototype.forEach.call(node.children, (child) => stack.push(child));
-    }
-    return null;
+  function viewport() { return { width: Number(win && win.innerWidth) || 1280, height: Number(win && win.innerHeight) || 720 }; }
+  function panelSize() { const rect = typeof root.getBoundingClientRect === "function" ? root.getBoundingClientRect() : null; return { width: Number(rect && rect.width) || 320, height: Number(rect && rect.height) || 420 }; }
+  function clamp(candidate) { const view = viewport(), size = panelSize(); return { x: Math.max(0, Math.min(Number(candidate.x) || 0, Math.max(0, view.width - size.width))), y: Math.max(0, Math.min(Number(candidate.y) || 0, Math.max(0, view.height - size.height))) }; }
+  function applyPosition(candidate, persist) {
+    position = clamp(candidate);
+    if (root.style) { root.style.left = `${position.x}px`; root.style.top = `${position.y}px`; }
+    if (persist && cfg.positionStore && typeof cfg.positionStore.write === "function") cfg.positionStore.write(position);
+    return { ...position };
   }
+  const stored = cfg.positionStore && typeof cfg.positionStore.read === "function" ? cfg.positionStore.read() : null;
+  applyPosition(stored && stored.ok && stored.value ? stored.value : (cfg.defaultPosition || position), false);
 
-  function scheduleFocus(focusKey) {
-    focusAfterRenderKey = focusKey;
-  }
+  function findByFocusKey(key) { const stack = [root]; while (stack.length) { const node = stack.shift(); if (node && node.dataset && node.dataset.focusKey === key) return node; if (node && node.children) Array.prototype.forEach.call(node.children, (child) => stack.push(child)); } return null; }
+  function scheduleFocus(key) { focusAfterRenderKey = key; }
+  function applyScheduledFocus() { if (!focusAfterRenderKey) return; const target = findByFocusKey(focusAfterRenderKey); focusAfterRenderKey = null; if (target && typeof target.focus === "function") target.focus(); }
+  function button(model, onClick, focusKey) { const element = doc.createElement("button"); element.type = "button"; element.textContent = model.label; element.disabled = !model.enabled; element.dataset.intent = model.intent; if (focusKey) element.dataset.focusKey = focusKey; if (model.ariaLabel) element.setAttribute("aria-label", model.ariaLabel); element.addEventListener("click", onClick); return element; }
+  function closeDialog(action) { scheduleFocus(dialogReturnFocusKey); return action(); }
+  function stop(event) { if (event && typeof event.stopPropagation === "function") event.stopPropagation(); }
+  root.addEventListener("click", stop);
+  root.addEventListener("pointerdown", stop);
 
-  function applyScheduledFocus() {
-    if (!focusAfterRenderKey) return;
-    const target = findByFocusKey(focusAfterRenderKey);
-    focusAfterRenderKey = null;
-    if (target && typeof target.focus === "function") target.focus();
+  function startDrag(event) {
+    stop(event); if (event && typeof event.preventDefault === "function") event.preventDefault();
+    drag = { pointerId: event.pointerId, startX: Number(event.clientX) || 0, startY: Number(event.clientY) || 0, origin: { ...position } };
+    if (event.currentTarget && typeof event.currentTarget.setPointerCapture === "function" && event.pointerId != null) event.currentTarget.setPointerCapture(event.pointerId);
   }
-
-  function button(model, onClick, focusKey) {
-    const element = doc.createElement("button");
-    element.type = "button";
-    element.textContent = model.label;
-    element.disabled = !model.enabled;
-    element.dataset.intent = model.intent;
-    if (focusKey) element.dataset.focusKey = focusKey;
-    if (model.ariaLabel) element.setAttribute("aria-label", model.ariaLabel);
-    element.addEventListener("click", onClick);
-    return element;
-  }
-
-  function closeDialog(controllerAction) {
-    scheduleFocus(dialogReturnFocusKey);
-    return controllerAction();
-  }
+  function moveDrag(event) { if (!drag || (drag.pointerId != null && event.pointerId != null && drag.pointerId !== event.pointerId)) return; stop(event); applyPosition({ x: drag.origin.x + (Number(event.clientX) || 0) - drag.startX, y: drag.origin.y + (Number(event.clientY) || 0) - drag.startY }, false); }
+  function endDrag(event) { if (!drag) return; stop(event); drag = null; applyPosition(position, true); }
+  function handleResize() { applyPosition(position, true); }
+  if (win && typeof win.addEventListener === "function") { win.addEventListener("pointermove", moveDrag); win.addEventListener("pointerup", endDrag); win.addEventListener("resize", handleResize); }
 
   function render() {
+    if (destroyed) return;
     const vm = createUiEditorPanelViewModel({ controllerState: cfg.controller.getState() });
     root.textContent = "";
-
-    const name = doc.createElement("div");
-    name.className = "ui-editor-panel-selection";
-    name.textContent = vm.selection.selected ? vm.selection.name : "Kein Element ausgewählt";
-    root.appendChild(name);
-
-    const modes = doc.createElement("div");
-    modes.className = "ui-editor-panel-modes";
-    vm.modes.forEach((mode) => {
-      const modeButton = button({ label: mode.label, intent: "set-mode", enabled: mode.enabled }, () => cfg.controller.setMode(mode.id), `mode:${mode.id}`);
-      if (mode.active) modeButton.setAttribute("aria-pressed", "true");
-      modes.appendChild(modeButton);
-    });
-    root.appendChild(modes);
-
-    const dpad = doc.createElement("div");
-    dpad.className = "ui-editor-panel-dpad";
-    dpad.tabIndex = 0;
-    dpad.setAttribute("role", "group");
-    dpad.setAttribute("aria-label", "D-Pad");
-    const dpadButtons = { up: vm.dpad.up, left: vm.dpad.left, center: vm.dpad.center, right: vm.dpad.right, down: vm.dpad.down };
-    Object.keys(dpadButtons).forEach((direction) => {
-      dpad.appendChild(button(dpadButtons[direction], () => direction === "center" ? cfg.controller.activateCenter() : cfg.controller.activateDirection(direction), `dpad:${direction}`));
-    });
-    dpad.addEventListener("keydown", (event) => {
-      const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
-      if (map[event.key]) {
-        event.preventDefault();
-        cfg.controller.activateDirection(map[event.key]);
-      }
-    });
-    root.appendChild(dpad);
-
-    const actions = doc.createElement("div");
-    actions.className = "ui-editor-panel-actions";
-    actions.appendChild(button(vm.actions.save, () => cfg.controller.save(), "action:save"));
-    actions.appendChild(button(vm.actions.load, () => cfg.controller.load(), "action:load"));
-    actions.appendChild(button(vm.actions.discardAll, () => cfg.controller.discardAll(), "action:discardAll"));
+    const header = doc.createElement("header"); header.className = "ui-editor-panel-handle"; header.textContent = "UI-Editor"; header.setAttribute("aria-label", "Bedienpanel verschieben"); header.addEventListener("pointerdown", startDrag); root.appendChild(header);
+    const name = doc.createElement("div"); name.className = "ui-editor-panel-selection"; name.textContent = vm.selection.selected ? vm.selection.name : "Kein Element ausgewählt"; root.appendChild(name);
+    const layers = doc.createElement("div"); layers.className = "ui-editor-panel-layers"; vm.layers.forEach((layer) => { const node = button({ label: layer.label, intent: "set-layer", enabled: layer.enabled }, () => cfg.controller.setLayer(layer.id), `layer:${layer.id}`); if (layer.active) node.setAttribute("aria-pressed", "true"); layers.appendChild(node); }); root.appendChild(layers);
+    const modes = doc.createElement("div"); modes.className = "ui-editor-panel-modes"; vm.modes.forEach((mode) => { const node = button({ label: mode.label, intent: "set-mode", enabled: mode.enabled }, () => cfg.controller.setMode(mode.id), `mode:${mode.id}`); if (mode.active) node.setAttribute("aria-pressed", "true"); modes.appendChild(node); }); root.appendChild(modes);
+    const dpad = doc.createElement("div"); dpad.className = "ui-editor-panel-dpad"; dpad.tabIndex = 0; dpad.setAttribute("role", "group"); dpad.setAttribute("aria-label", "Steuerkreuz");
+    for (const direction of ["up", "left", "center", "right", "down"]) dpad.appendChild(button(vm.dpad[direction], () => direction === "center" ? cfg.controller.activateCenter() : cfg.controller.activateDirection(direction), `dpad:${direction}`));
+    dpad.addEventListener("keydown", (event) => { const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" }; if (map[event.key]) { event.preventDefault(); cfg.controller.activateDirection(map[event.key]); } }); root.appendChild(dpad);
+    const step = doc.createElement("label"); step.className = "ui-editor-panel-step"; step.textContent = "Schritt "; const input = doc.createElement("input"); input.type = "number"; input.min = "1"; input.value = String(vm.stepSize); input.setAttribute("aria-label", "Änderungsschritt"); input.addEventListener("change", () => cfg.controller.setStepSize(input.value)); step.appendChild(input); root.appendChild(step);
+    const actions = doc.createElement("div"); actions.className = "ui-editor-panel-actions";
+    actions.appendChild(button(vm.actions.save, () => cfg.controller.save(), "action:save")); actions.appendChild(button(vm.actions.load, () => cfg.controller.load(), "action:load")); actions.appendChild(button(vm.actions.discardAll, () => cfg.controller.discardAll(), "action:discardAll"));
     actions.appendChild(button(vm.actions.resetElement, () => { dialogReturnFocusKey = "action:resetElement"; scheduleFocus("dialog:cancel"); cfg.controller.requestResetElement(); }, "action:resetElement"));
-    actions.appendChild(button(vm.actions.resetLayout, () => { dialogReturnFocusKey = "action:resetLayout"; scheduleFocus("dialog:cancel"); cfg.controller.requestResetLayout(); }, "action:resetLayout"));
-    root.appendChild(actions);
-
-    const status = doc.createElement("div");
-    status.className = `ui-editor-panel-status ui-editor-panel-status-${vm.status.kind}`;
-    status.setAttribute("role", "status");
-    status.textContent = vm.status.message;
-    root.appendChild(status);
-
+    actions.appendChild(button(vm.actions.resetLayout, () => { dialogReturnFocusKey = "action:resetLayout"; scheduleFocus("dialog:cancel"); cfg.controller.requestResetLayout(); }, "action:resetLayout")); actions.appendChild(button(vm.actions.close, () => cfg.controller.close(), "action:close")); root.appendChild(actions);
+    const status = doc.createElement("div"); status.className = `ui-editor-panel-status ui-editor-panel-status-${vm.status.kind}`; status.setAttribute("role", "status"); status.textContent = vm.status.message; root.appendChild(status);
     if (vm.dialog && vm.dialog.open) {
-      dialogWasOpen = true;
-      const dialog = doc.createElement("div");
-      dialog.className = "ui-editor-panel-dialog";
-      dialog.setAttribute("role", "dialog");
-      dialog.setAttribute("aria-modal", "true");
-      dialog.setAttribute("aria-label", vm.dialog.title);
-      const title = doc.createElement("strong");
-      title.textContent = vm.dialog.title;
-      const message = doc.createElement("p");
-      message.textContent = vm.dialog.message;
-      dialog.appendChild(title);
-      dialog.appendChild(message);
-      const confirm = button({ label: vm.dialog.confirmLabel, intent: "confirm", enabled: true }, () => closeDialog(() => vm.dialog.type === "reset-element" ? cfg.controller.confirmResetElement() : cfg.controller.confirmResetLayout()), "dialog:confirm");
-      const cancel = button({ label: vm.dialog.cancelLabel, intent: "cancel", enabled: true }, () => closeDialog(() => vm.dialog.type === "reset-element" ? cfg.controller.cancelResetElement() : cfg.controller.cancelResetLayout()), "dialog:cancel");
-      dialog.appendChild(confirm);
-      dialog.appendChild(cancel);
-      dialog.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          closeDialog(() => vm.dialog.type === "reset-element" ? cfg.controller.cancelResetElement() : cfg.controller.cancelResetLayout());
-        }
-      });
-      root.appendChild(dialog);
-    } else if (dialogWasOpen) {
-      dialogWasOpen = false;
-      if (!focusAfterRenderKey && dialogReturnFocusKey) scheduleFocus(dialogReturnFocusKey);
+      const dialog = doc.createElement("div"); dialog.className = "ui-editor-panel-dialog"; dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true");
+      const title = doc.createElement("h2"); title.textContent = vm.dialog.title; dialog.appendChild(title); const message = doc.createElement("p"); message.textContent = vm.dialog.message; dialog.appendChild(message);
+      const confirm = button({ label: vm.dialog.confirmLabel, enabled: true, intent: `confirm-${vm.dialog.type}` }, () => closeDialog(vm.dialog.type === "reset-element" ? cfg.controller.confirmResetElement : cfg.controller.confirmResetLayout), "dialog:confirm");
+      const cancel = button({ label: vm.dialog.cancelLabel, enabled: true, intent: `cancel-${vm.dialog.type}` }, () => closeDialog(vm.dialog.type === "reset-element" ? cfg.controller.cancelResetElement : cfg.controller.cancelResetLayout), "dialog:cancel"); dialog.appendChild(confirm); dialog.appendChild(cancel);
+      dialog.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); closeDialog(vm.dialog.type === "reset-element" ? cfg.controller.cancelResetElement : cfg.controller.cancelResetLayout); } }); root.appendChild(dialog);
     }
-
-    applyScheduledFocus();
+    applyPosition(position, false); applyScheduledFocus();
   }
-
-  const unsubscribe = cfg.controller.subscribe(render);
-  render();
-  return { root, update: render, destroy() { unsubscribe(); root.remove(); } };
+  const unsubscribe = cfg.controller.subscribe(render); render();
+  return { root, render, getPosition: () => ({ ...position }), setPosition: (value) => applyPosition(value, true), destroy() { destroyed = true; unsubscribe(); if (win && typeof win.removeEventListener === "function") { win.removeEventListener("pointermove", moveDrag); win.removeEventListener("pointerup", endDrag); win.removeEventListener("resize", handleResize); } root.remove(); } };
 }
 
 module.exports = { createUiEditorPanel };
@@ -4537,12 +4611,58 @@ module.exports = { createUiEditorPanel };
 },
 35:function(module,exports,__require){
 "use strict";
-const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef}=__require(36);
+
+const PANEL_POSITION_VERSION = 1;
+
+function validPosition(value) {
+  return value && Number.isFinite(value.x) && Number.isFinite(value.y);
+}
+
+function createPanelPositionStore(options) {
+  const cfg = options || {};
+  const storage = cfg.storage;
+  const namespace = cfg.namespace || "ui-editor-panel-position";
+  const targetAppId = cfg.targetAppId || "default";
+  const key = `${namespace}::${targetAppId}`;
+
+  return Object.freeze({
+    key,
+    read() {
+      if (!storage || typeof storage.getItem !== "function") return { ok: false, code: "PANEL_POSITION_STORAGE_UNAVAILABLE" };
+      try {
+        const raw = storage.getItem(key);
+        if (raw == null) return { ok: true, value: null };
+        const parsed = JSON.parse(raw);
+        if (parsed.version !== PANEL_POSITION_VERSION || !validPosition(parsed.position)) return { ok: false, code: "INVALID_PANEL_POSITION" };
+        return { ok: true, value: { x: parsed.position.x, y: parsed.position.y } };
+      } catch (error) {
+        return { ok: false, code: "PANEL_POSITION_READ_FAILED", reason: error.message };
+      }
+    },
+    write(position) {
+      if (!validPosition(position)) return { ok: false, code: "INVALID_PANEL_POSITION" };
+      if (!storage || typeof storage.setItem !== "function") return { ok: false, code: "PANEL_POSITION_STORAGE_UNAVAILABLE" };
+      try {
+        storage.setItem(key, JSON.stringify({ version: PANEL_POSITION_VERSION, position: { x: position.x, y: position.y } }));
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, code: "PANEL_POSITION_WRITE_FAILED", reason: error.message };
+      }
+    },
+  });
+}
+
+module.exports = { createPanelPositionStore, validPosition };
+
+},
+36:function(module,exports,__require){
+"use strict";
+const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef}=__require(37);
 function createElementRefRegistry(){const refs=new Map(); const listeners=new Set(); function emit(type,elementId,elementRef){listeners.forEach(l=>{try{l({type,elementId,elementRef});}catch(_){}});} return {register(elementId,elementRef){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); if(!isElementRef(elementRef))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_REF,"elementRef must be HTMLElement-like."); if(refs.has(elementId))return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_ALREADY_REGISTERED,"elementRef is already registered."); refs.set(elementId,elementRef); emit("register",elementId,elementRef); return ok(elementRef,{elementId});},unregister(elementId){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); const existed=refs.delete(elementId); emit("unregister",elementId); return ok(undefined,{elementId,existed});},get(elementId){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); if(!refs.has(elementId))return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING,"elementRef is missing."); return ok(refs.get(elementId),{elementId});},has(elementId){return isValidElementId(elementId)&&refs.has(elementId);},listIds(){return Array.from(refs.keys());},clear(){refs.clear(); emit("clear"); return ok();},subscribe(listener){if(typeof listener!=="function")return ()=>{}; listeners.add(listener); return ()=>listeners.delete(listener);}};}
 module.exports={createElementRefRegistry};
 
 },
-36:function(module,exports,__require){
+37:function(module,exports,__require){
 "use strict";
 const BROWSER_ERROR_CODES=Object.freeze({INVALID_ELEMENT_ID:"INVALID_ELEMENT_ID",INVALID_ELEMENT_REF:"INVALID_ELEMENT_REF",ELEMENT_REF_ALREADY_REGISTERED:"ELEMENT_REF_ALREADY_REGISTERED",ELEMENT_REF_MISSING:"ELEMENT_REF_MISSING",HOST_READ_FAILED:"HOST_READ_FAILED",HOST_APPLY_FAILED:"HOST_APPLY_FAILED",HOST_CAPTURE_FAILED:"HOST_CAPTURE_FAILED",HOST_CLEAR_FAILED:"HOST_CLEAR_FAILED",CURRENT_VALUE_UNAVAILABLE:"CURRENT_VALUE_UNAVAILABLE",OVERLAY_MOUNT_MISSING:"OVERLAY_MOUNT_MISSING",OVERLAY_MEASURE_FAILED:"OVERLAY_MEASURE_FAILED",STORAGE_UNAVAILABLE:"STORAGE_UNAVAILABLE",STORAGE_READ_FAILED:"STORAGE_READ_FAILED",STORAGE_WRITE_FAILED:"STORAGE_WRITE_FAILED",STORAGE_CLEAR_FAILED:"STORAGE_CLEAR_FAILED",STORAGE_PARSE_FAILED:"STORAGE_PARSE_FAILED",STORAGE_SCHEMA_UNSUPPORTED:"STORAGE_SCHEMA_UNSUPPORTED",BRIDGE_DESTROYED:"BRIDGE_DESTROYED",UNKNOWN_ELEMENT:"UNKNOWN_ELEMENT"});
 function ok(value,extra){return {ok:true,...(value!==undefined?{value}:{}),...(extra||{})};}
@@ -4553,7 +4673,7 @@ function safeCall(fn,code){try{return ok(fn());}catch(error){return blocked(code
 module.exports={BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef,safeCall};
 
 },
-37:function(module,exports,__require){
+38:function(module,exports,__require){
 "use strict";
 
 const {
@@ -4562,7 +4682,7 @@ const {
   blocked,
   isValidElementId,
   isElementRef,
-} = __require(36);
+} = __require(37);
 
 const EDITOR_X = "--ui-editor-x";
 const EDITOR_Y = "--ui-editor-y";
@@ -4570,8 +4690,13 @@ const EDITOR_WIDTH = "--ui-editor-width";
 const EDITOR_HEIGHT = "--ui-editor-height";
 const EDITOR_VISIBLE = "--ui-editor-visible";
 const TARGET_TRANSFORM = "--ui-editor-target-transform";
-const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM];
+const TEXT_OFFSET_X = "--ui-editor-text-offset-x";
+const TEXT_OFFSET_Y = "--ui-editor-text-offset-y";
+const TEXT_FONT_SIZE = "--ui-editor-text-font-size";
+const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM, TEXT_OFFSET_X, TEXT_OFFSET_Y, TEXT_FONT_SIZE];
+const INLINE_FIELDS = ["transform", "width", "height", "textIndent", "paddingTop", "fontSize"];
 const EMPTY_TRANSFORM = "";
+const NONE_TRANSFORM = "none";
 
 function px(value) {
   return `${Number(value) || 0}px`;
@@ -4610,6 +4735,17 @@ function clone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 }
 
+function normalizeTransform(value) {
+  const transform = String(value || "").trim();
+  return transform && transform.toLowerCase() !== NONE_TRANSFORM ? transform : EMPTY_TRANSFORM;
+}
+
+function readTransformValue(style) {
+  if (!style) return EMPTY_TRANSFORM;
+  const propertyValue = typeof style.getPropertyValue === "function" ? style.getPropertyValue("transform") : "";
+  return propertyValue || style.transform || EMPTY_TRANSFORM;
+}
+
 function createBrowserHostAdapter(options) {
   const cfg = options || {};
   const refs = cfg.elementRefs;
@@ -4620,6 +4756,15 @@ function createBrowserHostAdapter(options) {
       : null
   ));
   const originalByElement = new WeakMap();
+  const registry = cfg.registry;
+
+  function registeredOperations(elementId) {
+    if (!registry || typeof registry.getElementById !== "function") return [];
+    const definition = registry.getElementById(elementId);
+    if (!definition) return [];
+    if (definition.operations) return Object.keys(definition.operations).filter((key) => definition.operations[key] === true);
+    return Array.isArray(definition.effectiveOps) ? definition.effectiveOps : (definition.allowedOps || []);
+  }
 
   function getRef(elementId) {
     if (!isValidElementId(elementId)) return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID, "invalid elementId");
@@ -4633,6 +4778,7 @@ function createBrowserHostAdapter(options) {
     try {
       return ok({
         elementId,
+        inlineStyles: INLINE_FIELDS.reduce((acc, field) => { acc[field] = element.style[field] || ""; return acc; }, {}),
         transform: element.style.transform || "",
         width: element.style.width || "",
         height: element.style.height || "",
@@ -4672,7 +4818,7 @@ function createBrowserHostAdapter(options) {
 
   function ensureOriginal(element, elementId) {
     if (originalByElement.has(element)) return ok(originalByElement.get(element));
-    const snapshot = readVisibleState(element, elementId);
+    const snapshot = readOriginalState(element, elementId);
     if (!snapshot.ok) return snapshot;
     originalByElement.set(element, clone(snapshot.value));
     return snapshot;
@@ -4680,9 +4826,8 @@ function createBrowserHostAdapter(options) {
 
   function restoreSnapshot(element, snapshot) {
     try {
-      setInlineStyle(element.style, "transform", snapshot.transform || "");
-      setInlineStyle(element.style, "width", snapshot.width || "");
-      setInlineStyle(element.style, "height", snapshot.height || "");
+      const inlineStyles = snapshot.inlineStyles || snapshot;
+      INLINE_FIELDS.forEach((field) => setInlineStyle(element.style, field, inlineStyles[field] || ""));
       element.hidden = !!snapshot.hidden;
       const customProperties = snapshot.customProperties || {};
       EDITOR_FIELDS.forEach((key) => {
@@ -4720,6 +4865,23 @@ function createBrowserHostAdapter(options) {
     }
   }
 
+  function readOriginalState(element, elementId) {
+    const snapshot = readVisibleState(element, elementId);
+    if (!snapshot.ok) return snapshot;
+    const inlineTransform = normalizeTransform(snapshot.value.transform);
+    if (inlineTransform) {
+      snapshot.value.transformBase = inlineTransform;
+      snapshot.value.transformBaseSource = "inline";
+      return snapshot;
+    }
+    const computed = readComputed(element);
+    if (!computed.ok) return computed;
+    const computedTransform = normalizeTransform(readTransformValue(computed.value));
+    snapshot.value.transformBase = computedTransform;
+    snapshot.value.transformBaseSource = computedTransform ? "computed" : "none";
+    return snapshot;
+  }
+
   function getCurrentEntry(elementId, element) {
     const rect = readRect(element);
     if (!rect.ok) return rect;
@@ -4737,14 +4899,25 @@ function createBrowserHostAdapter(options) {
       if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
         return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
       }
-      return ok({
-        elementId,
-        x: toNumber(getStyleValue(element.style, EDITOR_X)) || 0,
-        y: toNumber(getStyleValue(element.style, EDITOR_Y)) || 0,
-        width,
-        height,
-        visible: !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false"),
-      });
+      const operations = registeredOperations(elementId);
+      if (operations.some((operation) => ["resizeWidth", "resizeHeight", "textMove", "textResize"].includes(operation))) {
+        const elementValues = {};
+        if (operations.includes("move")) { elementValues.x = toNumber(getStyleValue(element.style, EDITOR_X)) || 0; elementValues.y = toNumber(getStyleValue(element.style, EDITOR_Y)) || 0; }
+        if (operations.includes("resizeWidth")) elementValues.width = width;
+        if (operations.includes("resizeHeight")) elementValues.height = height;
+        if (operations.includes("show") || operations.includes("hide")) elementValues.visible = !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false");
+        const result = { elementId };
+        if (Object.keys(elementValues).length > 0) result.element = elementValues;
+        if (operations.includes("textMove") || operations.includes("textResize")) {
+          result.text = {
+            offsetX: toNumber(getStyleValue(element.style, TEXT_OFFSET_X)) || 0,
+            offsetY: toNumber(getStyleValue(element.style, TEXT_OFFSET_Y)) || 0,
+            fontSize: toNumber(getStyleValue(element.style, TEXT_FONT_SIZE)) ?? toNumber(computed.value && computed.value.fontSize) ?? 16,
+          };
+        }
+        return ok(result);
+      }
+      return ok({ elementId, x: toNumber(getStyleValue(element.style, EDITOR_X)) || 0, y: toNumber(getStyleValue(element.style, EDITOR_Y)) || 0, width, height, visible: !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false") });
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "style read failed");
     }
@@ -4753,10 +4926,15 @@ function createBrowserHostAdapter(options) {
   function applyTransform(element, elementId) {
     const original = ensureOriginal(element, elementId);
     if (!original.ok) return original;
-    const targetTransform = original.value.transform || EMPTY_TRANSFORM;
+    const targetTransform = normalizeTransform(original.value.transformBase || original.value.transform || EMPTY_TRANSFORM);
     try {
-      setStyleValue(element.style, TARGET_TRANSFORM, targetTransform);
-      element.style.transform = `var(${TARGET_TRANSFORM}, none) translate(var(${EDITOR_X}, 0px), var(${EDITOR_Y}, 0px))`;
+      if (targetTransform) {
+        setStyleValue(element.style, TARGET_TRANSFORM, targetTransform);
+        element.style.transform = `var(${TARGET_TRANSFORM}) translate(var(${EDITOR_X}, 0px), var(${EDITOR_Y}, 0px))`;
+      } else {
+        removeStyleValue(element.style, TARGET_TRANSFORM);
+        element.style.transform = `translate(var(${EDITOR_X}, 0px), var(${EDITOR_Y}, 0px))`;
+      }
       return ok();
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "transform apply failed");
@@ -4779,23 +4957,37 @@ function createBrowserHostAdapter(options) {
       const original = ensureOriginal(element, elementId);
       if (!original.ok) return original;
       try {
-        if (Object.prototype.hasOwnProperty.call(entry, "x")) setStyleValue(element.style, EDITOR_X, px(entry.x));
-        if (Object.prototype.hasOwnProperty.call(entry, "y")) setStyleValue(element.style, EDITOR_Y, px(entry.y));
-        if (Object.prototype.hasOwnProperty.call(entry, "x") || Object.prototype.hasOwnProperty.call(entry, "y")) {
+        const elementValues = entry.element || entry;
+        const textValues = entry.text || {};
+        if (Object.prototype.hasOwnProperty.call(elementValues, "x")) setStyleValue(element.style, EDITOR_X, px(elementValues.x));
+        if (Object.prototype.hasOwnProperty.call(elementValues, "y")) setStyleValue(element.style, EDITOR_Y, px(elementValues.y));
+        if (Object.prototype.hasOwnProperty.call(elementValues, "x") || Object.prototype.hasOwnProperty.call(elementValues, "y")) {
           const appliedTransform = applyTransform(element, elementId);
           if (!appliedTransform.ok) return appliedTransform;
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "width")) {
-          setStyleValue(element.style, EDITOR_WIDTH, px(entry.width));
-          element.style.width = px(entry.width);
+        if (Object.prototype.hasOwnProperty.call(elementValues, "width")) {
+          setStyleValue(element.style, EDITOR_WIDTH, px(elementValues.width));
+          element.style.width = px(elementValues.width);
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "height")) {
-          setStyleValue(element.style, EDITOR_HEIGHT, px(entry.height));
-          element.style.height = px(entry.height);
+        if (Object.prototype.hasOwnProperty.call(elementValues, "height")) {
+          setStyleValue(element.style, EDITOR_HEIGHT, px(elementValues.height));
+          element.style.height = px(elementValues.height);
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "visible")) {
-          setStyleValue(element.style, EDITOR_VISIBLE, entry.visible ? "true" : "false");
-          element.hidden = entry.visible === false;
+        if (Object.prototype.hasOwnProperty.call(elementValues, "visible")) {
+          setStyleValue(element.style, EDITOR_VISIBLE, elementValues.visible ? "true" : "false");
+          element.hidden = elementValues.visible === false;
+        }
+        if (Object.prototype.hasOwnProperty.call(textValues, "offsetX")) {
+          setStyleValue(element.style, TEXT_OFFSET_X, px(textValues.offsetX));
+          element.style.textIndent = `var(${TEXT_OFFSET_X}, 0px)`;
+        }
+        if (Object.prototype.hasOwnProperty.call(textValues, "offsetY")) {
+          setStyleValue(element.style, TEXT_OFFSET_Y, px(textValues.offsetY));
+          element.style.paddingTop = `var(${TEXT_OFFSET_Y}, 0px)`;
+        }
+        if (Object.prototype.hasOwnProperty.call(textValues, "fontSize")) {
+          setStyleValue(element.style, TEXT_FONT_SIZE, px(textValues.fontSize));
+          element.style.fontSize = `var(${TEXT_FONT_SIZE})`;
         }
         return ok();
       } catch (error) {
@@ -4841,17 +5033,17 @@ function createBrowserHostAdapter(options) {
 module.exports = { createBrowserHostAdapter };
 
 },
-38:function(module,exports,__require){
+39:function(module,exports,__require){
 "use strict";
-const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId}=__require(36);
+const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId}=__require(37);
 function createBrowserSelectionHost(options){const cfg=options||{}; const listeners=new Set(); let destroyed=false; let selection={selectedElementId:null,selectedElementName:"",elementRefAvailable:false}; function emit(){if(!destroyed){const s={...selection}; listeners.forEach(l=>{try{l(s);}catch(_){}}); if(typeof cfg.onSelectionChange==="function")cfg.onSelectionChange(s);}} function getElement(id){try{if(cfg.registry&&typeof cfg.registry["getElementBy"+"Id"]==="function")return cfg.registry["getElementBy"+"Id"](id); if(cfg.registry&&typeof cfg.registry.get==="function"){const r=cfg.registry.get(id); return r&&r.ok!==false?r.value:null;}}catch(e){return undefined;} return null;} return {select(elementId){if(destroyed)return blocked("SELECTION_HOST_DESTROYED","selection host destroyed"); if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"invalid elementId"); const element=getElement(elementId); if(!element)return blocked(BROWSER_ERROR_CODES.UNKNOWN_ELEMENT,"unknown element"); const ref=cfg.elementRefs&&cfg.elementRefs.get?cfg.elementRefs.get(elementId):null; const available=!!(ref&&ref.ok!==false&&(ref.value||ref)); if(!available)return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING,"elementRef is missing."); selection={selectedElementId:elementId,selectedElementName:element.name||elementId,elementRefAvailable:available}; emit(); return ok(selection);},clear(){selection={selectedElementId:null,selectedElementName:"",elementRefAvailable:false}; emit(); return ok(selection);},getSelection(){return {...selection};},subscribe(listener){if(typeof listener!=="function")return ()=>{}; listeners.add(listener); return ()=>listeners.delete(listener);},destroy(){destroyed=true; listeners.clear();}};}
 module.exports={createBrowserSelectionHost};
 
 },
-39:function(module,exports,__require){
+40:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked, isElementRef } = __require(36);
+const { BROWSER_ERROR_CODES, ok, blocked, isElementRef } = __require(37);
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -4988,10 +5180,10 @@ function createBrowserOverlayHost(options) {
 module.exports = { createBrowserOverlayHost };
 
 },
-40:function(module,exports,__require){
+41:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked, isValidElementId } = __require(36);
+const { BROWSER_ERROR_CODES, ok, blocked, isValidElementId } = __require(37);
 
 const SCHEMA_VERSION = 1;
 const CONTEXT_KEYS = ["targetAppId", "moduleId", "scopeId", "layoutProfileId"];
@@ -5131,10 +5323,10 @@ function createBrowserLayoutStorage(options) {
 module.exports = { createBrowserLayoutStorage };
 
 },
-41:function(module,exports,__require){
+42:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked } = __require(36);
+const { BROWSER_ERROR_CODES, ok, blocked } = __require(37);
 
 function createUiEditorBrowserBridge(options) {
   const cfg = options || {};
@@ -5235,7 +5427,7 @@ function createUiEditorBrowserBridge(options) {
 module.exports = { createUiEditorBrowserBridge };
 
 },
-42:function(module,exports,__require){
+43:function(module,exports,__require){
 "use strict";
 
 const ELEMENTS = Object.freeze([
@@ -5257,7 +5449,7 @@ function createReferenceRegistry() {
 module.exports = { ELEMENTS, createReferenceRegistry };
 
 },
-43:function(module,exports,__require){
+44:function(module,exports,__require){
 "use strict";
 
 const REFERENCE_PROFILES = Object.freeze(["default", "compact"]);
