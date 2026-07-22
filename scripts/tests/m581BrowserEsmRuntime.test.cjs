@@ -149,7 +149,8 @@ function createListenerRoot() {
   assert.equal(commonJsApi.resolveSelectionTarget, require(path.join(REPO_ROOT, "src/selection/targetResolver.js")).resolveSelectionTarget);
   assert.equal(commonJsApi.SELECTION_CONTRACT_VERSION, "selection-target-contract-v1.0");
 
-  const pack = childProcess.spawnSync("npm", ["pack", "--dry-run"], { cwd: REPO_ROOT, encoding: "utf8" });
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const pack = childProcess.spawnSync(npmCommand, ["pack", "--dry-run"], { cwd: REPO_ROOT, encoding: "utf8", shell: process.platform === "win32" });
   assert.equal(pack.status, 0, pack.stderr || pack.stdout);
   assert.equal((pack.stdout + pack.stderr).includes("dist/selection-runtime.browser.mjs"), true, "npm pack enthaelt Browserartefakt nicht.");
 

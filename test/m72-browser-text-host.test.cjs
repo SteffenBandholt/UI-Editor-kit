@@ -1,0 +1,18 @@
+"use strict";
+const { assert, el } = require("./m71-test-helpers.cjs");
+const { createElementRefRegistry, createBrowserHostAdapter } = require("../src/index.cjs");
+const refs = createElementRefRegistry(); const input = el({ left: 0, top: 0, width: 280, height: 40 });
+input.style.width = "280px"; input.style.height = "40px"; input.style.fontSize = "16px"; input.style.textIndent = "3px"; input.style.paddingTop = "4px"; refs.register("customer.name", input);
+const definition = { elementId: "customer.name", operations: { move: true, resizeWidth: true, resizeHeight: true, textMove: true, textResize: true } };
+const registry = { getElementById: (id) => id === definition.elementId ? definition : null };
+const host = createBrowserHostAdapter({ elementRefs: refs, registry, computedStyleReader: () => ({ fontSize: "16px" }) });
+const originalRect = input.getBoundingClientRect(); const snapshot = host.captureElementLayoutState(definition.elementId).value;
+assert.equal(host.applyLayoutEntry(definition.elementId, { elementId: definition.elementId, text: { offsetX: 12, offsetY: 2, fontSize: 20 } }).ok, true);
+assert.equal(input.style.textIndent, "var(--ui-editor-text-offset-x, 0px)");
+assert.equal(input.style.paddingTop, "var(--ui-editor-text-offset-y, 0px)");
+assert.equal(input.style.fontSize, "var(--ui-editor-text-font-size)");
+assert.deepEqual(input.getBoundingClientRect(), originalRect, "text styles must not resize or move the outer element");
+assert.deepEqual(host.getCurrentLayoutEntry(definition.elementId).value.text, { offsetX: 12, offsetY: 2, fontSize: 20 });
+host.restoreElementLayoutState(definition.elementId, snapshot);
+assert.equal(input.style.textIndent, "3px"); assert.equal(input.style.paddingTop, "4px"); assert.equal(input.style.fontSize, "16px");
+console.log("m72 browser text host ok");
