@@ -4572,6 +4572,7 @@ const EDITOR_VISIBLE = "--ui-editor-visible";
 const TARGET_TRANSFORM = "--ui-editor-target-transform";
 const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM];
 const EMPTY_TRANSFORM = "";
+const NONE_TRANSFORM = "none";
 
 function px(value) {
   return `${Number(value) || 0}px`;
@@ -4608,6 +4609,17 @@ function setInlineStyle(style, key, value) {
 
 function clone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function normalizeTransform(value) {
+  const transform = String(value || "").trim();
+  return transform && transform.toLowerCase() !== NONE_TRANSFORM ? transform : EMPTY_TRANSFORM;
+}
+
+function readTransformValue(style) {
+  if (!style) return EMPTY_TRANSFORM;
+  const propertyValue = typeof style.getPropertyValue === "function" ? style.getPropertyValue("transform") : "";
+  return propertyValue || style.transform || EMPTY_TRANSFORM;
 }
 
 function createBrowserHostAdapter(options) {
@@ -4672,7 +4684,7 @@ function createBrowserHostAdapter(options) {
 
   function ensureOriginal(element, elementId) {
     if (originalByElement.has(element)) return ok(originalByElement.get(element));
-    const snapshot = readVisibleState(element, elementId);
+    const snapshot = readOriginalState(element, elementId);
     if (!snapshot.ok) return snapshot;
     originalByElement.set(element, clone(snapshot.value));
     return snapshot;
@@ -4720,6 +4732,23 @@ function createBrowserHostAdapter(options) {
     }
   }
 
+  function readOriginalState(element, elementId) {
+    const snapshot = readVisibleState(element, elementId);
+    if (!snapshot.ok) return snapshot;
+    const inlineTransform = normalizeTransform(snapshot.value.transform);
+    if (inlineTransform) {
+      snapshot.value.transformBase = inlineTransform;
+      snapshot.value.transformBaseSource = "inline";
+      return snapshot;
+    }
+    const computed = readComputed(element);
+    if (!computed.ok) return computed;
+    const computedTransform = normalizeTransform(readTransformValue(computed.value));
+    snapshot.value.transformBase = computedTransform;
+    snapshot.value.transformBaseSource = computedTransform ? "computed" : "none";
+    return snapshot;
+  }
+
   function getCurrentEntry(elementId, element) {
     const rect = readRect(element);
     if (!rect.ok) return rect;
@@ -4753,10 +4782,15 @@ function createBrowserHostAdapter(options) {
   function applyTransform(element, elementId) {
     const original = ensureOriginal(element, elementId);
     if (!original.ok) return original;
-    const targetTransform = original.value.transform || EMPTY_TRANSFORM;
+    const targetTransform = normalizeTransform(original.value.transformBase || original.value.transform || EMPTY_TRANSFORM);
     try {
-      setStyleValue(element.style, TARGET_TRANSFORM, targetTransform);
-      element.style.transform = `var(${TARGET_TRANSFORM}, none) translate(var(${EDITOR_X}, 0px), var(${EDITOR_Y}, 0px))`;
+      if (targetTransform) {
+        setStyleValue(element.style, TARGET_TRANSFORM, targetTransform);
+        element.style.transform = `var(${TARGET_TRANSFORM}) translate(var(${EDITOR_X}, 0px), var(${EDITOR_Y}, 0px))`;
+      } else {
+        removeStyleValue(element.style, TARGET_TRANSFORM);
+        element.style.transform = `translate(var(${EDITOR_X}, 0px), var(${EDITOR_Y}, 0px))`;
+      }
       return ok();
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "transform apply failed");
