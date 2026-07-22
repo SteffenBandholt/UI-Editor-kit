@@ -73,7 +73,7 @@ function createBrowserHostAdapter(options) {
     return ok(element);
   }
 
-  function snapshotElement(element, elementId) {
+  function readVisibleState(element, elementId) {
     try {
       return ok({
         elementId,
@@ -91,9 +91,32 @@ function createBrowserHostAdapter(options) {
     }
   }
 
+  function createHostSnapshot(element, elementId) {
+    const visibleState = readVisibleState(element, elementId);
+    if (!visibleState.ok) return visibleState;
+    const hasOriginal = originalByElement.has(element);
+    return ok({
+      elementId,
+      visibleState: visibleState.value,
+      ownership: {
+        hasOriginal,
+        originalSnapshot: hasOriginal ? clone(originalByElement.get(element)) : null,
+      },
+    });
+  }
+
+  function normalizeHostSnapshot(snapshot) {
+    if (snapshot && snapshot.visibleState && snapshot.ownership) return snapshot;
+    return {
+      elementId: snapshot && snapshot.elementId,
+      visibleState: snapshot || {},
+      ownership: { hasOriginal: false, originalSnapshot: null },
+    };
+  }
+
   function ensureOriginal(element, elementId) {
     if (originalByElement.has(element)) return ok(originalByElement.get(element));
-    const snapshot = snapshotElement(element, elementId);
+    const snapshot = readVisibleState(element, elementId);
     if (!snapshot.ok) return snapshot;
     originalByElement.set(element, clone(snapshot.value));
     return snapshot;
@@ -191,7 +214,7 @@ function createBrowserHostAdapter(options) {
     captureElementLayoutState(elementId) {
       const ref = getRef(elementId);
       if (!ref.ok) return ref;
-      return snapshotElement(ref.value, elementId);
+      return createHostSnapshot(ref.value, elementId);
     },
     applyLayoutEntry(elementId, entry) {
       const ref = getRef(elementId);
@@ -235,7 +258,15 @@ function createBrowserHostAdapter(options) {
     restoreElementLayoutState(elementId, snapshot) {
       const ref = getRef(elementId);
       if (!ref.ok) return ref;
-      return restoreSnapshot(ref.value, snapshot || {});
+      const hostSnapshot = normalizeHostSnapshot(snapshot || {});
+      const restored = restoreSnapshot(ref.value, hostSnapshot.visibleState || {});
+      if (!restored.ok) return restored;
+      if (hostSnapshot.ownership && hostSnapshot.ownership.hasOriginal) {
+        originalByElement.set(ref.value, clone(hostSnapshot.ownership.originalSnapshot));
+      } else {
+        originalByElement.delete(ref.value);
+      }
+      return ok();
     },
     getCurrentLayoutEntry(elementId) {
       const ref = getRef(elementId);
