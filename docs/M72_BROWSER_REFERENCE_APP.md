@@ -11,7 +11,7 @@ npm run reference:build
 npm run reference:browser
 ```
 
-Die lokale URL wird vom Startskript ausgegeben.
+Die lokale URL wird vom Startskript ausgegeben. In der Cloud-Ausfuehrung gilt M72 nur als gebaut; die echte manuelle Browserabnahme bleibt offen, bis die Checkliste in einem interaktiven Browser durchgefuehrt wurde.
 
 ## Dateistruktur
 
@@ -64,11 +64,11 @@ Jedes Demo-Element hat eine ausdrueckliche Clickbindung auf `selectionHost.selec
 
 ## Storage und Autoload
 
-Die Referenzanwendung uebergibt `window.localStorage` ausdruecklich an den BrowserStorage. Beim Start wird kontrolliert geladen. Leerer Storage ist neutral; ungueltige oder nicht lesbare Daten werden sichtbar gemeldet. Ohne Storage bleiben Sessionaenderungen moeglich, Speichern wird blockiert.
+Der Bootstrap liest `window.localStorage` nicht direkt im HTML. `createReferenceApp()` kapselt den Browser-Storage-Zugriff in `resolveBrowserStorage()`; bei SecurityError oder vergleichbaren Fehlern startet die App mit nicht verfuegbarem BrowserStorage weiter. Leerer Storage ist neutral; ungueltige oder nicht lesbare Daten werden mit strukturiertem Ergebniscode sichtbar gemeldet. Ohne Storage bleiben Sessionaenderungen moeglich, Speichern wird blockiert und es gibt keinen Memory-Fallback.
 
 ## Lifecycle
 
-`createReferenceApp()` liefert Runtime, Controller, SelectionHost, OverlayHost, Bridge, ElementRefs und `destroy()`. Destroy entfernt Panel und Overlay, loest Listener und deregistriert eigene Refs.
+`startReferenceApp()` zeigt kontrollierte Bootstrapfehler im Dokument an. `createReferenceApp()` liefert Runtime, Controller, SelectionHost, OverlayHost, Bridge, ElementRefs und `destroy()`. Destroy entfernt Panel und Overlay, loest DOM-Listener und Controller-Subscription und deregistriert eigene Refs.
 
 ## Nicht-Ziele und M73
 

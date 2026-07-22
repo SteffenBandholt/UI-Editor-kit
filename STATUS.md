@@ -79,7 +79,7 @@ Aktueller Stand:
 - M69 gebaut: Generische Runtime und Session-/Layout-API programmatisch umgesetzt.
 - M70 gebaut: Generisches Bedienpanel, neutrale Panel-ViewModels, Dialog-/Statusmodell und Panel-Controller umgesetzt.
 - M71 gebaut: Generischer Browser-Host, explizite ElementRefs, SelectionHost, OverlayHost, BrowserStorageAdapter und BrowserBridge fachneutral umgesetzt.
-- M72 gebaut: Unabhaengige Browser-Referenzanwendung mit sichtbarem Bedienablauf, Autoload, neutraler Registry, expliziten ElementRefs, Build-/Startskripten, Dokumentation und Tests umgesetzt; O6/M73 bleibt der naechste Schritt fuer den Release Candidate.
+- M72 gebaut: Unabhaengige Browser-Referenzanwendung mit sichtbarem Bedienablauf, Autoload, neutraler Registry, expliziten ElementRefs, Build-/Startskripten, Dokumentation und automatisierten Tests umgesetzt; die echte manuelle Browserabnahme ist in dieser Cloud-Ausfuehrung offen. O6/M73 bleibt der naechste Schritt fuer den Release Candidate nach M72-Abnahme.
 
 M2 Fundament ist nach gruenem `npm test` abgenommen.
 M3 Editor-Core ist nach gruenem `npm test` abgeschlossen und abgenommen.
@@ -157,7 +157,7 @@ Bedeutung:
 | O2/M69 | [A] | Generische Runtime und Session-/Layout-API | `node test/m69-runtime-context.test.cjs`, `node test/m69-session-runtime.test.cjs`, `node test/m69-layout-persistence.test.cjs`, `node test/m69-reset-runtime.test.cjs`, `node test/m69-runtime-boundary.test.cjs`, `npm test` gruen | nach M69 O3/M70 |
 | O3/M70 | [A] | Generisches Bedienpanel und ViewModels | `node test/m70-panel-controller.test.cjs`, `node test/m70-panel-view-model.test.cjs`, `node test/m70-panel-dialogs.test.cjs`, `node test/m70-panel-renderer.test.cjs`, `node test/m70-panel-boundary.test.cjs`, `npm test` gruen | nach M70 O4/M71 |
 | O4/M71 | [A] | Generischer Browser-Host und Referenzadapter | `node test/m71-element-ref-registry.test.cjs`, `node test/m71-browser-host-adapter.test.cjs`, `node test/m71-selection-host.test.cjs`, `node test/m71-overlay-host.test.cjs`, `node test/m71-browser-storage.test.cjs`, `node test/m71-browser-bridge.test.cjs`, `node test/m71-browser-boundary.test.cjs`, `npm test` gruen | nach M71 O5/M72 |
-| O5/M72 | [x] | Unabhaengige Browser-Referenzanwendung | `node test/m72-reference-app.test.cjs`, `node test/m72-reference-integration.test.cjs`, `node test/m72-reference-persistence.test.cjs`, `node test/m72-reference-lifecycle.test.cjs`, `node test/m72-reference-boundary.test.cjs`, `npm test` gruen | nach M72 O6/M73 |
+| O5/M72 | [x] | Unabhaengige Browser-Referenzanwendung | Automatisierte M72-Tests und `npm test` gruen; echte manuelle Browserabnahme offen | nach manueller M72-Abnahme O6/M73 |
 | O6/M73 | [ ] | Release Candidate und zweite Zielanwendung | offen | naechster Schritt nach M72 |
 
 ## 6. Meilenstein-Gates

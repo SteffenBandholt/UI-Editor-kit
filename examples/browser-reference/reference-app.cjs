@@ -18,18 +18,42 @@ const REF_BINDINGS = Object.freeze([
 
 function safeText(value) { return value == null || value === "" ? "-" : String(value); }
 function resultCode(result) { return result && (result.code || result.messageKey) || "OK"; }
+function referenceError(code, message) { const error = new Error(message); error.referenceCode = code; return error; }
+function resolveBrowserStorage(windowAdapter) {
+  try {
+    return { ok: true, storage: windowAdapter ? windowAdapter.localStorage : null };
+  } catch (_error) {
+    return { ok: false, storage: null, code: "STORAGE_UNAVAILABLE" };
+  }
+}
+function displayBootstrapError(root, code) {
+  if (!root) return;
+  root.innerHTML = `<main class="reference-shell"><section class="reference-errors" role="alert">Referenzanwendung konnte nicht gestartet werden. Ergebniscode: ${safeText(code)}</section></main>`;
+}
+function startReferenceApp(options) {
+  const cfg = options || {};
+  const documentAdapter = cfg.documentAdapter || (typeof document !== "undefined" ? document : null);
+  const root = cfg.root || (documentAdapter && documentAdapter.getElementById("reference-app"));
+  try {
+    return createReferenceApp({ ...cfg, documentAdapter, root });
+  } catch (error) {
+    const code = error && error.referenceCode ? error.referenceCode : "REFERENCE_BOOTSTRAP_FAILED";
+    displayBootstrapError(root, code);
+    return { ok: false, code, destroy() {} };
+  }
+}
 
 function createReferenceApp(options) {
   const cfg = options || {};
   const documentAdapter = cfg.documentAdapter || (typeof document !== "undefined" ? document : null);
   const windowAdapter = cfg.windowAdapter || (typeof window !== "undefined" ? window : null);
-  if (!documentAdapter) throw new Error("documentAdapter is required");
+  if (!documentAdapter) throw referenceError("DOCUMENT_MISSING", "documentAdapter is required");
   const urlProfile = windowAdapter && windowAdapter.location && windowAdapter.location.search ? new URLSearchParams(windowAdapter.location.search).get("profile") : null;
   const requestedProfile = cfg.profileId || urlProfile;
   const profileId = REFERENCE_PROFILES.includes(requestedProfile) ? requestedProfile : "default";
   const targetContext = createReferenceTargetContext(profileId);
   const root = cfg.root || documentAdapter.getElementById("reference-app");
-  if (!root) throw new Error("reference root is missing");
+  if (!root) throw referenceError("REFERENCE_ROOT_MISSING", "reference root is missing");
 
   const disposers = [];
   const ownedRefs = [];
@@ -70,22 +94,36 @@ function createReferenceApp(options) {
     else ownedRefs.push(elementId);
   }
 
-  const storage = createBrowserLayoutStorage({ storage: Object.prototype.hasOwnProperty.call(cfg, "storage") ? cfg.storage : windowAdapter && windowAdapter.localStorage, namespace: "ui-editor-reference-layout" });
-  if (!storage.available) visibleErrors.push("Storage nicht verfügbar; Speichern ist blockiert.");
-  const hostAdapter = createBrowserHostAdapter({ elementRefs, windowAdapter });
-  const runtime = createUiEditorRuntime({ registry, hostAdapter, layoutStorage: storage, targetContext });
+  const resolvedStorage = Object.prototype.hasOwnProperty.call(cfg, "storage") ? { ok: true, storage: cfg.storage } : resolveBrowserStorage(windowAdapter);
+  if (!resolvedStorage.ok) visibleErrors.push("Storage nicht verfügbar; Speichern ist blockiert. Ergebniscode: STORAGE_UNAVAILABLE");
+  const storage = createBrowserLayoutStorage({ storage: resolvedStorage.storage, namespace: "ui-editor-reference-layout" });
+  if (!storage.available && resolvedStorage.ok) visibleErrors.push("Storage nicht verfügbar; Speichern ist blockiert.");
+  let hostAdapter;
+  let runtime;
+  try {
+    hostAdapter = createBrowserHostAdapter({ elementRefs, windowAdapter });
+    runtime = createUiEditorRuntime({ registry, hostAdapter, layoutStorage: storage, targetContext });
+  } catch (_error) {
+    throw referenceError("RUNTIME_HOST_INIT_FAILED", "runtime or host initialization failed");
+  }
   const sessionResult = runtime.beginSession();
-  if (!sessionResult.ok) visibleErrors.push("Sessionstart fehlgeschlagen.");
+  if (!sessionResult.ok) visibleErrors.push(`Sessionstart fehlgeschlagen. Ergebniscode: ${resultCode(sessionResult)}`);
 
+  const panelMount = documentAdapter.getElementById(DOM_IDS.panel);
+  if (!panelMount) throw referenceError("PANEL_MOUNT_MISSING", "panel mount is missing");
+  const overlayMount = documentAdapter.getElementById(DOM_IDS.stage);
+  if (!overlayMount) throw referenceError("OVERLAY_MOUNT_MISSING", "overlay mount is missing");
   const controller = createUiEditorPanelController({ runtime, registry, stepSize: 5 });
-  const panel = createUiEditorPanel({ controller, mountTarget: documentAdapter.getElementById(DOM_IDS.panel), documentAdapter });
+  const panel = createUiEditorPanel({ controller, mountTarget: panelMount, documentAdapter });
   const selectionHost = createBrowserSelectionHost({ registry, elementRefs });
-  const overlayHost = createBrowserOverlayHost({ overlayMountTarget: documentAdapter.getElementById(DOM_IDS.stage), documentAdapter, windowAdapter });
+  const overlayHost = createBrowserOverlayHost({ overlayMountTarget: overlayMount, documentAdapter, windowAdapter });
   const bridge = createUiEditorBrowserBridge({ controller, elementRefs, selectionHost, overlayHost });
 
+  const storagePreview = storage.available && typeof storage.readResult === "function" ? storage.readResult(targetContext) : null;
+  if (storagePreview && storagePreview.ok === false) visibleErrors.push(`Gespeichertes Layout ungültig oder nicht ladbar: ${resultCode(storagePreview)}`);
   const autoload = runtime.loadLayout();
   lastResult = autoload;
-  if (!autoload.ok && storage.available) visibleErrors.push(`Gespeichertes Layout ungültig oder nicht ladbar: ${resultCode(autoload)}`);
+  if (!autoload.ok && storage.available && !(storagePreview && storagePreview.ok === false)) visibleErrors.push(`Gespeichertes Layout ungültig oder nicht ladbar: ${resultCode(autoload)}`);
 
   function bind(node, type, listener) { node.addEventListener(type, listener); disposers.push(() => node.removeEventListener(type, listener)); }
   REF_BINDINGS.forEach(([elementId, domId]) => {
@@ -94,7 +132,8 @@ function createReferenceApp(options) {
   });
   bind(documentAdapter.getElementById(DOM_IDS.stage), "click", () => { lastResult = bridge.clearSelection(); renderStatus(); });
   bind(documentAdapter.getElementById(DOM_IDS.panel), "click", (event) => event.stopPropagation());
-  controller.subscribe((state) => { lastResult = state.lastResult || lastResult; renderStatus(); });
+  const unsubscribeController = controller.subscribe((state) => { if (destroyed) return; lastResult = state.lastResult || lastResult; renderStatus(); });
+  disposers.push(unsubscribeController);
 
   const profileSelect = documentAdapter.getElementById(DOM_IDS.profile);
   profileSelect.value = profileId;
@@ -110,6 +149,7 @@ function createReferenceApp(options) {
 
   function showError(text) { const node = documentAdapter.getElementById(DOM_IDS.errors); node.hidden = false; node.textContent = text; }
   function renderStatus() {
+    if (destroyed) return;
     const status = runtime.getSessionStatus();
     const selection = selectionHost.getSelection();
     const persistence = runtime.getPersistenceStatus();
@@ -125,5 +165,5 @@ function createReferenceApp(options) {
   };
 }
 
-if (typeof window !== "undefined") window.createReferenceApp = createReferenceApp;
-module.exports = { createReferenceApp, DOM_IDS, REF_BINDINGS };
+if (typeof window !== "undefined") { window.createReferenceApp = createReferenceApp; window.startReferenceApp = startReferenceApp; }
+module.exports = { createReferenceApp, startReferenceApp, resolveBrowserStorage, DOM_IDS, REF_BINDINGS };
