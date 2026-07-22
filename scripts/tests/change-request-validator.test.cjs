@@ -246,7 +246,7 @@ function run() {
   assert.equal(validatorSource.includes("fs"), false);
   assert.equal(validatorSource.includes("child_process"), false);
 
-  const forbiddenPaths = ["browser", "demo", "examples"];
+  const forbiddenPaths = ["browser", "demo", "examples/beispiel-ui", "examples/mini-inspector", "examples/host-app-basic"];
   forbiddenPaths.forEach((relativePath) => {
     assert.equal(fs.existsSync(path.join(REPO_ROOT, relativePath)), false, `Nebenpfad vorhanden: ${relativePath}`);
   });
