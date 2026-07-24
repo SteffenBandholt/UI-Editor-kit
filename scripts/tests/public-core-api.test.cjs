@@ -11,18 +11,10 @@ const publicApi = require(publicApiPath);
 const { createNeutralTargetAppHostAdapter } = require("../fixtures/neutral-target-app/neutralTargetApp.cjs");
 
 const expectedExports = [
-  "createElementRefRegistry",
-  "createBrowserHostAdapter",
-  "createBrowserSelectionHost",
-  "createBrowserOverlayHost",
-  "createBrowserLayoutStorage",
-  "createUiEditorBrowserBridge",
-  "BROWSER_ERROR_CODES",
   "createUiEditorRuntime",
   "validateLayoutEntryForElement",
   "createUiEditorPanelController",
   "createUiEditorPanelViewModel",
-  "createUiEditorPanel",
   "createPanelMessageCatalog",
   "PANEL_INTENTS",
   "PANEL_LAYERS",
@@ -48,36 +40,12 @@ const expectedExports = [
   "getLayoutStateProfileKey",
   "assertCompatibleLayoutProfile",
   "createMemoryLayoutStateStore",
-  "SELECTION_CONTRACT_VERSION",
-  "SelectionContractErrorCodes",
-  "validateSelectionTargetContract",
-  "validateElementRefResolver",
-  "validateSelectionHost",
-  "validateSelectionControllerContract",
-  "createSelectionStateSnapshot",
-  "createSelectionController",
-  "createHoverOverlay",
-  "createSelectedOverlay",
-  "resolveSelectionTarget",
-  "SelectionRuntimeErrorCodes",
-];
-const forbiddenPublicApiPatterns = [
-  /BBM/i,
-  /Restarbeiten/i,
-  /Protokoll/i,
-  /TOPS/i,
-  /database|\bDB\b|sql/i,
-  /PDF|Druck|Mail|Audio/i,
-  /querySelector|getElementById\(|MutationObserver|dom\s*scan/i,
-  /auto.*detect|auto.*register|automatische\s+Registry-Befuellung/i,
 ];
 
 assert.equal(fs.existsSync(publicApiPath), true, "src/index.cjs fehlt");
 assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
-  if (name === "SELECTION_CONTRACT_VERSION") {
-    assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (["SelectionContractErrorCodes", "SelectionRuntimeErrorCodes", "RUNTIME_ERROR_CODES", "BROWSER_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS"].includes(name)) {
+  if (["RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS"].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);
@@ -85,7 +53,7 @@ expectedExports.forEach((name) => {
 });
 
 const publicApiSource = fs.readFileSync(publicApiPath, "utf8");
-forbiddenPublicApiPatterns.forEach((pattern) => {
+[/window/, /document/, /HTMLElement/, /createElement\s*\(/, /querySelector/, /localStorage/].forEach((pattern) => {
   assert.equal(pattern.test(publicApiSource), false, `src/index.cjs matched ${pattern}`);
 });
 
