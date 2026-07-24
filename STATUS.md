@@ -1,5 +1,9 @@
 # STATUS - UI-Editor-kit
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
 ## 1. Zweck
 
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
