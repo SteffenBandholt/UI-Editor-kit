@@ -13,8 +13,12 @@ const EDITOR_Y = "--ui-editor-y";
 const EDITOR_WIDTH = "--ui-editor-width";
 const EDITOR_HEIGHT = "--ui-editor-height";
 const EDITOR_VISIBLE = "--ui-editor-visible";
+const EDITOR_TEXT_OFFSET_X = "--ui-editor-text-offset-x";
+const EDITOR_TEXT_OFFSET_Y = "--ui-editor-text-offset-y";
+const EDITOR_TEXT_FONT_SIZE = "--ui-editor-text-font-size";
+const EDITOR_TEXT_TRANSFORM = "--ui-editor-text-transform";
 const TARGET_TRANSFORM = "--ui-editor-target-transform";
-const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM];
+const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM, EDITOR_TEXT_OFFSET_X, EDITOR_TEXT_OFFSET_Y, EDITOR_TEXT_FONT_SIZE, EDITOR_TEXT_TRANSFORM];
 const EMPTY_TRANSFORM = "";
 
 function px(value) {
@@ -64,6 +68,7 @@ function createBrowserHostAdapter(options) {
       : null
   ));
   const originalByElement = new WeakMap();
+  const textRefs = cfg.textRefs || null;
 
   function getRef(elementId) {
     if (!isValidElementId(elementId)) return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID, "invalid elementId");
@@ -71,6 +76,36 @@ function createBrowserHostAdapter(options) {
     const element = result && result.ok !== false ? (result.value || result) : null;
     if (!isElementRef(element)) return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING, "elementRef is missing.");
     return ok(element);
+  }
+
+  function getTextRef(elementId) {
+    if (textRefs && typeof textRefs.get === "function") {
+      const result = textRefs.get(elementId);
+      const element = result && result.ok !== false ? (result.value || result) : null;
+      return isElementRef(element) ? element : null;
+    }
+    if (typeof cfg.getTextRef === "function") {
+      const result = cfg.getTextRef(elementId);
+      const element = result && result.ok !== false ? (result.value || result) : null;
+      return isElementRef(element) ? element : null;
+    }
+    return null;
+  }
+
+  function readTextState(element, elementId) {
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    const computed = computedStyleReader ? computedStyleReader(target) : null;
+    return {
+      hasTextRef: !!textElement,
+      inlineTextIndent: target.style.textIndent || "",
+      computedTextIndent: computed ? (getStyleValue(computed, "textIndent") || computed.textIndent || "") : "",
+      inlinePaddingTop: target.style.paddingTop || "",
+      computedPaddingTop: computed ? (getStyleValue(computed, "paddingTop") || computed.paddingTop || "") : "",
+      inlineFontSize: target.style.fontSize || "",
+      computedFontSize: computed ? (getStyleValue(computed, "fontSize") || computed.fontSize || "") : "",
+      inlineTransform: target.style.transform || "",
+    };
   }
 
   function readVisibleState(element, elementId) {
@@ -81,6 +116,7 @@ function createBrowserHostAdapter(options) {
         width: element.style.width || "",
         height: element.style.height || "",
         hidden: !!element.hidden,
+        textState: readTextState(element, elementId),
         customProperties: EDITOR_FIELDS.reduce((acc, key) => {
           acc[key] = getStyleValue(element.style, key) || "";
           return acc;
@@ -122,12 +158,23 @@ function createBrowserHostAdapter(options) {
     return snapshot;
   }
 
-  function restoreSnapshot(element, snapshot) {
+  function restoreTextSnapshot(element, elementId, snapshot) {
+    const textState = snapshot.textState || {};
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    setInlineStyle(target.style, "textIndent", textState.inlineTextIndent || "");
+    setInlineStyle(target.style, "fontSize", textState.inlineFontSize || "");
+    setInlineStyle(target.style, "transform", textState.inlineTransform || "");
+    if (textElement) setInlineStyle(target.style, "paddingTop", textState.inlinePaddingTop || "");
+  }
+
+  function restoreSnapshot(element, elementId, snapshot) {
     try {
       setInlineStyle(element.style, "transform", snapshot.transform || "");
       setInlineStyle(element.style, "width", snapshot.width || "");
       setInlineStyle(element.style, "height", snapshot.height || "");
       element.hidden = !!snapshot.hidden;
+      restoreTextSnapshot(element, elementId, snapshot);
       const customProperties = snapshot.customProperties || {};
       EDITOR_FIELDS.forEach((key) => {
         if (Object.prototype.hasOwnProperty.call(customProperties, key) && customProperties[key] !== "") {
@@ -181,14 +228,18 @@ function createBrowserHostAdapter(options) {
       if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
         return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
       }
-      return ok({
+      const entry = {
         elementId,
         x: toNumber(getStyleValue(element.style, EDITOR_X)) || 0,
         y: toNumber(getStyleValue(element.style, EDITOR_Y)) || 0,
         width,
         height,
         visible: !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false"),
-      });
+      };
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_X) !== "") entry.textOffsetX = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_X)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y) !== "") entry.textOffsetY = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE) !== "") entry.fontSize = toNumber(getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE));
+      return ok(entry);
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "style read failed");
     }
@@ -205,6 +256,34 @@ function createBrowserHostAdapter(options) {
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "transform apply failed");
     }
+  }
+
+
+  function applyTextEntry(element, elementId, entry, original) {
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    const baseX = toNumber(original.value.textState && (original.value.textState.inlineTextIndent || original.value.textState.computedTextIndent)) || 0;
+    const baseY = toNumber(original.value.textState && (original.value.textState.inlinePaddingTop || original.value.textState.computedPaddingTop)) || 0;
+    const baseFont = toNumber(original.value.textState && (original.value.textState.inlineFontSize || original.value.textState.computedFontSize));
+    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetX")) {
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_X, px(entry.textOffsetX));
+      target.style.textIndent = px(baseX + (Number(entry.textOffsetX) || 0));
+    }
+    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetY")) {
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_Y, px(entry.textOffsetY));
+      if (textElement) {
+        const baseTransform = original.value.textState && original.value.textState.inlineTransform ? `${original.value.textState.inlineTransform} ` : "";
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
+        target.style.transform = `${baseTransform}translateY(${px(entry.textOffsetY)})`.trim();
+      } else {
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(entry, "fontSize")) {
+      setStyleValue(element.style, EDITOR_TEXT_FONT_SIZE, px(entry.fontSize));
+      target.style.fontSize = px(entry.fontSize);
+    }
+    void baseY; void baseFont;
   }
 
   return {
@@ -241,6 +320,7 @@ function createBrowserHostAdapter(options) {
           setStyleValue(element.style, EDITOR_VISIBLE, entry.visible ? "true" : "false");
           element.hidden = entry.visible === false;
         }
+        applyTextEntry(element, elementId, entry, original);
         return ok();
       } catch (error) {
         return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "layout apply failed");
@@ -251,7 +331,7 @@ function createBrowserHostAdapter(options) {
       if (!ref.ok) return ref;
       const original = originalByElement.get(ref.value);
       if (!original) return ok();
-      const restored = restoreSnapshot(ref.value, original);
+      const restored = restoreSnapshot(ref.value, elementId, original);
       if (restored.ok) originalByElement.delete(ref.value);
       return restored;
     },
@@ -259,7 +339,7 @@ function createBrowserHostAdapter(options) {
       const ref = getRef(elementId);
       if (!ref.ok) return ref;
       const hostSnapshot = normalizeHostSnapshot(snapshot || {});
-      const restored = restoreSnapshot(ref.value, hostSnapshot.visibleState || {});
+      const restored = restoreSnapshot(ref.value, elementId, hostSnapshot.visibleState || {});
       if (!restored.ok) return restored;
       if (hostSnapshot.ownership && hostSnapshot.ownership.hasOriginal) {
         originalByElement.set(ref.value, clone(hostSnapshot.ownership.originalSnapshot));

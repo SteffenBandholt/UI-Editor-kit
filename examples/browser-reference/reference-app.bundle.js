@@ -7,8 +7,8 @@ const {
   createBrowserLayoutStorage, createUiEditorBrowserBridge, createUiEditorRuntime,
   createUiEditorPanelController, createUiEditorPanel,
 } = __require(1);
-const { createReferenceRegistry } = __require(42);
-const { REFERENCE_PROFILES, createReferenceTargetContext } = __require(43);
+const { createReferenceRegistry } = __require(43);
+const { REFERENCE_PROFILES, createReferenceTargetContext } = __require(44);
 
 const DOM_IDS = Object.freeze({
   card: "reference-demo-card", heading: "reference-demo-heading", action: "reference-demo-action", info: "reference-demo-info", locked: "reference-demo-locked",
@@ -234,22 +234,22 @@ const { createSelectionController, SelectionRuntimeErrorCodes } = __require(19);
 const { createHoverOverlay } = __require(22);
 const { createSelectedOverlay } = __require(24);
 const { resolveSelectionTarget } = __require(21);
-const { createUiEditorRuntime, validateLayoutEntryForElement } = __require(25);
-const { createUiEditorPanelController } = __require(30);
-const { createUiEditorPanelViewModel } = __require(33);
-const { createUiEditorPanel } = __require(34);
-const { createPanelMessageCatalog } = __require(32);
-const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = __require(31);
+const { createUiEditorRuntime, validateLayoutEntryForElement, resolveOperationStep } = __require(25);
+const { createUiEditorPanelController } = __require(31);
+const { createUiEditorPanelViewModel } = __require(34);
+const { createUiEditorPanel } = __require(35);
+const { createPanelMessageCatalog } = __require(33);
+const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = __require(32);
 const { RUNTIME_ERROR_CODES } = __require(26);
 const { normalizeTargetContext, validateTargetContext } = __require(28);
 const { normalizeLayoutEntry } = __require(29);
-const { createElementRefRegistry } = __require(35);
-const { createBrowserHostAdapter } = __require(37);
-const { createBrowserSelectionHost } = __require(38);
-const { createBrowserOverlayHost } = __require(39);
-const { createBrowserLayoutStorage } = __require(40);
-const { createUiEditorBrowserBridge } = __require(41);
-const { BROWSER_ERROR_CODES } = __require(36);
+const { createElementRefRegistry } = __require(36);
+const { createBrowserHostAdapter } = __require(38);
+const { createBrowserSelectionHost } = __require(39);
+const { createBrowserOverlayHost } = __require(40);
+const { createBrowserLayoutStorage } = __require(41);
+const { createUiEditorBrowserBridge } = __require(42);
+const { BROWSER_ERROR_CODES } = __require(37);
 const {
   validateSelectionHost,
   validateSelectionControllerContract,
@@ -266,6 +266,7 @@ module.exports = Object.freeze({
   BROWSER_ERROR_CODES,
   createUiEditorRuntime,
   validateLayoutEntryForElement,
+  resolveOperationStep,
   createUiEditorPanelController,
   createUiEditorPanelViewModel,
   createUiEditorPanel,
@@ -3334,6 +3335,12 @@ function validateLayoutEntryForElement(entry, registryElement) {
   if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
   }
+  if ((Object.prototype.hasOwnProperty.call(normalized, "textOffsetX") || Object.prototype.hasOwnProperty.call(normalized, "textOffsetY")) && !isOperationAllowed(registryElement, "textMove")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textMove operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "fontSize") && !isOperationAllowed(registryElement, "fontSize")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires fontSize operation.");
+  }
   if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
     const visibilityOperation = normalized.visible === false ? "hide" : "show";
     if (!isOperationAllowed(registryElement, visibilityOperation)) {
@@ -3511,7 +3518,7 @@ function createUiEditorRuntime(options) {
 
     const elementResult = validateElement(registry, changeRequest.elementId);
     if (!elementResult.ok) return elementResult;
-    if (!["move", "resize"].includes(changeRequest.operation) || !operationAllowed(elementResult.value, changeRequest.operation)) {
+    if (!["move", "resize", "textMove", "fontSize"].includes(changeRequest.operation) || !operationAllowed(elementResult.value, changeRequest.operation)) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
     }
 
@@ -3869,7 +3876,8 @@ function createUiEditorRuntime(options) {
   };
 }
 
-module.exports = { createUiEditorRuntime, validateLayoutEntryForElement };
+const { resolveOperationStep } = __require(30);
+module.exports = { createUiEditorRuntime, validateLayoutEntryForElement, resolveOperationStep };
 
 },
 26:function(module,exports,__require){
@@ -3941,7 +3949,7 @@ module.exports = { normalizeTargetContext, validateTargetContext, assertScope };
 },
 29:function(module,exports,__require){
 "use strict";
-const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible"]);
+const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible", "textOffsetX", "textOffsetY", "fontSize"]);
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function normalizeLayoutEntry(entry) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.elementId !== "string" || entry.elementId.trim() === "") return null;
@@ -3985,9 +3993,38 @@ module.exports = { LAYOUT_ENTRY_FIELDS, normalizeLayoutEntry, normalizeEntries, 
 },
 30:function(module,exports,__require){
 "use strict";
+
+const SAFE_DEFAULT_STEP = 1;
+
+function valid(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : undefined;
+}
+
+function resolveOperationStep(options) {
+  const cfg = options || {};
+  const steps = cfg.registryElement && cfg.registryElement.steps && typeof cfg.registryElement.steps === "object" ? cfg.registryElement.steps : {};
+  const panelDefault = valid(cfg.panelStepSize);
+  const explicit = valid(cfg.stepSize);
+  if (explicit !== undefined) return explicit;
+  if (cfg.operation === "move") return valid(steps.move) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "resize" && cfg.axis === "width") return valid(steps.resizeWidth) ?? valid(steps.resize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "resize" && cfg.axis === "height") return valid(steps.resizeHeight) ?? valid(steps.resize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "textMove" && cfg.axis === "x") return valid(steps.textMoveX) ?? valid(steps.textMove) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "textMove" && cfg.axis === "y") return valid(steps.textMoveY) ?? valid(steps.textMove) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "fontSize") return valid(steps.fontSize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  return panelDefault ?? SAFE_DEFAULT_STEP;
+}
+
+module.exports = { resolveOperationStep, SAFE_DEFAULT_STEP };
+
+},
+31:function(module,exports,__require){
+"use strict";
 const { RUNTIME_ERROR_CODES } = __require(26);
-const { PANEL_MODES } = __require(31);
-const { createPanelMessageCatalog } = __require(32);
+const { PANEL_MODES } = __require(32);
+const { createPanelMessageCatalog } = __require(33);
+const { resolveOperationStep } = __require(30);
 
 const PANEL_ERROR_CODES = Object.freeze({
   NO_SELECTION: "NO_SELECTION",
@@ -4181,14 +4218,16 @@ function createUiEditorPanelController(options) {
     const inspected = inspectSelected();
     if (inspected && inspected.ok === false) return inspected;
     const layout = effectiveLayoutFrom(inspected);
-    const step = state.stepSize;
+    const elementResult = safeRegistryGet(state.selectedElementId);
+    if (!elementResult.ok) return elementResult;
+    const registryElement = elementResult.value || {};
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
-      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - step };
-      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + step };
-      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - step };
-      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + step };
+      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
       else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for move.");
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
@@ -4198,6 +4237,7 @@ function createUiEditorPanelController(options) {
       if (!Number.isFinite(layout.width)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current width is unavailable.", { field: "width" });
       const min = minFor("minWidth");
       if (!min.ok) return min;
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = layout.width + (direction === "left" ? -step : step);
       if (width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
       payload = { width };
@@ -4210,6 +4250,7 @@ function createUiEditorPanelController(options) {
       if (!Number.isFinite(layout.height)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current height is unavailable.", { field: "height" });
       const min = minFor("minHeight");
       if (!min.ok) return min;
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = layout.height + (direction === "up" ? -step : step);
       if (height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
       payload = { height };
@@ -4315,7 +4356,7 @@ function createUiEditorPanelController(options) {
 module.exports = { createUiEditorPanelController, PANEL_ERROR_CODES };
 
 },
-31:function(module,exports,__require){
+32:function(module,exports,__require){
 "use strict";
 const PANEL_MODES = Object.freeze({ MOVE: "move", WIDTH: "width", HEIGHT: "height" });
 const PANEL_DIRECTIONS = Object.freeze({ UP: "up", DOWN: "down", LEFT: "left", RIGHT: "right", CENTER: "center" });
@@ -4329,7 +4370,7 @@ const PANEL_INTENTS = Object.freeze({
 module.exports = { PANEL_MODES, PANEL_DIRECTIONS, PANEL_INTENTS };
 
 },
-32:function(module,exports,__require){
+33:function(module,exports,__require){
 "use strict";
 const defaults = Object.freeze({
   NO_SELECTION: "Kein Element ausgewählt.", UNKNOWN_ELEMENT: "Element ist nicht registriert.", ELEMENT_NOT_EDITABLE: "Element ist nicht editierbar.",
@@ -4348,10 +4389,10 @@ function createPanelMessageCatalog(overrides) {
 module.exports = { createPanelMessageCatalog };
 
 },
-33:function(module,exports,__require){
+34:function(module,exports,__require){
 "use strict";
-const { PANEL_MODES, PANEL_INTENTS } = __require(31);
-const { createPanelMessageCatalog } = __require(32);
+const { PANEL_MODES, PANEL_INTENTS } = __require(32);
+const { createPanelMessageCatalog } = __require(33);
 function button(label, intent, enabled, reasonCode, extra) { return { enabled: !!enabled, visible: true, label, intent, ...(reasonCode ? { reasonCode } : {}), ...(extra || {}) }; }
 function statusFrom(result, messages) {
   if (!result) return { kind: "idle", code: "IDLE", messageKey: "IDLE", message: messages.get("IDLE") };
@@ -4387,9 +4428,9 @@ function createUiEditorPanelViewModel(options) {
 module.exports = { createUiEditorPanelViewModel, statusFrom };
 
 },
-34:function(module,exports,__require){
+35:function(module,exports,__require){
 "use strict";
-const { createUiEditorPanelViewModel } = __require(33);
+const { createUiEditorPanelViewModel } = __require(34);
 
 function createUiEditorPanel(options) {
   const cfg = options || {};
@@ -4535,14 +4576,14 @@ function createUiEditorPanel(options) {
 module.exports = { createUiEditorPanel };
 
 },
-35:function(module,exports,__require){
+36:function(module,exports,__require){
 "use strict";
-const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef}=__require(36);
+const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef}=__require(37);
 function createElementRefRegistry(){const refs=new Map(); const listeners=new Set(); function emit(type,elementId,elementRef){listeners.forEach(l=>{try{l({type,elementId,elementRef});}catch(_){}});} return {register(elementId,elementRef){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); if(!isElementRef(elementRef))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_REF,"elementRef must be HTMLElement-like."); if(refs.has(elementId))return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_ALREADY_REGISTERED,"elementRef is already registered."); refs.set(elementId,elementRef); emit("register",elementId,elementRef); return ok(elementRef,{elementId});},unregister(elementId){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); const existed=refs.delete(elementId); emit("unregister",elementId); return ok(undefined,{elementId,existed});},get(elementId){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); if(!refs.has(elementId))return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING,"elementRef is missing."); return ok(refs.get(elementId),{elementId});},has(elementId){return isValidElementId(elementId)&&refs.has(elementId);},listIds(){return Array.from(refs.keys());},clear(){refs.clear(); emit("clear"); return ok();},subscribe(listener){if(typeof listener!=="function")return ()=>{}; listeners.add(listener); return ()=>listeners.delete(listener);}};}
 module.exports={createElementRefRegistry};
 
 },
-36:function(module,exports,__require){
+37:function(module,exports,__require){
 "use strict";
 const BROWSER_ERROR_CODES=Object.freeze({INVALID_ELEMENT_ID:"INVALID_ELEMENT_ID",INVALID_ELEMENT_REF:"INVALID_ELEMENT_REF",ELEMENT_REF_ALREADY_REGISTERED:"ELEMENT_REF_ALREADY_REGISTERED",ELEMENT_REF_MISSING:"ELEMENT_REF_MISSING",HOST_READ_FAILED:"HOST_READ_FAILED",HOST_APPLY_FAILED:"HOST_APPLY_FAILED",HOST_CAPTURE_FAILED:"HOST_CAPTURE_FAILED",HOST_CLEAR_FAILED:"HOST_CLEAR_FAILED",CURRENT_VALUE_UNAVAILABLE:"CURRENT_VALUE_UNAVAILABLE",OVERLAY_MOUNT_MISSING:"OVERLAY_MOUNT_MISSING",OVERLAY_MEASURE_FAILED:"OVERLAY_MEASURE_FAILED",STORAGE_UNAVAILABLE:"STORAGE_UNAVAILABLE",STORAGE_READ_FAILED:"STORAGE_READ_FAILED",STORAGE_WRITE_FAILED:"STORAGE_WRITE_FAILED",STORAGE_CLEAR_FAILED:"STORAGE_CLEAR_FAILED",STORAGE_PARSE_FAILED:"STORAGE_PARSE_FAILED",STORAGE_SCHEMA_UNSUPPORTED:"STORAGE_SCHEMA_UNSUPPORTED",BRIDGE_DESTROYED:"BRIDGE_DESTROYED",UNKNOWN_ELEMENT:"UNKNOWN_ELEMENT"});
 function ok(value,extra){return {ok:true,...(value!==undefined?{value}:{}),...(extra||{})};}
@@ -4553,7 +4594,7 @@ function safeCall(fn,code){try{return ok(fn());}catch(error){return blocked(code
 module.exports={BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef,safeCall};
 
 },
-37:function(module,exports,__require){
+38:function(module,exports,__require){
 "use strict";
 
 const {
@@ -4562,15 +4603,19 @@ const {
   blocked,
   isValidElementId,
   isElementRef,
-} = __require(36);
+} = __require(37);
 
 const EDITOR_X = "--ui-editor-x";
 const EDITOR_Y = "--ui-editor-y";
 const EDITOR_WIDTH = "--ui-editor-width";
 const EDITOR_HEIGHT = "--ui-editor-height";
 const EDITOR_VISIBLE = "--ui-editor-visible";
+const EDITOR_TEXT_OFFSET_X = "--ui-editor-text-offset-x";
+const EDITOR_TEXT_OFFSET_Y = "--ui-editor-text-offset-y";
+const EDITOR_TEXT_FONT_SIZE = "--ui-editor-text-font-size";
+const EDITOR_TEXT_TRANSFORM = "--ui-editor-text-transform";
 const TARGET_TRANSFORM = "--ui-editor-target-transform";
-const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM];
+const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM, EDITOR_TEXT_OFFSET_X, EDITOR_TEXT_OFFSET_Y, EDITOR_TEXT_FONT_SIZE, EDITOR_TEXT_TRANSFORM];
 const EMPTY_TRANSFORM = "";
 
 function px(value) {
@@ -4620,6 +4665,7 @@ function createBrowserHostAdapter(options) {
       : null
   ));
   const originalByElement = new WeakMap();
+  const textRefs = cfg.textRefs || null;
 
   function getRef(elementId) {
     if (!isValidElementId(elementId)) return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID, "invalid elementId");
@@ -4627,6 +4673,36 @@ function createBrowserHostAdapter(options) {
     const element = result && result.ok !== false ? (result.value || result) : null;
     if (!isElementRef(element)) return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING, "elementRef is missing.");
     return ok(element);
+  }
+
+  function getTextRef(elementId) {
+    if (textRefs && typeof textRefs.get === "function") {
+      const result = textRefs.get(elementId);
+      const element = result && result.ok !== false ? (result.value || result) : null;
+      return isElementRef(element) ? element : null;
+    }
+    if (typeof cfg.getTextRef === "function") {
+      const result = cfg.getTextRef(elementId);
+      const element = result && result.ok !== false ? (result.value || result) : null;
+      return isElementRef(element) ? element : null;
+    }
+    return null;
+  }
+
+  function readTextState(element, elementId) {
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    const computed = computedStyleReader ? computedStyleReader(target) : null;
+    return {
+      hasTextRef: !!textElement,
+      inlineTextIndent: target.style.textIndent || "",
+      computedTextIndent: computed ? (getStyleValue(computed, "textIndent") || computed.textIndent || "") : "",
+      inlinePaddingTop: target.style.paddingTop || "",
+      computedPaddingTop: computed ? (getStyleValue(computed, "paddingTop") || computed.paddingTop || "") : "",
+      inlineFontSize: target.style.fontSize || "",
+      computedFontSize: computed ? (getStyleValue(computed, "fontSize") || computed.fontSize || "") : "",
+      inlineTransform: target.style.transform || "",
+    };
   }
 
   function readVisibleState(element, elementId) {
@@ -4637,6 +4713,7 @@ function createBrowserHostAdapter(options) {
         width: element.style.width || "",
         height: element.style.height || "",
         hidden: !!element.hidden,
+        textState: readTextState(element, elementId),
         customProperties: EDITOR_FIELDS.reduce((acc, key) => {
           acc[key] = getStyleValue(element.style, key) || "";
           return acc;
@@ -4678,12 +4755,23 @@ function createBrowserHostAdapter(options) {
     return snapshot;
   }
 
-  function restoreSnapshot(element, snapshot) {
+  function restoreTextSnapshot(element, elementId, snapshot) {
+    const textState = snapshot.textState || {};
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    setInlineStyle(target.style, "textIndent", textState.inlineTextIndent || "");
+    setInlineStyle(target.style, "fontSize", textState.inlineFontSize || "");
+    setInlineStyle(target.style, "transform", textState.inlineTransform || "");
+    if (textElement) setInlineStyle(target.style, "paddingTop", textState.inlinePaddingTop || "");
+  }
+
+  function restoreSnapshot(element, elementId, snapshot) {
     try {
       setInlineStyle(element.style, "transform", snapshot.transform || "");
       setInlineStyle(element.style, "width", snapshot.width || "");
       setInlineStyle(element.style, "height", snapshot.height || "");
       element.hidden = !!snapshot.hidden;
+      restoreTextSnapshot(element, elementId, snapshot);
       const customProperties = snapshot.customProperties || {};
       EDITOR_FIELDS.forEach((key) => {
         if (Object.prototype.hasOwnProperty.call(customProperties, key) && customProperties[key] !== "") {
@@ -4737,14 +4825,18 @@ function createBrowserHostAdapter(options) {
       if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
         return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
       }
-      return ok({
+      const entry = {
         elementId,
         x: toNumber(getStyleValue(element.style, EDITOR_X)) || 0,
         y: toNumber(getStyleValue(element.style, EDITOR_Y)) || 0,
         width,
         height,
         visible: !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false"),
-      });
+      };
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_X) !== "") entry.textOffsetX = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_X)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y) !== "") entry.textOffsetY = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE) !== "") entry.fontSize = toNumber(getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE));
+      return ok(entry);
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "style read failed");
     }
@@ -4761,6 +4853,34 @@ function createBrowserHostAdapter(options) {
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "transform apply failed");
     }
+  }
+
+
+  function applyTextEntry(element, elementId, entry, original) {
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    const baseX = toNumber(original.value.textState && (original.value.textState.inlineTextIndent || original.value.textState.computedTextIndent)) || 0;
+    const baseY = toNumber(original.value.textState && (original.value.textState.inlinePaddingTop || original.value.textState.computedPaddingTop)) || 0;
+    const baseFont = toNumber(original.value.textState && (original.value.textState.inlineFontSize || original.value.textState.computedFontSize));
+    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetX")) {
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_X, px(entry.textOffsetX));
+      target.style.textIndent = px(baseX + (Number(entry.textOffsetX) || 0));
+    }
+    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetY")) {
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_Y, px(entry.textOffsetY));
+      if (textElement) {
+        const baseTransform = original.value.textState && original.value.textState.inlineTransform ? `${original.value.textState.inlineTransform} ` : "";
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
+        target.style.transform = `${baseTransform}translateY(${px(entry.textOffsetY)})`.trim();
+      } else {
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(entry, "fontSize")) {
+      setStyleValue(element.style, EDITOR_TEXT_FONT_SIZE, px(entry.fontSize));
+      target.style.fontSize = px(entry.fontSize);
+    }
+    void baseY; void baseFont;
   }
 
   return {
@@ -4797,6 +4917,7 @@ function createBrowserHostAdapter(options) {
           setStyleValue(element.style, EDITOR_VISIBLE, entry.visible ? "true" : "false");
           element.hidden = entry.visible === false;
         }
+        applyTextEntry(element, elementId, entry, original);
         return ok();
       } catch (error) {
         return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "layout apply failed");
@@ -4807,7 +4928,7 @@ function createBrowserHostAdapter(options) {
       if (!ref.ok) return ref;
       const original = originalByElement.get(ref.value);
       if (!original) return ok();
-      const restored = restoreSnapshot(ref.value, original);
+      const restored = restoreSnapshot(ref.value, elementId, original);
       if (restored.ok) originalByElement.delete(ref.value);
       return restored;
     },
@@ -4815,7 +4936,7 @@ function createBrowserHostAdapter(options) {
       const ref = getRef(elementId);
       if (!ref.ok) return ref;
       const hostSnapshot = normalizeHostSnapshot(snapshot || {});
-      const restored = restoreSnapshot(ref.value, hostSnapshot.visibleState || {});
+      const restored = restoreSnapshot(ref.value, elementId, hostSnapshot.visibleState || {});
       if (!restored.ok) return restored;
       if (hostSnapshot.ownership && hostSnapshot.ownership.hasOriginal) {
         originalByElement.set(ref.value, clone(hostSnapshot.ownership.originalSnapshot));
@@ -4841,17 +4962,17 @@ function createBrowserHostAdapter(options) {
 module.exports = { createBrowserHostAdapter };
 
 },
-38:function(module,exports,__require){
+39:function(module,exports,__require){
 "use strict";
-const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId}=__require(36);
+const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId}=__require(37);
 function createBrowserSelectionHost(options){const cfg=options||{}; const listeners=new Set(); let destroyed=false; let selection={selectedElementId:null,selectedElementName:"",elementRefAvailable:false}; function emit(){if(!destroyed){const s={...selection}; listeners.forEach(l=>{try{l(s);}catch(_){}}); if(typeof cfg.onSelectionChange==="function")cfg.onSelectionChange(s);}} function getElement(id){try{if(cfg.registry&&typeof cfg.registry["getElementBy"+"Id"]==="function")return cfg.registry["getElementBy"+"Id"](id); if(cfg.registry&&typeof cfg.registry.get==="function"){const r=cfg.registry.get(id); return r&&r.ok!==false?r.value:null;}}catch(e){return undefined;} return null;} return {select(elementId){if(destroyed)return blocked("SELECTION_HOST_DESTROYED","selection host destroyed"); if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"invalid elementId"); const element=getElement(elementId); if(!element)return blocked(BROWSER_ERROR_CODES.UNKNOWN_ELEMENT,"unknown element"); const ref=cfg.elementRefs&&cfg.elementRefs.get?cfg.elementRefs.get(elementId):null; const available=!!(ref&&ref.ok!==false&&(ref.value||ref)); if(!available)return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING,"elementRef is missing."); selection={selectedElementId:elementId,selectedElementName:element.name||elementId,elementRefAvailable:available}; emit(); return ok(selection);},clear(){selection={selectedElementId:null,selectedElementName:"",elementRefAvailable:false}; emit(); return ok(selection);},getSelection(){return {...selection};},subscribe(listener){if(typeof listener!=="function")return ()=>{}; listeners.add(listener); return ()=>listeners.delete(listener);},destroy(){destroyed=true; listeners.clear();}};}
 module.exports={createBrowserSelectionHost};
 
 },
-39:function(module,exports,__require){
+40:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked, isElementRef } = __require(36);
+const { BROWSER_ERROR_CODES, ok, blocked, isElementRef } = __require(37);
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -4988,10 +5109,10 @@ function createBrowserOverlayHost(options) {
 module.exports = { createBrowserOverlayHost };
 
 },
-40:function(module,exports,__require){
+41:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked, isValidElementId } = __require(36);
+const { BROWSER_ERROR_CODES, ok, blocked, isValidElementId } = __require(37);
 
 const SCHEMA_VERSION = 1;
 const CONTEXT_KEYS = ["targetAppId", "moduleId", "scopeId", "layoutProfileId"];
@@ -5131,10 +5252,10 @@ function createBrowserLayoutStorage(options) {
 module.exports = { createBrowserLayoutStorage };
 
 },
-41:function(module,exports,__require){
+42:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked } = __require(36);
+const { BROWSER_ERROR_CODES, ok, blocked } = __require(37);
 
 function createUiEditorBrowserBridge(options) {
   const cfg = options || {};
@@ -5235,7 +5356,7 @@ function createUiEditorBrowserBridge(options) {
 module.exports = { createUiEditorBrowserBridge };
 
 },
-42:function(module,exports,__require){
+43:function(module,exports,__require){
 "use strict";
 
 const ELEMENTS = Object.freeze([
@@ -5257,7 +5378,7 @@ function createReferenceRegistry() {
 module.exports = { ELEMENTS, createReferenceRegistry };
 
 },
-43:function(module,exports,__require){
+44:function(module,exports,__require){
 "use strict";
 
 const REFERENCE_PROFILES = Object.freeze(["default", "compact"]);

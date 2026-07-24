@@ -6,7 +6,7 @@ M69 ergaenzt das UI-Editor-kit um eine fachneutrale programmatische Runtime. Sie
 
 ## Public API
 
-Der oeffentliche Einstieg exportiert `createUiEditorRuntime(options)`, `validateLayoutEntryForElement(entry, registryElement)` sowie `RUNTIME_ERROR_CODES`.
+Der oeffentliche Einstieg exportiert `createUiEditorRuntime(options)`, `validateLayoutEntryForElement(entry, registryElement)`, `resolveOperationStep(options)` sowie `RUNTIME_ERROR_CODES`.
 
 ```js
 const { createUiEditorRuntime } = require("ui-editor-kit");

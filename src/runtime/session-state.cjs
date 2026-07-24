@@ -1,5 +1,5 @@
 "use strict";
-const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible"]);
+const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible", "textOffsetX", "textOffsetY", "fontSize"]);
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function normalizeLayoutEntry(entry) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.elementId !== "string" || entry.elementId.trim() === "") return null;

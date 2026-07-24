@@ -20,6 +20,7 @@ const expectedExports = [
   "BROWSER_ERROR_CODES",
   "createUiEditorRuntime",
   "validateLayoutEntryForElement",
+  "resolveOperationStep",
   "createUiEditorPanelController",
   "createUiEditorPanelViewModel",
   "createUiEditorPanel",
