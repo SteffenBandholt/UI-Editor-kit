@@ -2,9 +2,9 @@
 
 ## Produktrolle
 
-Das UI-Editor-kit ist eine eigenständige, fachneutrale Editor-Runtime. Eine Zielanwendung schaltet den Editor ein und aus und liefert Registry, explizite Element-Referenzen, HostAdapter, Scope/Profil sowie Storage. Das Kit scannt kein DOM, registriert nichts automatisch und kennt weder BBM-Logik noch Fachdaten.
+Das UI-Editor-kit ist eine eigenständige, fachneutrale Editor-Runtime. Eine Zielanwendung schaltet den Editor ein und aus und liefert Registry, explizite Element-Referenzen, HostAdapter, Scope/Profil sowie Storage.
 
-Die Browser-Referenz unter `examples/browser-reference` bleibt ein isolierter technischer Testaufbau. Sie ist nicht das Produkt und bestimmt nicht die Architektur. PR #51 wird für diese Neuausrichtung nicht benötigt und darf nicht gemergt werden.
+Das Kit sucht keine UI-Elemente, registriert nichts automatisch und kennt weder Ziel-App-Fachlogik noch Fachdaten.
 
 ## Registry-Vertrag
 
@@ -35,7 +35,7 @@ Jedes bearbeitbare Element wird ausdrücklich registriert:
 }
 ```
 
-Nur gesetzte Operationen sind erlaubt. Nicht registrierte Elemente und nicht erlaubte Werte werden blockiert. Die bisherigen Felder `id`/`name` und `allowedOps` bleiben lesbar, damit bestehende M69–M72-Adapter weiter funktionieren; neue Integrationen verwenden den obigen Vertrag.
+Nur ausdruecklich gesetzte Operationen sind erlaubt. Nicht registrierte Elemente und nicht erlaubte Werte werden blockiert.
 
 ## Layout- und Sitzungsmodell
 
@@ -49,15 +49,15 @@ Element- und Textwerte sind getrennt:
 }
 ```
 
-Fehlende Felder werden nicht ergänzt. Runtime und HostAdapter wenden eine Änderung atomar an. Schlägt Apply oder anschließendes Lesen fehl, stellt die Runtime den vollständigen Snapshot aus Element- und Textwerten wieder her.
+Fehlende Felder werden nicht ergaenzt. Runtime und HostAdapter wenden Aenderungen atomar an. Schlaegt Anwendung oder anschliessendes Lesen fehl, stellt die Runtime den vollstaendigen Snapshot wieder her.
 
-Die Session unterscheidet Start-Baseline, aktuellen Zustand und gespeichertes Layout. Der Mittelpunkt des Steuerkreuzes verwirft die Änderungen des ausgewählten Elements bis zur aktuellen Session-Baseline. „Alle Änderungen verwerfen“, Speichern/Laden, dauerhaftes Löschen eines Elements und Gesamtreset bleiben getrennte Aktionen.
+Die Session unterscheidet Start-Baseline, aktuellen Zustand und gespeichertes Layout. Einzelverwerfen, Gesamtverwerfen, Speichern, Laden und Reset bleiben getrennte Aktionen.
 
-LayoutStorage wird durch `targetContext` nach Zielanwendung, Modul, Scope und Profil getrennt. Ein Entry ist zusätzlich über `elementId` adressiert.
+LayoutStorage wird durch `targetContext` nach Zielanwendung, Modul, Scope und Profil getrennt. Ein Entry ist zusaetzlich ueber `elementId` adressiert.
 
 ## HostAdapter-Vertrag
 
-Die Runtime ruft ausschließlich den HostAdapter auf:
+Die Runtime ruft ausschliesslich den HostAdapter auf:
 
 - `validateElementRef(elementId)`
 - `captureElementLayoutState(elementId)`
@@ -67,9 +67,11 @@ Die Runtime ruft ausschließlich den HostAdapter auf:
 - `restoreElementLayoutState(elementId, snapshot)`
 - optional `reapplyLayoutEntries(entries)`
 
-`applyLayoutEntry` bildet die getrennten Felder eindeutig auf Elementposition, Breite, Höhe, Sichtbarkeit, Textposition X/Y und Schriftgröße ab. Der generische BrowserHostAdapter implementiert dies ausschließlich für ausdrücklich übergebene Element-Refs. Eine Zielanwendung kann zusätzlich `textRefs` oder `getTextRef(elementId)` übergeben; der Adapter sucht oder erkennt keine Unterelemente automatisch.
+`applyLayoutEntry` bildet die getrennten Felder eindeutig auf Elementposition, Breite, Hoehe, Sichtbarkeit, Textposition und Schriftgroesse ab.
 
-`text.offsetX` und `text.offsetY` sind relative Editor-Offsets. Vor der ersten Änderung sichert der Adapter Inline- und Computed-Ausgangswerte samt Ownership. Ein expliziter Text-Ref erhält den horizontalen Offset relativ zu seinem wirksamen `textIndent`; der vertikale Offset wird unter Erhalt seines vorhandenen Transforms als zusätzliche Translation angewendet. Ohne expliziten Text-Ref wird ein vertikaler Offset mit `TEXT_OFFSET_Y_UNSUPPORTED` blockiert. Das äußere Element erhält dafür kein `paddingTop`. Reine Textänderungen lassen dessen Position, Größe und Transform unverändert. Clear, Verwerfen und Reset stellen Inlinewerte exakt wieder her, geben Stylesheetwerte wieder frei und entfernen editor-eigene CSS-Variablen.
+Die Zielanwendung kann getrennte Text-Referenzen oder `getTextRef(elementId)` bereitstellen. Der Adapter sucht oder erkennt keine Unterelemente automatisch.
+
+Textoffsets sind relative Editorwerte. Vor der ersten Aenderung sichert der Adapter den Ausgangszustand samt Ownership. Reine Textaenderungen lassen die aeussere Elementposition und -groesse unveraendert. Clear, Verwerfen und Reset stellen den urspruenglichen Zustand wieder her.
 
 ## Panel und Einbindung
 
@@ -81,39 +83,49 @@ const {
   createPanelPositionStore,
 } = require("ui-editor-kit");
 
-const runtime = createUiEditorRuntime({ registry, hostAdapter, layoutStorage, targetContext });
-runtime.beginSession();
-
-const positionStore = createPanelPositionStore({
-  storage: window.localStorage,
-  targetAppId: targetContext.targetAppId,
+const runtime = createUiEditorRuntime({
+  registry,
+  hostAdapter,
+  layoutStorage,
+  targetContext,
 });
 
-let panel;
-function setEditorEnabled(enabled) {
-  if (enabled && !panel) {
-    const controller = createUiEditorPanelController({
-      runtime,
-      registry,
-      onClose: () => setEditorEnabled(false),
-    });
-    panel = createUiEditorPanel({
-      controller,
-      mountTarget: document.body,
-      windowAdapter: window,
-      positionStore,
-    });
-  } else if (!enabled && panel) {
-    panel.destroy();
-    panel = null;
-  }
-}
+runtime.beginSession();
+
+const controller = createUiEditorPanelController({
+  runtime,
+  registry,
+  onClose: () => setEditorEnabled(false),
+});
+
+const panel = createUiEditorPanel({
+  controller,
+  mountTarget,
+  positionStore,
+  environmentAdapter,
+});
 ```
 
-Die Zielanwendung bindet `styles/ui-editor-panel.css` ein. Die Kopfzeile startet den Pointer-Drag, stoppt die Ereignisweitergabe, klemmt das Panel vollständig in den sichtbaren Viewport und persistiert erst am Drag-Ende. Beim Start und bei `resize` werden ungültige beziehungsweise nicht mehr erreichbare Positionen korrigiert. Der Positionsschlüssel ist vom LayoutStorage getrennt; Layout-Resets verändern ihn nicht.
+Die Zielanwendung liefert Mount-Ziel, Umgebungsadapter, Auswahlsteuerung und Darstellung der Auswahl. Das Panel verwaltet nur seine eigenen Bedienelemente und veraendert keine Fachlogik.
 
-Die Zielanwendung verbindet außerdem ihren expliziten SelectionHost und OverlayHost. Nur registrierte Refs sind auswählbar. Panel-Ereignisse bleiben im Panel; Klicks auf freie Host-Flächen können die Auswahl über `bridge.clearSelection()` aufheben. Der orange Auswahlrahmen wird über den OverlayHost nach jeder Änderung synchronisiert.
+Die Panelposition wird getrennt vom Ziel-Layout gespeichert. Layout-Resets veraendern die Panelposition nicht.
 
 ## Bearbeitung
 
-Das Panel bietet die Ebenen `ELEMENT` und `TEXT`. `TEXT` ist nur aktiv, wenn `textMove` oder `textResize` registriert wurde. Elementmodi sind Verschieben, Breite und Höhe; Textmodi sind Position und Größe. Nicht unterstützte Modi und Richtungen sind sichtbar deaktiviert. Schrittweite und Registry-Grenzen werden vor dem Host-Aufruf geprüft. `resolveOperationStep(...)` priorisiert je Operation `steps.move`, `steps.resizeWidth`/`resizeHeight` vor `steps.resize`, `steps.textMoveX`/`textMoveY` vor `steps.textMove` sowie `steps.fontSize`; danach folgen Panel-Fallback und der sichere interne Standard. Nur positive endliche Schrittweiten werden akzeptiert.
+Das Panel bietet die Ebenen `ELEMENT` und `TEXT`.
+
+`TEXT` ist nur aktiv, wenn `textMove` oder `textResize` registriert wurde. Elementmodi sind Verschieben, Breite und Hoehe; Textmodi sind Position und Groesse.
+
+Nicht unterstuetzte Modi und Richtungen sind sichtbar deaktiviert. Schrittweite und Registry-Grenzen werden vor dem Host-Aufruf geprueft.
+
+`resolveOperationStep(...)` priorisiert operationsbezogene Schrittweiten und verwendet nur positive endliche Werte. Ohne gueltige Vorgabe gilt ein sicherer interner Standard.
+
+## Abnahme
+
+- Element- und Textwerte bleiben getrennt.
+- Nicht registrierte Operationen werden blockiert.
+- Grenzen und Schrittweiten werden vor Anwendung geprueft.
+- Fehler fuehren zum vollstaendigen Rollback.
+- Panelposition und Ziel-Layout bleiben getrennt.
+- Ziel-App-Fachlogik und Fachdaten bleiben unangetastet.
+- `npm test`, `npm pack --dry-run`, `npm run release:check` und `git diff --check` sind gruen.

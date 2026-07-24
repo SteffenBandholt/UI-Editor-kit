@@ -1,5 +1,9 @@
 # Editor-Bauplan
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
 ## 1. Zweck
 
 Der UI-Editor ist eine eigenstaendige Editor-App, die in eine Anwendungs-App als Modul eingebunden werden kann.

@@ -1,200 +1,86 @@
 # Editor-Gesamt-LV
 
-## 1. Zweck dieses Dokuments
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
-Dieses Dokument ist das verbindliche Gesamt-Leistungsverzeichnis fuer den UI-Editor.
+## 1. Zweck
 
-Es beschreibt vor der technischen Ausfuehrung, was genau gebaut werden soll, aus welchen Bauteilen der Editor besteht, welche Qualitaet jedes Bauteil haben muss, welche Schnittstellen vorgesehen sind, was ausdruecklich nicht erlaubt ist und wie jedes Bauteil abgenommen wird.
+Dieses Dokument ist das verbindliche Gesamt-Leistungsverzeichnis fuer das eigenstaendige UI-Editor-kit.
 
-Dieses Dokument verhindert, dass neue Chatwechsel, neue Codex-Laeufe oder neue Ideen die Hauptspur veraendern.
-
-Kein technischer Bauauftrag darf ohne Bezug auf eine LV-Position aus diesem Dokument gestartet werden.
+Kein technischer Bauauftrag darf ohne Bezug auf eine LV-Position, klare Abnahmekriterien und einen Testbefehl begonnen werden.
 
 ## 2. Gesamtziel
 
-Der UI-Editor ist eine eigenstaendige Editor-App, die in eine Anwendungs-App als Modul eingebunden werden kann.
+Das UI-Editor-kit ist ein fachneutrales Modul, das in Anwendungs-Apps eingebunden werden kann.
+
+Es bearbeitet ausschliesslich registrierte und klassifizierte UI-Elemente. Die Ziel-App liefert Registry, Element-Referenzen, HostAdapter, Layoutspeicher und Aktivierung.
 
 Der Editor bearbeitet keine Fachlogik und keine Fachdaten.
-
-Der Editor arbeitet ausschliesslich mit einer klassifizierten UI-Elementliste, die von der jeweiligen Anwendungs-App beim Bau der UI bereitgestellt wird.
-
-Der Editor soll produktionsfaehig werden und am Ende mindestens koennen:
-
-- klassifizierte UI-Elementliste lesen
-- UI-Struktur als Baum auswerten
-- Elementdetails anzeigen
-- erlaubte und gesperrte Operationen je Element erkennen
-- Aenderungsauftraege erstellen
-- Aenderungsauftraege pruefen
-- erlaubte Layoutaenderungen an einen Host-Adapter uebergeben
-- Layoutaenderungen getrennt von Fachdaten speichern
-- Aenderungen rueckgaengig machen
-- Standardzustand wiederherstellen
 
 ## 3. Nicht verhandelbare Grundregeln
 
 Der Editor darf nicht:
 
-- UI blind scannen
-- Elemente erraten
-- Elemente selbst klassifizieren
-- Fachlogik lesen oder aendern
-- Fachdaten lesen oder aendern
-- fachliche Buttons ausfuehren
-- Datenbankaktionen ausloesen
-- Import, Export, Upload oder fachliches Speichern ausfuehren
-- eine Demo-Technik zur Kernarchitektur machen
-
-Der Editor darf nur mit registrierten und klassifizierten Elementen arbeiten.
+- UI blind durchsuchen,
+- Elemente erraten oder selbst klassifizieren,
+- Fachlogik oder Fachdaten lesen oder aendern,
+- fachliche Aktionen ausfuehren,
+- Datenbankaktionen ausloesen,
+- automatisch Registry-Eintraege erzeugen,
+- eine bestimmte Laufzeitumgebung zur Produktvoraussetzung machen,
+- Demo- oder Referenztechnik zur Kernarchitektur machen.
 
 Nicht registrierte Elemente gelten fuer den Editor als nicht vorhanden.
 
 ## 4. LV-Systematik
 
-Jede LV-Position hat dieses Raster:
+Jede LV-Position benoetigt:
 
-- Status: offen, in Bau, gebaut, abgenommen, gesperrt
-- Zweck
-- Bauteilbeschreibung
-- Mindestinhalt
-- Qualitaetsanforderung
-- Schnittstellen
-- Nicht erlaubt
-- Abnahme
-- Abhaengigkeiten
+- Status,
+- Zweck,
+- Mindestinhalt,
+- Schnittstellen,
+- Nicht-Ziele,
+- Abnahmekriterien,
+- Abhaengigkeiten,
+- Testbefehl.
 
-Der jeweilige Baufortschritt wird spaeter in `STATUS.md` gegen diese LV-Positionen abgehakt.
+Der Baufortschritt wird in `STATUS.md` gefuehrt.
 
----
+## A - Vertrags- und Planungsgrundlagen
 
-# A - Vertrags- und Planungsgrundlagen
+### A1 - Fuehrende Projektunterlagen
 
-## A1 - Fuehrende Projektunterlagen
+Status: abgenommen
 
-Status: gebaut
+Pflichtunterlagen:
 
-Zweck:
-Die fuehrenden Unterlagen definieren die Hauptspur des Projekts.
-
-Bauteilbeschreibung:
-Es muessen feste Dokumente vorhanden sein, die Zweck, Elementkatalog, Bau- und Pruefregeln, Ziel-App-Anbindung und Codex-Regeln beschreiben.
-
-Mindestinhalt:
+- `STATUS.md`
+- `docs/EDITOR_GESAMT_LV.md`
 - `docs/EDITOR_BAUPLAN.md`
 - `docs/UI_ELEMENT_KATALOG.md`
 - `docs/UI_BAU_UND_PRUEFREGELN.md`
-- `docs/ZIEL_APP_ANBINDUNG.md`
 - `docs/UI_EDITOR_VERTRAG.md`
-- `docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md`
+- `docs/ZIEL_APP_ANBINDUNG.md`
 - `codex/AGENTS_UI_EDITOR_BLOCK.md`
-- `codex/CODEX_BOOTSTRAP_ZIEL_APP.md`
 
-Qualitaetsanforderung:
-Die Dokumente muessen fachneutral sein und duerfen keine Ziel-App-spezifische Fachlogik enthalten.
+Abnahme: Dateien vorhanden und `npm test` gruen.
 
-Schnittstellen:
-- Codex-Auftraege muessen diese Unterlagen als Grundlage lesen.
-- Ziel-Apps muessen diese Unterlagen uebernehmen oder eindeutig referenzieren.
+### A2 - Gesamt-LV und STATUS
 
-Nicht erlaubt:
-- widerspruechliche Regeln
-- Demo-Technik als Hauptarchitektur
-- Ziel-App-spezifische Begriffe im Kernvertrag
+Status: abgenommen
 
-Abnahme:
-- Dateien vorhanden
-- `npm test` gruen
-- Cleanup-Test prueft Kernbestand
+LV und STATUS muessen dieselbe Hauptspur beschreiben. Widerspruechliche oder plattformspezifische Produktziele sind unzulaessig.
 
-Abhaengigkeiten:
-Keine.
+## B - UI-Elementvertrag
 
-## A2 - Gesamt-LV
+### B1 - Elementmodell
 
-Status: in Bau
+Status: gebaut
 
-Zweck:
-Dieses Dokument legt vor der Ausfuehrung fest, was insgesamt gebaut werden soll.
+Mindestfelder:
 
-Bauteilbeschreibung:
-Das Gesamt-LV beschreibt alle bekannten Bauteile des Editors einschliesslich Qualitaet, Schnittstellen, Abnahme und Ausschluessen.
-
-Mindestinhalt:
-- Gesamtziel
-- Grundregeln
-- LV-Positionen fuer Vertrag, Registry, Validator, Editor-Core, Aenderungsauftrag, Host-Adapter, Speicherung, Editor-UI, Ziel-App-Bootstrap und Tests
-- Abnahme je LV-Position
-
-Qualitaetsanforderung:
-Kein Baupaket darf groesser sein als eine klar pruefbare LV-Position oder eine eindeutig benannte Gruppe von LV-Positionen.
-
-Schnittstellen:
-- `STATUS.md` referenziert die LV-Positionen
-- Codex-Auftraege muessen die passende LV-Position nennen
-
-Nicht erlaubt:
-- grobe Sammelauftraege ohne Abnahmekriterium
-- neue Hauptspur ohne LV-Ergaenzung
-
-Abnahme:
-- Datei vorhanden
-- STATUS kann daraus abgeleitet werden
-
-Abhaengigkeiten:
-A1.
-
-## A3 - STATUS als Baufortschritt
-
-Status: offen
-
-Zweck:
-`STATUS.md` dokumentiert den Baufortschritt gegen dieses LV.
-
-Bauteilbeschreibung:
-`STATUS.md` enthaelt fuer jede LV-Position mindestens Status, Nachweis, letzter Commit und naechsten Schritt.
-
-Mindestinhalt:
-- Liste der LV-Positionen
-- Haken fuer gebaut/abgenommen
-- Hinweis auf offene Positionen
-- naechster Auftrag
-- ausgeschlossene Nebenstrecken
-
-Qualitaetsanforderung:
-Kein Haken ohne Nachweis. Kein neuer Auftrag ohne LV-Bezug.
-
-Schnittstellen:
-- Chatwechsel
-- Codex-Auftraege
-- Abnahmeprotokoll
-
-Nicht erlaubt:
-- Status als Ideensammlung
-- erledigt markieren ohne Test/Nachweis
-
-Abnahme:
-- `STATUS.md` vorhanden
-- K11.0 und K11.1 korrekt abgehakt
-- K12.0 als naechster offener Bauabschnitt benannt
-
-Abhaengigkeiten:
-A2.
-
----
-
-# B - UI-Elementvertrag
-
-## B1 - UI-Element-Datenmodell
-
-Status: offen
-
-Zweck:
-Ein UI-Element beschreibt ein editorfaehiges Bauteil einer Ziel-App.
-
-Bauteilbeschreibung:
-Das Datenmodell definiert, welche Felder ein Element mindestens haben muss und welche Zusatzfelder je Typ erforderlich sein koennen.
-
-Mindestinhalt:
 - `id`
 - `name`
 - `type`
@@ -206,907 +92,179 @@ Mindestinhalt:
 - `allowedOps`
 - `lockedOps`
 
-Zusatzfelder je nach Typ:
-- `columnRole`
-- `fieldKind`
-- `actionKind`
-- `componentKind`
-- `width`
-- `minWidth`
-- `maxWidth`
-- `layoutArea`
-
-Qualitaetsanforderung:
-- `id` eindeutig
-- `type` aus Katalog
-- `role` aus Katalog
-- `parentId` gueltig oder `null` bei Root
-- `allowedOps` nur aus erlaubtem Operationskatalog
-- `lockedOps` nur aus erlaubtem Operationskatalog
-- keine Operation gleichzeitig in `allowedOps` und `lockedOps`
-
-Schnittstellen:
-- Ziel-App liefert Elemente in diesem Format
-- Registry nimmt Elemente in diesem Format auf
-- Validator prueft Elemente in diesem Format
-- Editor-Core liest Elemente in diesem Format
-
-Nicht erlaubt:
-- Fachdaten im Elementmodell
-- Fachlogik im Elementmodell
-- automatisch erratene Pflichtfelder
-
-Abnahme:
-- gueltiges Element wird akzeptiert
-- Element ohne `id` wird abgelehnt
-- Element mit ungueltigem `type` wird abgelehnt
-- Element mit ungueltigem `role` wird abgelehnt
-- Element mit doppelt belegter Operation wird abgelehnt
-
-Abhaengigkeiten:
-A1.
-
-## B2 - Elementtypen-Katalog
-
-Status: gebaut als Plan, technisch offen
-
-Zweck:
-Der Elementtypen-Katalog definiert die erlaubten Bauteilarten.
-
-Bauteilbeschreibung:
-Erlaubte technische Werte muessen eindeutig dokumentiert und spaeter technisch pruefbar sein.
-
-Mindestinhalt:
-- `root`
-- `area`
-- `group`
-- `subgroup`
-- `component`
-- `componentPart`
-- `table`
-- `tableColumn`
-- `list`
-- `card`
-- `dialog`
-- `toolbar`
-- `button`
-- `field`
-- `label`
-- `statusIndicator`
-
-Qualitaetsanforderung:
-Nur Werte aus dem Katalog sind erlaubt.
-
-Schnittstellen:
-- Elementmodell
-- Validator
-- Editor-Core
-- Ziel-App-Bootstrap
-
-Nicht erlaubt:
-- beliebige Freitexttypen
-- Ziel-App-spezifische Typen im Kernkatalog ohne LV-Ergaenzung
-
-Abnahme:
-- Validator akzeptiert alle erlaubten Typen
-- Validator lehnt unbekannte Typen ab
-
-Abhaengigkeiten:
-B1.
-
-## B3 - Rollen-Katalog
-
-Status: gebaut als Plan, technisch offen
-
-Zweck:
-Die Rolle beschreibt die Bedeutung eines Elements fuer Layout, Bedienstruktur oder Steuerung.
-
-Mindestinhalt:
-- `layout`
-- `content`
-- `meta`
-- `structure`
-- `status`
-- `date`
-- `responsible`
-- `visibility`
-- `action`
-- `navigation`
-- `system`
-
-Qualitaetsanforderung:
-Nur Werte aus dem Katalog sind erlaubt.
-
-Nicht erlaubt:
-- fachliche Aktionen als Rolle des Editors missverstehen
-- Rollen erraten
-
-Abnahme:
-- Validator akzeptiert erlaubte Rollen
-- Validator lehnt unbekannte Rollen ab
-
-Abhaengigkeiten:
-B1, B2.
-
-## B4 - Operations-Katalog
-
-Status: gebaut als Plan, technisch offen
-
-Zweck:
-Der Operations-Katalog definiert, welche Layout- und Editoroperationen moeglich sind.
-
-Mindestinhalt:
-- `inspect`
-- `show`
-- `hide`
-- `move`
-- `resize`
-- `reorder`
-- `rename`
-- `changeWidth`
-- `pin`
-- `unpin`
-- `reset`
-- `applyPreset`
-
-Qualitaetsanforderung:
-Wenn eine Operation nicht in `allowedOps` steht, ist sie nicht erlaubt.
-Wenn eine Operation in `lockedOps` steht, ist sie gesperrt.
-
-Nicht erlaubt:
-- fachliches Speichern
-- fachliches Loeschen
-- fachliches Anlegen
-- Import
-- Export
-- Upload
-- Datenbankaktionen
-- fachliches Ausfuehren eines Buttons
-
-Abnahme:
-- Validator akzeptiert erlaubte Operationen
-- Validator lehnt unbekannte Operationen ab
-- Validator lehnt Operationen ab, die gleichzeitig erlaubt und gesperrt sind
-
-Abhaengigkeiten:
-B1.
-
----
-
-# C - UI-Element-Registry
-
-## C1 - Registry-Grundstruktur
-
-Status: offen
-
-Zweck:
-Die Registry ist die zentrale technische Sammlung aller editorfaehigen Elemente einer UI.
-
-Bauteilbeschreibung:
-Die Registry nimmt klassifizierte Elemente auf, speichert sie fuer den Editor-Core und gibt eine pruefbare Elementliste aus.
-
-Mindestfunktionen:
-- Registry erstellen
-- Element registrieren
-- Elementliste ausgeben
-- Registry leeren
-- Registry validieren
-
-Qualitaetsanforderung:
-- keine doppelten IDs
-- stabile Reihenfolge nach `order`
-- keine automatische Klassifizierung
-- keine UI-Abhaengigkeit
-
-Schnittstellen:
-- Eingang: Ziel-App oder Testdaten liefern Elemente
-- Ausgang: Editor-Core und Validator lesen Elemente
-
-Nicht erlaubt:
-- UI scannen
-- DOM lesen
-- Elemente erraten
-- Fachlogik auswerten
-
-Abnahme:
-- leere Registry kann erstellt werden
-- gueltiges Element kann registriert werden
-- registrierte Elemente koennen gelesen werden
-- Registry kann geleert werden
-- doppelte ID wird abgelehnt
-
-Abhaengigkeiten:
-B1 bis B4.
-
-## C2 - Registry-Beispieldaten
-
-Status: offen
-
-Zweck:
-Beispieldaten pruefen die Registry ohne Ziel-App und ohne Demo-Oberflaeche.
-
-Mindestinhalt:
-- gueltige Beispiel-Registry
-- ungueltige Beispiel-Registry
-- Beispiel mit Tabelle und Metaspalten
-- Beispiel mit Button, dessen Fachaktion nicht Editoroperation ist
-
-Qualitaetsanforderung:
-Beispieldaten duerfen keine Ziel-App-Fachbegriffe enthalten.
-
-Nicht erlaubt:
-- HTML-Beispiel als Kernbeispiel
-- Demo-Oberflaeche als Architektur
-
-Abnahme:
-- gueltiges Beispiel wird akzeptiert
-- ungueltiges Beispiel erzeugt erwartete Fehler
-
-Abhaengigkeiten:
-C1, D1 bis D4.
-
----
-
-# D - Validator
-
-## D1 - Pflichtfeld-Validator
-
-Status: offen
-
-Zweck:
-Der Validator prueft, ob jedes editorfaehige Element alle Pflichtfelder enthaelt.
-
-Mindestpruefungen:
-- `id` vorhanden
-- `name` vorhanden
-- `type` vorhanden
-- `role` vorhanden
-- `parentId` vorhanden oder bei Root `null`
-- `order` vorhanden
-- `visible` boolean
-- `editable` boolean
-- `allowedOps` Array
-- `lockedOps` Array
-
-Qualitaetsanforderung:
-Fehler muessen konkret benannt werden.
-
-Abnahme:
-- Element ohne Pflichtfeld wird abgelehnt
-- Fehlermeldung nennt Feld und Element
-
-Abhaengigkeiten:
-B1.
-
-## D2 - Typen- und Rollen-Validator
-
-Status: offen
-
-Zweck:
-Pruefung gegen Elementtypen- und Rollen-Katalog.
-
-Abnahme:
-- erlaubte Typen/Rollen akzeptiert
-- unbekannte Typen/Rollen abgelehnt
-
-Abhaengigkeiten:
-B2, B3.
-
-## D3 - Parent-Validator
-
-Status: offen
-
-Zweck:
-Die Parent-Struktur bildet die Lage des Elements im UI-Baum ab.
-
-Mindestpruefungen:
-- Root hat keinen Parent
-- alle anderen Elemente haben Parent
-- Parent existiert
-- keine Zyklen
-- keine verwaisten Elemente
-
-Nicht erlaubt:
-- Parent raten
-- Parent aus Namen ableiten
-
-Abnahme:
-- gueltiger Baum akzeptiert
-- fehlender Parent abgelehnt
-- unbekannter Parent abgelehnt
-- Zyklus abgelehnt
-
-Abhaengigkeiten:
-B1, C1.
-
-## D4 - Operations-Validator
-
-Status: offen
-
-Zweck:
-Prueft allowedOps und lockedOps.
-
-Mindestpruefungen:
-- alle Operationen im Katalog
-- keine Doppelbelegung erlaubt/gesperrt
-- fachliche Aktionen verboten
-
-Abnahme:
-- gueltige Operation akzeptiert
-- unbekannte Operation abgelehnt
-- fachliche Aktion abgelehnt
-
-Abhaengigkeiten:
-B4.
-
-## D5 - Tabellen- und Metaspalten-Validator
-
-Status: offen
-
-Zweck:
-Tabellen sind Composite-Elemente und muessen ihre editorrelevanten Bestandteile klassifizieren.
-
-Mindestpruefungen:
-- `table` darf `tableColumn` Kinder haben
-- `tableColumn` braucht `columnRole`
-- `columnRole` aus Katalog
-- Metaspalten duerfen nicht unklassifiziert bleiben
-- Aktionsspalten duerfen keine fachliche Aktion als Editoroperation fuehren
-
-Spaltenrollen:
-- `contentColumn`
-- `metaColumn`
-- `structureColumn`
-- `statusColumn`
-- `dateColumn`
-- `responsibleColumn`
-- `visibilityColumn`
-- `actionColumn`
-
-Abnahme:
-- Tabelle mit klassifizierten Spalten akzeptiert
-- Spalte ohne `columnRole` abgelehnt
-- unbekannte `columnRole` abgelehnt
-- Aktionsspalte mit fachlicher Editoroperation abgelehnt
-
-Abhaengigkeiten:
-B1 bis B4, C1.
-
----
-
-# E - Editor-Core
-
-## E1 - Registry lesen
-
-Status: offen
-
-Zweck:
-Der Editor-Core liest ausschliesslich die Registry.
-
-Mindestfunktion:
-- Registry entgegennehmen
-- validieren lassen
-- gueltige Elemente intern bereitstellen
-
-Nicht erlaubt:
-- UI scannen
-- Elemente suchen
-- technische Oberflaeche interpretieren
-
-Abnahme:
-- gueltige Registry wird gelesen
-- ungueltige Registry wird abgelehnt
-- Core arbeitet nicht ohne Registry
-
-Abhaengigkeiten:
-C1, D1 bis D5.
-
-## E2 - Elementbaum erzeugen
-
-Status: offen
-
-Zweck:
-Aus Parent-Beziehungen wird ein strukturierter Elementbaum erzeugt.
-
-Mindestfunktion:
-- Root erkennen
-- Kinder nach Parent zuordnen
-- Reihenfolge nach `order`
-- Elementpfade bereitstellen
-
-Abnahme:
-- Baum entspricht Parent-Struktur
-- Reihenfolge stimmt
-- verwaiste Elemente werden nicht akzeptiert
-
-Abhaengigkeiten:
-D3, E1.
-
-## E3 - Elementdetails liefern
-
-Status: offen
-
-Zweck:
-Der Editor muss fuer ein ausgewaehltes Element alle relevanten Informationen anzeigen koennen.
-
-Mindestdaten:
-- id
-- name
-- type
-- role
-- parentId
-- order
-- visible
-- editable
-- allowedOps
-- lockedOps
-- Zusatzfelder je Typ
-
-Abnahme:
-- Details fuer vorhandenes Element werden geliefert
-- unbekannte ID wird sauber abgelehnt
-
-Abhaengigkeiten:
-E1, E2.
-
-## E4 - Operationen ableiten
-
-Status: offen
-
-Zweck:
-Der Editor bestimmt aus allowedOps und lockedOps, welche Aenderungen angeboten werden duerfen.
-
-Abnahme:
-- erlaubte Operation wird angezeigt
-- gesperrte Operation wird nicht angeboten
-- nicht genannte Operation wird nicht angeboten
-
-Abhaengigkeiten:
-B4, D4, E3.
-
----
-
-# F - Aenderungsauftrag
-
-## F1 - Aenderungsauftrag-Datenmodell
-
-Status: offen
-
-Zweck:
-Aenderungen werden nicht direkt ausgefuehrt, sondern als Auftrag beschrieben.
-
-Mindestfelder:
-- `changeId`
-- `elementId`
-- `operation`
-- `payload`
-- `createdAt`
-- `source`
-
-Qualitaetsanforderung:
-Der Auftrag darf keine Fachdaten enthalten.
-
-Abnahme:
-- gueltiger Auftrag kann erzeugt werden
-- Auftrag ohne Element wird abgelehnt
-- Auftrag mit verbotener Operation wird abgelehnt
-
-Abhaengigkeiten:
-E4.
-
-## F2 - Aenderungsauftrag pruefen
-
-Status: offen
-
-Zweck:
-Vor Anwendung wird jeder Auftrag gegen Registry und Regeln geprueft.
-
-Mindestpruefungen:
-- Element existiert
-- Operation erlaubt
-- Operation nicht gesperrt
-- Payload formal gueltig
-- keine Fachaktion
-
-Abnahme:
-- erlaubter Auftrag akzeptiert
-- gesperrter Auftrag abgelehnt
-- Auftrag fuer unbekanntes Element abgelehnt
-
-Abhaengigkeiten:
-F1, E4.
-
----
-
-# G - Host-Adapter
-
-## G1 - Host-Adapter-Vertrag
-
-Status: offen
-
-Zweck:
-Der Host-Adapter verbindet Editor und Ziel-App.
-
-Mindestfunktionen:
-- Ziel-App liefert Registry
-- Ziel-App liefert aktuellen Layoutzustand
-- Editor uebergibt Aenderungsauftrag
-- Ziel-App prueft Auftrag erneut
-- Ziel-App meldet Erfolg oder Fehler zurueck
-
-Nicht erlaubt:
-- Fachlogik freigeben
-- Fachdaten freigeben
-- Editor direkt in Ziel-App schreiben lassen
-
-Abnahme:
-- Vertrag dokumentiert
-- Testadapter kann Registry liefern
-- Testadapter lehnt verbotenen Auftrag ab
-
-Abhaengigkeiten:
-C1, F2.
-
----
-
-# H - Layoutspeicherung
-
-## H1 - Speichervertrag fuer Layoutdaten
-
-Status: offen
-
-Zweck:
-Layoutdaten werden getrennt von Fachdaten gespeichert.
-
-Mindestinhalt:
-- Layoutprofil
-- Ziel-App-ID
-- UI-Scope
-- Element-ID
-- Operation oder finaler Layoutzustand
-- Version
-- Zeitstempel
-
-Nicht erlaubt:
-- Fachdaten speichern
-- Fachstatus speichern
-- Datenbankstruktur der Ziel-App veraendern ohne eigenen Speichervertrag
-
-Abnahme:
-- Layoutdatenmodell dokumentiert
-- Testdaten ohne Fachdaten
-- Ruecksetzen moeglich geplant
-
-Abhaengigkeiten:
-F2, G1.
-
----
-
-# I - Editor-UI
-
-## I1 - Elementbaum-Anzeige
-
-Status: offen
-
-Zweck:
-Die Editor-UI zeigt die registrierte Struktur an.
-
-Mindestfunktion:
-- Baum aus Registry anzeigen
-- Typ und Rolle sichtbar machen
-- nicht registrierte Elemente nicht anzeigen
-
-Nicht erlaubt:
-- Elemente aus sichtbarer UI ermitteln
-
-Abnahme:
-- Baum entspricht Registry
-- unbekannte Elemente tauchen nicht auf
-
-Abhaengigkeiten:
-E2.
-
-## I2 - Elementdetails- und Operationsanzeige
-
-Status: offen
-
-Zweck:
-Ausgewaehltes Element mit erlaubten und gesperrten Operationen anzeigen.
-
-Abnahme:
-- Details korrekt
-- allowedOps sichtbar
-- lockedOps sichtbar
-- verbotene Operation nicht ausfuehrbar
-
-Abhaengigkeiten:
-E3, E4.
-
-## I3 - Aenderungsentwurf-Anzeige
-
-Status: offen
-
-Zweck:
-Aenderungen werden vor Anwendung als Entwurf gezeigt.
-
-Abnahme:
-- Entwurf zeigt Element, Operation, Payload und Pruefergebnis
-- abgelehnte Aenderung zeigt Grund
-
-Abhaengigkeiten:
-F1, F2.
-
----
-
-# J - Ziel-App-Bootstrap
-
-## J1 - Vertragsuebernahme in Ziel-App
-
-Status: gebaut als Plan, technisch je Ziel-App offen
-
-Zweck:
-Eine Ziel-App muss den UI-Editor-Vertrag kennen, bevor editorfaehige UI gebaut wird.
-
-Mindestinhalt:
-- Bauplan
-- Elementkatalog
-- Bau- und Pruefregeln
-- Ziel-App-Anbindung
-- AGENTS-Block
-- Vertragscheck
-
-Nicht erlaubt:
-- Ziel-App-Fachlogik aendern
-- UI bauen
-- Editor-Runtime bauen
-
-Abnahme:
-- Dateien in Ziel-App vorhanden
-- AGENTS-Regelblock aktiv
-- Self-Test laeuft
-
-Abhaengigkeiten:
-A1.
-
----
-
-# K - Pruef- und Abnahmesystem
-
-## K1 - Kern-Testlauf
+### B2 - Registry
 
 Status: gebaut
 
-Zweck:
-Der Kern-Testlauf prueft, ob der aktuelle Repo-Kern sauber ist.
+Die Registry wird ausschliesslich von der Ziel-App bereitgestellt. Keine automatische Erkennung oder Befuellung.
 
-Mindestbefehl:
+### B3 - Validator
+
+Status: gebaut
+
+Pflichtfelder, Typen, Rollen, Parent-Beziehungen und Operationen werden vor Nutzung geprueft.
+
+## C - Editor-Core
+
+### C1 - Struktur und Details
+
+Status: gebaut
+
+Der Core liest eine validierte Registry, erzeugt den Elementbaum und liefert Elementdetails.
+
+### C2 - Operationen
+
+Status: gebaut
+
+Erlaubte, gesperrte und nicht vorgesehene Operationen werden eindeutig getrennt.
+
+## D - Aenderungsauftrag
+
+### D1 - Modell und Pruefung
+
+Status: gebaut
+
+Aenderungen werden als fachneutrale Auftraege beschrieben und vor der Anwendung gegen Registry und Regeln geprueft.
+
+## E - HostAdapter
+
+### E1 - Ziel-App-Schnittstelle
+
+Status: gebaut
+
+Die Ziel-App:
+
+- liefert Registry und aktuelle Layoutwerte,
+- wendet freigegebene Aenderungen an,
+- prueft Aenderungen erneut,
+- meldet strukturierte Ergebnisse,
+- stellt den Ausgangszustand bei Fehlern wieder her.
+
+## F - Layoutzustand
+
+### F1 - Speicherung
+
+Status: gebaut
+
+Layoutdaten werden getrennt von Fachdaten gespeichert. Save, Load, Reset, Discard und Reapply sind fachneutral.
+
+## G - Runtime
+
+### G1 - Session- und Layout-API
+
+Status: abgenommen
+
+Die Runtime verwaltet Session, Baseline, Layoutwerte, Persistenzaufrufe und Rollback.
+
+## H - Bedienpanel
+
+### H1 - Panel, ViewModels und Status
+
+Status: abgenommen
+
+Das Panel verwaltet Auswahl, Ebene, Modus, Schrittweite, Dialoge, Busy-Status und strukturierte Meldungen.
+
+### H2 - Element- und Textbearbeitung
+
+Status: abgenommen
+
+Elementwerte und Textwerte werden getrennt bearbeitet. Textoperationen stehen nur bei ausdruecklicher Registrierung zur Verfuegung.
+
+## I - Ziel-App-Integration
+
+### I1 - Bootstrap und Installer
+
+Status: gebaut
+
+Der Installer schreibt nur bekannte Kit-Artefakte nach ausdruecklicher Bestaetigung. Ziel-App-Fachlogik und Fachdaten bleiben unangetastet.
+
+### I2 - Integrationsvertrag
+
+Status: gebaut
+
+Ziel-Apps binden das Kit ueber Public API, Registry, HostAdapter und Layoutspeicher ein.
+
+## J - Pruef- und Abnahmesystem
+
+### J1 - Pflichtpruefungen
+
+Status: abgenommen und fortlaufend
 
 ```bash
 npm test
+npm pack --dry-run
+npm run release:check
+git diff --check
 ```
 
-Qualitaetsanforderung:
-Der Test muss vor jedem Commit gruen sein.
+Ohne gruene Pflichtpruefungen keine Abnahme.
 
-Abnahme:
-- Self-Test gruen
-- Cleanup-Test gruen
+## K - Produktfertigstellung
 
-Abhaengigkeiten:
-A1.
-
-## K2 - Regression gegen falsche Nebenstrecken
-
-Status: gebaut, fortlaufend
-
-Zweck:
-Verhindert Rueckfall in entfernte Demo-/HTML-/Browser-Schienen.
-
-Mindestpruefung:
-- entfernte Demo-Dateien duerfen nicht existieren
-- alte Layoutdaten-Skripte duerfen nicht existieren
-- alte Beispiel-UI darf nicht existieren
-
-Abnahme:
-- Cleanup-Test prueft MUST_NOT_EXIST-Liste
-
-Abhaengigkeiten:
-K1.
-
----
-
-# L - Ausdruecklich ausgeschlossen
-
-Diese Punkte sind nicht Teil des Kernprojekts, solange sie nicht per LV-Ergaenzung freigegeben werden:
-
-- Browser-Demo als Architektur
-- HTML-Beispiel als Kernbeispiel
-- DOM-Scanning
-- automatische UI-Erkennung
-- Fachlogik-Editor
-- Datenbank-Editor
-- Ziel-App-spezifische Fachmodule
-- direkte BBM-Integration ohne Ziel-App-Bootstrap
-- Speicherung von Fachdaten
-
----
-
-# M - Vorgesehene Bauabschnitte
-
-## M1 - Schriftstand und Kernvertrag
-
-Status: gebaut
-
-Enthaelt:
-- K11.0 Repo bereinigt
-- K11.1 Beispiel-UI-Restspur entfernt
-- K11.2 Gesamt-LV erstellen
-- K11.3 STATUS aus LV ableiten
-
-## M2 - Registry und Validator
-
-Status: offen
-
-Enthaelt:
-- B1 bis B4 technisch umsetzen
-- C1 bis C2 technisch umsetzen
-- D1 bis D5 technisch umsetzen
-
-## M3 - Editor-Core
-
-Status: offen
-
-Enthaelt:
-- E1 bis E4 technisch umsetzen
-
-## M4 - Aenderungsauftrag
-
-Status: offen
-
-Enthaelt:
-- F1 bis F2 technisch umsetzen
-
-## M5 - Host-Adapter
-
-Status: offen
-
-Enthaelt:
-- G1 technisch umsetzen
-
-## M6 - Layoutspeicherung
-
-Status: offen
-
-Enthaelt:
-- H1 technisch planen und umsetzen
-
-## M7 - Editor-UI
-
-Status: offen
-
-Enthaelt:
-- I1 bis I3 technisch umsetzen
-
-## M8 - Ziel-App-Bootstrap
-
-Status: offen
-
-Enthaelt:
-- J1 fuer konkrete Ziel-App anwenden
-
----
-
-# O - Produktfertigstellungsstrecke M68 bis M73
-
-## O1 / M68 - Generische Produktgrenze und Ueberfuehrungsplan
-
-Status: gebaut
-
-Zweck:
-M68 inventarisiert die extern in BBM bewaehrten M63C-M67-Funktionen und ordnet jede wesentliche Funktion verbindlich der Produktgrenze Core, Kit-UI/Runtime, Ziel-App HostAdapter, Ziel-App Registry oder ausschliesslich BBM zu.
-
-Mindestinhalt:
-- `docs/M68_GENERIC_PRODUCT_BOUNDARY.md` mit Funktionsmatrix, Public-API-Zielstruktur, Datenfluss, Persistenzvertrag, Ref-/Selection-Vertrag, verbotenen Abhaengigkeiten und Abnahmekriterien fuer BBM-Unabhaengigkeit
-- Guardrail-Test gegen DOM-Scan-Entscheidung, automatische Registry-Erkennung und produktive BBM-Begriffe
-- Klarstellung, dass Release `0.2.0` den Core betrifft, aber noch nicht den vollstaendigen visuellen Editor als eigenstaendiges Produkt
-
-Nicht erlaubt:
-- BBM-Code kopieren
-- BBM-Repo aendern
-- Runtime oder Bedienoberflaeche aus BBM gross uebernehmen
-
-Abnahme:
-- `npm test` gruen
-- `npm pack --dry-run` gruen
-- `git diff --check` gruen
-
-## O2 / M69 - Generische Runtime und Session-/Layout-API
+### K1 / M68 - Produktgrenze
 
 Status: abgenommen
 
-Zweck:
-Generische Runtime fuer Session, Layoutaenderung, Save, Load, Gesamtreset, Einzelreset, Baseline und strukturierte Fehlercodes im UI-Editor-kit bauen.
+Core, Kit-UI/Runtime und Ziel-App-Verantwortung sind getrennt.
 
-Nachweis:
-`src/runtime/*`, `docs/M69_GENERIC_RUNTIME.md` und die M69-Testdateien pruefen Kontextisolation, Sessionsemantik, Persistenz, Reset, Reapply und Boundary-Regeln. O3/M70 baut darauf das generische Bedienpanel.
-
-## O3 / M70 - Generisches Bedienpanel und ViewModels
+### K2 / M69 - Runtime
 
 Status: abgenommen
 
-Zweck:
-Fachneutrales Bedienpanel mit Moduswahl, D-Pad, Dialog-/Status-ViewModels und Auswahlzustand bauen.
-
-Nachweis:
-`src/panel/*`, `docs/M70_GENERIC_PANEL.md` und die M70-Testdateien pruefen Auswahl, Modi, D-Pad, Persistenzstatus, Dialoge, strukturierte Statusmeldungen, Renderer-Cleanup und Boundary-Regeln. O4/M71 baut darauf den Browser-Host, echte Refs, Auswahlrahmen und Overlay.
-
-## O4 / M71 - Generischer Browser-Host und Referenzadapter
+### K3 / M70 - Bedienpanel
 
 Status: abgenommen
 
-Zweck:
-Browser-Host, expliziten Ref-Vertrag, Overlay-/SelectionHost und Persistenz-Referenzadapter ohne Ziel-App-Fachlogik bauen.
+### K4 / M71 - Host- und Integrationsschicht
 
-Nachweis:
-`src/browser/*`, `docs/M71_GENERIC_BROWSER_HOST.md` und die M71-Testdateien pruefen explizite Refs, BrowserHostAdapter, SelectionHost, OverlayHost, BrowserStorage, BrowserBridge, Cleanup und Boundary-Regeln. O5/M72 bleibt offen und ist der naechste Schritt fuer die unabhaengige Browser-Referenzanwendung.
+Status: abgenommen
 
-## O5 / M72 - Unabhaengige Browser-Referenzanwendung
+Zweck: Plattformneutrale Verbindung zwischen Runtime, Panel, Element-Referenzen, Auswahl, Darstellung und Layoutspeicher.
+
+### K5 / M72 - Panel- und Textbearbeitung
+
+Status: abgenommen
+
+Zweck: Verschiebbares Bedienpanel, getrennte Element-/Textebene, Schrittweiten, Grenzen, Speicherung und Rollback.
+
+### K6 / M73 - Release Candidate
 
 Status: offen
 
 Zweck:
-Eine Browser-Referenzanwendung ausserhalb BBM bereitstellen, die Registry, HostAdapter, Refs und Storage selbst liefert.
 
-## O6 / M73 - Release Candidate und zweite Zielanwendung
+- Public API festschreiben,
+- Packaging und lokale Moduleinbindung absichern,
+- Integrationshandbuch konsolidieren,
+- HostAdapter-/Registry-/Storage-Vertraege finalisieren,
+- Release-Candidate-Pruefung definieren,
+- verbleibende plattformspezifische Produktannahmen ausschliessen.
 
-Status: offen
+Nicht-Ziele:
 
-Zweck:
-Public API, Integrationshandbuch, Packaging und Abnahmetest fuer eine zweite Zielanwendung stabilisieren.
-
----
-
-# N - Regel fuer kuenftige Auftraege
-
-Jeder neue Auftrag muss nennen:
-
-- LV-Position
-- Ziel
-- Nicht-Ziel
-- zu aendernde Dateien
-- Abnahmekriterien
-- Testbefehl
-
-Ohne LV-Position kein Auftrag.
-
-Ohne Abnahmekriterien kein Auftrag.
-
-Ohne gruene Tests kein Haken in `STATUS.md`.
-
-
-## O5/M72 - Unabhaengige Browser-Referenzanwendung
-
-Status: gebaut; manuelle Browserabnahme offen
-
-Zweck:
-Eine eigenstaendige neutrale Browser-Referenzanwendung weist Runtime, Panel, BrowserHostAdapter, ElementRefs, SelectionHost, OverlayHost, BrowserStorage und BrowserBridge sichtbar nach.
+- keine zweite Ziel-App als zwingende Voraussetzung,
+- keine bestimmte Laufzeitumgebung als Produktziel,
+- keine Fachlogik,
+- keine automatische UI-Erkennung,
+- noch kein Release-Tag ohne abgeschlossene Abnahme.
 
 Abnahme:
-- M72-Referenztests gruen
-- `npm run reference:build` erzeugt ein Browserbundle
-- `npm run reference:browser` startet lokal
-- manuelle Checkliste dokumentiert
-- echte manuelle Browserabnahme noch offen, solange sie nicht in einem interaktiven Browser durchgefuehrt und protokolliert wurde
 
-Nicht erlaubt:
-- externe Fachanbindung
-- automatische DOM-Suche
-- direkte Sessiondaten-Manipulation
-- CDN-Abhaengigkeiten
+- Dokumentation widerspruchsfrei,
+- Public API dokumentiert,
+- Package-Inhalt geprueft,
+- Integrationsvertrag vollstaendig,
+- alle Pflichtpruefungen gruen.
 
-## O6/M73 - Release Candidate und zweite Zielanwendung
+## L - Regel fuer kuenftige Auftraege
 
-Status: offen
+Jeder Auftrag muss nennen:
 
-Zweck:
-Nach M72 folgt der Release-Candidate-Schritt.
+- LV-Position,
+- Ziel,
+- Nicht-Ziel,
+- zu aendernde Dateien,
+- Abnahmekriterien,
+- Testbefehl.
+
+Ohne LV-Position kein Auftrag. Ohne Nachweis kein Haken in `STATUS.md`.
