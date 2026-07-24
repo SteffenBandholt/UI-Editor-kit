@@ -2,13 +2,16 @@
 const assert = require("node:assert/strict");
 const {
   BROWSER_ERROR_CODES,
+  RUNTIME_ERROR_CODES,
   createBrowserHostAdapter,
   createElementRefRegistry,
   createUiEditorPanelController,
   normalizeLayoutEntry,
   resolveOperationStep,
+  validateChangeRequestStepAlignment,
   validateLayoutEntryForElement,
 } = require("../src/index.cjs");
+const { wrapRuntimeWithStepValidation } = require("../src/runtime/step-validating-ui-editor-runtime.cjs");
 const { el } = require("./m71-test-helpers.cjs");
 
 assert.deepEqual(
@@ -25,6 +28,57 @@ assert.equal(resolveOperationStep({ registryElement: { steps: { textMove: 2, tex
 assert.equal(resolveOperationStep({ registryElement: { steps: { fontSize: 3 } }, operation: "fontSize", panelStepSize: 99 }), 3);
 assert.equal(resolveOperationStep({ registryElement: { steps: { move: -1 } }, operation: "move", panelStepSize: 4 }), 4);
 assert.equal(resolveOperationStep({ registryElement: { steps: { move: Infinity } }, operation: "move", panelStepSize: 0 }), 1);
+
+const stepRegistryElement = {
+  elementId: "runtime-target",
+  operations: { move: true, resizeWidth: true, resizeHeight: true, textMove: true, textResize: true },
+  steps: { move: 5, resizeWidth: 7, resizeHeight: 8, textMoveX: 6, textMoveY: 9, fontSize: 3 },
+};
+const currentRuntimeEntry = {
+  elementId: "runtime-target",
+  element: { x: 3, y: -2, width: 101, height: 39 },
+  text: { offsetX: 1, offsetY: 2, fontSize: 10 },
+};
+[
+  [{ element: { x: 8 } }, null],
+  [{ element: { y: -7 } }, null],
+  [{ element: { width: 108 } }, null],
+  [{ element: { height: 47 } }, null],
+  [{ text: { offsetX: 7 } }, null],
+  [{ text: { offsetY: -7 } }, null],
+  [{ text: { fontSize: 13 } }, null],
+  [{ element: { x: -2 } }, null],
+  [{ element: { x: 7 } }, RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP],
+  [{ element: { width: 105 } }, RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP],
+  [{ text: { offsetX: 4 } }, RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP],
+  [{ text: { fontSize: 12 } }, RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP],
+].forEach(([payload, expectedCode]) => {
+  const result = validateChangeRequestStepAlignment({
+    registryElement: stepRegistryElement,
+    currentEntry: currentRuntimeEntry,
+    changeRequest: { elementId: "runtime-target", payload },
+  });
+  assert.equal(result && result.code, expectedCode);
+});
+assert.equal(validateChangeRequestStepAlignment({
+  registryElement: { ...stepRegistryElement, steps: {} },
+  currentEntry: currentRuntimeEntry,
+  changeRequest: { elementId: "runtime-target", payload: { element: { x: 7 } } },
+}), null, "registry entries without explicit steps must not be blocked");
+
+const directCalls = [];
+const fakeRuntime = {
+  inspectElement() { return { ok: true, effectiveLayout: JSON.parse(JSON.stringify(currentRuntimeEntry)) }; },
+  applyChange(request) { directCalls.push(JSON.parse(JSON.stringify(request))); return { ok: true }; },
+};
+const wrappedRuntime = wrapRuntimeWithStepValidation(fakeRuntime, {
+  getElementById(id) { return id === "runtime-target" ? stepRegistryElement : null; },
+});
+const blockedDirect = wrappedRuntime.applyChange({ elementId: "runtime-target", operation: "move", payload: { element: { x: 7 } } });
+assert.equal(blockedDirect.code, RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP);
+assert.equal(directCalls.length, 0, "blocked direct runtime calls must not reach the host/session runtime");
+assert.equal(wrappedRuntime.applyChange({ elementId: "runtime-target", operation: "move", payload: { element: { x: 8 } } }).ok, true);
+assert.equal(directCalls.length, 1);
 
 const refs = createElementRefRegistry();
 const outer = el({ left: 7, top: 9, width: 100, height: 40 });
