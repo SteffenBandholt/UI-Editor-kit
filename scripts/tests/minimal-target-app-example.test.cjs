@@ -67,7 +67,10 @@ function read(relativePath) {
 
 checkedFiles.forEach((file) => {
   const content = read(file);
-  forbiddenPatterns.forEach((pattern) => assert.equal(pattern.test(content), false, `${file} matched ${pattern}`));
+  forbiddenPatterns.forEach((pattern) => {
+    const match = content.match(pattern);
+    assert.equal(match, null, `${file} matched ${pattern}: ${match ? JSON.stringify(match[0]) : ""}`);
+  });
 });
 
 console.log("minimal-target-app-example tests passed");
