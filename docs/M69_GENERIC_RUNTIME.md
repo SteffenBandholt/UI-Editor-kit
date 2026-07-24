@@ -1,12 +1,12 @@
-# M69 Generic Runtime
+# M69: Generische Runtime
 
 ## Verantwortung
 
-M69 ergaenzt das UI-Editor-kit um eine fachneutrale programmatische Runtime. Sie verwaltet Sessionzustand, Baseline, neutrale Layoutentries, Validierung, strukturierte Resultate sowie Save-, Load-, Reset-, Discard- und Reapply-Ablaufsteuerung. Zielanwendungen liefern weiterhin Registry, Element-Refs, sichtbare Anwendung und persistenten Storage.
+M69 ergaenzt das UI-Editor-kit um eine fachneutrale programmatische Runtime. Sie verwaltet Sessionzustand, Baseline, neutrale Layoutentries, Validierung, strukturierte Resultate sowie Save-, Load-, Reset-, Discard- und Reapply-Ablaeufe.
+
+Zielanwendungen liefern Registry, Element-Referenzen, HostAdapter und persistenten Storage.
 
 ## Public API
-
-Der oeffentliche Einstieg exportiert `createUiEditorRuntime(options)`, `validateLayoutEntryForElement(entry, registryElement)` sowie `RUNTIME_ERROR_CODES`.
 
 ```js
 const { createUiEditorRuntime } = require("ui-editor-kit");
@@ -40,15 +40,18 @@ Methoden:
 - `reapplyCurrentLayoutState(scopeId?)`
 - `endSession(scopeId?)`
 
-`beginSession` ist idempotent: eine bereits aktive Session liefert ein OK-Result mit `ALREADY_ACTIVE`-Hinweis und aendert weder Persistenz noch sichtbaren Zustand.
+`beginSession` ist idempotent. Eine bereits aktive Session aendert weder Persistenz noch Zielzustand.
 
 ## Sessionmodell
 
-Die Runtime fuehrt pro `targetContext` eine aktive oder inaktive Session. `baselineEntries` sind die neutrale Rueckkehrlinie fuer Discard-Operationen. `sessionEntries` sind aktuelle Editor-Abweichungen. Fehlende Entries bedeuten Ziel-App-Standard. `changedElementIds`, `changedCount`, `changedByElementId` und `baselineVersion` werden strukturiert berechnet, ohne sichtbare Texte als Logikschluessel zu verwenden.
+Die Runtime fuehrt pro `targetContext` eine aktive oder inaktive Session.
+
+- `baselineEntries` sind die Rueckkehrlinie fuer Verwerfen.
+- `sessionEntries` sind aktuelle Editor-Abweichungen.
+- Fehlende Entries bedeuten Ziel-App-Standard.
+- Aenderungsstatus wird strukturiert und ohne sichtbare Texte als Logikschluessel berechnet.
 
 ## Layoutentry-Modell
-
-Ein Layoutentry enthaelt ausschliesslich bekannte neutrale Felder und wird feldweise gegen Registry-Operationen validiert: `x`/`y` erfordern `move`, `width`/`height` erfordern `resize`, `visible: true` erfordert `show` und `visible: false` erfordert `hide`; gesperrte Operationen blockieren das gesamte Entry. Ein persistenter Entry ist keine vertrauenswuerdige Eingabe.
 
 Ein Layoutentry enthaelt ausschliesslich bekannte neutrale Felder:
 
@@ -63,7 +66,9 @@ Ein Layoutentry enthaelt ausschliesslich bekannte neutrale Felder:
 }
 ```
 
-Leere Entries werden normalisiert entfernt. DOM-Objekte, CSS-Selektoren, Fachdaten, Tabelleninhalte und Texteingaben gehoeren nicht in Session oder Persistenz.
+Die Felder werden gegen Registry-Operationen und Grenzen validiert. Persistente Entries gelten niemals ungeprueft als vertrauenswuerdig.
+
+Fachdaten, Tabelleninhalte, Texteingaben und zielsystemspezifische Objekte gehoeren nicht in Session oder Persistenz.
 
 ## Speichervertrag
 
@@ -75,11 +80,17 @@ Der Storage-Adapter stellt mindestens bereit:
 - `write(context, entries)`
 - `clear(context)`
 
-Optional kann er `deleteEntry(context, elementId)`, `readEntry(context, elementId)` oder `replaceEntries(context, entries)` anbieten. Fehlt `deleteEntry`, nutzt die Runtime Read-Modify-Write. Dauerhafte Operationen blockieren strukturiert, wenn Storage nicht verfuegbar oder nicht persistent ist. Nach Write und Clear erfolgt ein Kontrolllesen fuer denselben vollstaendigen Kontext aus `targetAppId`, `moduleId`, `scopeId` und `layoutProfileId`.
+Optional:
+
+- `deleteEntry(context, elementId)`
+- `readEntry(context, elementId)`
+- `replaceEntries(context, entries)`
+
+Dauerhafte Operationen werden blockiert, wenn Storage nicht verfuegbar oder nicht persistent ist. Nach Schreiben und Loeschen erfolgt ein Kontrolllesen fuer denselben vollstaendigen Kontext.
 
 ## HostAdapter-Vertrag
 
-Die Runtime erwartet folgende fachneutrale HostAdapter-Methoden:
+Die Runtime erwartet:
 
 - `validateElementRef(elementId)`
 - `captureElementLayoutState(elementId)`
@@ -87,29 +98,36 @@ Die Runtime erwartet folgende fachneutrale HostAdapter-Methoden:
 - `clearElementLayout(elementId, registryElement?)`
 - `restoreElementLayoutState(elementId, snapshot)`
 - `getCurrentLayoutEntry(elementId)`
+- optional `reapplyLayoutEntries(entries)`
 
-Optional kann `reapplyLayoutEntries(entries)` angeboten werden. Snapshots duerfen nur layoutbezogenen sichtbaren Zustand enthalten. Konkrete DOM-Refs bleiben intern in der Zielanwendung.
+Snapshots duerfen nur layoutbezogenen Zielzustand enthalten. Konkrete Referenzen bleiben intern in der Zielanwendung.
 
 ## Save und Load
 
-`saveLayout` schreibt den aktuellen Sessionzustand, kontrollliest ihn und macht erst danach den aktuellen Zustand zur neuen Baseline. Bei Verify-Fehlern wird der vorherige persistente Zustand bestmoeglich wiederhergestellt; Session und Baseline bleiben unveraendert. `loadLayout` liest nur den aktuellen Kontext, validiert alle Entries vollstaendig gegen Registry, erlaubte neutrale Layoutanwendung und HostAdapter-Refs, sichert Session, Baseline und sichtbare Snapshots, wendet erst danach sichtbar an und setzt geladenen Zustand als Session und Baseline. Das geladene Layout ist die vollstaendige Abweichungswahrheit: zuvor vorhandene, aber im geladenen Layout fehlende editierbare Entries werden sichtbar entfernt. Ungueltige oder fremde Elemente werden blockiert, damit kein Teilzustand sichtbar bleibt.
+`saveLayout` schreibt den aktuellen Sessionzustand, kontrollliest ihn und setzt erst danach die neue Baseline.
+
+`loadLayout` liest nur den aktuellen Kontext, validiert alle Entries vollstaendig, sichert Session, Baseline und Zielzustand und wendet erst danach an.
+
+Ungueltige oder fremde Elemente blockieren den gesamten Vorgang, damit kein Teilzustand entsteht.
 
 ## Reset und Discard
 
-`discardElementChanges` und `discardAllChanges` kehren zur Sessionbaseline zurueck und veraendern Persistenz nicht. `resetElementToDefaults` entfernt nur ein angegebenes Element sichtbar, in Session, Baseline und Persistenz und rollt bei Persistenz-Verify-Fehlern nur dieses Element zurueck. `resetLayoutToDefaults` entfernt alle editierbaren Abweichungen fuer den aktuellen Kontext und rollt bei Clear-, Verify- oder Hostfehlern sichtbaren Zustand, Session, Baseline und Persistenz bestmoeglich zurueck. Die Ziel-App-CSS-/Registry-Wahrheit bleibt der Standard; die Runtime erfindet keine Pixeldefaults.
+- `discardElementChanges` und `discardAllChanges` kehren zur Sessionbaseline zurueck und veraendern Persistenz nicht.
+- `resetElementToDefaults` entfernt nur ein Element aus Zielzustand, Session, Baseline und Persistenz.
+- `resetLayoutToDefaults` entfernt alle editierbaren Abweichungen fuer den aktuellen Kontext.
+
+Die Ziel-App-Wahrheit bleibt der Standard. Die Runtime erfindet keine Zielwerte.
 
 ## Rollback
 
-Vor sichtbaren oder destruktiven Schritten sichert die Runtime relevante Sessionentries, Baselineentries, Host-Snapshots und bei Persistenzaenderungen den alten persistenten Zustand. Bei Fehlern erfolgt ein bestmoeglicher Rollback. Wenn ein Rollback scheitert, wird das Ergebnis mit `rollbackComplete: false`, `ROLLBACK_FAILED`-Warnung und `rollbackErrors` gemeldet; der urspruengliche Fehlercode bleibt erhalten.
+Vor sichtbaren oder destruktiven Schritten sichert die Runtime relevante Sessionentries, Baselineentries, Host-Snapshots und bei Persistenzaenderungen den vorherigen persistenten Zustand.
 
-## Fehlercodes
-
-`RUNTIME_ERROR_CODES` enthaelt neutrale Codes wie `INVALID_TARGET_CONTEXT`, `INVALID_REGISTRY`, `INVALID_HOST_ADAPTER`, `UNKNOWN_SCOPE`, `UNKNOWN_ELEMENT`, `ELEMENT_NOT_EDITABLE`, `OPERATION_NOT_ALLOWED`, `SESSION_NOT_ACTIVE`, `STORAGE_UNAVAILABLE`, `STORAGE_NOT_PERSISTENT`, `STORAGE_READ_FAILED`, `STORAGE_WRITE_FAILED`, `STORAGE_CLEAR_FAILED`, `STORAGE_VERIFY_FAILED`, `ELEMENT_REF_MISSING`, `HOST_APPLY_FAILED`, `HOST_CAPTURE_FAILED`, `HOST_READ_FAILED`, `HOST_CLEAR_FAILED`, `ROLLBACK_FAILED` und `INVALID_LAYOUT_ENTRY`.
+Bei Fehlern erfolgt ein bestmoeglicher Rollback. Rollbackfehler werden strukturiert gemeldet, ohne den urspruenglichen Fehlercode zu verlieren.
 
 ## Nicht-Ziele
 
-M69 baut kein Bedienpanel, kein D-Pad, keine Dialog-DOM-Struktur, kein Browser-Overlay, keine Browser-Referenzanwendung, keine Ziel-App-Installation, keine DOM-Suche, kein Autosave, keine Mehrfachauswahl und keine Fachlogik.
+M69 baut kein Bedienpanel, keine Ziel-App-Installation, keine automatische Elementerkennung, kein Autosave, keine Mehrfachauswahl und keine Fachlogik.
 
 ## Uebergang zu M70
 
-M70 kann auf dieser programmatischen Runtime ein generisches Bedienpanel und passende ViewModels aufbauen. Die M69-Runtime bleibt dabei die fachneutrale Zustands- und Ablaufquelle.
+M70 baut auf dieser Runtime ein generisches Bedienpanel und passende ViewModels auf. Die Runtime bleibt die fachneutrale Zustands- und Ablaufquelle.
