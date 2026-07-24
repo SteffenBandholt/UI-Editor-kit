@@ -23,7 +23,7 @@ const MUST_EXIST = [
   "codex/AGENTS_UI_EDITOR_BLOCK.md",
   "codex/CODEX_BOOTSTRAP_ZIEL_APP.md",
   "scripts/tests/product-platform-boundary.test.cjs",
-  "scripts/tests/documentation-no-browser.test.cjs",
+  "scripts/tests/documentation-platform-boundary.test.cjs",
   "scripts/ui-editor-contract-check.cjs",
   "scripts/install-ui-editor-to-target.cjs",
   "src/index.cjs",
@@ -42,6 +42,7 @@ const MUST_NOT_EXIST = [
   "src/panel/ui-editor-panel-renderer.cjs",
   "styles/ui-editor-panel.css",
   "scripts/start-installer-app.cjs",
+  "scripts/tests/documentation-no-browser.test.cjs",
   "scripts/tests/target-contract.test.cjs",
   "scripts/tests/target-selection.test.cjs",
   "docs/M57_SELECTION_ARCHITEKTUR.md",
@@ -71,7 +72,7 @@ assert.equal(packageJson.main, "src/index.cjs");
 assert.deepEqual(packageJson.exports, { ".": { require: "./src/index.cjs" } });
 assert.equal(typeof packageJson.scripts.test, "string");
 assert.equal(
-  packageJson.scripts.test.startsWith("node scripts/tests/product-platform-boundary.test.cjs && node scripts/tests/documentation-no-browser.test.cjs && "),
+  packageJson.scripts.test.startsWith("node scripts/tests/product-platform-boundary.test.cjs && node scripts/tests/documentation-platform-boundary.test.cjs && "),
   true,
   "npm test muss mit Produkt- und Dokumentationsschutz beginnen",
 );
