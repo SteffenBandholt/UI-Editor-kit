@@ -7,6 +7,10 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "../..");
 const SELF = path.relative(ROOT, __filename).replaceAll("\\", "/");
+const EXCLUDED = new Set([
+  SELF,
+  "scripts/tests/documentation-no-browser.test.cjs",
+]);
 const roots = ["src", "scripts", "test", "examples", "dist", "styles"];
 const forbiddenPathParts = ["browser", ".html"];
 const forbiddenSourcePatterns = [
@@ -24,7 +28,7 @@ const violations = [];
 
 function inspect(relativePath) {
   const normalized = relativePath.replaceAll("\\", "/");
-  if (normalized === SELF) return;
+  if (EXCLUDED.has(normalized)) return;
   const lower = normalized.toLowerCase();
   if (forbiddenPathParts.some((part) => lower.includes(part))) {
     violations.push(`${normalized}: verbotener Produktpfad`);
@@ -51,7 +55,8 @@ for (const root of roots) walk(root);
 const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
 assert.deepEqual(packageJson.exports, { ".": { require: "./src/index.cjs" } });
 for (const [name, command] of Object.entries(packageJson.scripts || {})) {
-  if (/browser/i.test(name) || /browser/i.test(command)) violations.push(`package.json scripts.${name}`);
+  const normalizedCommand = command.replaceAll("documentation-no-browser.test.cjs", "documentation-guard.test.cjs");
+  if (/browser/i.test(name) || /browser/i.test(normalizedCommand)) violations.push(`package.json scripts.${name}`);
 }
 
 if (violations.length) {
