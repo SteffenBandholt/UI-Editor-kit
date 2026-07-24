@@ -26,7 +26,7 @@ function parseArgs(argv) {
 }
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
+  return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8").replace(/\r\n/gu, "\n");
 }
 
 function stripCommonJs(source) {

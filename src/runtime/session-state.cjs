@@ -1,10 +1,23 @@
 "use strict";
-const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible"]);
+const ELEMENT_FIELDS = Object.freeze(["x", "y", "width", "height", "visible"]);
+const TEXT_FIELDS = Object.freeze(["offsetX", "offsetY", "fontSize"]);
+const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", ...ELEMENT_FIELDS, "element", "text"]);
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function normalizeLayoutEntry(entry) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.elementId !== "string" || entry.elementId.trim() === "") return null;
   const normalized = { elementId: entry.elementId };
-  for (const field of LAYOUT_ENTRY_FIELDS) if (field !== "elementId" && Object.prototype.hasOwnProperty.call(entry, field)) normalized[field] = clone(entry[field]);
+  const nested = Object.prototype.hasOwnProperty.call(entry, "element") || Object.prototype.hasOwnProperty.call(entry, "text");
+  if (nested) {
+    const element = {};
+    const text = {};
+    for (const field of ELEMENT_FIELDS) if (entry.element && Object.prototype.hasOwnProperty.call(entry.element, field)) element[field] = clone(entry.element[field]);
+    for (const field of TEXT_FIELDS) if (entry.text && Object.prototype.hasOwnProperty.call(entry.text, field)) text[field] = clone(entry.text[field]);
+    if (Object.keys(element).length > 0) normalized.element = element;
+    if (Object.keys(text).length > 0) normalized.text = text;
+  } else {
+    // M68-M72 layout entries remain readable; new integrations should use element/text.
+    for (const field of ELEMENT_FIELDS) if (Object.prototype.hasOwnProperty.call(entry, field)) normalized[field] = clone(entry[field]);
+  }
   return Object.keys(normalized).length === 1 ? null : normalized;
 }
 function normalizeEntries(entries) {
@@ -38,4 +51,4 @@ function createSessionState(clock) {
     resetBaselineElement(id) { if (session.has(id)) baseline.set(id, clone(session.get(id))); else baseline.delete(id); baselineVersion = String(now()); return status(); },
   };
 }
-module.exports = { LAYOUT_ENTRY_FIELDS, normalizeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };
+module.exports = { ELEMENT_FIELDS, TEXT_FIELDS, LAYOUT_ENTRY_FIELDS, normalizeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };

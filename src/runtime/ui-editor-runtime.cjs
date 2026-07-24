@@ -146,6 +146,9 @@ function validateElement(registry, id) {
 }
 
 function getAllowedOps(element) {
+  if (element && element.operations && typeof element.operations === "object") {
+    return Object.keys(element.operations).filter((key) => element.operations[key] === true);
+  }
   return Array.isArray(element.effectiveOps)
     ? element.effectiveOps
     : (Array.isArray(element.allowedOps) ? element.allowedOps : []);
@@ -161,17 +164,43 @@ function validateLayoutEntryForElement(entry, registryElement) {
   if (!normalized) {
     return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry is invalid or empty.");
   }
-  if (normalized.elementId !== registryElement.id) {
+  const registryId = registryElement.elementId || registryElement.id;
+  if (normalized.elementId !== registryId) {
     return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry elementId does not match registry element.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "x") || Object.prototype.hasOwnProperty.call(normalized, "y")) && !isOperationAllowed(registryElement, "move")) {
+  const elementValues = normalized.element || normalized;
+  const textValues = normalized.text || {};
+  const limits = registryElement.limits || registryElement;
+  const bounds = [
+    [elementValues, "x", "minX", "maxX"], [elementValues, "y", "minY", "maxY"],
+    [elementValues, "width", "minWidth", "maxWidth"], [elementValues, "height", "minHeight", "maxHeight"],
+    [textValues, "offsetX", "minTextOffsetX", "maxTextOffsetX"], [textValues, "offsetY", "minTextOffsetY", "maxTextOffsetY"],
+    [textValues, "fontSize", "minFontSize", "maxFontSize"],
+  ];
+  for (const [values, field, minKey, maxKey] of bounds) {
+    if (!Object.prototype.hasOwnProperty.call(values, field)) continue;
+    if (!Number.isFinite(values[field])) return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, `${field} must be a finite number.`);
+    if ((Number.isFinite(limits[minKey]) && values[field] < limits[minKey]) || (Number.isFinite(limits[maxKey]) && values[field] > limits[maxKey])) {
+      return blockedResult(RUNTIME_ERROR_CODES.VALUE_OUT_OF_RANGE, `${field} exceeds registered limits.`, { value: { field, min: limits[minKey], max: limits[maxKey] } });
+    }
+  }
+  if ((Object.prototype.hasOwnProperty.call(elementValues, "x") || Object.prototype.hasOwnProperty.call(elementValues, "y")) && !isOperationAllowed(registryElement, "move")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires move operation.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
-    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
+  if (Object.prototype.hasOwnProperty.call(elementValues, "width") && !(isOperationAllowed(registryElement, "resizeWidth") || isOperationAllowed(registryElement, "resize"))) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resizeWidth operation.");
   }
-  if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
-    const visibilityOperation = normalized.visible === false ? "hide" : "show";
+  if (Object.prototype.hasOwnProperty.call(elementValues, "height") && !(isOperationAllowed(registryElement, "resizeHeight") || isOperationAllowed(registryElement, "resize"))) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resizeHeight operation.");
+  }
+  if ((Object.prototype.hasOwnProperty.call(textValues, "offsetX") || Object.prototype.hasOwnProperty.call(textValues, "offsetY")) && !isOperationAllowed(registryElement, "textMove")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textMove operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(textValues, "fontSize") && !isOperationAllowed(registryElement, "textResize")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textResize operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(elementValues, "visible")) {
+    const visibilityOperation = elementValues.visible === false ? "hide" : "show";
     if (!isOperationAllowed(registryElement, visibilityOperation)) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires ${visibilityOperation} operation.`);
     }
@@ -310,7 +339,7 @@ function createUiEditorRuntime(options) {
     if (!listed.ok) return listed;
     const entries = [];
     for (const element of listed.value) {
-      const current = readHostEntry(host, element.id);
+      const current = readHostEntry(host, element.elementId || element.id);
       if (!current.ok) return current;
       const normalized = normalizeLayoutEntry(current.value);
       if (normalized) {
@@ -347,7 +376,10 @@ function createUiEditorRuntime(options) {
 
     const elementResult = validateElement(registry, changeRequest.elementId);
     if (!elementResult.ok) return elementResult;
-    if (!["move", "resize"].includes(changeRequest.operation) || !operationAllowed(elementResult.value, changeRequest.operation)) {
+    const requestedOperation = changeRequest.operation;
+    const allowed = operationAllowed(elementResult.value, requestedOperation) ||
+      ((requestedOperation === "resizeWidth" || requestedOperation === "resizeHeight") && operationAllowed(elementResult.value, "resize"));
+    if (!["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize"].includes(requestedOperation) || !allowed) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
     }
 
@@ -417,14 +449,16 @@ function createUiEditorRuntime(options) {
     const snapshots = {};
 
     for (const element of editableElements) {
-      const snapshot = captureHostState(host, element.id);
+      const elementId = element.elementId || element.id;
+      const snapshot = captureHostState(host, elementId);
       if (!snapshot.ok) return snapshot;
-      snapshots[element.id] = snapshot.value;
+      snapshots[elementId] = snapshot.value;
     }
 
     for (const element of editableElements) {
-      const entry = baselineById.get(element.id);
-      const applied = entry ? applyEntryToHost(entry) : clearEntryFromHost(element.id, element);
+      const elementId = element.elementId || element.id;
+      const entry = baselineById.get(elementId);
+      const applied = entry ? applyEntryToHost(entry) : clearEntryFromHost(elementId, element);
       if (!applied.ok) {
         session.setSessionEntries(oldSessionEntries);
         return withRollbackInfo(applied, restoreHostSnapshots(host, snapshots));
@@ -512,7 +546,7 @@ function createUiEditorRuntime(options) {
     const affectedIds = new Set([...loadedById.keys(), ...previousIds]);
     const listed = listRegistryElements();
     if (!listed.ok) return listed;
-    const editableById = new Map(listed.value.filter((element) => element.editable !== false).map((element) => [element.id, element]));
+    const editableById = new Map(listed.value.filter((element) => element.editable !== false).map((element) => [element.elementId || element.id, element]));
     const snapshots = {};
 
     for (const elementId of affectedIds) {
@@ -571,10 +605,11 @@ function createUiEditorRuntime(options) {
     }
 
     for (const element of editableElements) {
-      const snapshot = captureHostState(host, element.id);
+      const elementId = element.elementId || element.id;
+      const snapshot = captureHostState(host, elementId);
       if (!snapshot.ok) return rollbackFrom(snapshot);
-      snapshots[element.id] = snapshot.value;
-      const cleared = clearEntryFromHost(element.id, element);
+      snapshots[elementId] = snapshot.value;
+      const cleared = clearEntryFromHost(elementId, element);
       if (!cleared.ok) return rollbackFrom(cleared);
     }
 
@@ -654,7 +689,7 @@ function createUiEditorRuntime(options) {
     const currentEntry = normalizeLayoutEntry(current.value) || sessionEntries.get(elementId) || { elementId };
     const effectiveLayout = clone(current.value) || clone(currentEntry);
     const baselineEntry = baselineEntries.get(elementId) || null;
-    const allowedOps = Array.isArray(element.allowedOps) ? element.allowedOps.slice() : [];
+    const allowedOps = getAllowedOps(element);
     const lockedOps = Array.isArray(element.lockedOps) ? element.lockedOps : [];
     const effectiveOps = (Array.isArray(element.effectiveOps) ? element.effectiveOps : allowedOps).filter((op) => !lockedOps.includes(op));
     return okResult(undefined, { elementId, currentEntry, effectiveLayout, baselineEntry, changed: JSON.stringify(currentEntry || null) !== JSON.stringify(baselineEntry || null), allowedOps, effectiveOps });

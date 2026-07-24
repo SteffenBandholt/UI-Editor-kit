@@ -21,7 +21,7 @@ assert.equal(host.getCurrentLayoutEntry("a").value.width, 240);
 host.applyLayoutEntry("a", { elementId: "a", x: 5, y: 6, width: 300, height: 90, visible: true });
 let current = host.getCurrentLayoutEntry("a").value;
 assert.deepEqual({ x: current.x, y: current.y, width: current.width, height: current.height, visible: current.visible }, { x: 5, y: 6, width: 300, height: 90, visible: true });
-assert.equal(target.style.transform, "var(--ui-editor-target-transform, none) translate(var(--ui-editor-x, 0px), var(--ui-editor-y, 0px))");
+assert.equal(target.style.transform, "var(--ui-editor-target-transform) translate(var(--ui-editor-x, 0px), var(--ui-editor-y, 0px))");
 assert.equal(target.style.getPropertyValue("--ui-editor-target-transform"), "rotate(3deg)");
 assert.equal(target.style.transform.includes("translate"), true);
 assert.equal(target.style.transform.includes("rotate(3deg) rotate"), false);
@@ -93,6 +93,27 @@ noOwnershipHost.restoreElementLayoutState("plain", noOwnershipSnapshot);
 noOwnershipHost.clearElementLayout("plain");
 assert.equal(noOwnershipTarget.style.transform, "scale(2)");
 assert.equal(noOwnershipTarget.style.width, "111px");
+
+const computedRefs = createElementRefRegistry();
+const computedTarget = el({ left: 0, top: 0, width: 120, height: 80 });
+computedRefs.register("computed", computedTarget);
+const computedHost = createBrowserHostAdapter({
+  elementRefs: computedRefs,
+  computedStyleReader(element) { return element === computedTarget ? { transform: "matrix(1, 0, 0, 1, 0, 0)", width: "120px", height: "80px" } : null; },
+});
+computedHost.applyLayoutEntry("computed", { elementId: "computed", x: 5, y: 0 });
+assert.equal(computedTarget.style.transform, "var(--ui-editor-target-transform) translate(var(--ui-editor-x, 0px), var(--ui-editor-y, 0px))");
+assert.equal(computedTarget.style.getPropertyValue("--ui-editor-target-transform"), "matrix(1, 0, 0, 1, 0, 0)");
+computedHost.clearElementLayout("computed");
+assert.equal(computedTarget.style.transform, "");
+
+const emptyTransformRefs = createElementRefRegistry();
+const emptyTransformTarget = el({ left: 0, top: 0, width: 120, height: 80 });
+emptyTransformRefs.register("empty", emptyTransformTarget);
+const emptyTransformHost = createBrowserHostAdapter({ elementRefs: emptyTransformRefs, computedStyleReader() { return { transform: "none", width: "120px", height: "80px" }; } });
+emptyTransformHost.applyLayoutEntry("empty", { elementId: "empty", x: 5, y: 6 });
+assert.equal(emptyTransformTarget.style.transform, "translate(var(--ui-editor-x, 0px), var(--ui-editor-y, 0px))");
+assert.equal(emptyTransformTarget.style.getPropertyValue("--ui-editor-target-transform"), "");
 
 function createRuntimeStorage() {
   let entries = [];

@@ -162,7 +162,7 @@ Siehe:
 
 Startversion des fachneutralen Kits. Der Editor-Core wird schrittweise ergaenzt.
 
-## M69/M70 programmatische Runtime und generisches Panel
+## M69-M72 Runtime, verschiebbares Panel und Textbearbeitung
 
 Das Paket exportiert eine fachneutrale Runtime (`createUiEditorRuntime`) sowie ab M70 ein kleines generisches Bedienpanel. Die Runtime verwaltet Session, neutrale Layoutentries, Save, Load, Discard, Reset und Rollback. Das Panel besteht aus Controller, ViewModel, Message-Catalog und Renderer:
 
@@ -175,9 +175,9 @@ const {
 } = require("ui-editor-kit");
 ```
 
-Der Panel-Controller liest Registry und Runtime-Status, verwaltet Auswahl, Modus (`move`, `width`, `height`), Schrittweite, Busy-Status, Dialoge und strukturierte Ergebnisse. Benutzeraktionen werden in neutrale Runtime-Aufrufe uebersetzt. Der Renderer erzeugt nur sein eigenes Panel-DOM im uebergebenen MountTarget.
+Der Panel-Controller liest Registry und Runtime-Status, verwaltet Auswahl, Ebene (`ELEMENT`/`TEXT`), Modus, Schrittweite, Busy-Status, Dialoge und strukturierte Ergebnisse. Der Renderer erzeugt ausschließlich sein eigenes Panel-DOM im übergebenen MountTarget. Das Panel ist über seine Kopfzeile verschiebbar, bleibt im Viewport und speichert seine Position getrennt vom Ziel-Layout.
 
-M70 enthaelt noch keinen produktiven Browser-Host fuer echte Ziel-App-Elemente. Echte Browser-Refs, Auswahlrahmen, SelectionHost und Overlay folgen in M71.
+M72 führt Elementwerte (`x`, `y`, `width`, `height`, `visible`) und Textwerte (`offsetX`, `offsetY`, `fontSize`) getrennt. Textbearbeitung ist nur mit explizitem `textMove`/`textResize` aktiv. Die Ziel-App liefert weiterhin Registry, explizite Refs, HostAdapter, Storage und Ein-/Ausschaltfunktion; es gibt kein DOM-Scanning. Der vollständige Vertrag und eine neutrale Einbindung stehen in [docs/M72_EDITOR_PANEL_TEXT_EDITING.md](docs/M72_EDITOR_PANEL_TEXT_EDITING.md).
 ## Generische Browser-Integration ab M71
 
 Ab M71 exportiert das Paket eine fachneutrale Browser-Host-Schicht fuer echte HTMLElement-Refs: `createElementRefRegistry`, `createBrowserHostAdapter`, `createBrowserSelectionHost`, `createBrowserOverlayHost`, `createBrowserLayoutStorage` und `createUiEditorBrowserBridge`. Die Ziel-App muss jedes editierbare Element explizit registrieren und eigene Auswahlereignisse bewusst an den SelectionHost uebergeben. Der BrowserHost scannt kein DOM, nutzt kein globales `localStorage` und kennt keine Ziel-App-Fachlogik. Details stehen in `docs/M71_GENERIC_BROWSER_HOST.md`.

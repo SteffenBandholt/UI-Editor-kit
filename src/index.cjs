@@ -28,15 +28,18 @@ const { createSelectionController, SelectionRuntimeErrorCodes } = require("./sel
 const { createHoverOverlay } = require("./selection/hoverOverlay.js");
 const { createSelectedOverlay } = require("./selection/selectedOverlay.js");
 const { resolveSelectionTarget } = require("./selection/targetResolver.js");
-const { createUiEditorRuntime, validateLayoutEntryForElement } = require("./runtime/ui-editor-runtime.cjs");
+const { validateLayoutEntryForElement } = require("./runtime/ui-editor-runtime.cjs");
+const { createUiEditorRuntime } = require("./runtime/step-validating-ui-editor-runtime.cjs");
 const { createUiEditorPanelController } = require("./panel/ui-editor-panel-controller.cjs");
 const { createUiEditorPanelViewModel } = require("./panel/ui-editor-panel-view-model.cjs");
 const { createUiEditorPanel } = require("./panel/ui-editor-panel-renderer.cjs");
 const { createPanelMessageCatalog } = require("./panel/panel-message-catalog.cjs");
-const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = require("./panel/panel-intents.cjs");
+const { PANEL_INTENTS, PANEL_LAYERS, PANEL_MODES, PANEL_DIRECTIONS } = require("./panel/panel-intents.cjs");
+const { createPanelPositionStore } = require("./panel/panel-position-store.cjs");
 const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
+const { resolveOperationStep } = require("./runtime/operation-step-resolver.cjs");
 const { createElementRefRegistry } = require("./browser/element-ref-registry.cjs");
 const { createBrowserHostAdapter } = require("./browser/browser-host-adapter.cjs");
 const { createBrowserSelectionHost } = require("./browser/browser-selection-host.cjs");
@@ -65,12 +68,15 @@ module.exports = Object.freeze({
   createUiEditorPanel,
   createPanelMessageCatalog,
   PANEL_INTENTS,
+  PANEL_LAYERS,
   PANEL_MODES,
   PANEL_DIRECTIONS,
+  createPanelPositionStore,
   RUNTIME_ERROR_CODES,
   normalizeTargetContext,
   validateTargetContext,
   normalizeLayoutEntry,
+  resolveOperationStep,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,
