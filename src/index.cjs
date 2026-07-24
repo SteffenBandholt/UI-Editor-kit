@@ -28,7 +28,11 @@ const { createSelectionController, SelectionRuntimeErrorCodes } = require("./sel
 const { createHoverOverlay } = require("./selection/hoverOverlay.js");
 const { createSelectedOverlay } = require("./selection/selectedOverlay.js");
 const { resolveSelectionTarget } = require("./selection/targetResolver.js");
-const { createUiEditorRuntime, validateLayoutEntryForElement } = require("./runtime/ui-editor-runtime.cjs");
+const { validateLayoutEntryForElement } = require("./runtime/ui-editor-runtime.cjs");
+const {
+  createUiEditorRuntime,
+  validateChangeRequestStepAlignment,
+} = require("./runtime/step-validating-ui-editor-runtime.cjs");
 const { createUiEditorPanelController } = require("./panel/ui-editor-panel-controller.cjs");
 const { createUiEditorPanelViewModel } = require("./panel/ui-editor-panel-view-model.cjs");
 const { createUiEditorPanel } = require("./panel/ui-editor-panel-renderer.cjs");
@@ -62,6 +66,7 @@ module.exports = Object.freeze({
   BROWSER_ERROR_CODES,
   createUiEditorRuntime,
   validateLayoutEntryForElement,
+  validateChangeRequestStepAlignment,
   createUiEditorPanelController,
   createUiEditorPanelViewModel,
   createUiEditorPanel,
