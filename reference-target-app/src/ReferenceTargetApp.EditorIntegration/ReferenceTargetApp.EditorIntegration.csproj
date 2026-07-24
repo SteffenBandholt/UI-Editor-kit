@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ReferenceTargetApp.EditorIntegration</RootNamespace>
+    <Description>Reserved boundary for the later local UI editor process integration.</Description>
+  </PropertyGroup>
+</Project>
