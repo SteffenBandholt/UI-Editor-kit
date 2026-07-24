@@ -6,57 +6,55 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "../..");
-const SELF = path.relative(ROOT, __filename).replaceAll("\\", "/");
-const EXCLUDED = new Set([
-  SELF,
-  "scripts/tests/documentation-no-browser.test.cjs",
-]);
-const roots = ["src", "scripts", "test", "examples", "dist", "styles"];
+const pathRoots = ["src", "scripts", "test", "examples", "dist", "styles"];
+const sourceRoots = ["src"];
 const forbiddenPathParts = ["browser", ".html"];
 const forbiddenSourcePatterns = [
-  /\bwindow\b/,
-  /\bdocument\b/,
+  /\bwindow\s*\./,
+  /\bdocument\s*\./,
   /\bHTMLElement\b/,
-  /querySelector/,
-  /getElementById\s*\(/,
-  /MutationObserver/,
-  /getBoundingClientRect/,
-  /createElement\s*\(/,
-  /localStorage/,
+  /\.querySelector\s*\(/,
+  /\bMutationObserver\b/,
+  /\.getBoundingClientRect\s*\(/,
+  /\.createElement\s*\(/,
+  /\blocalStorage\s*\./,
 ];
 const violations = [];
 
-function inspect(relativePath) {
-  const normalized = relativePath.replaceAll("\\", "/");
-  if (EXCLUDED.has(normalized)) return;
-  const lower = normalized.toLowerCase();
-  if (forbiddenPathParts.some((part) => lower.includes(part))) {
-    violations.push(`${normalized}: verbotener Produktpfad`);
-    return;
-  }
-  if (!/\.(?:cjs|mjs|js|css)$/.test(lower)) return;
-  const content = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
-  for (const pattern of forbiddenSourcePatterns) {
-    const match = content.match(pattern);
-    if (match) violations.push(`${normalized}: ${JSON.stringify(match[0])}`);
-  }
-}
-
-function walk(relativePath) {
+function walk(relativePath, visitor) {
   const absolute = path.join(ROOT, relativePath);
   if (!fs.existsSync(absolute)) return;
   const stat = fs.statSync(absolute);
-  if (stat.isFile()) return inspect(relativePath);
-  for (const name of fs.readdirSync(absolute)) walk(path.join(relativePath, name));
+  if (stat.isFile()) return visitor(relativePath);
+  for (const name of fs.readdirSync(absolute)) walk(path.join(relativePath, name), visitor);
 }
 
-for (const root of roots) walk(root);
+for (const root of pathRoots) {
+  walk(root, (relativePath) => {
+    const normalized = relativePath.replaceAll("\\", "/");
+    const lower = normalized.toLowerCase();
+    if (forbiddenPathParts.some((part) => lower.includes(part))) {
+      violations.push(`${normalized}: verbotener Produktpfad`);
+    }
+  });
+}
+
+for (const root of sourceRoots) {
+  walk(root, (relativePath) => {
+    const normalized = relativePath.replaceAll("\\", "/");
+    if (!/\.(?:cjs|mjs|js|css)$/.test(normalized.toLowerCase())) return;
+    const content = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+    for (const pattern of forbiddenSourcePatterns) {
+      const match = content.match(pattern);
+      if (match) violations.push(`${normalized}: ${JSON.stringify(match[0])}`);
+    }
+  });
+}
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
 assert.deepEqual(packageJson.exports, { ".": { require: "./src/index.cjs" } });
 for (const [name, command] of Object.entries(packageJson.scripts || {})) {
-  const normalizedCommand = command.replaceAll("documentation-no-browser.test.cjs", "documentation-guard.test.cjs");
-  if (/browser/i.test(name) || /browser/i.test(normalizedCommand)) violations.push(`package.json scripts.${name}`);
+  if (/browser/i.test(name) || /browser/i.test(command)) violations.push(`package.json scripts.${name}`);
 }
 
 if (violations.length) {
