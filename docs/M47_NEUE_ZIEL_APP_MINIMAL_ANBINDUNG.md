@@ -24,7 +24,7 @@ Target-App -> AdapterManifest -> HostAdapter -> Registry -> RuntimeLauncher -> V
 4. Registry mit bekannten editorfaehigen Elementen
 5. optional gespeicherte Layoutdaten
 
-Die Ziel-App erzeugt keine Registry automatisch.
+Die Ziel-App stellt ihre Registry ausschliesslich bewusst und explizit bereit.
 
 ## Kit liefert
 
@@ -83,9 +83,9 @@ node scripts/fixtures/minimal-target-app/minimal-target-app.cjs
 
 - keine Fachlogik
 - keine Datenbank-Anbindung
-- keine automatische UI-Erkennung
-- keine automatische Registry-Befuellung
-- keine automatische Migration bestehender Oberflaechen
+- keine selbsttaetige UI-Erkennung
+- keine selbsttaetige Erzeugung von Registry-Eintraegen
+- keine selbsttaetige Migration bestehender Oberflaechen
 - keine fachliche Beispiel-App
 - keine vorgeschriebene Laufzeitumgebung
 
