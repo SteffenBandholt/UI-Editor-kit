@@ -1,5 +1,9 @@
 # UI-Editor-Kit
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
 Wiederverwendbares, fachneutrales UI-/PDF-Editor-Kit zur Einbindung in Anwendungs-Apps.
 
 ## Zweck
