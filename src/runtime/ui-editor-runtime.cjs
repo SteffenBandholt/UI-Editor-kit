@@ -1,6 +1,7 @@
 "use strict";
 
 const { RUNTIME_ERROR_CODES } = require("./runtime-error-codes.cjs");
+const { resolveOperationStep } = require("./operation-step-resolver.cjs");
 const { okResult, blockedResult } = require("./runtime-result.cjs");
 const { validateTargetContext, assertScope } = require("./runtime-context.cjs");
 const {
@@ -187,6 +188,90 @@ function validateLayoutEntryForElement(entry, registryElement) {
   return okResult(normalized);
 }
 
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function validStep(value) {
+  return finiteNumber(Number(value)) && Number(value) > 0 ? Number(value) : undefined;
+}
+
+function registryStep(registryElement, operation, axis) {
+  const steps = registryElement && registryElement.steps && typeof registryElement.steps === "object" ? registryElement.steps : {};
+  if (operation === "move") return validStep(steps.move);
+  if (operation === "resize" && axis === "width") return validStep(steps.resizeWidth) ?? validStep(steps.resize);
+  if (operation === "resize" && axis === "height") return validStep(steps.resizeHeight) ?? validStep(steps.resize);
+  if (operation === "textMove" && axis === "x") return validStep(steps.textMoveX) ?? validStep(steps.textMove);
+  if (operation === "textMove" && axis === "y") return validStep(steps.textMoveY) ?? validStep(steps.textMove);
+  if (operation === "fontSize") return validStep(steps.fontSize);
+  return undefined;
+}
+
+function currentValue(entry, group, field) {
+  if (!entry) return undefined;
+  const normalized = normalizeLayoutEntry(entry);
+  if (normalized && normalized[group] && finiteNumber(normalized[group][field])) return normalized[group][field];
+  if (group === "element" && finiteNumber(entry[field])) return entry[field];
+  return undefined;
+}
+
+function alignedDelta(from, to, step) {
+  const delta = Number(to) - Number(from || 0);
+  const units = delta / step;
+  return Math.abs(units - Math.round(units)) < 1e-9;
+}
+
+function limitFor(registryElement, field, bound) {
+  const names = {
+    x: [`${bound}X`],
+    y: [`${bound}Y`],
+    width: [`${bound}Width`],
+    height: [`${bound}Height`],
+    offsetX: [`${bound}TextOffsetX`, `${bound}OffsetX`],
+    offsetY: [`${bound}TextOffsetY`, `${bound}OffsetY`],
+    fontSize: [`${bound}FontSize`],
+  }[field] || [`${bound}${field.charAt(0).toUpperCase()}${field.slice(1)}`];
+  const key = names.find((name) => finiteNumber(registryElement && registryElement[name]));
+  return key ? registryElement[key] : undefined;
+}
+
+function validateFieldStepAndLimits({ registryElement, currentEntry, nextEntry, group, field, operation, axis }) {
+  const nextGroup = nextEntry[group] || {};
+  if (!Object.prototype.hasOwnProperty.call(nextGroup, field)) return okResult();
+  const next = nextGroup[field];
+  if (!finiteNumber(next)) return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, `${group}.${field} must be a finite number.`, { value: { field: `${group}.${field}`, value: next } });
+  const min = limitFor(registryElement, field, "min");
+  const max = limitFor(registryElement, field, "max");
+  if ((min !== undefined && next < min) || (max !== undefined && next > max)) {
+    return blockedResult(RUNTIME_ERROR_CODES.VALUE_OUT_OF_LIMITS, `${group}.${field} is outside registry limits.`, { value: { field: `${group}.${field}`, min, max, value: next } });
+  }
+  const step = registryStep(registryElement, operation, axis);
+  if (step === undefined) return okResult();
+  resolveOperationStep({ registryElement, operation, axis });
+  const current = currentValue(currentEntry, group, field) || 0;
+  if (!alignedDelta(current, next, step)) {
+    return blockedResult(RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP, `${group}.${field} is not aligned to registry step.`, { value: { field: `${group}.${field}`, current, requested: next, step } });
+  }
+  return okResult();
+}
+
+function validateEntryStepsAndLimits(registryElement, currentEntry, nextEntry) {
+  const checks = [
+    { group: "element", field: "x", operation: "move" },
+    { group: "element", field: "y", operation: "move" },
+    { group: "element", field: "width", operation: "resize", axis: "width" },
+    { group: "element", field: "height", operation: "resize", axis: "height" },
+    { group: "text", field: "offsetX", operation: "textMove", axis: "x" },
+    { group: "text", field: "offsetY", operation: "textMove", axis: "y" },
+    { group: "text", field: "fontSize", operation: "fontSize" },
+  ];
+  for (const check of checks) {
+    const result = validateFieldStepAndLimits({ registryElement, currentEntry, nextEntry, ...check });
+    if (!result.ok) return result;
+  }
+  return okResult();
+}
+
 function operationAllowed(element, operation) {
   return isOperationAllowed(element, operation);
 }
@@ -365,6 +450,11 @@ function createUiEditorRuntime(options) {
     }
     const entryValidation = validateLayoutEntryForElement(entry, elementResult.value);
     if (!entryValidation.ok) return entryValidation;
+
+    const currentBefore = readHostEntry(host, changeRequest.elementId);
+    if (!currentBefore.ok) return currentBefore;
+    const stepValidation = validateEntryStepsAndLimits(elementResult.value, currentBefore.value, entryValidation.value);
+    if (!stepValidation.ok) return stepValidation;
 
     const snapshot = captureHostState(host, changeRequest.elementId);
     if (!snapshot.ok) return snapshot;
@@ -713,5 +803,4 @@ function createUiEditorRuntime(options) {
   };
 }
 
-const { resolveOperationStep } = require("./operation-step-resolver.cjs");
 module.exports = { createUiEditorRuntime, validateLayoutEntryForElement, resolveOperationStep };

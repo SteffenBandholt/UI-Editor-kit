@@ -241,8 +241,8 @@ const { createUiEditorPanel } = __require(35);
 const { createPanelMessageCatalog } = __require(33);
 const { PANEL_LAYERS, PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = __require(32);
 const { RUNTIME_ERROR_CODES } = __require(26);
-const { normalizeTargetContext, validateTargetContext } = __require(28);
-const { normalizeLayoutEntry } = __require(29);
+const { normalizeTargetContext, validateTargetContext } = __require(29);
+const { normalizeLayoutEntry } = __require(30);
 const { createElementRefRegistry } = __require(36);
 const { createBrowserHostAdapter } = __require(38);
 const { createBrowserSelectionHost } = __require(39);
@@ -3167,14 +3167,15 @@ module.exports = { createSelectedOverlay };
 "use strict";
 
 const { RUNTIME_ERROR_CODES } = __require(26);
-const { okResult, blockedResult } = __require(27);
-const { validateTargetContext, assertScope } = __require(28);
+const { resolveOperationStep } = __require(27);
+const { okResult, blockedResult } = __require(28);
+const { validateTargetContext, assertScope } = __require(29);
 const {
   createSessionState,
   normalizeLayoutEntry,
   normalizeEntries,
   entriesToArray,
-} = __require(29);
+} = __require(30);
 
 function clone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -3351,6 +3352,90 @@ function validateLayoutEntryForElement(entry, registryElement) {
     }
   }
   return okResult(normalized);
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function validStep(value) {
+  return finiteNumber(Number(value)) && Number(value) > 0 ? Number(value) : undefined;
+}
+
+function registryStep(registryElement, operation, axis) {
+  const steps = registryElement && registryElement.steps && typeof registryElement.steps === "object" ? registryElement.steps : {};
+  if (operation === "move") return validStep(steps.move);
+  if (operation === "resize" && axis === "width") return validStep(steps.resizeWidth) ?? validStep(steps.resize);
+  if (operation === "resize" && axis === "height") return validStep(steps.resizeHeight) ?? validStep(steps.resize);
+  if (operation === "textMove" && axis === "x") return validStep(steps.textMoveX) ?? validStep(steps.textMove);
+  if (operation === "textMove" && axis === "y") return validStep(steps.textMoveY) ?? validStep(steps.textMove);
+  if (operation === "fontSize") return validStep(steps.fontSize);
+  return undefined;
+}
+
+function currentValue(entry, group, field) {
+  if (!entry) return undefined;
+  const normalized = normalizeLayoutEntry(entry);
+  if (normalized && normalized[group] && finiteNumber(normalized[group][field])) return normalized[group][field];
+  if (group === "element" && finiteNumber(entry[field])) return entry[field];
+  return undefined;
+}
+
+function alignedDelta(from, to, step) {
+  const delta = Number(to) - Number(from || 0);
+  const units = delta / step;
+  return Math.abs(units - Math.round(units)) < 1e-9;
+}
+
+function limitFor(registryElement, field, bound) {
+  const names = {
+    x: [`${bound}X`],
+    y: [`${bound}Y`],
+    width: [`${bound}Width`],
+    height: [`${bound}Height`],
+    offsetX: [`${bound}TextOffsetX`, `${bound}OffsetX`],
+    offsetY: [`${bound}TextOffsetY`, `${bound}OffsetY`],
+    fontSize: [`${bound}FontSize`],
+  }[field] || [`${bound}${field.charAt(0).toUpperCase()}${field.slice(1)}`];
+  const key = names.find((name) => finiteNumber(registryElement && registryElement[name]));
+  return key ? registryElement[key] : undefined;
+}
+
+function validateFieldStepAndLimits({ registryElement, currentEntry, nextEntry, group, field, operation, axis }) {
+  const nextGroup = nextEntry[group] || {};
+  if (!Object.prototype.hasOwnProperty.call(nextGroup, field)) return okResult();
+  const next = nextGroup[field];
+  if (!finiteNumber(next)) return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, `${group}.${field} must be a finite number.`, { value: { field: `${group}.${field}`, value: next } });
+  const min = limitFor(registryElement, field, "min");
+  const max = limitFor(registryElement, field, "max");
+  if ((min !== undefined && next < min) || (max !== undefined && next > max)) {
+    return blockedResult(RUNTIME_ERROR_CODES.VALUE_OUT_OF_LIMITS, `${group}.${field} is outside registry limits.`, { value: { field: `${group}.${field}`, min, max, value: next } });
+  }
+  const step = registryStep(registryElement, operation, axis);
+  if (step === undefined) return okResult();
+  resolveOperationStep({ registryElement, operation, axis });
+  const current = currentValue(currentEntry, group, field) || 0;
+  if (!alignedDelta(current, next, step)) {
+    return blockedResult(RUNTIME_ERROR_CODES.VALUE_NOT_ALIGNED_TO_STEP, `${group}.${field} is not aligned to registry step.`, { value: { field: `${group}.${field}`, current, requested: next, step } });
+  }
+  return okResult();
+}
+
+function validateEntryStepsAndLimits(registryElement, currentEntry, nextEntry) {
+  const checks = [
+    { group: "element", field: "x", operation: "move" },
+    { group: "element", field: "y", operation: "move" },
+    { group: "element", field: "width", operation: "resize", axis: "width" },
+    { group: "element", field: "height", operation: "resize", axis: "height" },
+    { group: "text", field: "offsetX", operation: "textMove", axis: "x" },
+    { group: "text", field: "offsetY", operation: "textMove", axis: "y" },
+    { group: "text", field: "fontSize", operation: "fontSize" },
+  ];
+  for (const check of checks) {
+    const result = validateFieldStepAndLimits({ registryElement, currentEntry, nextEntry, ...check });
+    if (!result.ok) return result;
+  }
+  return okResult();
 }
 
 function operationAllowed(element, operation) {
@@ -3531,6 +3616,11 @@ function createUiEditorRuntime(options) {
     }
     const entryValidation = validateLayoutEntryForElement(entry, elementResult.value);
     if (!entryValidation.ok) return entryValidation;
+
+    const currentBefore = readHostEntry(host, changeRequest.elementId);
+    if (!currentBefore.ok) return currentBefore;
+    const stepValidation = validateEntryStepsAndLimits(elementResult.value, currentBefore.value, entryValidation.value);
+    if (!stepValidation.ok) return stepValidation;
 
     const snapshot = captureHostState(host, changeRequest.elementId);
     if (!snapshot.ok) return snapshot;
@@ -3879,7 +3969,6 @@ function createUiEditorRuntime(options) {
   };
 }
 
-const { resolveOperationStep } = __require(30);
 module.exports = { createUiEditorRuntime, validateLayoutEntryForElement, resolveOperationStep };
 
 },
@@ -3909,6 +3998,8 @@ const RUNTIME_ERROR_CODES = Object.freeze({
   HOST_CLEAR_FAILED: "HOST_CLEAR_FAILED",
   ROLLBACK_FAILED: "ROLLBACK_FAILED",
   INVALID_LAYOUT_ENTRY: "INVALID_LAYOUT_ENTRY",
+  VALUE_NOT_ALIGNED_TO_STEP: "VALUE_NOT_ALIGNED_TO_STEP",
+  VALUE_OUT_OF_LIMITS: "VALUE_OUT_OF_LIMITS",
   ALREADY_ACTIVE: "ALREADY_ACTIVE",
 });
 
@@ -3917,15 +4008,43 @@ module.exports = { RUNTIME_ERROR_CODES };
 },
 27:function(module,exports,__require){
 "use strict";
+
+const SAFE_DEFAULT_STEP = 1;
+
+function valid(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : undefined;
+}
+
+function resolveOperationStep(options) {
+  const cfg = options || {};
+  const steps = cfg.registryElement && cfg.registryElement.steps && typeof cfg.registryElement.steps === "object" ? cfg.registryElement.steps : {};
+  const panelDefault = valid(cfg.panelStepSize);
+  const explicit = valid(cfg.stepSize);
+  if (explicit !== undefined) return explicit;
+  if (cfg.operation === "move") return valid(steps.move) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "resize" && cfg.axis === "width") return valid(steps.resizeWidth) ?? valid(steps.resize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "resize" && cfg.axis === "height") return valid(steps.resizeHeight) ?? valid(steps.resize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "textMove" && cfg.axis === "x") return valid(steps.textMoveX) ?? valid(steps.textMove) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "textMove" && cfg.axis === "y") return valid(steps.textMoveY) ?? valid(steps.textMove) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  if (cfg.operation === "fontSize") return valid(steps.fontSize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
+  return panelDefault ?? SAFE_DEFAULT_STEP;
+}
+
+module.exports = { resolveOperationStep, SAFE_DEFAULT_STEP };
+
+},
+28:function(module,exports,__require){
+"use strict";
 function okResult(value, extras) { return { ok: true, ...(extras || {}), ...(value === undefined ? {} : { value }) }; }
 function blockedResult(code, reason, extras) { return { ok: false, blocked: true, code, reason, ...(extras || {}) }; }
 module.exports = { okResult, blockedResult };
 
 },
-28:function(module,exports,__require){
+29:function(module,exports,__require){
 "use strict";
 const { RUNTIME_ERROR_CODES } = __require(26);
-const { blockedResult, okResult } = __require(27);
+const { blockedResult, okResult } = __require(28);
 function isNonEmptyString(value) { return typeof value === "string" && value.trim().length > 0; }
 function normalizeTargetContext(context) {
   if (!context || typeof context !== "object" || Array.isArray(context)) return null;
@@ -3950,7 +4069,7 @@ function assertScope(context, scopeId) {
 module.exports = { normalizeTargetContext, validateTargetContext, assertScope };
 
 },
-29:function(module,exports,__require){
+30:function(module,exports,__require){
 "use strict";
 const ELEMENT_FIELDS = Object.freeze(["x", "y", "width", "height", "visible"]);
 const TEXT_FIELDS = Object.freeze(["offsetX", "offsetY", "fontSize"]);
@@ -3983,40 +4102,12 @@ function createSessionState(clock) { const now = typeof clock === "function" ? c
 module.exports = { ELEMENT_FIELDS, TEXT_FIELDS, normalizeLayoutEntry, mergeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };
 
 },
-30:function(module,exports,__require){
-"use strict";
-
-const SAFE_DEFAULT_STEP = 1;
-
-function valid(value) {
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number : undefined;
-}
-
-function resolveOperationStep(options) {
-  const cfg = options || {};
-  const steps = cfg.registryElement && cfg.registryElement.steps && typeof cfg.registryElement.steps === "object" ? cfg.registryElement.steps : {};
-  const panelDefault = valid(cfg.panelStepSize);
-  const explicit = valid(cfg.stepSize);
-  if (explicit !== undefined) return explicit;
-  if (cfg.operation === "move") return valid(steps.move) ?? panelDefault ?? SAFE_DEFAULT_STEP;
-  if (cfg.operation === "resize" && cfg.axis === "width") return valid(steps.resizeWidth) ?? valid(steps.resize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
-  if (cfg.operation === "resize" && cfg.axis === "height") return valid(steps.resizeHeight) ?? valid(steps.resize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
-  if (cfg.operation === "textMove" && cfg.axis === "x") return valid(steps.textMoveX) ?? valid(steps.textMove) ?? panelDefault ?? SAFE_DEFAULT_STEP;
-  if (cfg.operation === "textMove" && cfg.axis === "y") return valid(steps.textMoveY) ?? valid(steps.textMove) ?? panelDefault ?? SAFE_DEFAULT_STEP;
-  if (cfg.operation === "fontSize") return valid(steps.fontSize) ?? panelDefault ?? SAFE_DEFAULT_STEP;
-  return panelDefault ?? SAFE_DEFAULT_STEP;
-}
-
-module.exports = { resolveOperationStep, SAFE_DEFAULT_STEP };
-
-},
 31:function(module,exports,__require){
 "use strict";
 const { RUNTIME_ERROR_CODES } = __require(26);
 const { PANEL_LAYERS, PANEL_MODES } = __require(32);
 const { createPanelMessageCatalog } = __require(33);
-const { resolveOperationStep } = __require(30);
+const { resolveOperationStep } = __require(27);
 
 const PANEL_ERROR_CODES = Object.freeze({
   NO_SELECTION: "NO_SELECTION",
