@@ -33,6 +33,7 @@ const expectedExports = [
   "normalizeTargetContext",
   "validateTargetContext",
   "normalizeLayoutEntry",
+  "resolveOperationStep",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",

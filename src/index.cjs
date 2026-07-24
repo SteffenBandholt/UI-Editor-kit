@@ -38,6 +38,7 @@ const { createPanelPositionStore } = require("./panel/panel-position-store.cjs")
 const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
+const { resolveOperationStep } = require("./runtime/operation-step-resolver.cjs");
 const { createElementRefRegistry } = require("./browser/element-ref-registry.cjs");
 const { createBrowserHostAdapter } = require("./browser/browser-host-adapter.cjs");
 const { createBrowserSelectionHost } = require("./browser/browser-selection-host.cjs");
@@ -74,6 +75,7 @@ module.exports = Object.freeze({
   normalizeTargetContext,
   validateTargetContext,
   normalizeLayoutEntry,
+  resolveOperationStep,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

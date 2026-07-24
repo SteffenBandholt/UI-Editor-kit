@@ -2,6 +2,7 @@
 const { RUNTIME_ERROR_CODES } = require("../runtime/runtime-error-codes.cjs");
 const { PANEL_LAYERS, PANEL_MODES } = require("./panel-intents.cjs");
 const { createPanelMessageCatalog } = require("./panel-message-catalog.cjs");
+const { resolveOperationStep } = require("../runtime/operation-step-resolver.cjs");
 
 const PANEL_ERROR_CODES = Object.freeze({
   NO_SELECTION: "NO_SELECTION",
@@ -216,10 +217,13 @@ function createUiEditorPanelController(options) {
     const layout = effectiveLayoutFrom(inspected);
     const elementLayout = layout.element || layout;
     const textLayout = layout.text || {};
-    const step = state.stepSize;
+    const elementResult = safeRegistryGet(state.selectedElementId);
+    if (!elementResult.ok) return elementResult;
+    const registryElement = elementResult.value || {};
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
+      const step = resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize });
       if (direction === "left") payload = { x: (Number.isFinite(elementLayout.x) ? elementLayout.x : 0) - step };
       else if (direction === "right") payload = { x: (Number.isFinite(elementLayout.x) ? elementLayout.x : 0) + step };
       else if (direction === "up") payload = { y: (Number.isFinite(elementLayout.y) ? elementLayout.y : 0) - step };
@@ -235,6 +239,7 @@ function createUiEditorPanelController(options) {
       const min = minFor("minWidth");
       if (!min.ok) return min;
       const max = minFor("maxWidth");
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = elementLayout.width + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
       if (Number.isFinite(max.value) && width > max.value) return blocked("MAX_SIZE_REACHED", "maximum width reached.", { field: "width", max: max.value });
@@ -248,6 +253,7 @@ function createUiEditorPanelController(options) {
       const min = minFor("minHeight");
       if (!min.ok) return min;
       const max = minFor("maxHeight");
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = elementLayout.height + (direction === "up" ? -step : step);
       if (Number.isFinite(min.value) && height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
       if (Number.isFinite(max.value) && height > max.value) return blocked("MAX_SIZE_REACHED", "maximum height reached.", { field: "height", max: max.value });
@@ -258,24 +264,29 @@ function createUiEditorPanelController(options) {
     if (state.mode === PANEL_MODES.TEXT_POSITION) {
       const currentX = Number.isFinite(textLayout.offsetX) ? textLayout.offsetX : 0;
       const currentY = Number.isFinite(textLayout.offsetY) ? textLayout.offsetY : 0;
-      const limits = safeRegistryGet(state.selectedElementId).value?.limits || {};
-      let offsetX = currentX, offsetY = currentY;
-      if (direction === "left") offsetX -= step;
-      else if (direction === "right") offsetX += step;
-      else if (direction === "up") offsetY -= step;
-      else if (direction === "down") offsetY += step;
-      else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
-      if (Number.isFinite(limits.minTextOffsetX)) offsetX = Math.max(offsetX, limits.minTextOffsetX);
-      if (Number.isFinite(limits.maxTextOffsetX)) offsetX = Math.min(offsetX, limits.maxTextOffsetX);
-      if (Number.isFinite(limits.minTextOffsetY)) offsetY = Math.max(offsetY, limits.minTextOffsetY);
-      if (Number.isFinite(limits.maxTextOffsetY)) offsetY = Math.min(offsetY, limits.maxTextOffsetY);
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX, offsetY } }, source: "ui-editor-panel" });
+      const limits = registryElement.limits || registryElement;
+      if (["left", "right"].includes(direction)) {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "x", panelStepSize: state.stepSize });
+        const offsetX = currentX + (direction === "left" ? -step : step);
+        if (Number.isFinite(limits.minTextOffsetX) && offsetX < limits.minTextOffsetX) return blocked("MIN_TEXT_OFFSET_REACHED", "minimum horizontal text offset reached.");
+        if (Number.isFinite(limits.maxTextOffsetX) && offsetX > limits.maxTextOffsetX) return blocked("MAX_TEXT_OFFSET_REACHED", "maximum horizontal text offset reached.");
+        return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX } }, source: "ui-editor-panel" });
+      }
+      if (["up", "down"].includes(direction)) {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "y", panelStepSize: state.stepSize });
+        const offsetY = currentY + (direction === "up" ? -step : step);
+        if (Number.isFinite(limits.minTextOffsetY) && offsetY < limits.minTextOffsetY) return blocked("MIN_TEXT_OFFSET_REACHED", "minimum vertical text offset reached.");
+        if (Number.isFinite(limits.maxTextOffsetY) && offsetY > limits.maxTextOffsetY) return blocked("MAX_TEXT_OFFSET_REACHED", "maximum vertical text offset reached.");
+        return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetY } }, source: "ui-editor-panel" });
+      }
+      return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
     }
 
     if (state.mode === PANEL_MODES.TEXT_SIZE) {
       if (!["left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text size.");
       const current = Number.isFinite(textLayout.fontSize) ? textLayout.fontSize : 16;
       const min = minFor("minFontSize"), max = minFor("maxFontSize");
+      const step = resolveOperationStep({ registryElement, operation: "fontSize", panelStepSize: state.stepSize });
       const fontSize = current + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && fontSize < min.value) return blocked("MIN_SIZE_REACHED", "minimum font size reached.");
       if (Number.isFinite(max.value) && fontSize > max.value) return blocked("MAX_SIZE_REACHED", "maximum font size reached.");

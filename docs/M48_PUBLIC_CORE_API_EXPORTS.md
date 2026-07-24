@@ -40,6 +40,7 @@ const uiEditorKit = require("ui-editor-kit");
 - `getLayoutStateProfileKey`
 - `assertCompatibleLayoutProfile`
 - `createMemoryLayoutStateStore`
+- `resolveOperationStep`
 
 Damit sind AdapterManifest, HostAdapter und Registry weiterhin die fachneutralen Vertragsobjekte der Ziel-App. Die Runtime wird ueber `createTargetAppAdapterRuntime` gestartet. ViewModels und MemoryLayoutStateStore sind ebenfalls ueber den gleichen Einstieg erreichbar.
 

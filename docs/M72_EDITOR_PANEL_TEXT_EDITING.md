@@ -67,7 +67,9 @@ Die Runtime ruft ausschließlich den HostAdapter auf:
 - `restoreElementLayoutState(elementId, snapshot)`
 - optional `reapplyLayoutEntries(entries)`
 
-`applyLayoutEntry` bildet die getrennten Felder eindeutig auf Elementposition, Breite, Höhe, Sichtbarkeit, Textposition X/Y und Schriftgröße ab. Der generische BrowserHostAdapter implementiert dies für ausdrücklich übergebene Element-Refs. Er sucht keine Elemente. Bei Eingabefeldern wirken `textIndent`, `paddingTop` und `fontSize` gleichermaßen auf Platzhalter und Eingabetext; Breite, Höhe und Element-Transform bleiben bei reinen Textänderungen unverändert.
+`applyLayoutEntry` bildet die getrennten Felder eindeutig auf Elementposition, Breite, Höhe, Sichtbarkeit, Textposition X/Y und Schriftgröße ab. Der generische BrowserHostAdapter implementiert dies ausschließlich für ausdrücklich übergebene Element-Refs. Eine Zielanwendung kann zusätzlich `textRefs` oder `getTextRef(elementId)` übergeben; der Adapter sucht oder erkennt keine Unterelemente automatisch.
+
+`text.offsetX` und `text.offsetY` sind relative Editor-Offsets. Vor der ersten Änderung sichert der Adapter Inline- und Computed-Ausgangswerte samt Ownership. Ein expliziter Text-Ref erhält den horizontalen Offset relativ zu seinem wirksamen `textIndent`; der vertikale Offset wird unter Erhalt seines vorhandenen Transforms als zusätzliche Translation angewendet. Ohne expliziten Text-Ref wird ein vertikaler Offset mit `TEXT_OFFSET_Y_UNSUPPORTED` blockiert. Das äußere Element erhält dafür kein `paddingTop`. Reine Textänderungen lassen dessen Position, Größe und Transform unverändert. Clear, Verwerfen und Reset stellen Inlinewerte exakt wieder her, geben Stylesheetwerte wieder frei und entfernen editor-eigene CSS-Variablen.
 
 ## Panel und Einbindung
 
@@ -114,4 +116,4 @@ Die Zielanwendung verbindet außerdem ihren expliziten SelectionHost und Overlay
 
 ## Bearbeitung
 
-Das Panel bietet die Ebenen `ELEMENT` und `TEXT`. `TEXT` ist nur aktiv, wenn `textMove` oder `textResize` registriert wurde. Elementmodi sind Verschieben, Breite und Höhe; Textmodi sind Position und Größe. Nicht unterstützte Modi und Richtungen sind sichtbar deaktiviert. Schrittweite und Registry-Grenzen werden vor dem Host-Aufruf geprüft.
+Das Panel bietet die Ebenen `ELEMENT` und `TEXT`. `TEXT` ist nur aktiv, wenn `textMove` oder `textResize` registriert wurde. Elementmodi sind Verschieben, Breite und Höhe; Textmodi sind Position und Größe. Nicht unterstützte Modi und Richtungen sind sichtbar deaktiviert. Schrittweite und Registry-Grenzen werden vor dem Host-Aufruf geprüft. `resolveOperationStep(...)` priorisiert je Operation `steps.move`, `steps.resizeWidth`/`resizeHeight` vor `steps.resize`, `steps.textMoveX`/`textMoveY` vor `steps.textMove` sowie `steps.fontSize`; danach folgen Panel-Fallback und der sichere interne Standard. Nur positive endliche Schrittweiten werden akzeptiert.

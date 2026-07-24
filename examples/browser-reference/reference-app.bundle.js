@@ -7,8 +7,8 @@ const {
   createBrowserLayoutStorage, createUiEditorBrowserBridge, createUiEditorRuntime,
   createUiEditorPanelController, createUiEditorPanel,
 } = __require(1);
-const { createReferenceRegistry } = __require(43);
-const { REFERENCE_PROFILES, createReferenceTargetContext } = __require(44);
+const { createReferenceRegistry } = __require(44);
+const { REFERENCE_PROFILES, createReferenceTargetContext } = __require(45);
 
 const DOM_IDS = Object.freeze({
   card: "reference-demo-card", heading: "reference-demo-heading", action: "reference-demo-action", info: "reference-demo-info", locked: "reference-demo-locked",
@@ -236,21 +236,22 @@ const { createSelectedOverlay } = __require(24);
 const { resolveSelectionTarget } = __require(21);
 const { createUiEditorRuntime, validateLayoutEntryForElement } = __require(25);
 const { createUiEditorPanelController } = __require(30);
-const { createUiEditorPanelViewModel } = __require(33);
-const { createUiEditorPanel } = __require(34);
+const { createUiEditorPanelViewModel } = __require(34);
+const { createUiEditorPanel } = __require(35);
 const { createPanelMessageCatalog } = __require(32);
 const { PANEL_INTENTS, PANEL_LAYERS, PANEL_MODES, PANEL_DIRECTIONS } = __require(31);
-const { createPanelPositionStore } = __require(35);
+const { createPanelPositionStore } = __require(36);
 const { RUNTIME_ERROR_CODES } = __require(26);
 const { normalizeTargetContext, validateTargetContext } = __require(28);
 const { normalizeLayoutEntry } = __require(29);
-const { createElementRefRegistry } = __require(36);
-const { createBrowserHostAdapter } = __require(38);
-const { createBrowserSelectionHost } = __require(39);
-const { createBrowserOverlayHost } = __require(40);
-const { createBrowserLayoutStorage } = __require(41);
-const { createUiEditorBrowserBridge } = __require(42);
-const { BROWSER_ERROR_CODES } = __require(37);
+const { resolveOperationStep } = __require(33);
+const { createElementRefRegistry } = __require(37);
+const { createBrowserHostAdapter } = __require(39);
+const { createBrowserSelectionHost } = __require(40);
+const { createBrowserOverlayHost } = __require(41);
+const { createBrowserLayoutStorage } = __require(42);
+const { createUiEditorBrowserBridge } = __require(43);
+const { BROWSER_ERROR_CODES } = __require(38);
 const {
   validateSelectionHost,
   validateSelectionControllerContract,
@@ -280,6 +281,7 @@ module.exports = Object.freeze({
   normalizeTargetContext,
   validateTargetContext,
   normalizeLayoutEntry,
+  resolveOperationStep,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,
@@ -4040,6 +4042,7 @@ module.exports = { ELEMENT_FIELDS, TEXT_FIELDS, LAYOUT_ENTRY_FIELDS, normalizeLa
 const { RUNTIME_ERROR_CODES } = __require(26);
 const { PANEL_LAYERS, PANEL_MODES } = __require(31);
 const { createPanelMessageCatalog } = __require(32);
+const { resolveOperationStep } = __require(33);
 
 const PANEL_ERROR_CODES = Object.freeze({
   NO_SELECTION: "NO_SELECTION",
@@ -4254,10 +4257,13 @@ function createUiEditorPanelController(options) {
     const layout = effectiveLayoutFrom(inspected);
     const elementLayout = layout.element || layout;
     const textLayout = layout.text || {};
-    const step = state.stepSize;
+    const elementResult = safeRegistryGet(state.selectedElementId);
+    if (!elementResult.ok) return elementResult;
+    const registryElement = elementResult.value || {};
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
+      const step = resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize });
       if (direction === "left") payload = { x: (Number.isFinite(elementLayout.x) ? elementLayout.x : 0) - step };
       else if (direction === "right") payload = { x: (Number.isFinite(elementLayout.x) ? elementLayout.x : 0) + step };
       else if (direction === "up") payload = { y: (Number.isFinite(elementLayout.y) ? elementLayout.y : 0) - step };
@@ -4273,6 +4279,7 @@ function createUiEditorPanelController(options) {
       const min = minFor("minWidth");
       if (!min.ok) return min;
       const max = minFor("maxWidth");
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = elementLayout.width + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
       if (Number.isFinite(max.value) && width > max.value) return blocked("MAX_SIZE_REACHED", "maximum width reached.", { field: "width", max: max.value });
@@ -4286,6 +4293,7 @@ function createUiEditorPanelController(options) {
       const min = minFor("minHeight");
       if (!min.ok) return min;
       const max = minFor("maxHeight");
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = elementLayout.height + (direction === "up" ? -step : step);
       if (Number.isFinite(min.value) && height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
       if (Number.isFinite(max.value) && height > max.value) return blocked("MAX_SIZE_REACHED", "maximum height reached.", { field: "height", max: max.value });
@@ -4296,24 +4304,29 @@ function createUiEditorPanelController(options) {
     if (state.mode === PANEL_MODES.TEXT_POSITION) {
       const currentX = Number.isFinite(textLayout.offsetX) ? textLayout.offsetX : 0;
       const currentY = Number.isFinite(textLayout.offsetY) ? textLayout.offsetY : 0;
-      const limits = safeRegistryGet(state.selectedElementId).value?.limits || {};
-      let offsetX = currentX, offsetY = currentY;
-      if (direction === "left") offsetX -= step;
-      else if (direction === "right") offsetX += step;
-      else if (direction === "up") offsetY -= step;
-      else if (direction === "down") offsetY += step;
-      else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
-      if (Number.isFinite(limits.minTextOffsetX)) offsetX = Math.max(offsetX, limits.minTextOffsetX);
-      if (Number.isFinite(limits.maxTextOffsetX)) offsetX = Math.min(offsetX, limits.maxTextOffsetX);
-      if (Number.isFinite(limits.minTextOffsetY)) offsetY = Math.max(offsetY, limits.minTextOffsetY);
-      if (Number.isFinite(limits.maxTextOffsetY)) offsetY = Math.min(offsetY, limits.maxTextOffsetY);
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX, offsetY } }, source: "ui-editor-panel" });
+      const limits = registryElement.limits || registryElement;
+      if (["left", "right"].includes(direction)) {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "x", panelStepSize: state.stepSize });
+        const offsetX = currentX + (direction === "left" ? -step : step);
+        if (Number.isFinite(limits.minTextOffsetX) && offsetX < limits.minTextOffsetX) return blocked("MIN_TEXT_OFFSET_REACHED", "minimum horizontal text offset reached.");
+        if (Number.isFinite(limits.maxTextOffsetX) && offsetX > limits.maxTextOffsetX) return blocked("MAX_TEXT_OFFSET_REACHED", "maximum horizontal text offset reached.");
+        return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX } }, source: "ui-editor-panel" });
+      }
+      if (["up", "down"].includes(direction)) {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "y", panelStepSize: state.stepSize });
+        const offsetY = currentY + (direction === "up" ? -step : step);
+        if (Number.isFinite(limits.minTextOffsetY) && offsetY < limits.minTextOffsetY) return blocked("MIN_TEXT_OFFSET_REACHED", "minimum vertical text offset reached.");
+        if (Number.isFinite(limits.maxTextOffsetY) && offsetY > limits.maxTextOffsetY) return blocked("MAX_TEXT_OFFSET_REACHED", "maximum vertical text offset reached.");
+        return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetY } }, source: "ui-editor-panel" });
+      }
+      return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
     }
 
     if (state.mode === PANEL_MODES.TEXT_SIZE) {
       if (!["left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text size.");
       const current = Number.isFinite(textLayout.fontSize) ? textLayout.fontSize : 16;
       const min = minFor("minFontSize"), max = minFor("maxFontSize");
+      const step = resolveOperationStep({ registryElement, operation: "fontSize", panelStepSize: state.stepSize });
       const fontSize = current + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && fontSize < min.value) return blocked("MIN_SIZE_REACHED", "minimum font size reached.");
       if (Number.isFinite(max.value) && fontSize > max.value) return blocked("MAX_SIZE_REACHED", "maximum font size reached.");
@@ -4466,6 +4479,37 @@ module.exports = { createPanelMessageCatalog };
 },
 33:function(module,exports,__require){
 "use strict";
+
+const SAFE_DEFAULT_STEP = 1;
+
+function positiveFinite(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : undefined;
+}
+
+function resolveOperationStep(options) {
+  const cfg = options || {};
+  const steps = cfg.registryElement && cfg.registryElement.steps && typeof cfg.registryElement.steps === "object"
+    ? cfg.registryElement.steps
+    : {};
+  const panelFallback = positiveFinite(cfg.panelStepSize);
+  let registryStep;
+
+  if (cfg.operation === "move") registryStep = positiveFinite(steps.move);
+  else if (cfg.operation === "resize" && cfg.axis === "width") registryStep = positiveFinite(steps.resizeWidth) ?? positiveFinite(steps.resize);
+  else if (cfg.operation === "resize" && cfg.axis === "height") registryStep = positiveFinite(steps.resizeHeight) ?? positiveFinite(steps.resize);
+  else if (cfg.operation === "textMove" && cfg.axis === "x") registryStep = positiveFinite(steps.textMoveX) ?? positiveFinite(steps.textMove);
+  else if (cfg.operation === "textMove" && cfg.axis === "y") registryStep = positiveFinite(steps.textMoveY) ?? positiveFinite(steps.textMove);
+  else if (cfg.operation === "fontSize") registryStep = positiveFinite(steps.fontSize);
+
+  return registryStep ?? panelFallback ?? SAFE_DEFAULT_STEP;
+}
+
+module.exports = { resolveOperationStep, SAFE_DEFAULT_STEP };
+
+},
+34:function(module,exports,__require){
+"use strict";
 const { PANEL_LAYERS, PANEL_MODES, PANEL_INTENTS } = __require(31);
 const { createPanelMessageCatalog } = __require(32);
 function button(label, intent, enabled, reasonCode, extra) { return { enabled: !!enabled, visible: true, label, intent, ...(reasonCode ? { reasonCode } : {}), ...(extra || {}) }; }
@@ -4527,9 +4571,9 @@ function createUiEditorPanelViewModel(options) {
 module.exports = { createUiEditorPanelViewModel, statusFrom };
 
 },
-34:function(module,exports,__require){
+35:function(module,exports,__require){
 "use strict";
-const { createUiEditorPanelViewModel } = __require(33);
+const { createUiEditorPanelViewModel } = __require(34);
 
 function createUiEditorPanel(options) {
   const cfg = options || {};
@@ -4609,7 +4653,7 @@ function createUiEditorPanel(options) {
 module.exports = { createUiEditorPanel };
 
 },
-35:function(module,exports,__require){
+36:function(module,exports,__require){
 "use strict";
 
 const PANEL_POSITION_VERSION = 1;
@@ -4655,16 +4699,16 @@ function createPanelPositionStore(options) {
 module.exports = { createPanelPositionStore, validPosition };
 
 },
-36:function(module,exports,__require){
+37:function(module,exports,__require){
 "use strict";
-const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef}=__require(37);
+const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef}=__require(38);
 function createElementRefRegistry(){const refs=new Map(); const listeners=new Set(); function emit(type,elementId,elementRef){listeners.forEach(l=>{try{l({type,elementId,elementRef});}catch(_){}});} return {register(elementId,elementRef){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); if(!isElementRef(elementRef))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_REF,"elementRef must be HTMLElement-like."); if(refs.has(elementId))return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_ALREADY_REGISTERED,"elementRef is already registered."); refs.set(elementId,elementRef); emit("register",elementId,elementRef); return ok(elementRef,{elementId});},unregister(elementId){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); const existed=refs.delete(elementId); emit("unregister",elementId); return ok(undefined,{elementId,existed});},get(elementId){if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"elementId must be a non-empty string."); if(!refs.has(elementId))return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING,"elementRef is missing."); return ok(refs.get(elementId),{elementId});},has(elementId){return isValidElementId(elementId)&&refs.has(elementId);},listIds(){return Array.from(refs.keys());},clear(){refs.clear(); emit("clear"); return ok();},subscribe(listener){if(typeof listener!=="function")return ()=>{}; listeners.add(listener); return ()=>listeners.delete(listener);}};}
 module.exports={createElementRefRegistry};
 
 },
-37:function(module,exports,__require){
+38:function(module,exports,__require){
 "use strict";
-const BROWSER_ERROR_CODES=Object.freeze({INVALID_ELEMENT_ID:"INVALID_ELEMENT_ID",INVALID_ELEMENT_REF:"INVALID_ELEMENT_REF",ELEMENT_REF_ALREADY_REGISTERED:"ELEMENT_REF_ALREADY_REGISTERED",ELEMENT_REF_MISSING:"ELEMENT_REF_MISSING",HOST_READ_FAILED:"HOST_READ_FAILED",HOST_APPLY_FAILED:"HOST_APPLY_FAILED",HOST_CAPTURE_FAILED:"HOST_CAPTURE_FAILED",HOST_CLEAR_FAILED:"HOST_CLEAR_FAILED",CURRENT_VALUE_UNAVAILABLE:"CURRENT_VALUE_UNAVAILABLE",OVERLAY_MOUNT_MISSING:"OVERLAY_MOUNT_MISSING",OVERLAY_MEASURE_FAILED:"OVERLAY_MEASURE_FAILED",STORAGE_UNAVAILABLE:"STORAGE_UNAVAILABLE",STORAGE_READ_FAILED:"STORAGE_READ_FAILED",STORAGE_WRITE_FAILED:"STORAGE_WRITE_FAILED",STORAGE_CLEAR_FAILED:"STORAGE_CLEAR_FAILED",STORAGE_PARSE_FAILED:"STORAGE_PARSE_FAILED",STORAGE_SCHEMA_UNSUPPORTED:"STORAGE_SCHEMA_UNSUPPORTED",BRIDGE_DESTROYED:"BRIDGE_DESTROYED",UNKNOWN_ELEMENT:"UNKNOWN_ELEMENT"});
+const BROWSER_ERROR_CODES=Object.freeze({INVALID_ELEMENT_ID:"INVALID_ELEMENT_ID",INVALID_ELEMENT_REF:"INVALID_ELEMENT_REF",ELEMENT_REF_ALREADY_REGISTERED:"ELEMENT_REF_ALREADY_REGISTERED",ELEMENT_REF_MISSING:"ELEMENT_REF_MISSING",TEXT_OFFSET_Y_UNSUPPORTED:"TEXT_OFFSET_Y_UNSUPPORTED",HOST_READ_FAILED:"HOST_READ_FAILED",HOST_APPLY_FAILED:"HOST_APPLY_FAILED",HOST_CAPTURE_FAILED:"HOST_CAPTURE_FAILED",HOST_CLEAR_FAILED:"HOST_CLEAR_FAILED",CURRENT_VALUE_UNAVAILABLE:"CURRENT_VALUE_UNAVAILABLE",OVERLAY_MOUNT_MISSING:"OVERLAY_MOUNT_MISSING",OVERLAY_MEASURE_FAILED:"OVERLAY_MEASURE_FAILED",STORAGE_UNAVAILABLE:"STORAGE_UNAVAILABLE",STORAGE_READ_FAILED:"STORAGE_READ_FAILED",STORAGE_WRITE_FAILED:"STORAGE_WRITE_FAILED",STORAGE_CLEAR_FAILED:"STORAGE_CLEAR_FAILED",STORAGE_PARSE_FAILED:"STORAGE_PARSE_FAILED",STORAGE_SCHEMA_UNSUPPORTED:"STORAGE_SCHEMA_UNSUPPORTED",BRIDGE_DESTROYED:"BRIDGE_DESTROYED",UNKNOWN_ELEMENT:"UNKNOWN_ELEMENT"});
 function ok(value,extra){return {ok:true,...(value!==undefined?{value}:{}),...(extra||{})};}
 function blocked(code,reason,extra){return {ok:false,blocked:true,code,messageKey:code,...(reason?{reason}:{}),...(extra||{})};}
 function isValidElementId(id){return typeof id==="string"&&id.trim().length>0;}
@@ -4673,7 +4717,7 @@ function safeCall(fn,code){try{return ok(fn());}catch(error){return blocked(code
 module.exports={BROWSER_ERROR_CODES,ok,blocked,isValidElementId,isElementRef,safeCall};
 
 },
-38:function(module,exports,__require){
+39:function(module,exports,__require){
 "use strict";
 
 const {
@@ -4682,7 +4726,7 @@ const {
   blocked,
   isValidElementId,
   isElementRef,
-} = __require(37);
+} = __require(38);
 
 const EDITOR_X = "--ui-editor-x";
 const EDITOR_Y = "--ui-editor-y";
@@ -4693,9 +4737,10 @@ const TARGET_TRANSFORM = "--ui-editor-target-transform";
 const TEXT_OFFSET_X = "--ui-editor-text-offset-x";
 const TEXT_OFFSET_Y = "--ui-editor-text-offset-y";
 const TEXT_FONT_SIZE = "--ui-editor-text-font-size";
-const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM, TEXT_OFFSET_X, TEXT_OFFSET_Y, TEXT_FONT_SIZE];
-const INLINE_FIELDS = ["transform", "width", "height", "textIndent", "paddingTop", "fontSize"];
-const EMPTY_TRANSFORM = "";
+const TEXT_TRANSFORM = "--ui-editor-text-transform";
+const EDITOR_FIELDS = [EDITOR_X, EDITOR_Y, EDITOR_WIDTH, EDITOR_HEIGHT, EDITOR_VISIBLE, TARGET_TRANSFORM, TEXT_OFFSET_X, TEXT_OFFSET_Y, TEXT_FONT_SIZE, TEXT_TRANSFORM];
+const OUTER_INLINE_FIELDS = ["transform", "width", "height"];
+const TEXT_INLINE_FIELDS = ["textIndent", "paddingTop", "fontSize", "transform"];
 const NONE_TRANSFORM = "none";
 
 function px(value) {
@@ -4737,18 +4782,19 @@ function clone(value) {
 
 function normalizeTransform(value) {
   const transform = String(value || "").trim();
-  return transform && transform.toLowerCase() !== NONE_TRANSFORM ? transform : EMPTY_TRANSFORM;
+  return transform && transform.toLowerCase() !== NONE_TRANSFORM ? transform : "";
 }
 
-function readTransformValue(style) {
-  if (!style) return EMPTY_TRANSFORM;
-  const propertyValue = typeof style.getPropertyValue === "function" ? style.getPropertyValue("transform") : "";
-  return propertyValue || style.transform || EMPTY_TRANSFORM;
+function readProperty(style, key) {
+  if (!style) return "";
+  const propertyValue = typeof style.getPropertyValue === "function" ? style.getPropertyValue(key) : "";
+  return propertyValue || style[key] || "";
 }
 
 function createBrowserHostAdapter(options) {
   const cfg = options || {};
   const refs = cfg.elementRefs;
+  const registry = cfg.registry;
   const rectReader = cfg.rectReader || ((element) => element.getBoundingClientRect());
   const computedStyleReader = cfg.computedStyleReader || ((element) => (
     cfg.windowAdapter && typeof cfg.windowAdapter.getComputedStyle === "function"
@@ -4756,7 +4802,6 @@ function createBrowserHostAdapter(options) {
       : null
   ));
   const originalByElement = new WeakMap();
-  const registry = cfg.registry;
 
   function registeredOperations(elementId) {
     if (!registry || typeof registry.getElementById !== "function") return [];
@@ -4774,46 +4819,72 @@ function createBrowserHostAdapter(options) {
     return ok(element);
   }
 
+  function getTextRef(elementId) {
+    let result = null;
+    if (cfg.textRefs && typeof cfg.textRefs.get === "function") result = cfg.textRefs.get(elementId);
+    else if (typeof cfg.getTextRef === "function") result = cfg.getTextRef(elementId);
+    const element = result && result.ok !== false ? (result.value || result) : null;
+    return isElementRef(element) ? element : null;
+  }
+
+  function readComputed(element) {
+    try {
+      return ok(computedStyleReader ? computedStyleReader(element) : null);
+    } catch (error) {
+      return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "computed style read failed");
+    }
+  }
+
+  function captureTextState(element, elementId) {
+    const textElement = getTextRef(elementId);
+    const target = textElement || element;
+    const computed = readComputed(target);
+    if (!computed.ok) return computed;
+    const properties = {};
+    TEXT_INLINE_FIELDS.forEach((field) => {
+      const inline = readProperty(target.style, field);
+      const computedValue = readProperty(computed.value, field);
+      properties[field] = {
+        inline,
+        computed: computedValue,
+        effective: inline || computedValue || "",
+        ownership: inline ? "inline" : (computedValue ? "computed" : "none"),
+      };
+    });
+    return ok({ hasTextRef: !!textElement, properties });
+  }
+
   function readVisibleState(element, elementId) {
     try {
+      const textState = captureTextState(element, elementId);
+      if (!textState.ok) return textState;
       return ok({
         elementId,
-        inlineStyles: INLINE_FIELDS.reduce((acc, field) => { acc[field] = element.style[field] || ""; return acc; }, {}),
-        transform: element.style.transform || "",
-        width: element.style.width || "",
-        height: element.style.height || "",
+        inlineStyles: OUTER_INLINE_FIELDS.reduce((acc, field) => { acc[field] = readProperty(element.style, field); return acc; }, {}),
         hidden: !!element.hidden,
-        customProperties: EDITOR_FIELDS.reduce((acc, key) => {
-          acc[key] = getStyleValue(element.style, key) || "";
-          return acc;
-        }, {}),
+        textState: textState.value,
+        customProperties: EDITOR_FIELDS.reduce((acc, key) => { acc[key] = getStyleValue(element.style, key) || ""; return acc; }, {}),
       });
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "style read failed");
     }
   }
 
-  function createHostSnapshot(element, elementId) {
-    const visibleState = readVisibleState(element, elementId);
-    if (!visibleState.ok) return visibleState;
-    const hasOriginal = originalByElement.has(element);
-    return ok({
-      elementId,
-      visibleState: visibleState.value,
-      ownership: {
-        hasOriginal,
-        originalSnapshot: hasOriginal ? clone(originalByElement.get(element)) : null,
-      },
-    });
-  }
-
-  function normalizeHostSnapshot(snapshot) {
-    if (snapshot && snapshot.visibleState && snapshot.ownership) return snapshot;
-    return {
-      elementId: snapshot && snapshot.elementId,
-      visibleState: snapshot || {},
-      ownership: { hasOriginal: false, originalSnapshot: null },
-    };
+  function readOriginalState(element, elementId) {
+    const snapshot = readVisibleState(element, elementId);
+    if (!snapshot.ok) return snapshot;
+    const inlineTransform = normalizeTransform(snapshot.value.inlineStyles.transform);
+    if (inlineTransform) {
+      snapshot.value.transformBase = inlineTransform;
+      snapshot.value.transformBaseSource = "inline";
+      return snapshot;
+    }
+    const computed = readComputed(element);
+    if (!computed.ok) return computed;
+    const computedTransform = normalizeTransform(readProperty(computed.value, "transform"));
+    snapshot.value.transformBase = computedTransform;
+    snapshot.value.transformBaseSource = computedTransform ? "computed" : "none";
+    return snapshot;
   }
 
   function ensureOriginal(element, elementId) {
@@ -4824,18 +4895,35 @@ function createBrowserHostAdapter(options) {
     return snapshot;
   }
 
-  function restoreSnapshot(element, snapshot) {
+  function createHostSnapshot(element, elementId) {
+    const visibleState = readVisibleState(element, elementId);
+    if (!visibleState.ok) return visibleState;
+    const hasOriginal = originalByElement.has(element);
+    return ok({
+      elementId,
+      visibleState: visibleState.value,
+      ownership: { hasOriginal, originalSnapshot: hasOriginal ? clone(originalByElement.get(element)) : null },
+    });
+  }
+
+  function normalizeHostSnapshot(snapshot) {
+    if (snapshot && snapshot.visibleState && snapshot.ownership) return snapshot;
+    return { elementId: snapshot && snapshot.elementId, visibleState: snapshot || {}, ownership: { hasOriginal: false, originalSnapshot: null } };
+  }
+
+  function restoreSnapshot(element, elementId, snapshot) {
     try {
       const inlineStyles = snapshot.inlineStyles || snapshot;
-      INLINE_FIELDS.forEach((field) => setInlineStyle(element.style, field, inlineStyles[field] || ""));
+      OUTER_INLINE_FIELDS.forEach((field) => setInlineStyle(element.style, field, inlineStyles[field] || ""));
       element.hidden = !!snapshot.hidden;
+      const textElement = getTextRef(elementId);
+      const textTarget = textElement || element;
+      const properties = snapshot.textState && snapshot.textState.properties;
+      if (properties) TEXT_INLINE_FIELDS.forEach((field) => setInlineStyle(textTarget.style, field, properties[field] && properties[field].inline));
       const customProperties = snapshot.customProperties || {};
       EDITOR_FIELDS.forEach((key) => {
-        if (Object.prototype.hasOwnProperty.call(customProperties, key) && customProperties[key] !== "") {
-          setStyleValue(element.style, key, customProperties[key]);
-        } else {
-          removeStyleValue(element.style, key);
-        }
+        if (Object.prototype.hasOwnProperty.call(customProperties, key) && customProperties[key] !== "") setStyleValue(element.style, key, customProperties[key]);
+        else removeStyleValue(element.style, key);
       });
       return ok();
     } catch (error) {
@@ -4848,38 +4936,11 @@ function createBrowserHostAdapter(options) {
       const rect = rectReader(element);
       const width = toNumber(rect && rect.width);
       const height = toNumber(rect && rect.height);
-      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
-        return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "rect width/height unavailable.");
-      }
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "rect width/height unavailable.");
       return ok({ width, height, left: toNumber(rect.left) || 0, top: toNumber(rect.top) || 0 });
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "rect read failed");
     }
-  }
-
-  function readComputed(element) {
-    try {
-      return ok(computedStyleReader ? computedStyleReader(element) : null);
-    } catch (error) {
-      return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "computed style read failed");
-    }
-  }
-
-  function readOriginalState(element, elementId) {
-    const snapshot = readVisibleState(element, elementId);
-    if (!snapshot.ok) return snapshot;
-    const inlineTransform = normalizeTransform(snapshot.value.transform);
-    if (inlineTransform) {
-      snapshot.value.transformBase = inlineTransform;
-      snapshot.value.transformBaseSource = "inline";
-      return snapshot;
-    }
-    const computed = readComputed(element);
-    if (!computed.ok) return computed;
-    const computedTransform = normalizeTransform(readTransformValue(computed.value));
-    snapshot.value.transformBase = computedTransform;
-    snapshot.value.transformBaseSource = computedTransform ? "computed" : "none";
-    return snapshot;
   }
 
   function getCurrentEntry(elementId, element) {
@@ -4888,17 +4949,9 @@ function createBrowserHostAdapter(options) {
     const computed = readComputed(element);
     if (!computed.ok) return computed;
     try {
-      const width = toNumber(getStyleValue(element.style, EDITOR_WIDTH))
-        ?? toNumber(element.style.width)
-        ?? toNumber(computed.value && computed.value.width)
-        ?? rect.value.width;
-      const height = toNumber(getStyleValue(element.style, EDITOR_HEIGHT))
-        ?? toNumber(element.style.height)
-        ?? toNumber(computed.value && computed.value.height)
-        ?? rect.value.height;
-      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
-        return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
-      }
+      const width = toNumber(getStyleValue(element.style, EDITOR_WIDTH)) ?? toNumber(element.style.width) ?? toNumber(computed.value && computed.value.width) ?? rect.value.width;
+      const height = toNumber(getStyleValue(element.style, EDITOR_HEIGHT)) ?? toNumber(element.style.height) ?? toNumber(computed.value && computed.value.height) ?? rect.value.height;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
       const operations = registeredOperations(elementId);
       if (operations.some((operation) => ["resizeWidth", "resizeHeight", "textMove", "textResize"].includes(operation))) {
         const elementValues = {};
@@ -4909,10 +4962,13 @@ function createBrowserHostAdapter(options) {
         const result = { elementId };
         if (Object.keys(elementValues).length > 0) result.element = elementValues;
         if (operations.includes("textMove") || operations.includes("textResize")) {
+          const textElement = getTextRef(elementId) || element;
+          const textComputed = readComputed(textElement);
+          if (!textComputed.ok) return textComputed;
           result.text = {
             offsetX: toNumber(getStyleValue(element.style, TEXT_OFFSET_X)) || 0,
             offsetY: toNumber(getStyleValue(element.style, TEXT_OFFSET_Y)) || 0,
-            fontSize: toNumber(getStyleValue(element.style, TEXT_FONT_SIZE)) ?? toNumber(computed.value && computed.value.fontSize) ?? 16,
+            fontSize: toNumber(getStyleValue(element.style, TEXT_FONT_SIZE)) ?? toNumber(readProperty(textElement.style, "fontSize")) ?? toNumber(readProperty(textComputed.value, "fontSize")) ?? 16,
           };
         }
         return ok(result);
@@ -4926,7 +4982,7 @@ function createBrowserHostAdapter(options) {
   function applyTransform(element, elementId) {
     const original = ensureOriginal(element, elementId);
     if (!original.ok) return original;
-    const targetTransform = normalizeTransform(original.value.transformBase || original.value.transform || EMPTY_TRANSFORM);
+    const targetTransform = normalizeTransform(original.value.transformBase || original.value.inlineStyles.transform);
     try {
       if (targetTransform) {
         setStyleValue(element.style, TARGET_TRANSFORM, targetTransform);
@@ -4941,55 +4997,64 @@ function createBrowserHostAdapter(options) {
     }
   }
 
+  function applyTextEntry(element, elementId, textValues, original) {
+    if (!textValues || Object.keys(textValues).length === 0) return ok();
+    const textElement = getTextRef(elementId);
+    if (Object.prototype.hasOwnProperty.call(textValues, "offsetY") && !textElement) {
+      return blocked(BROWSER_ERROR_CODES.TEXT_OFFSET_Y_UNSUPPORTED, "text offsetY requires an explicit text ref.");
+    }
+    const target = textElement || element;
+    const properties = original.value.textState.properties;
+    try {
+      if (Object.prototype.hasOwnProperty.call(textValues, "offsetX")) {
+        const base = toNumber(properties.textIndent.effective) || 0;
+        setStyleValue(element.style, TEXT_OFFSET_X, px(textValues.offsetX));
+        target.style.textIndent = px(base + textValues.offsetX);
+      }
+      if (Object.prototype.hasOwnProperty.call(textValues, "offsetY")) {
+        const baseTransform = normalizeTransform(properties.transform.effective);
+        const editorTransform = `translateY(${px(textValues.offsetY)})`;
+        setStyleValue(element.style, TEXT_OFFSET_Y, px(textValues.offsetY));
+        setStyleValue(element.style, TEXT_TRANSFORM, editorTransform);
+        target.style.transform = baseTransform ? `${baseTransform} ${editorTransform}` : editorTransform;
+      }
+      if (Object.prototype.hasOwnProperty.call(textValues, "fontSize")) {
+        setStyleValue(element.style, TEXT_FONT_SIZE, px(textValues.fontSize));
+        target.style.fontSize = px(textValues.fontSize);
+      }
+      return ok();
+    } catch (error) {
+      return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "text layout apply failed");
+    }
+  }
+
   return {
-    validateElementRef(elementId) {
-      return getRef(elementId);
-    },
+    validateElementRef(elementId) { return getRef(elementId); },
     captureElementLayoutState(elementId) {
       const ref = getRef(elementId);
-      if (!ref.ok) return ref;
-      return createHostSnapshot(ref.value, elementId);
+      return ref.ok ? createHostSnapshot(ref.value, elementId) : ref;
     },
     applyLayoutEntry(elementId, entry) {
       const ref = getRef(elementId);
       if (!ref.ok) return ref;
       const element = ref.value;
+      const textValues = entry.text || {};
+      if (Object.prototype.hasOwnProperty.call(textValues, "offsetY") && !getTextRef(elementId)) return blocked(BROWSER_ERROR_CODES.TEXT_OFFSET_Y_UNSUPPORTED, "text offsetY requires an explicit text ref.");
       const original = ensureOriginal(element, elementId);
       if (!original.ok) return original;
       try {
         const elementValues = entry.element || entry;
-        const textValues = entry.text || {};
         if (Object.prototype.hasOwnProperty.call(elementValues, "x")) setStyleValue(element.style, EDITOR_X, px(elementValues.x));
         if (Object.prototype.hasOwnProperty.call(elementValues, "y")) setStyleValue(element.style, EDITOR_Y, px(elementValues.y));
         if (Object.prototype.hasOwnProperty.call(elementValues, "x") || Object.prototype.hasOwnProperty.call(elementValues, "y")) {
-          const appliedTransform = applyTransform(element, elementId);
-          if (!appliedTransform.ok) return appliedTransform;
+          const transformed = applyTransform(element, elementId);
+          if (!transformed.ok) return transformed;
         }
-        if (Object.prototype.hasOwnProperty.call(elementValues, "width")) {
-          setStyleValue(element.style, EDITOR_WIDTH, px(elementValues.width));
-          element.style.width = px(elementValues.width);
-        }
-        if (Object.prototype.hasOwnProperty.call(elementValues, "height")) {
-          setStyleValue(element.style, EDITOR_HEIGHT, px(elementValues.height));
-          element.style.height = px(elementValues.height);
-        }
-        if (Object.prototype.hasOwnProperty.call(elementValues, "visible")) {
-          setStyleValue(element.style, EDITOR_VISIBLE, elementValues.visible ? "true" : "false");
-          element.hidden = elementValues.visible === false;
-        }
-        if (Object.prototype.hasOwnProperty.call(textValues, "offsetX")) {
-          setStyleValue(element.style, TEXT_OFFSET_X, px(textValues.offsetX));
-          element.style.textIndent = `var(${TEXT_OFFSET_X}, 0px)`;
-        }
-        if (Object.prototype.hasOwnProperty.call(textValues, "offsetY")) {
-          setStyleValue(element.style, TEXT_OFFSET_Y, px(textValues.offsetY));
-          element.style.paddingTop = `var(${TEXT_OFFSET_Y}, 0px)`;
-        }
-        if (Object.prototype.hasOwnProperty.call(textValues, "fontSize")) {
-          setStyleValue(element.style, TEXT_FONT_SIZE, px(textValues.fontSize));
-          element.style.fontSize = `var(${TEXT_FONT_SIZE})`;
-        }
-        return ok();
+        if (Object.prototype.hasOwnProperty.call(elementValues, "width")) { setStyleValue(element.style, EDITOR_WIDTH, px(elementValues.width)); element.style.width = px(elementValues.width); }
+        if (Object.prototype.hasOwnProperty.call(elementValues, "height")) { setStyleValue(element.style, EDITOR_HEIGHT, px(elementValues.height)); element.style.height = px(elementValues.height); }
+        if (Object.prototype.hasOwnProperty.call(elementValues, "visible")) { setStyleValue(element.style, EDITOR_VISIBLE, elementValues.visible ? "true" : "false"); element.hidden = elementValues.visible === false; }
+        const textApplied = applyTextEntry(element, elementId, textValues, original);
+        return textApplied.ok ? ok() : textApplied;
       } catch (error) {
         return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "layout apply failed");
       }
@@ -4999,7 +5064,7 @@ function createBrowserHostAdapter(options) {
       if (!ref.ok) return ref;
       const original = originalByElement.get(ref.value);
       if (!original) return ok();
-      const restored = restoreSnapshot(ref.value, original);
+      const restored = restoreSnapshot(ref.value, elementId, original);
       if (restored.ok) originalByElement.delete(ref.value);
       return restored;
     },
@@ -5007,13 +5072,10 @@ function createBrowserHostAdapter(options) {
       const ref = getRef(elementId);
       if (!ref.ok) return ref;
       const hostSnapshot = normalizeHostSnapshot(snapshot || {});
-      const restored = restoreSnapshot(ref.value, hostSnapshot.visibleState || {});
+      const restored = restoreSnapshot(ref.value, elementId, hostSnapshot.visibleState || {});
       if (!restored.ok) return restored;
-      if (hostSnapshot.ownership && hostSnapshot.ownership.hasOriginal) {
-        originalByElement.set(ref.value, clone(hostSnapshot.ownership.originalSnapshot));
-      } else {
-        originalByElement.delete(ref.value);
-      }
+      if (hostSnapshot.ownership && hostSnapshot.ownership.hasOriginal) originalByElement.set(ref.value, clone(hostSnapshot.ownership.originalSnapshot));
+      else originalByElement.delete(ref.value);
       return ok();
     },
     getCurrentLayoutEntry(elementId) {
@@ -5033,17 +5095,17 @@ function createBrowserHostAdapter(options) {
 module.exports = { createBrowserHostAdapter };
 
 },
-39:function(module,exports,__require){
+40:function(module,exports,__require){
 "use strict";
-const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId}=__require(37);
+const {BROWSER_ERROR_CODES,ok,blocked,isValidElementId}=__require(38);
 function createBrowserSelectionHost(options){const cfg=options||{}; const listeners=new Set(); let destroyed=false; let selection={selectedElementId:null,selectedElementName:"",elementRefAvailable:false}; function emit(){if(!destroyed){const s={...selection}; listeners.forEach(l=>{try{l(s);}catch(_){}}); if(typeof cfg.onSelectionChange==="function")cfg.onSelectionChange(s);}} function getElement(id){try{if(cfg.registry&&typeof cfg.registry["getElementBy"+"Id"]==="function")return cfg.registry["getElementBy"+"Id"](id); if(cfg.registry&&typeof cfg.registry.get==="function"){const r=cfg.registry.get(id); return r&&r.ok!==false?r.value:null;}}catch(e){return undefined;} return null;} return {select(elementId){if(destroyed)return blocked("SELECTION_HOST_DESTROYED","selection host destroyed"); if(!isValidElementId(elementId))return blocked(BROWSER_ERROR_CODES.INVALID_ELEMENT_ID,"invalid elementId"); const element=getElement(elementId); if(!element)return blocked(BROWSER_ERROR_CODES.UNKNOWN_ELEMENT,"unknown element"); const ref=cfg.elementRefs&&cfg.elementRefs.get?cfg.elementRefs.get(elementId):null; const available=!!(ref&&ref.ok!==false&&(ref.value||ref)); if(!available)return blocked(BROWSER_ERROR_CODES.ELEMENT_REF_MISSING,"elementRef is missing."); selection={selectedElementId:elementId,selectedElementName:element.name||elementId,elementRefAvailable:available}; emit(); return ok(selection);},clear(){selection={selectedElementId:null,selectedElementName:"",elementRefAvailable:false}; emit(); return ok(selection);},getSelection(){return {...selection};},subscribe(listener){if(typeof listener!=="function")return ()=>{}; listeners.add(listener); return ()=>listeners.delete(listener);},destroy(){destroyed=true; listeners.clear();}};}
 module.exports={createBrowserSelectionHost};
 
 },
-40:function(module,exports,__require){
+41:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked, isElementRef } = __require(37);
+const { BROWSER_ERROR_CODES, ok, blocked, isElementRef } = __require(38);
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -5180,10 +5242,10 @@ function createBrowserOverlayHost(options) {
 module.exports = { createBrowserOverlayHost };
 
 },
-41:function(module,exports,__require){
+42:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked, isValidElementId } = __require(37);
+const { BROWSER_ERROR_CODES, ok, blocked, isValidElementId } = __require(38);
 
 const SCHEMA_VERSION = 1;
 const CONTEXT_KEYS = ["targetAppId", "moduleId", "scopeId", "layoutProfileId"];
@@ -5323,10 +5385,10 @@ function createBrowserLayoutStorage(options) {
 module.exports = { createBrowserLayoutStorage };
 
 },
-42:function(module,exports,__require){
+43:function(module,exports,__require){
 "use strict";
 
-const { BROWSER_ERROR_CODES, ok, blocked } = __require(37);
+const { BROWSER_ERROR_CODES, ok, blocked } = __require(38);
 
 function createUiEditorBrowserBridge(options) {
   const cfg = options || {};
@@ -5427,7 +5489,7 @@ function createUiEditorBrowserBridge(options) {
 module.exports = { createUiEditorBrowserBridge };
 
 },
-43:function(module,exports,__require){
+44:function(module,exports,__require){
 "use strict";
 
 const ELEMENTS = Object.freeze([
@@ -5449,7 +5511,7 @@ function createReferenceRegistry() {
 module.exports = { ELEMENTS, createReferenceRegistry };
 
 },
-44:function(module,exports,__require){
+45:function(module,exports,__require){
 "use strict";
 
 const REFERENCE_PROFILES = Object.freeze(["default", "compact"]);
