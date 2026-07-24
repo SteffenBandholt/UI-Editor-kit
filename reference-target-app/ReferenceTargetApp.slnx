@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ReferenceTargetApp.Domain/ReferenceTargetApp.Domain.csproj" />
+    <Project Path="src/ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
+    <Project Path="src/ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
+    <Project Path="src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj" />
+  </Folder>
+</Solution>

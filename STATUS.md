@@ -76,7 +76,7 @@ Noch nicht praktisch fertig sind:
 
 Die Ziel-App bleibt Eigentuemerin von Registry, Element-Referenzen, HostAdapter, Layoutspeicher und Aktivierung.
 
-Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkennung oder eine Browser-/Web-Laufzeit.
+Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkennung oder eine Web-Laufzeit.
 
 ## 5. Abgenommene Bauabschnitte
 
