@@ -8,10 +8,12 @@ const {
   createUiEditorPanelController,
   normalizeLayoutEntry,
   resolveOperationStep,
-  validateChangeRequestStepAlignment,
   validateLayoutEntryForElement,
 } = require("../src/index.cjs");
-const { wrapRuntimeWithStepValidation } = require("../src/runtime/step-validating-ui-editor-runtime.cjs");
+const {
+  validateChangeRequestStepAlignment,
+  wrapRuntimeWithStepValidation,
+} = require("../src/runtime/step-validating-ui-editor-runtime.cjs");
 const { el } = require("./m71-test-helpers.cjs");
 
 assert.deepEqual(
