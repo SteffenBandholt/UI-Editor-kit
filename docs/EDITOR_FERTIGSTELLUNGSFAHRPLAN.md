@@ -43,7 +43,7 @@ Jede End-to-End-Funktion muss an der neuen Ziel-App praktisch vorgefuehrt und ge
 
 ### 3.4 Produktgrenze
 
-Der Editor bleibt lokal, fachneutral und nativ auf Windows.
+Der Editor bleibt lokal, fachneutral und browserfrei.
 
 Er darf:
 
@@ -312,7 +312,7 @@ Aktuell spaeter vorgesehen:
 - Registrationslauf fuer bestehende Apps: M79,
 - weitere Ziel-App-Technologien und Frameworkadapter: nach M79,
 - Komfortfunktionen und Designvarianten: nach funktionaler Gesamt-Abnahme,
-- Cloud- oder Webbetrieb: dauerhaft ausgeschlossen.
+- Cloud-, Browser- oder Webbetrieb: dauerhaft ausgeschlossen.
 
 ## 9. Naechster verbindlicher Auftrag
 
