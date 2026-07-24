@@ -170,6 +170,12 @@ function validateLayoutEntryForElement(entry, registryElement) {
   if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
   }
+  if ((Object.prototype.hasOwnProperty.call(normalized, "textOffsetX") || Object.prototype.hasOwnProperty.call(normalized, "textOffsetY")) && !isOperationAllowed(registryElement, "textMove")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textMove operation.");
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "fontSize") && !isOperationAllowed(registryElement, "fontSize")) {
+    return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires fontSize operation.");
+  }
   if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
     const visibilityOperation = normalized.visible === false ? "hide" : "show";
     if (!isOperationAllowed(registryElement, visibilityOperation)) {
@@ -347,7 +353,7 @@ function createUiEditorRuntime(options) {
 
     const elementResult = validateElement(registry, changeRequest.elementId);
     if (!elementResult.ok) return elementResult;
-    if (!["move", "resize"].includes(changeRequest.operation) || !operationAllowed(elementResult.value, changeRequest.operation)) {
+    if (!["move", "resize", "textMove", "fontSize"].includes(changeRequest.operation) || !operationAllowed(elementResult.value, changeRequest.operation)) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
     }
 
@@ -705,4 +711,5 @@ function createUiEditorRuntime(options) {
   };
 }
 
-module.exports = { createUiEditorRuntime, validateLayoutEntryForElement };
+const { resolveOperationStep } = require("./operation-step-resolver.cjs");
+module.exports = { createUiEditorRuntime, validateLayoutEntryForElement, resolveOperationStep };

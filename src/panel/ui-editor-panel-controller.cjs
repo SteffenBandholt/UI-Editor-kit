@@ -2,6 +2,7 @@
 const { RUNTIME_ERROR_CODES } = require("../runtime/runtime-error-codes.cjs");
 const { PANEL_MODES } = require("./panel-intents.cjs");
 const { createPanelMessageCatalog } = require("./panel-message-catalog.cjs");
+const { resolveOperationStep } = require("../runtime/operation-step-resolver.cjs");
 
 const PANEL_ERROR_CODES = Object.freeze({
   NO_SELECTION: "NO_SELECTION",
@@ -195,14 +196,16 @@ function createUiEditorPanelController(options) {
     const inspected = inspectSelected();
     if (inspected && inspected.ok === false) return inspected;
     const layout = effectiveLayoutFrom(inspected);
-    const step = state.stepSize;
+    const elementResult = safeRegistryGet(state.selectedElementId);
+    if (!elementResult.ok) return elementResult;
+    const registryElement = elementResult.value || {};
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
-      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - step };
-      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + step };
-      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - step };
-      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + step };
+      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
       else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for move.");
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
@@ -212,6 +215,7 @@ function createUiEditorPanelController(options) {
       if (!Number.isFinite(layout.width)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current width is unavailable.", { field: "width" });
       const min = minFor("minWidth");
       if (!min.ok) return min;
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = layout.width + (direction === "left" ? -step : step);
       if (width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
       payload = { width };
@@ -224,6 +228,7 @@ function createUiEditorPanelController(options) {
       if (!Number.isFinite(layout.height)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current height is unavailable.", { field: "height" });
       const min = minFor("minHeight");
       if (!min.ok) return min;
+      const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = layout.height + (direction === "up" ? -step : step);
       if (height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
       payload = { height };
