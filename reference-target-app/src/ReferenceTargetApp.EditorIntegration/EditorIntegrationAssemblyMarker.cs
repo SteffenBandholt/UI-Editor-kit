@@ -1,7 +1,7 @@
 namespace ReferenceTargetApp.EditorIntegration;
 
 /// <summary>
-/// Marks the assembly reserved for the later local process boundary.
-/// It intentionally exposes no integration behavior in M73.1.
+/// Marks the assembly that owns the explicit native WPF registry in M73.2.
+/// Process communication and editor operations remain outside this milestone.
 /// </summary>
 public sealed class EditorIntegrationAssemblyMarker;

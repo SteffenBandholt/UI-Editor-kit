@@ -1,4 +1,5 @@
 using ReferenceTargetApp.Domain.Models;
+using ReferenceTargetApp.EditorIntegration.Registry;
 
 namespace ReferenceTargetApp.Tests;
 
@@ -23,5 +24,14 @@ public sealed class DomainArchitectureTests
         Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("UI-Editor", StringComparison.OrdinalIgnoreCase)));
         Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("EditorIntegration", StringComparison.OrdinalIgnoreCase)));
         Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("ReferenceTargetApp.Wpf", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
+    public void RegistryAssemblyHasNoDomainOrUiEditorKitDependency()
+    {
+        var referencedAssemblies = typeof(UiElementRegistry).Assembly.GetReferencedAssemblies().Select(reference => reference.Name ?? string.Empty).ToArray();
+
+        Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("ReferenceTargetApp.Domain", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("UI-Editor", StringComparison.OrdinalIgnoreCase)));
     }
 }

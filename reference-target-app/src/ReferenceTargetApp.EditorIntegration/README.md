@@ -1,12 +1,12 @@
-# EditorIntegration – Grenze in M73.1
+# EditorIntegration – Grenze in M73.2
 
-Dieser Projektbereich reserviert ausschließlich die spätere technische Grenze zwischen der nativen WPF-Ziel-App und dem vorhandenen Node.js-Editor-Kern.
+Dieser Projektbereich enthält ausschließlich die explizite WPF-UI-Registry für den freigegebenen Bereich „Auftragskopf“:
 
-Für einen späteren Meilenstein vorgesehen:
+- unveränderliche Registry-Einträge und Fähigkeiten;
+- explizite Zuordnung benannter nativer WPF-Controls;
+- Validierung von IDs, Hierarchie, Scope, Referenzen und Fähigkeiten;
+- lesende Abfragen und sichere Diagnostik.
 
-- lokaler, explizit gestarteter Node.js-Unterprozess;
-- versionierte Nachrichten als JSON-Zeilen über `stdin`/`stdout`;
-- Prozesslebenszyklus, Fehlerkanal und kontrolliertes Beenden;
-- Übersetzung zwischen plattformneutralen Nachrichten und nativen Ziel-App-Schnittstellen.
+Die Registry wird von der WPF-App nach `Loaded` aufgebaut. Sie durchsucht keinen Visual Tree und verändert weder Layout noch Fachdaten. Das Projekt referenziert weder das Fachmodell noch den Node.js-Editor-Kern.
 
-In M73.1 enthält dieses Projekt absichtlich keinen ausführbaren Integrationscode. Insbesondere gibt es keine Registry, keinen HostAdapter, keinen Layoutspeicher, keine Editor-Session, keine Layoutänderung und keinen Prozessstart. Die WPF-App referenziert dieses Projekt noch nicht.
+Nicht enthalten sind HostAdapter, Editoroperationen, Prozessstart, JSON-Zeilen-Kommunikation, Layoutspeicher, Editor-Session, Selektion oder sichtbare Editoroberfläche.
