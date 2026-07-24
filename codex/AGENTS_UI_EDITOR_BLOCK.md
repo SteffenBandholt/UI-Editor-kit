@@ -1,5 +1,9 @@
 # AGENTS-Block UI-Editor
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
 Diesen Block unveraendert in die `AGENTS.md` einer Ziel-App uebernehmen.
 
 ## Fuehrende Unterlagen
