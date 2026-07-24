@@ -60,9 +60,9 @@ Bei aktivierten LayoutControls zusaetzlich:
 
 Die Registry enthaelt nur bewusst freigegebene Elemente und stellt mindestens bereit:
 
-- `listElements()`
-- `getElementById(id)`
-- optional `size()`
+- eine Funktion zum Auflisten aller Elemente
+- eine eindeutige Suche nach Element-ID
+- optional eine Groessenangabe
 
 ## Layoutprofil
 
