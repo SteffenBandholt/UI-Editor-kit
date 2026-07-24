@@ -13,7 +13,7 @@ Das Repository ist die zentrale Quelle fuer:
 - den UI-Editor-Vertrag,
 - die Codex-Regeln fuer UI-/PDF-Entwurfsentscheidungen,
 - die Einbauanleitung fuer neue Apps,
-- die Public API,
+- die plattformneutrale Public API,
 - die Integrations- und Abnahmepruefungen.
 
 ## Aktueller Stand
@@ -34,7 +34,8 @@ Der Editor darf insbesondere nicht:
 - Fachlogik oder Fachdaten lesen oder aendern,
 - fachliche Aktionen ausfuehren,
 - Ziel-App-Dateien ohne ausdruecklichen Auftrag veraendern,
-- eine bestimmte Laufzeitumgebung zur Produktvoraussetzung machen.
+- eine bestimmte Laufzeitumgebung zur Produktvoraussetzung machen,
+- HTML-, DOM- oder Web-Laufzeittechnik als Produktbestandteil fuehren.
 
 ## Kernfunktionen
 
@@ -48,19 +49,22 @@ Das Kit stellt fachneutrale Bausteine bereit fuer:
 - HostAdapter-Vertrag,
 - Session- und Layoutzustand,
 - Save, Load, Reset, Discard und Rollback,
-- Bedienpanel und ViewModels,
-- Auswahl, Element- und Textbearbeitung,
+- Panel-Controller und ViewModels,
+- Element- und Textbearbeitungsmodelle,
 - Packaging und lokale Moduleinbindung.
+
+Die konkrete sichtbare Oberflaeche wird von der jeweiligen Ziel-App mit ihrer eigenen nativen UI-Technik umgesetzt. Das Kit liefert dafuer keine Web-Oberflaeche und keinen DOM-Renderer.
 
 ## Ziel-App-Verantwortung
 
 Die Ziel-App liefert und besitzt:
 
 - Registry,
-- Element-Referenzen,
+- plattformeigene Element-Referenzen,
 - HostAdapter,
 - Layoutspeicher,
 - Aktivierung und Deaktivierung,
+- sichtbare Darstellung,
 - erneute Sicherheitspruefung vor jeder Aenderung.
 
 Das Kit bleibt fachneutral und greift nicht eigenmaechtig in die Ziel-App ein.
@@ -92,11 +96,12 @@ const {
   createUiEditorRuntime,
   createUiEditorPanelController,
   createUiEditorPanelViewModel,
-  createUiEditorPanel,
+  createTargetAppAdapterRuntime,
+  createMemoryLayoutStateStore,
 } = require("ui-editor-kit");
 ```
 
-Die Runtime verwaltet Session, neutrale Layoutwerte, Speicherung, Laden, Verwerfen, Zuruecksetzen und Rollback. Das Panel verwaltet Auswahl, Ebene, Modus, Schrittweite, Status und strukturierte Ergebnisse.
+Die Runtime verwaltet Session, neutrale Layoutwerte, Speicherung, Laden, Verwerfen, Zuruecksetzen und Rollback. Panel-Controller und ViewModels liefern ausschliesslich plattformneutrale Zustands- und Bedienmodelle. Die Ziel-App stellt diese Daten mit ihrer eigenen nativen UI dar.
 
 Elementwerte und Textwerte werden getrennt behandelt. Textbearbeitung ist nur aktiv, wenn die Ziel-App die dafuer vorgesehenen Operationen ausdruecklich registriert.
 
