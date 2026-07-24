@@ -1,5 +1,9 @@
 # Editor-Gesamt-LV
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
 ## 1. Zweck
 
 Dieses Dokument ist das verbindliche Gesamt-Leistungsverzeichnis fuer das eigenstaendige UI-Editor-kit.
