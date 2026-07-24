@@ -239,7 +239,7 @@ const { createUiEditorPanelController } = __require(31);
 const { createUiEditorPanelViewModel } = __require(34);
 const { createUiEditorPanel } = __require(35);
 const { createPanelMessageCatalog } = __require(33);
-const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = __require(32);
+const { PANEL_LAYERS, PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = __require(32);
 const { RUNTIME_ERROR_CODES } = __require(26);
 const { normalizeTargetContext, validateTargetContext } = __require(28);
 const { normalizeLayoutEntry } = __require(29);
@@ -271,6 +271,7 @@ module.exports = Object.freeze({
   createUiEditorPanelViewModel,
   createUiEditorPanel,
   createPanelMessageCatalog,
+  PANEL_LAYERS,
   PANEL_INTENTS,
   PANEL_MODES,
   PANEL_DIRECTIONS,
@@ -3329,20 +3330,22 @@ function validateLayoutEntryForElement(entry, registryElement) {
   if (normalized.elementId !== registryElement.id) {
     return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry elementId does not match registry element.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "x") || Object.prototype.hasOwnProperty.call(normalized, "y")) && !isOperationAllowed(registryElement, "move")) {
+  const element = normalized.element || {};
+  const text = normalized.text || {};
+  if ((Object.prototype.hasOwnProperty.call(element, "x") || Object.prototype.hasOwnProperty.call(element, "y")) && !isOperationAllowed(registryElement, "move")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires move operation.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
+  if ((Object.prototype.hasOwnProperty.call(element, "width") || Object.prototype.hasOwnProperty.call(element, "height")) && !isOperationAllowed(registryElement, "resize")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "textOffsetX") || Object.prototype.hasOwnProperty.call(normalized, "textOffsetY")) && !isOperationAllowed(registryElement, "textMove")) {
+  if ((Object.prototype.hasOwnProperty.call(text, "offsetX") || Object.prototype.hasOwnProperty.call(text, "offsetY")) && !isOperationAllowed(registryElement, "textMove")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textMove operation.");
   }
-  if (Object.prototype.hasOwnProperty.call(normalized, "fontSize") && !isOperationAllowed(registryElement, "fontSize")) {
+  if (Object.prototype.hasOwnProperty.call(text, "fontSize") && !isOperationAllowed(registryElement, "fontSize")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires fontSize operation.");
   }
-  if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
-    const visibilityOperation = normalized.visible === false ? "hide" : "show";
+  if (Object.prototype.hasOwnProperty.call(element, "visible")) {
+    const visibilityOperation = element.visible === false ? "hide" : "show";
     if (!isOperationAllowed(registryElement, visibilityOperation)) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires ${visibilityOperation} operation.`);
     }
@@ -3949,46 +3952,35 @@ module.exports = { normalizeTargetContext, validateTargetContext, assertScope };
 },
 29:function(module,exports,__require){
 "use strict";
-const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", "x", "y", "width", "height", "visible", "textOffsetX", "textOffsetY", "fontSize"]);
+const ELEMENT_FIELDS = Object.freeze(["x", "y", "width", "height", "visible"]);
+const TEXT_FIELDS = Object.freeze(["offsetX", "offsetY", "fontSize"]);
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
+function pick(source, fields) { const out = {}; if (!source || typeof source !== "object" || Array.isArray(source)) return out; for (const field of fields) if (Object.prototype.hasOwnProperty.call(source, field)) out[field] = clone(source[field]); return out; }
 function normalizeLayoutEntry(entry) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.elementId !== "string" || entry.elementId.trim() === "") return null;
+  const element = { ...pick(entry.element, ELEMENT_FIELDS), ...pick(entry, ELEMENT_FIELDS) };
+  const text = pick(entry.text, TEXT_FIELDS);
   const normalized = { elementId: entry.elementId };
-  for (const field of LAYOUT_ENTRY_FIELDS) if (field !== "elementId" && Object.prototype.hasOwnProperty.call(entry, field)) normalized[field] = clone(entry[field]);
+  if (Object.keys(element).length > 0) normalized.element = element;
+  if (Object.keys(text).length > 0) normalized.text = text;
   return Object.keys(normalized).length === 1 ? null : normalized;
 }
-function normalizeEntries(entries) {
-  const map = new Map();
-  const list = Array.isArray(entries) ? entries : Object.values(entries || {});
-  for (const entry of list) { const normalized = normalizeLayoutEntry(entry); if (normalized) map.set(normalized.elementId, normalized); }
-  return map;
+function mergeLayoutEntry(base, patch) {
+  const normalizedPatch = normalizeLayoutEntry(patch); if (!normalizedPatch) return normalizeLayoutEntry(base);
+  const normalizedBase = normalizeLayoutEntry(base) || { elementId: normalizedPatch.elementId };
+  const merged = { elementId: normalizedPatch.elementId };
+  const element = { ...(normalizedBase.element || {}), ...(normalizedPatch.element || {}) };
+  const text = { ...(normalizedBase.text || {}), ...(normalizedPatch.text || {}) };
+  if (Object.keys(element).length > 0) merged.element = element;
+  if (Object.keys(text).length > 0) merged.text = text;
+  return normalizeLayoutEntry(merged);
 }
+function normalizeEntries(entries) { const map = new Map(); const list = Array.isArray(entries) ? entries : Object.values(entries || {}); for (const entry of list) { const normalized = normalizeLayoutEntry(entry); if (normalized) map.set(normalized.elementId, normalized); } return map; }
 function entriesToArray(map) { return Array.from(map.values()).map(clone).sort((a, b) => a.elementId.localeCompare(b.elementId)); }
 function entriesEqual(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
-function changedIds(session, baseline) {
-  const ids = new Set([...session.keys(), ...baseline.keys()]);
-  return Array.from(ids).filter((id) => !entriesEqual(session.get(id), baseline.get(id))).sort();
-}
-function createSessionState(clock) {
-  const now = typeof clock === "function" ? clock : () => Date.now();
-  let active = false, baseline = new Map(), session = new Map(), baselineVersion = String(now()), lastStatus = null;
-  function status() { const ids = changedIds(session, baseline); const changedByElementId = {}; ids.forEach((id) => { changedByElementId[id] = { baseline: clone(baseline.get(id)) || null, current: clone(session.get(id)) || null }; }); lastStatus = { ok: true, active, changedElementIds: ids, changedCount: ids.length, changedByElementId, baselineVersion }; return clone(lastStatus); }
-  return {
-    isActive: () => active,
-    begin(entries) { baseline = normalizeEntries(entries); session = normalizeEntries(entries); active = true; baselineVersion = String(now()); return status(); },
-    end() { active = false; return status(); },
-    status,
-    getSessionEntries: () => entriesToArray(session),
-    getBaselineEntries: () => entriesToArray(baseline),
-    setSessionEntries(entries) { session = normalizeEntries(entries); return status(); },
-    setBaselineEntries(entries) { baseline = normalizeEntries(entries); baselineVersion = String(now()); return status(); },
-    setEntry(entry) { const normalized = normalizeLayoutEntry(entry); if (normalized) session.set(normalized.elementId, normalized); else if (entry && entry.elementId) session.delete(entry.elementId); return status(); },
-    removeEntry(id) { session.delete(id); return status(); },
-    resetBaselineToSession() { baseline = normalizeEntries(entriesToArray(session)); baselineVersion = String(now()); return status(); },
-    resetBaselineElement(id) { if (session.has(id)) baseline.set(id, clone(session.get(id))); else baseline.delete(id); baselineVersion = String(now()); return status(); },
-  };
-}
-module.exports = { LAYOUT_ENTRY_FIELDS, normalizeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };
+function changedIds(session, baseline) { const ids = new Set([...session.keys(), ...baseline.keys()]); return Array.from(ids).filter((id) => !entriesEqual(session.get(id), baseline.get(id))).sort(); }
+function createSessionState(clock) { const now = typeof clock === "function" ? clock : () => Date.now(); let active = false, baseline = new Map(), session = new Map(), baselineVersion = String(now()), lastStatus = null; function status() { const ids = changedIds(session, baseline); const changedByElementId = {}; ids.forEach((id) => { changedByElementId[id] = { baseline: clone(baseline.get(id)) || null, current: clone(session.get(id)) || null }; }); lastStatus = { ok: true, active, changedElementIds: ids, changedCount: ids.length, changedByElementId, baselineVersion }; return clone(lastStatus); } return { isActive: () => active, begin(entries) { baseline = normalizeEntries(entries); session = normalizeEntries(entries); active = true; baselineVersion = String(now()); return status(); }, end() { active = false; return status(); }, status, getSessionEntries: () => entriesToArray(session), getBaselineEntries: () => entriesToArray(baseline), setSessionEntries(entries) { session = normalizeEntries(entries); return status(); }, setBaselineEntries(entries) { baseline = normalizeEntries(entries); baselineVersion = String(now()); return status(); }, setEntry(entry) { const normalized = mergeLayoutEntry(session.get(entry && entry.elementId), entry); if (normalized) session.set(normalized.elementId, normalized); else if (entry && entry.elementId) session.delete(entry.elementId); return status(); }, removeEntry(id) { session.delete(id); return status(); }, resetBaselineToSession() { baseline = normalizeEntries(entriesToArray(session)); baselineVersion = String(now()); return status(); }, resetBaselineElement(id) { if (session.has(id)) baseline.set(id, clone(session.get(id))); else baseline.delete(id); baselineVersion = String(now()); return status(); } }; }
+module.exports = { ELEMENT_FIELDS, TEXT_FIELDS, normalizeLayoutEntry, mergeLayoutEntry, normalizeEntries, entriesToArray, createSessionState };
 
 },
 30:function(module,exports,__require){
@@ -4022,7 +4014,7 @@ module.exports = { resolveOperationStep, SAFE_DEFAULT_STEP };
 31:function(module,exports,__require){
 "use strict";
 const { RUNTIME_ERROR_CODES } = __require(26);
-const { PANEL_MODES } = __require(32);
+const { PANEL_LAYERS, PANEL_MODES } = __require(32);
 const { createPanelMessageCatalog } = __require(33);
 const { resolveOperationStep } = __require(30);
 
@@ -4065,6 +4057,8 @@ function modesFrom(effectiveOps) {
   const modes = [];
   if (effectiveOps.includes("move")) modes.push(PANEL_MODES.MOVE);
   if (effectiveOps.includes("resize")) modes.push(PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT);
+  if (effectiveOps.includes("textMove")) modes.push(PANEL_MODES.TEXT_POSITION);
+  if (effectiveOps.includes("fontSize")) modes.push(PANEL_MODES.TEXT_SIZE);
   return modes;
 }
 
@@ -4086,6 +4080,7 @@ function createUiEditorPanelController(options) {
     allowedOps: [],
     effectiveOps: [],
     availableModes: [],
+    layer: cfg.initialLayer || PANEL_LAYERS.ELEMENT,
     mode: cfg.initialMode || PANEL_MODES.MOVE,
     stepSize: Number(cfg.stepSize) || 5,
     dialog: { open: false },
@@ -4148,7 +4143,10 @@ function createUiEditorPanelController(options) {
     state.allowedOps = operationState.allowedOps;
     state.effectiveOps = operationState.effectiveOps;
     state.availableModes = state.editable ? modesFrom(operationState.effectiveOps) : [];
-    if (!state.availableModes.includes(state.mode)) state.mode = state.availableModes[0] || PANEL_MODES.MOVE;
+    const elementModes = [PANEL_MODES.MOVE, PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT];
+    const textModes = [PANEL_MODES.TEXT_POSITION, PANEL_MODES.TEXT_SIZE];
+    const preferred = state.layer === PANEL_LAYERS.TEXT ? textModes : elementModes;
+    if (!state.availableModes.includes(state.mode) || !preferred.includes(state.mode)) state.mode = state.availableModes.find((mode) => preferred.includes(mode)) || state.availableModes[0] || PANEL_MODES.MOVE;
   }
 
   function getState() {
@@ -4194,7 +4192,7 @@ function createUiEditorPanelController(options) {
   }
 
   function effectiveLayoutFrom(inspectResult) {
-    return clone(
+    const raw = clone(
       inspectResult.effectiveLayout ||
       inspectResult.currentValues ||
       (inspectResult.value && (inspectResult.value.effectiveLayout || inspectResult.value.currentValues)) ||
@@ -4202,6 +4200,8 @@ function createUiEditorPanelController(options) {
       (inspectResult.value && inspectResult.value.currentEntry) ||
       { elementId: state.selectedElementId }
     );
+    if (raw && (raw.element || raw.text)) return { elementId: raw.elementId, ...(raw.element || {}), text: raw.text || {} };
+    return raw;
   }
 
   function minFor(field) {
@@ -4224,10 +4224,10 @@ function createUiEditorPanelController(options) {
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
-      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
-      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
-      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
-      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      if (direction === "left") payload = { element: { x: (Number.isFinite(layout.x) ? layout.x : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
+      else if (direction === "right") payload = { element: { x: (Number.isFinite(layout.x) ? layout.x : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
+      else if (direction === "up") payload = { element: { y: (Number.isFinite(layout.y) ? layout.y : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
+      else if (direction === "down") payload = { element: { y: (Number.isFinite(layout.y) ? layout.y : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
       else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for move.");
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
@@ -4240,8 +4240,8 @@ function createUiEditorPanelController(options) {
       const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = layout.width + (direction === "left" ? -step : step);
       if (width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
-      payload = { width };
-      if (Number.isFinite(layout.height)) payload.height = layout.height;
+      payload = { element: { width } };
+      if (Number.isFinite(layout.height)) payload.element.height = layout.height;
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
 
@@ -4253,9 +4253,32 @@ function createUiEditorPanelController(options) {
       const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = layout.height + (direction === "up" ? -step : step);
       if (height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
-      payload = { height };
-      if (Number.isFinite(layout.width)) payload.width = layout.width;
+      payload = { element: { height } };
+      if (Number.isFinite(layout.width)) payload.element.width = layout.width;
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+    }
+
+
+    if (state.mode === PANEL_MODES.TEXT_POSITION) {
+      const text = layout.text || {};
+      if (!["left", "right", "up", "down"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
+      if (direction === "left" || direction === "right") {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "x", panelStepSize: state.stepSize });
+        payload = { text: { offsetX: (Number.isFinite(text.offsetX) ? text.offsetX : 0) + (direction === "left" ? -step : step) } };
+      } else {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "y", panelStepSize: state.stepSize });
+        payload = { text: { offsetY: (Number.isFinite(text.offsetY) ? text.offsetY : 0) + (direction === "up" ? -step : step) } };
+      }
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+    }
+
+    if (state.mode === PANEL_MODES.TEXT_SIZE) {
+      if (!["up", "down", "left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text size.");
+      const text = layout.text || {};
+      const step = resolveOperationStep({ registryElement, operation: "fontSize", panelStepSize: state.stepSize });
+      const delta = direction === "down" || direction === "left" ? -step : step;
+      payload = { text: { fontSize: (Number.isFinite(text.fontSize) ? text.fontSize : Number(registryElement.defaultFontSize) || 16) + delta } };
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: "fontSize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
 
     return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not allowed.");
@@ -4304,11 +4327,17 @@ function createUiEditorPanelController(options) {
       return getState();
     },
     setMode(mode) {
-      if (![PANEL_MODES.MOVE, PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT].includes(mode) || !state.availableModes.includes(mode)) {
+      if (!Object.values(PANEL_MODES).includes(mode) || !state.availableModes.includes(mode)) {
         state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not available.");
       } else {
         state.mode = mode;
       }
+      emit();
+      return getState();
+    },
+    setLayer(layer) {
+      if (!Object.values(PANEL_LAYERS).includes(layer)) state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layer is not available.");
+      else { state.layer = layer; if (state.selectedElementId) { const elementResult = safeRegistryGet(state.selectedElementId); if (elementResult.ok && elementResult.value) applySelection(elementResult.value, null); } }
       emit();
       return getState();
     },
@@ -4358,16 +4387,17 @@ module.exports = { createUiEditorPanelController, PANEL_ERROR_CODES };
 },
 32:function(module,exports,__require){
 "use strict";
-const PANEL_MODES = Object.freeze({ MOVE: "move", WIDTH: "width", HEIGHT: "height" });
+const PANEL_LAYERS = Object.freeze({ ELEMENT: "element", TEXT: "text" });
+const PANEL_MODES = Object.freeze({ MOVE: "move", WIDTH: "width", HEIGHT: "height", TEXT_POSITION: "text-position", TEXT_SIZE: "text-size" });
 const PANEL_DIRECTIONS = Object.freeze({ UP: "up", DOWN: "down", LEFT: "left", RIGHT: "right", CENTER: "center" });
 const PANEL_INTENTS = Object.freeze({
-  SELECT_ELEMENT: "select-element", CLEAR_SELECTION: "clear-selection", SET_MODE: "set-mode", SET_STEP_SIZE: "set-step-size",
+  SELECT_ELEMENT: "select-element", CLEAR_SELECTION: "clear-selection", SET_MODE: "set-mode", SET_LAYER: "set-layer", SET_STEP_SIZE: "set-step-size",
   DPAD_UP: "dpad-up", DPAD_DOWN: "dpad-down", DPAD_LEFT: "dpad-left", DPAD_RIGHT: "dpad-right", DPAD_CENTER: "dpad-center",
   SAVE: "save-layout", LOAD: "load-layout", DISCARD_ALL: "discard-all-session-changes",
   REQUEST_RESET_ELEMENT: "request-reset-element-defaults", CONFIRM_RESET_ELEMENT: "confirm-reset-element-defaults", CANCEL_RESET_ELEMENT: "cancel-reset-element-defaults",
   REQUEST_RESET_LAYOUT: "request-reset-layout-defaults", CONFIRM_RESET_LAYOUT: "confirm-reset-layout-defaults", CANCEL_RESET_LAYOUT: "cancel-reset-layout-defaults",
 });
-module.exports = { PANEL_MODES, PANEL_DIRECTIONS, PANEL_INTENTS };
+module.exports = { PANEL_LAYERS, PANEL_MODES, PANEL_DIRECTIONS, PANEL_INTENTS };
 
 },
 33:function(module,exports,__require){
@@ -4825,17 +4855,19 @@ function createBrowserHostAdapter(options) {
       if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
         return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
       }
-      const entry = {
-        elementId,
+      const elementEntry = {
         x: toNumber(getStyleValue(element.style, EDITOR_X)) || 0,
         y: toNumber(getStyleValue(element.style, EDITOR_Y)) || 0,
         width,
         height,
         visible: !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false"),
       };
-      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_X) !== "") entry.textOffsetX = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_X)) || 0;
-      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y) !== "") entry.textOffsetY = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y)) || 0;
-      if (getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE) !== "") entry.fontSize = toNumber(getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE));
+      const entry = { elementId, ...elementEntry, element: elementEntry };
+      const text = {};
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_X) !== "") text.offsetX = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_X)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y) !== "") text.offsetY = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE) !== "") text.fontSize = toNumber(getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE));
+      if (Object.keys(text).length > 0) entry.text = text;
       return ok(entry);
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "style read failed");
@@ -4857,30 +4889,33 @@ function createBrowserHostAdapter(options) {
 
 
   function applyTextEntry(element, elementId, entry, original) {
+    const textEntry = entry.text || {};
     const textElement = getTextRef(elementId);
     const target = textElement || element;
     const baseX = toNumber(original.value.textState && (original.value.textState.inlineTextIndent || original.value.textState.computedTextIndent)) || 0;
     const baseY = toNumber(original.value.textState && (original.value.textState.inlinePaddingTop || original.value.textState.computedPaddingTop)) || 0;
     const baseFont = toNumber(original.value.textState && (original.value.textState.inlineFontSize || original.value.textState.computedFontSize));
-    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetX")) {
-      setStyleValue(element.style, EDITOR_TEXT_OFFSET_X, px(entry.textOffsetX));
-      target.style.textIndent = px(baseX + (Number(entry.textOffsetX) || 0));
+    if (Object.prototype.hasOwnProperty.call(textEntry, "offsetX")) {
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_X, px(textEntry.offsetX));
+      target.style.textIndent = px(baseX + (Number(textEntry.offsetX) || 0));
     }
-    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetY")) {
-      setStyleValue(element.style, EDITOR_TEXT_OFFSET_Y, px(entry.textOffsetY));
+    if (Object.prototype.hasOwnProperty.call(textEntry, "offsetY")) {
+      if (!textElement) return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, "text offsetY requires an explicit text ref.");
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_Y, px(textEntry.offsetY));
       if (textElement) {
         const baseTransform = original.value.textState && original.value.textState.inlineTransform ? `${original.value.textState.inlineTransform} ` : "";
-        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
-        target.style.transform = `${baseTransform}translateY(${px(entry.textOffsetY)})`.trim();
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(textEntry.offsetY)})`);
+        target.style.transform = `${baseTransform}translateY(${px(textEntry.offsetY)})`.trim();
       } else {
-        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(textEntry.offsetY)})`);
       }
     }
-    if (Object.prototype.hasOwnProperty.call(entry, "fontSize")) {
-      setStyleValue(element.style, EDITOR_TEXT_FONT_SIZE, px(entry.fontSize));
-      target.style.fontSize = px(entry.fontSize);
+    if (Object.prototype.hasOwnProperty.call(textEntry, "fontSize")) {
+      setStyleValue(element.style, EDITOR_TEXT_FONT_SIZE, px(textEntry.fontSize));
+      target.style.fontSize = px(textEntry.fontSize);
     }
     void baseY; void baseFont;
+    return ok();
   }
 
   return {
@@ -4899,25 +4934,27 @@ function createBrowserHostAdapter(options) {
       const original = ensureOriginal(element, elementId);
       if (!original.ok) return original;
       try {
-        if (Object.prototype.hasOwnProperty.call(entry, "x")) setStyleValue(element.style, EDITOR_X, px(entry.x));
-        if (Object.prototype.hasOwnProperty.call(entry, "y")) setStyleValue(element.style, EDITOR_Y, px(entry.y));
-        if (Object.prototype.hasOwnProperty.call(entry, "x") || Object.prototype.hasOwnProperty.call(entry, "y")) {
+        const elementEntry = entry.element || entry;
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "x")) setStyleValue(element.style, EDITOR_X, px(elementEntry.x));
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "y")) setStyleValue(element.style, EDITOR_Y, px(elementEntry.y));
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "x") || Object.prototype.hasOwnProperty.call(elementEntry, "y")) {
           const appliedTransform = applyTransform(element, elementId);
           if (!appliedTransform.ok) return appliedTransform;
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "width")) {
-          setStyleValue(element.style, EDITOR_WIDTH, px(entry.width));
-          element.style.width = px(entry.width);
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "width")) {
+          setStyleValue(element.style, EDITOR_WIDTH, px(elementEntry.width));
+          element.style.width = px(elementEntry.width);
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "height")) {
-          setStyleValue(element.style, EDITOR_HEIGHT, px(entry.height));
-          element.style.height = px(entry.height);
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "height")) {
+          setStyleValue(element.style, EDITOR_HEIGHT, px(elementEntry.height));
+          element.style.height = px(elementEntry.height);
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "visible")) {
-          setStyleValue(element.style, EDITOR_VISIBLE, entry.visible ? "true" : "false");
-          element.hidden = entry.visible === false;
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "visible")) {
+          setStyleValue(element.style, EDITOR_VISIBLE, elementEntry.visible ? "true" : "false");
+          element.hidden = elementEntry.visible === false;
         }
-        applyTextEntry(element, elementId, entry, original);
+        const textApplied = applyTextEntry(element, elementId, entry, original);
+        if (textApplied && textApplied.ok === false) return textApplied;
         return ok();
       } catch (error) {
         return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "layout apply failed");

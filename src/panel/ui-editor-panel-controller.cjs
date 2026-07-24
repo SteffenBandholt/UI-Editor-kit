@@ -1,6 +1,6 @@
 "use strict";
 const { RUNTIME_ERROR_CODES } = require("../runtime/runtime-error-codes.cjs");
-const { PANEL_MODES } = require("./panel-intents.cjs");
+const { PANEL_LAYERS, PANEL_MODES } = require("./panel-intents.cjs");
 const { createPanelMessageCatalog } = require("./panel-message-catalog.cjs");
 const { resolveOperationStep } = require("../runtime/operation-step-resolver.cjs");
 
@@ -43,6 +43,8 @@ function modesFrom(effectiveOps) {
   const modes = [];
   if (effectiveOps.includes("move")) modes.push(PANEL_MODES.MOVE);
   if (effectiveOps.includes("resize")) modes.push(PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT);
+  if (effectiveOps.includes("textMove")) modes.push(PANEL_MODES.TEXT_POSITION);
+  if (effectiveOps.includes("fontSize")) modes.push(PANEL_MODES.TEXT_SIZE);
   return modes;
 }
 
@@ -64,6 +66,7 @@ function createUiEditorPanelController(options) {
     allowedOps: [],
     effectiveOps: [],
     availableModes: [],
+    layer: cfg.initialLayer || PANEL_LAYERS.ELEMENT,
     mode: cfg.initialMode || PANEL_MODES.MOVE,
     stepSize: Number(cfg.stepSize) || 5,
     dialog: { open: false },
@@ -126,7 +129,10 @@ function createUiEditorPanelController(options) {
     state.allowedOps = operationState.allowedOps;
     state.effectiveOps = operationState.effectiveOps;
     state.availableModes = state.editable ? modesFrom(operationState.effectiveOps) : [];
-    if (!state.availableModes.includes(state.mode)) state.mode = state.availableModes[0] || PANEL_MODES.MOVE;
+    const elementModes = [PANEL_MODES.MOVE, PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT];
+    const textModes = [PANEL_MODES.TEXT_POSITION, PANEL_MODES.TEXT_SIZE];
+    const preferred = state.layer === PANEL_LAYERS.TEXT ? textModes : elementModes;
+    if (!state.availableModes.includes(state.mode) || !preferred.includes(state.mode)) state.mode = state.availableModes.find((mode) => preferred.includes(mode)) || state.availableModes[0] || PANEL_MODES.MOVE;
   }
 
   function getState() {
@@ -172,7 +178,7 @@ function createUiEditorPanelController(options) {
   }
 
   function effectiveLayoutFrom(inspectResult) {
-    return clone(
+    const raw = clone(
       inspectResult.effectiveLayout ||
       inspectResult.currentValues ||
       (inspectResult.value && (inspectResult.value.effectiveLayout || inspectResult.value.currentValues)) ||
@@ -180,6 +186,8 @@ function createUiEditorPanelController(options) {
       (inspectResult.value && inspectResult.value.currentEntry) ||
       { elementId: state.selectedElementId }
     );
+    if (raw && (raw.element || raw.text)) return { elementId: raw.elementId, ...(raw.element || {}), text: raw.text || {} };
+    return raw;
   }
 
   function minFor(field) {
@@ -202,10 +210,10 @@ function createUiEditorPanelController(options) {
     let payload = {};
 
     if (state.mode === PANEL_MODES.MOVE) {
-      if (direction === "left") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
-      else if (direction === "right") payload = { x: (Number.isFinite(layout.x) ? layout.x : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
-      else if (direction === "up") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
-      else if (direction === "down") payload = { y: (Number.isFinite(layout.y) ? layout.y : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) };
+      if (direction === "left") payload = { element: { x: (Number.isFinite(layout.x) ? layout.x : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
+      else if (direction === "right") payload = { element: { x: (Number.isFinite(layout.x) ? layout.x : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
+      else if (direction === "up") payload = { element: { y: (Number.isFinite(layout.y) ? layout.y : 0) - resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
+      else if (direction === "down") payload = { element: { y: (Number.isFinite(layout.y) ? layout.y : 0) + resolveOperationStep({ registryElement, operation: "move", panelStepSize: state.stepSize }) } };
       else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for move.");
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
@@ -218,8 +226,8 @@ function createUiEditorPanelController(options) {
       const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = layout.width + (direction === "left" ? -step : step);
       if (width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
-      payload = { width };
-      if (Number.isFinite(layout.height)) payload.height = layout.height;
+      payload = { element: { width } };
+      if (Number.isFinite(layout.height)) payload.element.height = layout.height;
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
 
@@ -231,9 +239,32 @@ function createUiEditorPanelController(options) {
       const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = layout.height + (direction === "up" ? -step : step);
       if (height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
-      payload = { height };
-      if (Number.isFinite(layout.width)) payload.width = layout.width;
+      payload = { element: { height } };
+      if (Number.isFinite(layout.width)) payload.element.width = layout.width;
       return runtime.applyChange({ elementId: state.selectedElementId, operation: "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+    }
+
+
+    if (state.mode === PANEL_MODES.TEXT_POSITION) {
+      const text = layout.text || {};
+      if (!["left", "right", "up", "down"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
+      if (direction === "left" || direction === "right") {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "x", panelStepSize: state.stepSize });
+        payload = { text: { offsetX: (Number.isFinite(text.offsetX) ? text.offsetX : 0) + (direction === "left" ? -step : step) } };
+      } else {
+        const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "y", panelStepSize: state.stepSize });
+        payload = { text: { offsetY: (Number.isFinite(text.offsetY) ? text.offsetY : 0) + (direction === "up" ? -step : step) } };
+      }
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+    }
+
+    if (state.mode === PANEL_MODES.TEXT_SIZE) {
+      if (!["up", "down", "left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text size.");
+      const text = layout.text || {};
+      const step = resolveOperationStep({ registryElement, operation: "fontSize", panelStepSize: state.stepSize });
+      const delta = direction === "down" || direction === "left" ? -step : step;
+      payload = { text: { fontSize: (Number.isFinite(text.fontSize) ? text.fontSize : Number(registryElement.defaultFontSize) || 16) + delta } };
+      return runtime.applyChange({ elementId: state.selectedElementId, operation: "fontSize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
     }
 
     return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not allowed.");
@@ -282,11 +313,17 @@ function createUiEditorPanelController(options) {
       return getState();
     },
     setMode(mode) {
-      if (![PANEL_MODES.MOVE, PANEL_MODES.WIDTH, PANEL_MODES.HEIGHT].includes(mode) || !state.availableModes.includes(mode)) {
+      if (!Object.values(PANEL_MODES).includes(mode) || !state.availableModes.includes(mode)) {
         state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not available.");
       } else {
         state.mode = mode;
       }
+      emit();
+      return getState();
+    },
+    setLayer(layer) {
+      if (!Object.values(PANEL_LAYERS).includes(layer)) state.lastResult = blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layer is not available.");
+      else { state.layer = layer; if (state.selectedElementId) { const elementResult = safeRegistryGet(state.selectedElementId); if (elementResult.ok && elementResult.value) applySelection(elementResult.value, null); } }
       emit();
       return getState();
     },

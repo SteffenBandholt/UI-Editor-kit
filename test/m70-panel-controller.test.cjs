@@ -48,7 +48,7 @@ const { createUiEditorPanelController } = require("../src/index.cjs");
   naturalWidthController.selectElement("demo.table");
   await naturalWidthController.activateDirection("right");
   assert.equal(naturalWidthChanges.length, 1);
-  assert.deepEqual(naturalWidthChanges[0].payload, { width: 205, height: 50 });
+  assert.deepEqual(naturalWidthChanges[0].payload, { element: { width: 205, height: 50 } });
 
   const missingWidthRuntime = {
     getSessionStatus() { return { ok: true, active: true, changedCount: 0, changedElementIds: [] }; },
@@ -73,7 +73,7 @@ const { createUiEditorPanelController } = require("../src/index.cjs");
   naturalHeightController.setMode("height");
   await naturalHeightController.activateDirection("down");
   assert.equal(naturalHeightChanges.length, 1);
-  assert.deepEqual(naturalHeightChanges[0].payload, { height: 205, width: 25 });
+  assert.deepEqual(naturalHeightChanges[0].payload, { element: { height: 205, width: 25 } });
 
   const throwingRegistry = { getElementById() { throw new Error("registry boom"); } };
   const throwingController = createUiEditorPanelController({ runtime, registry: throwingRegistry });

@@ -73,3 +73,13 @@ Der Bootstrap liest `window.localStorage` nicht direkt im HTML. `createReference
 ## Nicht-Ziele und M73
 
 Keine Produktiv-Ziel-App, keine externe Fachanbindung, kein Drag-and-drop, keine Mehrfachauswahl und kein Autosave. M73 bleibt der Release-Candidate-Schritt.
+
+## Editor-Layoutmodell, Text-Refs und Schrittweiten
+
+M72 verwendet fuer editierbare Layoutwerte das verschachtelte Modell `{ elementId, element, text }`. Elementwerte bleiben unter `element` (`x`, `y`, `width`, `height`, `visible`), Textwerte bleiben unter `text` (`offsetX`, `offsetY`, `fontSize`). Flache Root-Textfelder wie `textOffsetX`, `textOffsetY` oder `fontSize` sind kein produktives Layoutmodell.
+
+Der BrowserHostAdapter darf Textdarstellung nur ueber explizit von der Zielanwendung gelieferte `textRefs` oder `getTextRef(elementId)` bearbeiten. Er sucht keine Unterelemente automatisch, verwendet kein DOM-Scanning und kein `querySelector`. Text-Offsets sind relative Editorwerte: der urspruengliche Inline- beziehungsweise wirksame Computed-Wert wird vor der ersten Textaenderung erfasst und der Editorwert wird darauf addiert. `text.fontSize` ist ein absoluter Editor-Zielwert; ohne Editorwert bleibt die wirksame Ausgangsschriftgroesse massgeblich.
+
+Reine Textbearbeitung darf die aeussere Elementgeometrie nicht veraendern. `text.offsetY` wird mit explizitem Text-Ref per Text-Transform angewendet; ohne Text-Ref wird eine vertikale Textverschiebung strukturiert blockiert, statt `paddingTop` oder eine andere box-modellveraendernde Technik auf dem aeusseren Element zu verwenden. Restore und Clear stellen die urspruenglichen Inlinewerte exakt wieder her, geben reine Stylesheetwerte wieder frei und entfernen editor-eigene CSS-Variablen. Panelposition und Elementzustand werden davon nicht beschaedigt.
+
+Delta-Clients wie der PanelController verwenden `resolveOperationStep(...)`. Die Prioritaet lautet: `steps.resizeWidth` vor `steps.resize` vor Panel-Fallback, `steps.resizeHeight` vor `steps.resize` vor Panel-Fallback, `steps.move` vor Panel-Fallback, `steps.textMoveX`/`steps.textMoveY` vor `steps.textMove` vor Panel-Fallback sowie `steps.fontSize` vor Panel-Fallback. Nur positive, endliche Schrittweiten sind gueltig. Der Controller berechnet daraus Deltas und sendet verschachtelte Payloads; bei Textposition wird nur das geaenderte Textfeld gesendet. Direkte Runtime-Aufrufe liefern absolute Zielwerte und werden weiterhin anhand erlaubter Operationen, Felder und Limits validiert, ohne eine kuenstliche Delta-Schrittpruefung zu erzwingen.

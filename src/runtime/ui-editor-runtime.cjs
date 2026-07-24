@@ -164,20 +164,22 @@ function validateLayoutEntryForElement(entry, registryElement) {
   if (normalized.elementId !== registryElement.id) {
     return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, "layout entry elementId does not match registry element.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "x") || Object.prototype.hasOwnProperty.call(normalized, "y")) && !isOperationAllowed(registryElement, "move")) {
+  const element = normalized.element || {};
+  const text = normalized.text || {};
+  if ((Object.prototype.hasOwnProperty.call(element, "x") || Object.prototype.hasOwnProperty.call(element, "y")) && !isOperationAllowed(registryElement, "move")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires move operation.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "width") || Object.prototype.hasOwnProperty.call(normalized, "height")) && !isOperationAllowed(registryElement, "resize")) {
+  if ((Object.prototype.hasOwnProperty.call(element, "width") || Object.prototype.hasOwnProperty.call(element, "height")) && !isOperationAllowed(registryElement, "resize")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires resize operation.");
   }
-  if ((Object.prototype.hasOwnProperty.call(normalized, "textOffsetX") || Object.prototype.hasOwnProperty.call(normalized, "textOffsetY")) && !isOperationAllowed(registryElement, "textMove")) {
+  if ((Object.prototype.hasOwnProperty.call(text, "offsetX") || Object.prototype.hasOwnProperty.call(text, "offsetY")) && !isOperationAllowed(registryElement, "textMove")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires textMove operation.");
   }
-  if (Object.prototype.hasOwnProperty.call(normalized, "fontSize") && !isOperationAllowed(registryElement, "fontSize")) {
+  if (Object.prototype.hasOwnProperty.call(text, "fontSize") && !isOperationAllowed(registryElement, "fontSize")) {
     return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "layout entry requires fontSize operation.");
   }
-  if (Object.prototype.hasOwnProperty.call(normalized, "visible")) {
-    const visibilityOperation = normalized.visible === false ? "hide" : "show";
+  if (Object.prototype.hasOwnProperty.call(element, "visible")) {
+    const visibilityOperation = element.visible === false ? "hide" : "show";
     if (!isOperationAllowed(registryElement, visibilityOperation)) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires ${visibilityOperation} operation.`);
     }

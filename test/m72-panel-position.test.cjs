@@ -1,0 +1,10 @@
+"use strict";
+const assert = require("node:assert/strict");
+const { PANEL_LAYERS, createUiEditorPanelController } = require("../src/index.cjs");
+const registry = { getElementById(id){ return { id, name: id, editable: true, allowedOps: ["move", "textMove"], lockedOps: [] }; }, listElements(){ return [this.getElementById("a")]; } };
+const runtime = { inspectElement(){ return { ok: true, allowedOps: ["move", "textMove"], effectiveOps: ["move", "textMove"], currentEntry: { elementId: "a", element: { x: 0, y: 0 }, text: { offsetX: 0 } } }; }, applyChange(){ return { ok: true }; }, getSessionStatus(){ return { ok: true, active: true }; }, getPersistenceStatus(){ return { available: true, persistent: true }; }, discardElementChanges(){ return { ok: true }; } };
+const controller = createUiEditorPanelController({ registry, runtime });
+controller.selectElement("a");
+controller.setLayer(PANEL_LAYERS.TEXT);
+assert.equal(controller.getState().layer, PANEL_LAYERS.TEXT);
+console.log("m72 panel position ok");

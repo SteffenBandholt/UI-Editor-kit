@@ -33,7 +33,7 @@ const { createUiEditorPanelController } = require("./panel/ui-editor-panel-contr
 const { createUiEditorPanelViewModel } = require("./panel/ui-editor-panel-view-model.cjs");
 const { createUiEditorPanel } = require("./panel/ui-editor-panel-renderer.cjs");
 const { createPanelMessageCatalog } = require("./panel/panel-message-catalog.cjs");
-const { PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = require("./panel/panel-intents.cjs");
+const { PANEL_LAYERS, PANEL_INTENTS, PANEL_MODES, PANEL_DIRECTIONS } = require("./panel/panel-intents.cjs");
 const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
@@ -65,6 +65,7 @@ module.exports = Object.freeze({
   createUiEditorPanelViewModel,
   createUiEditorPanel,
   createPanelMessageCatalog,
+  PANEL_LAYERS,
   PANEL_INTENTS,
   PANEL_MODES,
   PANEL_DIRECTIONS,

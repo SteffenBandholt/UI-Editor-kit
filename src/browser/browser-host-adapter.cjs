@@ -228,17 +228,19 @@ function createBrowserHostAdapter(options) {
       if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) {
         return blocked(BROWSER_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current size unavailable.");
       }
-      const entry = {
-        elementId,
+      const elementEntry = {
         x: toNumber(getStyleValue(element.style, EDITOR_X)) || 0,
         y: toNumber(getStyleValue(element.style, EDITOR_Y)) || 0,
         width,
         height,
         visible: !(element.hidden === true || getStyleValue(element.style, EDITOR_VISIBLE) === "false"),
       };
-      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_X) !== "") entry.textOffsetX = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_X)) || 0;
-      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y) !== "") entry.textOffsetY = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y)) || 0;
-      if (getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE) !== "") entry.fontSize = toNumber(getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE));
+      const entry = { elementId, ...elementEntry, element: elementEntry };
+      const text = {};
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_X) !== "") text.offsetX = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_X)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y) !== "") text.offsetY = toNumber(getStyleValue(element.style, EDITOR_TEXT_OFFSET_Y)) || 0;
+      if (getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE) !== "") text.fontSize = toNumber(getStyleValue(element.style, EDITOR_TEXT_FONT_SIZE));
+      if (Object.keys(text).length > 0) entry.text = text;
       return ok(entry);
     } catch (error) {
       return blocked(BROWSER_ERROR_CODES.HOST_READ_FAILED, error.message || "style read failed");
@@ -260,30 +262,33 @@ function createBrowserHostAdapter(options) {
 
 
   function applyTextEntry(element, elementId, entry, original) {
+    const textEntry = entry.text || {};
     const textElement = getTextRef(elementId);
     const target = textElement || element;
     const baseX = toNumber(original.value.textState && (original.value.textState.inlineTextIndent || original.value.textState.computedTextIndent)) || 0;
     const baseY = toNumber(original.value.textState && (original.value.textState.inlinePaddingTop || original.value.textState.computedPaddingTop)) || 0;
     const baseFont = toNumber(original.value.textState && (original.value.textState.inlineFontSize || original.value.textState.computedFontSize));
-    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetX")) {
-      setStyleValue(element.style, EDITOR_TEXT_OFFSET_X, px(entry.textOffsetX));
-      target.style.textIndent = px(baseX + (Number(entry.textOffsetX) || 0));
+    if (Object.prototype.hasOwnProperty.call(textEntry, "offsetX")) {
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_X, px(textEntry.offsetX));
+      target.style.textIndent = px(baseX + (Number(textEntry.offsetX) || 0));
     }
-    if (Object.prototype.hasOwnProperty.call(entry, "textOffsetY")) {
-      setStyleValue(element.style, EDITOR_TEXT_OFFSET_Y, px(entry.textOffsetY));
+    if (Object.prototype.hasOwnProperty.call(textEntry, "offsetY")) {
+      if (!textElement) return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, "text offsetY requires an explicit text ref.");
+      setStyleValue(element.style, EDITOR_TEXT_OFFSET_Y, px(textEntry.offsetY));
       if (textElement) {
         const baseTransform = original.value.textState && original.value.textState.inlineTransform ? `${original.value.textState.inlineTransform} ` : "";
-        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
-        target.style.transform = `${baseTransform}translateY(${px(entry.textOffsetY)})`.trim();
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(textEntry.offsetY)})`);
+        target.style.transform = `${baseTransform}translateY(${px(textEntry.offsetY)})`.trim();
       } else {
-        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(entry.textOffsetY)})`);
+        setStyleValue(element.style, EDITOR_TEXT_TRANSFORM, `translateY(${px(textEntry.offsetY)})`);
       }
     }
-    if (Object.prototype.hasOwnProperty.call(entry, "fontSize")) {
-      setStyleValue(element.style, EDITOR_TEXT_FONT_SIZE, px(entry.fontSize));
-      target.style.fontSize = px(entry.fontSize);
+    if (Object.prototype.hasOwnProperty.call(textEntry, "fontSize")) {
+      setStyleValue(element.style, EDITOR_TEXT_FONT_SIZE, px(textEntry.fontSize));
+      target.style.fontSize = px(textEntry.fontSize);
     }
     void baseY; void baseFont;
+    return ok();
   }
 
   return {
@@ -302,25 +307,27 @@ function createBrowserHostAdapter(options) {
       const original = ensureOriginal(element, elementId);
       if (!original.ok) return original;
       try {
-        if (Object.prototype.hasOwnProperty.call(entry, "x")) setStyleValue(element.style, EDITOR_X, px(entry.x));
-        if (Object.prototype.hasOwnProperty.call(entry, "y")) setStyleValue(element.style, EDITOR_Y, px(entry.y));
-        if (Object.prototype.hasOwnProperty.call(entry, "x") || Object.prototype.hasOwnProperty.call(entry, "y")) {
+        const elementEntry = entry.element || entry;
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "x")) setStyleValue(element.style, EDITOR_X, px(elementEntry.x));
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "y")) setStyleValue(element.style, EDITOR_Y, px(elementEntry.y));
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "x") || Object.prototype.hasOwnProperty.call(elementEntry, "y")) {
           const appliedTransform = applyTransform(element, elementId);
           if (!appliedTransform.ok) return appliedTransform;
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "width")) {
-          setStyleValue(element.style, EDITOR_WIDTH, px(entry.width));
-          element.style.width = px(entry.width);
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "width")) {
+          setStyleValue(element.style, EDITOR_WIDTH, px(elementEntry.width));
+          element.style.width = px(elementEntry.width);
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "height")) {
-          setStyleValue(element.style, EDITOR_HEIGHT, px(entry.height));
-          element.style.height = px(entry.height);
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "height")) {
+          setStyleValue(element.style, EDITOR_HEIGHT, px(elementEntry.height));
+          element.style.height = px(elementEntry.height);
         }
-        if (Object.prototype.hasOwnProperty.call(entry, "visible")) {
-          setStyleValue(element.style, EDITOR_VISIBLE, entry.visible ? "true" : "false");
-          element.hidden = entry.visible === false;
+        if (Object.prototype.hasOwnProperty.call(elementEntry, "visible")) {
+          setStyleValue(element.style, EDITOR_VISIBLE, elementEntry.visible ? "true" : "false");
+          element.hidden = elementEntry.visible === false;
         }
-        applyTextEntry(element, elementId, entry, original);
+        const textApplied = applyTextEntry(element, elementId, entry, original);
+        if (textApplied && textApplied.ok === false) return textApplied;
         return ok();
       } catch (error) {
         return blocked(BROWSER_ERROR_CODES.HOST_APPLY_FAILED, error.message || "layout apply failed");
