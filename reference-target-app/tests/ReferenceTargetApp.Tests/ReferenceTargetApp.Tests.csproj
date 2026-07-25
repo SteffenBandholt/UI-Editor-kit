@@ -13,6 +13,7 @@
     <ProjectReference Include="../../src/ReferenceTargetApp.Domain/ReferenceTargetApp.Domain.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/ReferenceTargetApp.PdfRendering/ReferenceTargetApp.PdfRendering.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -262,6 +262,12 @@ Status: abgenommen
 
 Zweck: Sichtbare Save-/Load-/Discard-/Reset-Bedienung und vollstaendiger praktischer Layoutbetrieb auf der abgenommenen M74-Oberflaeche. Abgenommen mit zwei Scopes, zwei Profilen, direkter App-Auswahl, Startup-Restore und vollstaendigem Batchrollback.
 
+### K9 / M76 - PDF-Grundmodell und PDF-HostAdapter
+
+Status: abgenommen
+
+Zweck: Bibliotheksneutrales A4-PDF-Modell mit expliziter Registry und Capability-Matrix, getrenntem PDF-HostAdapter und Profilspeicher sowie lokaler realer Mehrseiten-PDF-Erzeugung. Abgenommen mit reproduzierbarem Umbruch, Save/Load/Discard/Reset, vollständigem Batchrollback, unveränderten Fachdaten und technischem `--pdf-model-diagnostic`-Nachweis.
+
 ## L - Regel fuer kuenftige Auftraege
 
 Jeder Auftrag muss nennen:

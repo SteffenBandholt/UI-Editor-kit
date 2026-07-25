@@ -175,6 +175,7 @@ reference-target-app/
 │  ├─ ReferenceTargetApp.Domain/             reines Fachmodell ohne WPF- oder Editor-Abhängigkeit
 │  ├─ ReferenceTargetApp.Infrastructure/     Erzeugung realistischer In-Memory-Beispieldaten
 │  ├─ ReferenceTargetApp.EditorIntegration/  Registry, HostAdapter, Prozess/Session und lokale Layoutpersistenz
+│  ├─ ReferenceTargetApp.PdfRendering/       gekapselte lokale PDFsharp-Zeichenschicht
 │  └─ ReferenceTargetApp.Wpf/                native Oberfläche und explizite Adapter-Anbindung
 └─ tests/
    └─ ReferenceTargetApp.Tests/               Fachmodell-, Registry- und WPF-Integrationstests
@@ -229,6 +230,25 @@ M73 stellt die technische Anbindung bereit; M74 das native Editorfenster; M75 de
 - keine automatische Registrierung und keine Visual-Tree-Heuristik;
 - keine Browser-, HTML-, DOM-, Electron- oder WebView-Lösung.
 
-## Offen ab M76 und in späteren Meilensteinen
+## Offen ab M77 und in späteren Meilensteinen
 
-PDF-Grundmodell und PDF-HostAdapter beginnen erst mit M76. PDF-Vorschau, Windows-Manager, Installerarbeit für diesen Ausbau, Alt-App-Registrationslauf, automatische Elementerkennung, Browser, Netzwerk, Cloud, freie Profilverwaltung und Undo/Redo sind nicht Teil von M75.
+M76 ist technisch und praktisch abgenommen. Offen ab M77 bleiben die sichtbare PDF-Editoroberfläche, Seitenübersicht, Elementbaum, native Vorschau und die gemeinsame sichtbare UI-/PDF-Bedienung. Windows-Manager, Installerarbeit für diesen Ausbau, Alt-App-Registrationslauf, automatische Elementerkennung, Browser, Netzwerk, Cloud, freie Profilverwaltung und Undo/Redo bleiben späteren Meilensteinen beziehungsweise den dauerhaften Produktgrenzen zugeordnet.
+
+## PDF-Grundmodell und Erzeugung M76
+
+Die PDF-Integration ist additiv und vom M75-UI-Betrieb getrennt:
+
+- `EditorIntegration/Pdf` enthält das neutrale A4-Modell in Millimetern, die Registry mit 26 `pdf.order-document`-Elementen, Validatoren, Fingerprint, LayoutState, eigenen HostAdapter, Zustandskoordination und das Schema-1-Profil `pdf-standard`.
+- `PdfRendering` kapselt ausschließlich PDFsharp 6.2.4 (MIT) und wandelt Millimeter zentral in PDF-Punkte um. Domain besitzt weiterhin keine PDF-, JSON-, Datei-, Prozess- oder Editorabhängigkeit.
+- PDF-Profile liegen unter `%LOCALAPPDATA%\UI-Editor-kit\ReferenceTargetApp\pdf-layouts\` und können UI-Profile weder überschreiben noch laden.
+- Die Ausgabe enthält reales A4, Vektorlogo, Firmen-/Kundendaten, sechs Tabellenspalten, deutsche Eurobeträge, Summen, wiederholten Header/Tabellenkopf/Footer und Seitenzahlen. Tabellenzeilen werden nicht geteilt; der Summenblock wechselt bei Bedarf vollständig auf die nächste Seite.
+- Save, Load, Discard, Reset, Dirty-State und vollständiger Batchrollback arbeiten auf dem neutralen Modell. Layoutprofile enthalten keine Fachwerte.
+
+Der programmgesteuerte Realnachweis ist:
+
+```powershell
+dotnet build reference-target-app
+reference-target-app\src\ReferenceTargetApp.Wpf\bin\Debug\net10.0-windows\ReferenceTargetApp.exe --pdf-model-diagnostic
+```
+
+Er erzeugt und öffnet technisch geprüfte Mehrseiten-PDFs, belegt Änderungen an Position, Breite, Höhe, Textposition und Schriftgröße, prüft Save/Load/Discard/Reset sowie Fehlerrollback und löscht danach alle Diagnoseartefakte. Der Normalstart zeigt keine PDF-Funktion und startet keinen Node-Prozess.

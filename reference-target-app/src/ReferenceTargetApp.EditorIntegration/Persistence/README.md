@@ -1,4 +1,4 @@
-# Layoutpersistenz M73.5 und M75
+# Layoutpersistenz M73.5, M75 und getrennte PDF-Persistenz M76
 
 Der weiterhin getestete M73.5-Kompatibilitätsweg speichert genau ein Layoutprofil für `ui.order-header` unter
 `%LOCALAPPDATA%\UI-Editor-kit\ReferenceTargetApp\layouts\order-header-default.layout.json`.
@@ -26,4 +26,10 @@ Load liest die aktive Datei jedes Mal neu vom Datenträger und unterscheidet feh
 
 `--ui-full-operation-diagnostic` weist Speichern, echten Prozessneustart, Startup-Restore beider Scopes, getrennte Profile sowie einen provozierten Batchfehler mit vollständigem Rollback nach und entfernt anschließend alle Diagnoseprofile und temporären Dateien.
 
-Nicht enthalten sind eine stille Migration des Altformats, PDF, Browser, Netzwerk oder Fachdatenspeicherung. Die sichtbare Bedienung liegt in der WPF-Schicht; dieser Persistenzbereich enthält ausschließlich neutrale Dokument-, Speicher-, Validierungs-, Zustands- und Rollbacklogik.
+## Getrenntes PDF-Profil M76
+
+Die PDF-Persistenz liegt bewusst unter `EditorIntegration/Pdf` und nicht in den UI-Profilklassen. Sie schreibt ausschließlich `%LOCALAPPDATA%\UI-Editor-kit\ReferenceTargetApp\pdf-layouts\pdf-standard.pdf-layout.json` mit `documentKind: pdf-layout-profile`, Schema 1, `profileId: pdf-standard`, Scope `pdf.order-document` und PDF-Registry-Fingerprint. Die vorhandenen UI-Dateien `standard.layout-profile.json`, `compact.layout-profile.json` und `active-layout-profile.json` bleiben unverändert. Beide Dokumentformen weisen einander beim Laden ab.
+
+PDF-Save und -Load validieren die vollständige Elementmenge und alle capability-gedeckten Werte. Discard stellt den letzten Saved-/Loaded-Zustand wieder her, Reset die registrierte Baseline, ohne die Datei zu überschreiben. Batchfehler rollen den vollständigen PDF-Working-State zurück. Atomisches Schreiben und Fehlererhalt folgen denselben Sicherheitsprinzipien wie die UI-Persistenz, verwenden aber eigene Typen und Pfade.
+
+Nicht enthalten sind eine stille Migration des Altformats, Browser, Netzwerk oder Fachdatenspeicherung. Sichtbare PDF-Bedienung beginnt erst mit M77.

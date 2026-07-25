@@ -33,4 +33,30 @@ public sealed class ReferenceOrderFactory
             OrderStatus.InReview,
             0.19m);
     }
+
+    public Order CreatePdfDiagnosticOrder()
+    {
+        var customer = new Customer(
+            "Nordlicht Anlagenbau GmbH",
+            "Mara Hoffmann",
+            "Am Technologiepark 18",
+            "24118",
+            "Kiel",
+            "mara.hoffmann@nordlicht.example");
+        var descriptions = new[]
+        {
+            "Planung und technische Abstimmung",
+            "Steuerungseinheit NX-400 mit Anschlussmodul",
+            "Montage, Prüfung und dokumentierte Inbetriebnahme",
+            "Einweisung und technische Dokumentation"
+        };
+        var positions = Enumerable.Range(1, 38).Select(index => new OrderPosition(
+            index * 10,
+            descriptions[(index - 1) % descriptions.Length] + $" – Abschnitt {index:00}",
+            index % 3 + 1,
+            index % 2 == 0 ? "Stk." : "Std.",
+            42m + index * 3.75m)).ToArray();
+        return new Order("AU-2026-PDF-0076", new DateOnly(2026, 7, 25), new DateOnly(2026, 8, 21),
+            "Deterministischer mehrseitiger PDF-Nachweis", "Daniel Krüger", customer, positions, OrderStatus.InReview, 0.19m);
+    }
 }

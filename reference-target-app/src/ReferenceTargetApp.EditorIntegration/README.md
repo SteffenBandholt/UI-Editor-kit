@@ -1,6 +1,6 @@
-# EditorIntegration – M75 vollständiger nativer Layoutbetrieb
+# EditorIntegration – UI-Layoutbetrieb M75 und PDF-Grundmodell M76
 
-Dieser Projektbereich besitzt die expliziten WPF-UI-Registries, den nativen HostAdapter, die lokale Prozess-/Sessiongrenze und den ziel-app-eigenen dauerhaften Layoutspeicher. M75 betreibt `ui.order-header` und `ui.customer-details` über dieselben neutralen Verträge und ergänzt zwei feste Profile sowie scopeübergreifende atomare Layoutoperationen.
+Dieser Projektbereich besitzt die expliziten WPF-UI-Registries, den nativen HostAdapter, die lokale Prozess-/Sessiongrenze und den ziel-app-eigenen dauerhaften Layoutspeicher. M75 betreibt `ui.order-header` und `ui.customer-details`. M76 ergänzt additiv unter `Pdf/` ein getrenntes neutrales PDF-Modell, die PDF-Registry, den `PdfHostAdapter`, PDF-Profilzustände und Batchkoordination.
 
 ## Bestehender HostAdapter
 
@@ -52,7 +52,11 @@ Load, Gesamtverwerfen, Gesamtreset und Profilwechsel sichern zunächst beide sic
 
 Die additiven Prozessnachrichten `selectEditorScope` und `refreshEditorLayoutStates` wechseln den aktiven Scope und aktualisieren beide neutralen Layoutzustände innerhalb derselben Node-Session. Alte Ein-Scope-Nachrichten und Operationen bleiben unverändert.
 
-Fenster, native Dialoge und die explizite Zuordnung registrierter WPF-Controlreferenzen liegen weiterhin ausschließlich in der WPF-Schicht. Domain bleibt frei von WPF-, JSON-, Datei- und Prozessabhängigkeiten. PDF und M76-Funktionen sind nicht enthalten.
+Fenster, native Dialoge und die explizite Zuordnung registrierter WPF-Controlreferenzen liegen weiterhin ausschließlich in der WPF-Schicht. Domain bleibt frei von WPF-, PDFsharp-, JSON-, Datei- und Prozessabhängigkeiten. Das M76-PDF-Modell ist vom UI-Prozessvertrag getrennt und verändert keine vorhandene Nachricht oder Operation.
+
+## M76 PDF-Integration
+
+`Pdf/` definiert A4 in Millimetern, 26 registrierte `pdf.`-Elemente, Capability-Matrix, Parentstruktur, SHA-256-Fingerprint, neutralen LayoutState, Validierung, einen eigenen `IPdfHostAdapter`/`PdfHostAdapter` sowie das feste Profil `pdf-standard`. UI- und PDF-IDs, Adapter und Persistenzdokumente sind gegenseitig inkompatibel. Save, Load, Discard, Reset und Batchrollback laufen programmgesteuert ohne sichtbare M77-Bedienung. Details stehen in `Pdf/README.md`.
 
 ## Timeouts und Ende
 
