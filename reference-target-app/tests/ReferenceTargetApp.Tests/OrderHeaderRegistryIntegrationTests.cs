@@ -48,6 +48,8 @@ public sealed class OrderHeaderRegistryIntegrationTests
                 Assert.IsNotNull(registry);
                 Assert.IsNotNull(hostAdapter);
                 Assert.IsNull(window.DiagnosticChangeResult, "Normal application start must not execute the diagnostic change.");
+                Assert.IsNull(window.EditorProcessCoordinator, "Normal application start must not start or prepare a Node process.");
+                Assert.IsNull(window.EditorProcessDiagnosticTask);
                 Assert.AreSame(registry, hostAdapter.GetRegistry());
                 CollectionAssert.AreEqual(ExpectedIds, registry.Entries.Select(entry => entry.ElementId).ToArray());
                 Assert.AreEqual(activityBeforeRegistration, window.ViewModel.ActivityMessage, "Registry and HostAdapter creation must not trigger a business action.");

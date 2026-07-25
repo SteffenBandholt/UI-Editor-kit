@@ -10,6 +10,7 @@ const ALLOWED_LAYOUT_PAYLOAD_FIELDS = Object.freeze([
   "y",
   "width",
   "height",
+  "text",
   "spacing",
   "order",
   "visibility",
@@ -101,6 +102,24 @@ function validatePayloadFields(changeRequest, errors) {
       }
     }
   });
+
+  if (hasOwn(changeRequest.payload, "text")) {
+    const text = changeRequest.payload.text;
+    if (!isPlainRequestObject(text)) {
+      errors.push(createError(changeRequest, "invalid_payload", "payload.text muss ein Objekt sein.", {
+        field: "payload.text",
+      }));
+      return;
+    }
+
+    Object.keys(text).forEach((fieldName) => {
+      if (!["offsetX", "offsetY", "fontSize"].includes(fieldName)) {
+        errors.push(createError(changeRequest, "invalid_payload", `payload.text enthaelt keinen neutralen Textlayoutwert: ${fieldName}`, {
+          field: `payload.text.${fieldName}`,
+        }));
+      }
+    });
+  }
 }
 
 function validateChangeRequestShape(changeRequest) {
