@@ -3,6 +3,9 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>ReferenceTargetApp.EditorIntegration</RootNamespace>
-    <Description>Explicit WPF UI registry boundary for the reference target application.</Description>
+    <Description>Explicit WPF UI registry and native host adapter boundary for the reference target application.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReferenceTargetApp.Tests" />
+  </ItemGroup>
 </Project>
