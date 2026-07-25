@@ -1,6 +1,38 @@
-# Referenz-Ziel-App – M73.1
+# Referenz-Ziel-App – M73.2
 
-`reference-target-app/` enthält das belastbare Grundgerüst der neuen nativen Windows-Referenzanwendung. Die Anwendung ist eine echte C#-/WPF-Desktop-App auf .NET 10 und zeigt einen realistischen Beispielauftrag mit Auftragskopf, Kundendaten, Eingabefeldern, gruppierten Bereichen, Positionstabelle, Summen, Status und fachlichen Beispielaktionen.
+`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73.2 ergänzt ausschließlich eine explizite, lesbare UI-Registry für den ersten freigegebenen Bereich „Auftragskopf“. Die sichtbare Oberfläche, die Fachdaten und die fachlichen Aktionen bleiben unverändert.
+
+## Entwurfsentscheidung M73.2
+
+Die Registry wird erst im `Loaded`-Ereignis des WPF-Hauptfensters aus ausdrücklich benannten nativen Controls aufgebaut. Es gibt keine Visual-Tree-Suche, keine Heuristik und keine automatische Registrierung. Die Einträge und ihre Abfragen sind nach dem Aufbau unveränderlich.
+
+Der erste Registry-Umfang besteht exakt aus:
+
+| Element-ID | Parent-ID | Typ | erlaubte Fähigkeiten |
+| --- | --- | --- | --- |
+| `ui.order-header` | – | Bereich/Scope | keine |
+| `ui.order-header.group.core` | `ui.order-header` | Gruppe | Position, Breite, Höhe |
+| `ui.order-header.order-number` | `ui.order-header.group.core` | Eingabefeld | Position, Breite, Höhe, Textposition, Schriftgröße |
+| `ui.order-header.order-date` | `ui.order-header.group.core` | Eingabefeld | Position, Breite, Höhe, Textposition, Schriftgröße |
+| `ui.order-header.due-date` | `ui.order-header.group.core` | Eingabefeld | Position, Breite, Höhe, Textposition, Schriftgröße |
+| `ui.order-header.subject` | `ui.order-header.group.core` | Eingabefeld | Position, Breite, Höhe, Textposition, Schriftgröße |
+| `ui.order-header.responsible-person` | `ui.order-header.group.core` | Eingabefeld | Position, Breite, Höhe, Textposition, Schriftgröße |
+| `ui.order-header.status` | `ui.order-header` | Statusanzeige | Position, Breite, Höhe, Textposition, Schriftgröße |
+
+Die Parent-/Child-Struktur ist damit:
+
+```text
+ui.order-header
+├─ ui.order-header.group.core
+│  ├─ ui.order-header.order-number
+│  ├─ ui.order-header.order-date
+│  ├─ ui.order-header.due-date
+│  ├─ ui.order-header.subject
+│  └─ ui.order-header.responsible-person
+└─ ui.order-header.status
+```
+
+Kundendaten, Positionstabelle, Summenbereich und fachliche Buttons sind ausdrücklich nicht registriert. Eine Registry-Abfrage liest nur Metadaten und native Referenzen; sie löst keine fachliche Aktion und keine Layoutänderung aus.
 
 ## Voraussetzungen
 
@@ -23,68 +55,48 @@ reference-target-app/
 ├─ src/
 │  ├─ ReferenceTargetApp.Domain/             reines Fachmodell ohne WPF- oder Editor-Abhängigkeit
 │  ├─ ReferenceTargetApp.Infrastructure/     Erzeugung realistischer In-Memory-Beispieldaten
-│  ├─ ReferenceTargetApp.Wpf/                native Oberfläche, ViewModel und fachliche UI-Aktionen
-│  └─ ReferenceTargetApp.EditorIntegration/  reservierte, noch funktionslose Prozessgrenze
+│  ├─ ReferenceTargetApp.EditorIntegration/  UI-Registry, Validierung und sichere Diagnostik
+│  └─ ReferenceTargetApp.Wpf/                native Oberfläche und explizite Control-Zuordnung
 └─ tests/
-   └─ ReferenceTargetApp.Tests/               Fachmodell- und Architekturtests
+   └─ ReferenceTargetApp.Tests/               Fachmodell-, Registry- und WPF-Integrationstests
 ```
 
-Die Abhängigkeitsrichtung ist bewusst klein:
+Die Abhängigkeitsrichtung bleibt klein:
 
 ```text
-ReferenceTargetApp.Wpf ──> Infrastructure ──> Domain
-           └───────────────────────────────> Domain
+ReferenceTargetApp.Wpf ──> EditorIntegration (WPF-Registry, ohne Domain-Abhängigkeit)
+           ├─────────────> Infrastructure ──> Domain
+           └────────────────────────────────> Domain
 
-EditorIntegration   (in M73.1 isoliert und von der WPF-App nicht referenziert)
-Tests ────────────────> Infrastructure + Domain
+Tests ──> Wpf + EditorIntegration + Infrastructure + Domain
 ```
 
-Fachdaten liegen ausschließlich als Domainobjekte vor. Es gibt in M73.1 keine Layoutdaten. Der für spätere Layout- und Editornachrichten reservierte Integrationsbereich ist strukturell vom Fachmodell getrennt.
+Fachdaten liegen ausschließlich in `Domain`; Registry-Metadaten und native WPF-Referenzen ausschließlich in `EditorIntegration`. Es gibt weiterhin keine Layoutdaten.
 
-## Bauen
+## Bauen, testen und starten
 
 Vom Repository-Stamm:
 
 ```powershell
 dotnet build reference-target-app
-```
-
-## Testen
-
-```powershell
 dotnet test reference-target-app
-```
-
-Die Tests prüfen insbesondere, dass das Fachmodell ohne WPF gebaut wird, keine Abhängigkeit zum UI-Editor-Kit oder Integrationsprojekt besitzt und vollständige Beispieldaten samt Summen erzeugt werden können. Der Solution-Build ist der automatisierte Buildnachweis für alle Projekte einschließlich WPF.
-
-## Starten
-
-```powershell
 dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj
 ```
 
 Die Buttons führen ausschließlich lokale fachliche Beispielaktionen aus. „Im Arbeitsspeicher sichern“ schreibt bewusst keine Datei oder Layoutdaten.
 
-## Verbindliche Grenze von M73.1
+## Verbindliche Grenze von M73.2
 
-Entwurfsentscheidung für diesen Teilschritt:
+M73.2 stellt nur Registry-Metadaten, native Elementreferenzen, unveränderliche Abfragen, Validierung und sichere Diagnostik für den Auftragskopf bereit. Es existieren ausdrücklich:
 
-- Art der Ausgabe: native Windows-UI;
-- editorfähig in M73.1: nein;
-- editorfähige Bereiche, Gruppen, Tabellen, Spalten, Buttons und Felder: noch keine;
-- Registry und Klassifizierung: erst in M73.2 nach eigener vollständiger Entwurfsentscheidung;
-- fachliche Buttons: normale Beispielaktionen, niemals Editoroperationen;
-- PDF: nicht Bestandteil.
-
-Der Ordner `ReferenceTargetApp.EditorIntegration` definiert nur die spätere Zuständigkeit für eine lokale, versionierte JSON-Zeilen-Kommunikation über `stdin`/`stdout`. In M73.1 wird kein Node-Prozess gestartet und es existieren ausdrücklich:
-
-- keine UI-Registry und keine automatische Registrierung;
-- kein HostAdapter;
+- kein HostAdapter und keine Anwendung von Editoroperationen;
 - kein Layoutspeicher und keine Layoutänderung;
-- keine Editor-Session und kein sichtbares Editorfenster;
+- keine Editor-Session, keine Selektion und kein sichtbares Editorfenster;
+- kein Node-Prozess, keine JSON-Zeilen-Kommunikation und kein Prozesslebenszyklus;
 - keine Ziel-App-Auswahl, kein Windows-Manager und keine PDF-Funktion;
+- keine automatische Registrierung und keine Visual-Tree-Heuristik;
 - keine Browser-, HTML-, DOM-, Electron- oder WebView-Lösung.
 
-## Offen für M73.2
+## Offen für M73.3 und spätere Meilensteine
 
-M73.2 muss vor der Implementierung die vollständige Editor-Entwurfsentscheidung für den ersten UI-Bereich festlegen. Danach folgen erst die explizite Registry, native Elementreferenzen, ein echter HostAdapter, die versionierte JSON-Zeilen-Schnittstelle zum vorhandenen Node.js-Kern, kontrollierter Prozesslebenszyklus und die zugehörigen Vertrags- und Integrationstests. Layoutspeicherung oder sichtbare Editoroberflächen bleiben an ihren jeweils freigegebenen Meilenstein gebunden.
+Ein späterer, ausdrücklich freigegebener Meilenstein kann den HostAdapter und die kontrollierte Übersetzung bereits definierter Editoroperationen ergänzen. Prozesskommunikation, Editor-Session, Layoutanwendung, Layoutspeicherung und sichtbare Editoroberflächen bleiben ihren jeweiligen späteren Meilensteinen vorbehalten.

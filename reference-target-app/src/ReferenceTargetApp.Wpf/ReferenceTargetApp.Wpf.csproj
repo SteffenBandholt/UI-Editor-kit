@@ -8,6 +8,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../ReferenceTargetApp.Domain/ReferenceTargetApp.Domain.csproj" />
+    <ProjectReference Include="../ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
     <ProjectReference Include="../ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReferenceTargetApp.Tests" />
   </ItemGroup>
 </Project>

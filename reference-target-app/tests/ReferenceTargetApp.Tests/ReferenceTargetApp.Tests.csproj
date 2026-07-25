@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <RootNamespace>ReferenceTargetApp.Tests</RootNamespace>
@@ -10,7 +11,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/ReferenceTargetApp.Domain/ReferenceTargetApp.Domain.csproj" />
+    <ProjectReference Include="../../src/ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
