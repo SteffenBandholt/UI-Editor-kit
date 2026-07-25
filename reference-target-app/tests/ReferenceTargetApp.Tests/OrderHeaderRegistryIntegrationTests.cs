@@ -1,9 +1,11 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.OrderHeader;
+using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Registry;
 using ReferenceTargetApp.UI.Views;
 
@@ -30,9 +32,13 @@ public sealed class OrderHeaderRegistryIntegrationTests
     {
         StaTest.Run(() =>
         {
+            var persistenceRoot = Path.Combine(Path.GetTempPath(), "ui-editor-kit-m735-window-test", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(persistenceRoot);
+            var layoutStore = new AtomicJsonLayoutStore(LayoutStoragePathResolver.ForRoot(persistenceRoot));
+            File.WriteAllText(layoutStore.FilePath, "{broken");
             var application = new ReferenceTargetApp.App();
             application.InitializeComponent();
-            var window = new MainWindow();
+            var window = new MainWindow(layoutStore);
             try
             {
                 Assert.IsNull(window.UiRegistry, "Registry must not be built before the WPF Loaded event.");
@@ -50,6 +56,9 @@ public sealed class OrderHeaderRegistryIntegrationTests
                 Assert.IsNull(window.DiagnosticChangeResult, "Normal application start must not execute the diagnostic change.");
                 Assert.IsNull(window.EditorProcessCoordinator, "Normal application start must not start or prepare a Node process.");
                 Assert.IsNull(window.EditorProcessDiagnosticTask);
+                Assert.IsNotNull(window.LayoutStartupResult);
+                Assert.IsFalse(window.LayoutStartupResult.Success, "A corrupt layout file must be diagnosed without blocking startup.");
+                Assert.AreEqual("invalid_json", window.LayoutStartupResult.Code);
                 Assert.AreSame(registry, hostAdapter.GetRegistry());
                 CollectionAssert.AreEqual(ExpectedIds, registry.Entries.Select(entry => entry.ElementId).ToArray());
                 Assert.AreEqual(activityBeforeRegistration, window.ViewModel.ActivityMessage, "Registry and HostAdapter creation must not trigger a business action.");
@@ -192,6 +201,7 @@ public sealed class OrderHeaderRegistryIntegrationTests
             {
                 window.Close();
                 application.Shutdown();
+                if (Directory.Exists(persistenceRoot)) Directory.Delete(persistenceRoot, recursive: true);
             }
         });
     }
