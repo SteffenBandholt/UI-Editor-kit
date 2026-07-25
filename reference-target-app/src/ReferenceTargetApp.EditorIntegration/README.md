@@ -1,6 +1,6 @@
-# EditorIntegration – M74 Prozessanbindung der nativen Editoroberfläche
+# EditorIntegration – M75 vollständiger nativer Layoutbetrieb
 
-Dieser Projektbereich besitzt die explizite WPF-UI-Registry aus M73.2, den nativen HostAdapter aus M73.3, die lokale Prozess-/Sessiongrenze aus M73.4 und den ziel-app-eigenen dauerhaften Layoutspeicher aus M73.5 für genau den Bereich `ui.order-header`. M74 ergänzt neutrale DTOs und additive UI-Intents für das native WPF-Editorfenster.
+Dieser Projektbereich besitzt die expliziten WPF-UI-Registries, den nativen HostAdapter, die lokale Prozess-/Sessiongrenze und den ziel-app-eigenen dauerhaften Layoutspeicher. M75 betreibt `ui.order-header` und `ui.customer-details` über dieselben neutralen Verträge und ergänzt zwei feste Profile sowie scopeübergreifende atomare Layoutoperationen.
 
 ## Bestehender HostAdapter
 
@@ -41,6 +41,18 @@ Die Registryserialisierung enthält Metadaten und Operationsfreigaben, aber niem
 `EditorUi/EditorUiState` übersetzt ausschließlich neutrale Baum-, Detail-, Panel- und Layoutwerte. `EditorProcessCoordinator` serialisiert Auswahl, Ebene, Modus, Schrittweite und Richtungsintent innerhalb der bereits aktiven Session. Die Node-Seite erzeugt den Änderungsauftrag über den vorhandenen M70-Panelcontroller und die bestehenden Baum-/Detail-ViewModels. Der C#-Coordinator gibt den Auftrag unverändert an den vorhandenen HostAdapter weiter und liest Details erst nach dem `ChangeResult` neu.
 
 Die Einzelfensterregel und die WPF-Fensterereignisse liegen in der WPF-Schicht. EditorIntegration kennt kein Fenster und schreibt keine native Layoutproperty. Die explizite UTF-8-Kodierung ohne BOM sichert deutsche Anzeigenamen und Statusmeldungen über alle drei Prozessstreams.
+
+## M75 Scope-, Profil- und Zustandskoordination
+
+`LayoutProfileSession` hält die beim Registryaufbau erfasste unveränderliche App-Baseline, den letzten erfolgreichen Saved-/Loaded-Zustand und den jeweils frisch über alle Adapter erfassten Working-Zustand auseinander. Dirty-Vergleiche sind profilbezogen, scopeübergreifend und verwenden die neutrale numerische Toleranz. Alle Layoutänderungen werden als bestehende `ChangeRequest`s über `IHostAdapter` angewandt.
+
+`LayoutProfileCatalog` definiert ausschließlich `standard` und `compact`. `AtomicJsonLayoutProfileStore` speichert je Profil ein vollständig validiertes Schema-2-Dokument atomar. `ActiveLayoutProfileStore` persistiert die zuletzt aktive ID. `LayoutProfileStartupCoordinator` stellt das aktive Profil über beide Registries wieder her, bevor ein Editor oder Node-Prozess geöffnet wird.
+
+Load, Gesamtverwerfen, Gesamtreset und Profilwechsel sichern zunächst beide sichtbaren Scopezustände. Beim ersten Adapterfehler werden alle bereits berührten Scopes in stabiler Reihenfolge vollständig zurückgerollt; Saved-/Loaded-Zustände werden nur nach Gesamterfolg übernommen. Der kontrollierte Diagnosefehler im `WpfHostAdapter` ist nur programmgesteuert armierbar und besitzt keine Produktbedienung.
+
+Die additiven Prozessnachrichten `selectEditorScope` und `refreshEditorLayoutStates` wechseln den aktiven Scope und aktualisieren beide neutralen Layoutzustände innerhalb derselben Node-Session. Alte Ein-Scope-Nachrichten und Operationen bleiben unverändert.
+
+Fenster, native Dialoge und die explizite Zuordnung registrierter WPF-Controlreferenzen liegen weiterhin ausschließlich in der WPF-Schicht. Domain bleibt frei von WPF-, JSON-, Datei- und Prozessabhängigkeiten. PDF und M76-Funktionen sind nicht enthalten.
 
 ## Timeouts und Ende
 

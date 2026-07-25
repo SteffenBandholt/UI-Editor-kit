@@ -176,6 +176,70 @@ function runEditorUiProtocolTests() {
   assert.equal(result.response.payload.editorUiState.details.currentLayout.text.fontSize, 16);
 }
 
+function runMultiScopeEditorUiProtocolTests() {
+  const protocol = createEditorProcessProtocol({ now: () => "2026-07-25T12:00:01.000Z" });
+  const sessionId = "multi-scope-session";
+  const orderElements = elements.map((element) => ({ ...element, layoutArea: "ui.order-header" }));
+  const customerElements = [
+    { id: "ui.customer-details", name: "Kundendaten", type: "root", role: "layout", parentId: null, order: 0, visible: true, editable: false, allowedOps: [], lockedOps: [], layoutArea: "ui.customer-details" },
+    { id: "ui.customer-details.company", name: "Unternehmen", type: "field", role: "content", parentId: "ui.customer-details", order: 1, visible: true, editable: true, allowedOps: ["move", "resizeWidth", "resizeHeight", "textMove", "textResize"], lockedOps: [], layoutArea: "ui.customer-details" },
+  ];
+  const customerState = {
+    ...layoutState,
+    uiScope: "ui.customer-details",
+    layoutScope: "ui.customer-details",
+    elements: {
+      "ui.customer-details": { element: { x: 0, y: 0, width: 700, height: 280 } },
+      "ui.customer-details.company": { element: { x: 0, y: 0, width: 240, height: 30 }, text: { offsetX: 4, offsetY: 2, fontSize: 14 } },
+    },
+  };
+
+  one(protocol, message(MESSAGE_TYPES.ACTIVATE));
+  one(protocol, message(MESSAGE_TYPES.START_SESSION, {}, sessionId));
+  one(protocol, message(MESSAGE_TYPES.REGISTRY, { elements: [...orderElements, ...customerElements] }, sessionId));
+  let result = one(protocol, message(MESSAGE_TYPES.LAYOUT_STATE, {
+    activeScopeId: "ui.order-header",
+    scopeStates: [
+      { scopeId: "ui.order-header", layoutState },
+      { scopeId: "ui.customer-details", layoutState: customerState },
+    ],
+  }, sessionId));
+  assert.equal(result.response.messageType, MESSAGE_TYPES.SESSION_STARTED);
+  assert.deepEqual(result.response.payload.scopes.sort(), ["ui.customer-details", "ui.order-header"]);
+  assert.equal(result.response.payload.activeScopeId, "ui.order-header");
+
+  result = one(protocol, message(MESSAGE_TYPES.SELECT_EDITOR_SCOPE, { scopeId: "ui.customer-details" }, sessionId));
+  assert.equal(result.response.messageType, MESSAGE_TYPES.EDITOR_UI_STATE);
+  assert.equal(result.response.payload.editorUiState.scopeId, "ui.customer-details");
+  assert.equal(result.response.payload.editorUiState.tree.nodes.length, 2);
+  assert.equal(protocol.getState().activeSessionId, sessionId, "Scopewechsel darf keine neue Session starten.");
+  result = one(protocol, message(MESSAGE_TYPES.ACTIVATE_EDITOR_DIRECTION, { direction: "right" }, sessionId));
+  assert.equal(result.response.messageType, MESSAGE_TYPES.SUBMIT_CHANGE_REQUEST);
+  assert.equal(result.response.payload.changeRequest.scope, "ui.customer-details");
+  assert.equal(result.response.payload.changeRequest.elementId, "ui.customer-details.company");
+  one(protocol, message(MESSAGE_TYPES.CHANGE_RESULT, { changeResult: {
+    success: true,
+    changeId: result.response.payload.changeRequest.changeId,
+    elementId: "ui.customer-details.company",
+    operation: "move",
+    errorCode: null,
+    message: "angewandt",
+    previousState: null,
+    newState: { elementId: "ui.customer-details.company", scopeId: "ui.customer-details", x: 1, y: 0, width: 240, height: 30, textOffsetX: 4, textOffsetY: 2, fontSize: 14 },
+    rollbackSucceeded: true,
+  } }, sessionId));
+
+  const refreshedCustomer = { ...customerState, elements: { ...customerState.elements,
+    "ui.customer-details.company": { element: { x: 9, y: 0, width: 240, height: 30 }, text: { offsetX: 4, offsetY: 2, fontSize: 14 } },
+  } };
+  result = one(protocol, message(MESSAGE_TYPES.REFRESH_EDITOR_LAYOUT_STATES, { scopeStates: [
+    { scopeId: "ui.order-header", layoutState },
+    { scopeId: "ui.customer-details", layoutState: refreshedCustomer },
+  ] }, sessionId));
+  assert.equal(result.response.payload.editorUiState.details.currentLayout.element.x, 9);
+  assert.equal(protocol.getState().activeSessionId, sessionId);
+}
+
 async function runEntrypointTest() {
   const entry = path.join(__dirname, "../../src/process/editor-process-entry.cjs");
   const proc = childProcess.spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
@@ -213,6 +277,7 @@ async function runEntrypointTest() {
 (async () => {
   runProtocolContractTests();
   runEditorUiProtocolTests();
+  runMultiScopeEditorUiProtocolTests();
   await runEntrypointTest();
   console.log("TESTS OK: editor-process-protocol");
 })().catch((error) => {

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using ReferenceTargetApp.UI.Editor;
 using ReferenceTargetApp.UI.ViewModels;
 
@@ -28,12 +29,25 @@ public partial class EditorWindow : Window
     {
         if (closeAllowed) return;
         e.Cancel = true;
-        await lifecycle.CloseAsync();
+        await lifecycle.RequestCloseAsync();
     }
 
     private async void ElementTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if (DataContext is EditorWindowViewModel viewModel && e.NewValue is EditorTreeNodeViewModel node)
+        if (ElementTree.IsKeyboardFocusWithin && DataContext is EditorWindowViewModel viewModel && !viewModel.IsApplyingState && e.NewValue is EditorTreeNodeViewModel node &&
+            !string.Equals(viewModel.SelectedId, node.Id, StringComparison.Ordinal))
             await viewModel.SelectElementAsync(node.Id);
+    }
+
+    private async void ScopeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is EditorWindowViewModel viewModel && ScopeSelector.SelectedValue is string scopeId)
+            await viewModel.SelectScopeAsync(scopeId);
+    }
+
+    private async void ProfileSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is EditorWindowViewModel viewModel && ProfileSelector.SelectedValue is string profileId)
+            await viewModel.SelectProfileAsync(profileId);
     }
 }

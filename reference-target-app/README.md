@@ -1,12 +1,12 @@
-# Referenz-Ziel-App – M74 native Editoroberfläche
+# Referenz-Ziel-App – M75 vollständiger nativer UI-Betrieb
 
-`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73.1 bis M73.5 stellen Grundgerüst, explizite Registry, nativen HostAdapter, lokalen Node-Prozess mit Sessionsteuerung sowie ziel-app-eigene Layoutpersistenz und Wiederherstellung nach Neustart bereit. M74 ergänzt darauf eine sichtbare native Editoroberfläche; Fachdaten und fachliche Aktionen bleiben unverändert.
+`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73 stellt Anbindung und Persistenz bereit, M74 die sichtbare native Editoroberfläche. M75 vervollständigt darauf den praktischen UI-Betrieb mit zwei Scopes, zwei Profilen, Save, Load, Verwerfen, Reset, direkter App-Auswahl und Neustart-Restore; Fachdaten und fachliche Aktionen bleiben unverändert.
 
 ## Entwurfsentscheidung M73.2
 
 Die Registry wird erst im `Loaded`-Ereignis des WPF-Hauptfensters aus ausdrücklich benannten nativen Controls aufgebaut. Es gibt keine Visual-Tree-Suche, keine Heuristik und keine automatische Registrierung. Die Einträge und ihre Abfragen sind nach dem Aufbau unveränderlich.
 
-Der erste Registry-Umfang besteht exakt aus:
+Der erste Registry-Umfang aus M73.2 besteht aus:
 
 | Element-ID | Parent-ID | Typ | erlaubte Fähigkeiten |
 | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ ui.order-header
 └─ ui.order-header.status
 ```
 
-Kundendaten, Positionstabelle, Summenbereich und fachliche Buttons sind ausdrücklich nicht registriert. Eine Registry-Abfrage liest nur Metadaten und native Referenzen; sie löst keine fachliche Aktion und keine Layoutänderung aus.
+M75 ergänzt als zweiten echten Scope `ui.customer-details` mit eigener Gruppe, Unternehmen, Ansprechperson, E-Mail, Straße, PLZ/Ort und dem ausdrücklich registrierten Button `ui.customer-details.check-customer`. Positionstabelle, Summenbereich und alle übrigen fachlichen Buttons bleiben unregistriert. Eine Registry-Abfrage liest nur Metadaten und native Referenzen; sie löst keine fachliche Aktion und keine Layoutänderung aus.
 
 ## HostAdapter-Entscheidung M73.3
 
@@ -151,7 +151,7 @@ dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTa
 
 Er öffnet echte WPF-Fenster, prüft einen Node-Prozess und eine Session, Baum und Details, alle fünf M74-Operationen, eine deaktivierte Capability, unveränderte Fachwerte, den normalen Fachbutton, Schließen und Wiederöffnen sowie vollständiges Prozessende.
 
-M74 enthält bewusst keine sichtbaren Save-, Load-, Discard- oder Reset-Funktionen, keine mehreren Profile oder Scopes und keine PDF-, Manager-, Browser- oder Netzwerkfunktion. Diese Layoutbedienung beginnt erst mit M75.
+M75 ergänzt die zuvor bewusst ausgesparten Save-, Load-, Discard- und Reset-Funktionen sowie mehrere Profile und Scopes. PDF-, Manager-, Browser- und Netzwerkfunktionen bleiben ausgeschlossen.
 
 ## Voraussetzungen
 
@@ -204,16 +204,31 @@ dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTa
 
 Die Buttons führen ausschließlich lokale fachliche Beispielaktionen aus. „Im Arbeitsspeicher sichern“ schreibt bewusst keine Datei oder Layoutdaten.
 
-## Verbindliche Grenze nach Abschluss von M74
+## M75-Zustands- und Bedienmodell
 
-M73 stellt die technische Anbindung bereit; M74 ergänzt ausschließlich das native sichtbare Editorfenster und die unmittelbare Bearbeitung des einen registrierten Scopes. Es existieren ausdrücklich:
+- `BASELINE` ist das unveränderte Layout beider Ziel-App-Registries vor jedem Restore und die Quelle für Reset.
+- `SAVED` ist die zuletzt erfolgreich gespeicherte oder vollständig geladene Version des aktiven Profils und die Quelle für Verwerfen.
+- `WORKING` ist der aktuell sichtbare, scopeübergreifend erfasste Zustand; numerisch normalisierte Abweichungen bestimmen den Dirty-Status.
+- `LOADED` wird erst nach vollständiger Validierung und erfolgreicher atomarer Anwendung aller Scopes übernommen.
+
+`Speichern` erfasst und validiert beide Scopes und ersetzt genau eine Profildatei atomar. `Laden` liest diese Datei erneut vom Datenträger. Einzelaktionen betreffen genau eine registrierte Element-ID; Gesamtaktionen sichern beide Scopes und rollen bei jedem Adapterfehler vollständig zurück. Verwerfen ändert zurück auf `SAVED`, Reset zurück auf `BASELINE` und überschreibt die Datei erst durch ein späteres Speichern.
+
+Die festen Profile `standard` und `compact` besitzen getrennte Schema-2-Dateien. `active-layout-profile.json` hält die aktive Wahl benutzerspezifisch. Der Normalstart baut beide Registries auf, validiert das aktive Profil und stellt beide Scopes atomar ohne Node-Prozess wieder her. Eine vorhandene M73.5-Schema-1-Datei wird kontrolliert als Altformat erkannt und nicht still migriert.
+
+Die native Scopewahl umfasst `ui.order-header` und `ui.customer-details`. Die Baumwahl und der Modus `In App auswählen` liefern ausschließlich registrierte neutrale IDs. Im Auswahlmodus werden Klicks auf geschützte Fachbuttons abgefangen; nach Abbruch arbeitet der Fachbutton wieder normal. Dirty-Profilwechsel und Dirty-Schließen sind geschützt; der Schließen-Dialog bietet Speichern, ohne Speichern und Abbrechen.
+
+Der praktische Nachweis `ReferenceTargetApp.exe --ui-full-operation-diagnostic` verwendet echte sichtbare WPF-Fenster, einen Node-Prozess je geöffnetem Editorfenster und zwei nacheinander gestartete Ziel-App-Prozesse. Er prüft beide Scopes und Profile, alle sechs Speicher-/Verwerfen-/Resetaktionen, App-Auswahl und Commandschutz, die drei Schließen-Wege, Neustart-Restore sowie einen provozierten scopeübergreifenden Rollback. Isolierte Diagnosedateien werden abschließend entfernt.
+
+## Verbindliche Grenze nach Abschluss von M75
+
+M73 stellt die technische Anbindung bereit; M74 das native Editorfenster; M75 den vollständigen Layoutbetrieb für die zwei explizit registrierten Scopes. Es existieren ausdrücklich:
 
 - keine dauerhafte Session außerhalb eines geöffneten Editorfensters;
 - kein HTTP, WebSocket, Netzwerkdienst oder anderes Transportprotokoll neben lokalem JSONL über `stdin`/`stdout`;
-- keine Ziel-App-Auswahl, kein Windows-Manager und keine PDF-Funktion;
+- keine automatische Ziel-App-Erkennung, kein Windows-Manager und keine PDF-Funktion;
 - keine automatische Registrierung und keine Visual-Tree-Heuristik;
 - keine Browser-, HTML-, DOM-, Electron- oder WebView-Lösung.
 
-## Offen ab M75 und in späteren Meilensteinen
+## Offen ab M76 und in späteren Meilensteinen
 
-Save-/Load-/Reset-/Discard-Bedienung, mehrere Profile und mehrere Scopes bleiben M75 vorbehalten; PDF beginnt erst mit M76.
+PDF-Grundmodell und PDF-HostAdapter beginnen erst mit M76. PDF-Vorschau, Windows-Manager, Installerarbeit für diesen Ausbau, Alt-App-Registrationslauf, automatische Elementerkennung, Browser, Netzwerk, Cloud, freie Profilverwaltung und Undo/Redo sind nicht Teil von M75.

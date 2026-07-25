@@ -78,6 +78,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ActivityMessage = "Plausibilitätsprüfung ohne Beanstandung abgeschlossen";
     }
 
+    public void MarkCustomerAsChecked()
+    {
+        ActivityMessage = "Kundendaten wurden geprüft";
+    }
+
     public void SaveInMemory()
     {
         ActivityMessage = "Beispielauftrag wurde im Arbeitsspeicher gesichert";

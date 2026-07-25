@@ -4,7 +4,9 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Input;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.CustomerDetails;
 using ReferenceTargetApp.EditorIntegration.OrderHeader;
 using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Process;
@@ -21,36 +23,49 @@ public partial class MainWindow : Window
     private readonly MainWindowViewModel viewModel;
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private readonly AtomicJsonLayoutStore layoutStore;
+    private readonly bool legacyStoreRequested;
     private bool shutdownComplete;
     private EditorWindowCoordinator? editorWindowCoordinator;
+    private TargetAppSelectionService? targetAppSelectionService;
 
     public MainWindow()
-        : this(new AtomicJsonLayoutStore(LayoutStoragePathResolver.ResolveDefault()))
+        : this(new AtomicJsonLayoutStore(LayoutStoragePathResolver.ResolveDefault()), false)
     {
     }
 
     internal MainWindow(AtomicJsonLayoutStore layoutStore)
+        : this(layoutStore, true)
+    {
+    }
+
+    internal MainWindow(AtomicJsonLayoutStore layoutStore, bool legacyStoreRequested)
     {
         this.layoutStore = layoutStore ?? throw new ArgumentNullException(nameof(layoutStore));
+        this.legacyStoreRequested = legacyStoreRequested;
         InitializeComponent();
         viewModel = new MainWindowViewModel(new ReferenceOrderFactory());
         DataContext = viewModel;
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
-        Closed += (_, _) => lifetimeCancellation.Dispose();
+        Closed += (_, _) => { targetAppSelectionService?.Dispose(); lifetimeCancellation.Dispose(); };
     }
 
     public IUiElementRegistry? UiRegistry { get; private set; }
     public UiRegistryDiagnostics? RegistryDiagnostics => UiRegistry?.GetDiagnostics();
     public IHostAdapter? HostAdapter { get; private set; }
+    public IUiElementRegistry? CustomerDetailsRegistry { get; private set; }
+    public IHostAdapter? CustomerDetailsHostAdapter { get; private set; }
+    public IReadOnlyDictionary<string, IHostAdapter>? HostAdapters { get; private set; }
     public ChangeResult? DiagnosticChangeResult { get; private set; }
     public EditorProcessCoordinator? EditorProcessCoordinator { get; private set; }
     public Task<EditorProcessDiagnosticRun>? EditorProcessDiagnosticTask { get; private set; }
     public LayoutStartupResult? LayoutStartupResult { get; private set; }
+    public LayoutProfileStartupResult? LayoutProfileStartupResult { get; private set; }
     internal MainWindowViewModel ViewModel => viewModel;
     internal EditorWindowCoordinator? EditorWindowCoordinator => editorWindowCoordinator;
+    internal TargetAppSelectionService? TargetAppSelectionService => targetAppSelectionService;
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         if (UiRegistry is not null) return;
 
@@ -65,8 +80,50 @@ public partial class MainWindow : Window
             OrderStatusIndicator));
 
         HostAdapter = new WpfHostAdapter(UiRegistry);
-        editorWindowCoordinator = new EditorWindowCoordinator(this, HostAdapter);
-        LayoutStartupResult = new LayoutPersistenceCoordinator(layoutStore).RestoreAtStartup(HostAdapter);
+        CustomerDetailsRegistry = new CustomerDetailsRegistryFactory().Create(new CustomerDetailsElementReferences(
+            CustomerDataGroup,
+            CustomerDetailsCoreGroup,
+            CompanyNameInput,
+            ContactNameInput,
+            EmailInput,
+            StreetInput,
+            PostalCityInput,
+            CheckCustomerButton));
+        CustomerDetailsHostAdapter = new WpfHostAdapter(CustomerDetailsRegistry);
+        HostAdapters = new Dictionary<string, IHostAdapter>(StringComparer.Ordinal)
+        {
+            [OrderHeaderRegistryIds.Scope] = HostAdapter,
+            [CustomerDetailsRegistryIds.Scope] = CustomerDetailsHostAdapter
+        };
+
+        var persistencePhase = App.LayoutPersistencePhase(Environment.GetCommandLineArgs());
+        if (legacyStoreRequested || persistencePhase is not null)
+            LayoutStartupResult = new LayoutPersistenceCoordinator(layoutStore).RestoreAtStartup(HostAdapter);
+        else
+        {
+            var legacy = layoutStore.Load(UiRegistry);
+            LayoutStartupResult = legacy.Found
+                ? new(false, true, "legacy_schema_requires_resave", "Ein altes Ein-Scope-Layout wurde erkannt und aus Sicherheitsgründen nicht teilweise angewandt.", legacy, null)
+                : new(true, false, legacy.Code, legacy.Message, legacy, null);
+        }
+
+        var profileStore = new AtomicJsonLayoutProfileStore(layoutStore.Options.RootDirectory);
+        var activeProfileStore = new ActiveLayoutProfileStore(layoutStore.Options.RootDirectory);
+        LayoutProfileStartupResult = await new LayoutProfileStartupCoordinator(HostAdapters, profileStore, activeProfileStore)
+            .RestoreAsync(lifetimeCancellation.Token);
+        var fullOperationPhase = App.UiFullOperationPhase(Environment.GetCommandLineArgs());
+        targetAppSelectionService = new TargetAppSelectionService(
+            HostAdapters.Values.Select(adapter => adapter.GetRegistry()),
+            [NewOrderButton, AddPositionButton, CheckOrderButton, SaveOrderButton]);
+        var diagnosticDialogs = fullOperationPhase == "m75-verify"
+            ? new NativeEditorDialogService([
+                UnsavedChangesDecision.Cancel,
+                UnsavedChangesDecision.Discard,
+                UnsavedChangesDecision.Cancel,
+                UnsavedChangesDecision.Discard,
+                UnsavedChangesDecision.Save])
+            : null;
+        editorWindowCoordinator = new EditorWindowCoordinator(this, HostAdapters, LayoutProfileStartupResult.Session, targetAppSelectionService, diagnosticDialogs);
         if (Environment.GetCommandLineArgs().Contains("--host-adapter-diagnostic", StringComparer.Ordinal))
             DiagnosticChangeResult = RunHostAdapterDiagnostic();
         if (Environment.GetCommandLineArgs().Contains("--editor-process-diagnostic", StringComparer.Ordinal))
@@ -83,7 +140,6 @@ public partial class MainWindow : Window
                     false, exception.Code, exception.Message, null, null, activation, null, null, null, null));
             }
         }
-        var persistencePhase = App.LayoutPersistencePhase(Environment.GetCommandLineArgs());
         if (persistencePhase is not null)
             _ = Dispatcher.BeginInvoke(
                 new Action(() => RunLayoutPersistenceDiagnosticPhase(persistencePhase)),
@@ -92,7 +148,213 @@ public partial class MainWindow : Window
             _ = Dispatcher.BeginInvoke(
                 new Action(async () => await RunEditorUiDiagnosticAsync()),
                 DispatcherPriority.ApplicationIdle);
+        if (fullOperationPhase is not null)
+            _ = Dispatcher.BeginInvoke(new Action(async () => await RunFullOperationDiagnosticPhaseAsync(fullOperationPhase)), DispatcherPriority.ApplicationIdle);
     }
+
+    private async Task RunFullOperationDiagnosticPhaseAsync(string phase)
+    {
+        var exitCode = 90;
+        try
+        {
+            exitCode = phase switch
+            {
+                "m75-save" => await RunFullOperationSavePhaseAsync(),
+                "m75-verify" => await RunFullOperationVerifyPhaseAsync(),
+                _ => 91
+            };
+        }
+        catch (Exception exception)
+        {
+            try { await File.WriteAllTextAsync(Path.Combine(layoutStore.Options.RootDirectory, "m75-diagnostic-error.txt"), exception.ToString()); }
+            catch (Exception writeException) when (writeException is IOException or UnauthorizedAccessException) { }
+            exitCode = 92;
+        }
+        finally
+        {
+            if (editorWindowCoordinator is not null) await editorWindowCoordinator.CloseAsync();
+            shutdownComplete = true;
+            Application.Current.Shutdown(exitCode);
+        }
+    }
+
+    private async Task<int> RunFullOperationSavePhaseAsync()
+    {
+        if (HostAdapters is null || LayoutProfileStartupResult is null || !LayoutProfileStartupResult.Success || LayoutProfileStartupResult.Found)
+            return 93;
+        if (editorWindowCoordinator is null || editorWindowCoordinator.HasActiveProcess) return 94;
+        var business = CaptureBusinessValuesForDiagnostic();
+        var editor = await editorWindowCoordinator.OpenAsync();
+        if (editor.Profiles.Count != 2 || editor.Scopes.Count != 2 || editor.CurrentState?.Tree.Nodes.Count != 8) return 95;
+
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        await editor.SelectScopeAsync(CustomerDetailsRegistryIds.Scope);
+        await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        if (!editor.IsDirty || !await editor.SaveForDiagnosticAsync() || editor.IsDirty) return 96;
+        if (!business.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 97;
+
+        var result = new FullOperationDiagnosticState(
+            ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber),
+            ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName),
+            business);
+        await File.WriteAllTextAsync(Path.Combine(layoutStore.Options.RootDirectory, "m75-diagnostic-state.json"), JsonSerializer.Serialize(result));
+        await editorWindowCoordinator.CloseAsync();
+        return editorWindowCoordinator.HasActiveProcess ? 98 : 0;
+    }
+
+    private async Task<int> RunFullOperationVerifyPhaseAsync()
+    {
+        if (HostAdapters is null || LayoutProfileStartupResult is not { Success: true, Found: true } || editorWindowCoordinator is null)
+            return 100;
+        if (editorWindowCoordinator.HasActiveProcess) return 101;
+        var statePath = Path.Combine(layoutStore.Options.RootDirectory, "m75-diagnostic-state.json");
+        var expected = JsonSerializer.Deserialize<FullOperationDiagnosticState>(await File.ReadAllTextAsync(statePath));
+        if (expected is null || Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001 ||
+            Math.Abs(ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName) - expected.CustomerWidth) > 0.001)
+            return 102;
+        if (!expected.BusinessValues.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 103;
+
+        var editor = await editorWindowCoordinator.OpenAsync();
+        if (editor.IsDirty) return 104;
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        await editor.SelectScopeAsync(CustomerDetailsRegistryIds.Scope);
+        await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        var changedCustomer = ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName);
+
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.DiscardElementForDiagnosticAsync();
+        if (Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001 || !editor.IsDirty)
+            return 105;
+        await editor.DiscardAllForDiagnosticAsync();
+        if (editor.IsDirty || Math.Abs(ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName) - expected.CustomerWidth) > 0.001)
+            return 106;
+
+        await editor.ResetElementForDiagnosticAsync();
+        if (!editor.IsDirty || Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) < 0.001)
+            return 107;
+        await editor.DiscardAllForDiagnosticAsync();
+        await editor.ResetAllForDiagnosticAsync();
+        if (!editor.IsDirty) return 108;
+        await editor.DiscardAllForDiagnosticAsync();
+        if (editor.IsDirty) return 109;
+
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        await editor.SelectProfileAsync(LayoutProfileCatalog.CompactId);
+        if (editor.ActiveProfileId != LayoutProfileCatalog.StandardId || !editor.IsDirty) return 118;
+        await editor.SelectProfileAsync(LayoutProfileCatalog.CompactId);
+        if (editor.ActiveProfileId != LayoutProfileCatalog.CompactId || editor.IsDirty) return 110;
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("left");
+        var compactWidth = ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber);
+        if (!await editor.SaveForDiagnosticAsync()) return 111;
+        await editor.SelectProfileAsync(LayoutProfileCatalog.StandardId);
+        if (Math.Abs(compactWidth - expected.OrderWidth) < 0.001 || Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001)
+            return 112;
+
+        var activity = viewModel.ActivityMessage;
+        await editor.BeginAppSelectionForDiagnosticAsync();
+        CheckCustomerButton.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            { RoutedEvent = UIElement.PreviewMouseDownEvent });
+        await WaitForUiStateAsync(() => editor.SelectedId == CustomerDetailsRegistryIds.CheckCustomer &&
+            editor.ActiveScopeId == CustomerDetailsRegistryIds.Scope, TimeSpan.FromSeconds(5));
+        if (editor.SelectedId != CustomerDetailsRegistryIds.CheckCustomer || editor.ActiveScopeId != CustomerDetailsRegistryIds.Scope || viewModel.ActivityMessage != activity)
+            return 113;
+        CheckCustomerButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        if (viewModel.ActivityMessage != "Kundendaten wurden geprüft") return 114;
+
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        await editor.SelectScopeAsync(CustomerDetailsRegistryIds.Scope);
+        await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        var beforeFailure = HostAdapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
+        ((WpfHostAdapter)HostAdapters[CustomerDetailsRegistryIds.Scope]).ArmDiagnosticFailure(CustomerDetailsRegistryIds.CompanyName);
+        await editor.DiscardAllForDiagnosticAsync();
+        if (editor.ErrorCode != "batch_apply_failed" || !SameStates(beforeFailure, HostAdapters) || !editor.IsDirty)
+        {
+            await File.WriteAllTextAsync(Path.Combine(layoutStore.Options.RootDirectory, "m75-batch-diagnostic.json"), JsonSerializer.Serialize(new
+            {
+                editor.ErrorCode,
+                editor.ErrorMessage,
+                editor.IsDirty,
+                sameStates = SameStates(beforeFailure, HostAdapters)
+            }));
+            return 115;
+        }
+        await editor.DiscardAllForDiagnosticAsync();
+        if (editor.IsDirty || !expected.BusinessValues.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 116;
+
+        var standardPath = Path.Combine(layoutStore.Options.RootDirectory, "standard.layout-profile.json");
+        var standardBeforeClose = await File.ReadAllTextAsync(standardPath);
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        await editorWindowCoordinator.RequestCloseAsync();
+        if (!editorWindowCoordinator.HasOpenWindow || !editor.IsDirty) return 119;
+        await editorWindowCoordinator.RequestCloseAsync();
+        if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess ||
+            standardBeforeClose != await File.ReadAllTextAsync(standardPath)) return 120;
+
+        editor = await editorWindowCoordinator.OpenAsync();
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        await editorWindowCoordinator.RequestCloseAsync();
+        if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess ||
+            standardBeforeClose == await File.ReadAllTextAsync(standardPath)) return 121;
+        File.Delete(statePath);
+        foreach (var file in Directory.GetFiles(layoutStore.Options.RootDirectory)) File.Delete(file);
+        return editorWindowCoordinator.HasActiveProcess ? 117 : 0;
+    }
+
+    private string[] CaptureBusinessValuesForDiagnostic() =>
+        [OrderNumberInput.Text, OrderDateInput.Text, DueDateInput.Text, SubjectInput.Text, ResponsiblePersonInput.Text,
+            CompanyNameInput.Text, ContactNameInput.Text, EmailInput.Text, StreetInput.Text, PostalCityInput.Text];
+
+    private static double ElementWidth(IHostAdapter adapter, string elementId) =>
+        adapter.GetCurrentLayoutState().Elements.Single(element => element.ElementId == elementId).Width;
+
+    private static bool SameStates(IReadOnlyDictionary<string, LayoutState> expected, IReadOnlyDictionary<string, IHostAdapter> adapters) =>
+        expected.All(pair => pair.Value.Elements.SequenceEqual(adapters[pair.Key].GetCurrentLayoutState().Elements));
+
+    private Task WaitForUiStateAsync(Func<bool> predicate, TimeSpan timeout)
+    {
+        if (predicate()) return Task.CompletedTask;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var deadline = DateTime.UtcNow + timeout;
+        var timer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(25) };
+        EventHandler tick = null!;
+        tick = (_, _) =>
+        {
+            if (predicate()) { timer.Stop(); timer.Tick -= tick; completion.TrySetResult(); }
+            else if (DateTime.UtcNow >= deadline) { timer.Stop(); timer.Tick -= tick; completion.TrySetException(new TimeoutException("UI-Diagnosezustand wurde nicht erreicht.")); }
+        };
+        timer.Tick += tick;
+        timer.Start();
+        return completion.Task;
+    }
+
+    private sealed record FullOperationDiagnosticState(double OrderWidth, double CustomerWidth, string[] BusinessValues);
 
     private async Task RunEditorUiDiagnosticAsync()
     {
@@ -340,6 +602,7 @@ public partial class MainWindow : Window
     private void NewOrder_Click(object sender, RoutedEventArgs e) => viewModel.CreateNewSampleOrder();
     private void AddPosition_Click(object sender, RoutedEventArgs e) => viewModel.AddSamplePosition();
     private void CheckOrder_Click(object sender, RoutedEventArgs e) => viewModel.MarkAsChecked();
+    private void CheckCustomer_Click(object sender, RoutedEventArgs e) => viewModel.MarkCustomerAsChecked();
     private void SaveOrder_Click(object sender, RoutedEventArgs e) => viewModel.SaveInMemory();
     private async void OpenEditor_Click(object sender, RoutedEventArgs e)
     {

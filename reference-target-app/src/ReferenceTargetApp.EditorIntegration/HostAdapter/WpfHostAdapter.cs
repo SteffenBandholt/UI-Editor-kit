@@ -7,6 +7,13 @@ public sealed class WpfHostAdapter : IHostAdapter
 {
     private readonly IUiElementRegistry registry;
     private readonly IWpfLayoutAccess layoutAccess;
+    private string? diagnosticFailureElementId;
+
+    public void ArmDiagnosticFailure(string elementId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(elementId);
+        diagnosticFailureElementId = elementId;
+    }
 
     public WpfHostAdapter(IUiElementRegistry registry)
         : this(registry, new WpfLayoutAccess())
@@ -36,6 +43,12 @@ public sealed class WpfHostAdapter : IHostAdapter
 
     public ChangeResult SubmitChangeRequest(ChangeRequest changeRequest)
     {
+        if (string.Equals(diagnosticFailureElementId, changeRequest.ElementId, StringComparison.Ordinal))
+        {
+            diagnosticFailureElementId = null;
+            return ChangeResult.Rejected(changeRequest, HostAdapterErrorCodes.TargetRejectedChange,
+                "Kontrolliert provozierter M75-Adapterfehler.");
+        }
         var validation = ChangeRequestValidator.Validate(changeRequest, registry);
         if (!validation.Success)
             return ChangeResult.Rejected(changeRequest, validation.ErrorCode!, validation.Message!);

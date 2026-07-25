@@ -89,7 +89,7 @@ public sealed class LayoutRestoreCoordinator
         return new(failures.Count == 0, applied, failures.FirstOrDefault(), failures);
     }
 
-    private static IReadOnlyList<ChangeRequest> CreateRequests(
+    internal static IReadOnlyList<ChangeRequest> CreateRequests(
         UiRegistryEntry entry,
         PersistedElementLayout desired,
         string source,

@@ -33,6 +33,8 @@ const MESSAGE_TYPES = Object.freeze({
   SET_EDITOR_LAYER: "setEditorLayer",
   SET_EDITOR_MODE: "setEditorMode",
   SET_EDITOR_STEP: "setEditorStep",
+  SELECT_EDITOR_SCOPE: "selectEditorScope",
+  REFRESH_EDITOR_LAYOUT_STATES: "refreshEditorLayoutStates",
   ACTIVATE_EDITOR_DIRECTION: "activateEditorDirection",
   SHUTDOWN: "shutdown",
   SHUTDOWN_COMPLETE: "shutdownComplete",
@@ -57,6 +59,9 @@ function createEditorProcessProtocol(options) {
   let sessionState = null;
   let editorUiSession = null;
   let pendingChange = null;
+  let registryElementsByScope = new Map();
+  let scopeSessions = new Map();
+  let activeScopeId = null;
 
   function response(messageType, payload, request, sessionId) {
     return {
@@ -117,6 +122,38 @@ function createEditorProcessProtocol(options) {
     if (editorUiSession) editorUiSession.destroy();
     editorUiSession = null;
     pendingChange = null;
+    registryElementsByScope = new Map();
+    scopeSessions.forEach((entry) => entry.editorUiSession.destroy());
+    scopeSessions = new Map();
+    activeScopeId = null;
+  }
+
+  function activateScope(scopeId) {
+    const entry = scopeSessions.get(scopeId);
+    if (!entry) return false;
+    activeScopeId = scopeId;
+    editorCore = entry.editorCore;
+    registry = entry.registry;
+    sessionState = entry.sessionState;
+    editorUiSession = entry.editorUiSession;
+    return true;
+  }
+
+  function createScopeSession(scopeId, layoutState) {
+    const validation = validateLayoutState(layoutState);
+    if (!validation.ok) return { validation };
+    const elements = registryElementsByScope.get(scopeId) || [];
+    const built = buildCore(elements);
+    const scopedSessionState = createSessionState();
+    scopedSessionState.begin(layoutEntries(layoutState));
+    return {
+      entry: {
+        editorCore: built.editorCore,
+        registry: built.registry,
+        sessionState: scopedSessionState,
+        editorUiSession: createEditorUiSession({ editorCore: built.editorCore, registry: built.registry, sessionState: scopedSessionState, scopeId }),
+      },
+    };
   }
 
   function handle(message) {
@@ -152,7 +189,13 @@ function createEditorProcessProtocol(options) {
         }
         try {
           if (!Array.isArray(message.payload.elements)) throw new TypeError("registry.elements muss ein Array sein.");
-          const built = buildCore(message.payload.elements);
+          registryElementsByScope = new Map();
+          message.payload.elements.forEach((element) => {
+            const scopeId = typeof element.layoutArea === "string" && element.layoutArea ? element.layoutArea : "__single__";
+            if (!registryElementsByScope.has(scopeId)) registryElementsByScope.set(scopeId, []);
+            registryElementsByScope.get(scopeId).push(element);
+          });
+          const built = buildCore(registryElementsByScope.values().next().value || message.payload.elements);
           registry = built.registry;
           editorCore = built.editorCore;
           return { messages: [response(MESSAGE_TYPES.REQUEST_LAYOUT_STATE, { elementCount: editorCore.size() }, message, pendingSessionId)], shouldExit: false };
@@ -166,6 +209,24 @@ function createEditorProcessProtocol(options) {
         if (!pendingSessionId || message.sessionId !== pendingSessionId || !editorCore) {
           return { messages: [error(message, "wrong_session", "LayoutState gehoert nicht zu einer vorbereiteten Session.")], shouldExit: false };
         }
+        const scopeStates = Array.isArray(message.payload.scopeStates) ? message.payload.scopeStates : null;
+        if (scopeStates && scopeStates.length > 0) {
+          scopeSessions.forEach((entry) => entry.editorUiSession.destroy());
+          scopeSessions = new Map();
+          for (const scoped of scopeStates) {
+            if (!isObject(scoped) || typeof scoped.scopeId !== "string" || !isObject(scoped.layoutState)) {
+              return { messages: [error(message, "invalid_layout_state", "scopeStates ist ungueltig.")], shouldExit: false };
+            }
+            const created = createScopeSession(scoped.scopeId, scoped.layoutState);
+            if (created.validation) return { messages: [error(message, "invalid_layout_state", "LayoutState ist ungueltig.", { errors: created.validation.errors })], shouldExit: false };
+            scopeSessions.set(scoped.scopeId, created.entry);
+          }
+          const requestedScope = typeof message.payload.activeScopeId === "string" ? message.payload.activeScopeId : scopeStates[0].scopeId;
+          if (!activateScope(requestedScope)) return { messages: [error(message, "unknown_scope", "Aktiver Scope ist nicht vorhanden.")], shouldExit: false };
+          activeSessionId = pendingSessionId;
+          pendingSessionId = null;
+          return { messages: [response(MESSAGE_TYPES.SESSION_STARTED, { status: sessionState.status(), elementCount: Array.from(scopeSessions.values()).reduce((sum, item) => sum + item.editorCore.size(), 0), scopes: Array.from(scopeSessions.keys()), activeScopeId }, message, activeSessionId)], shouldExit: false };
+        }
         const layoutState = message.payload.layoutState;
         const validation = validateLayoutState(layoutState);
         if (!validation.ok) {
@@ -174,6 +235,8 @@ function createEditorProcessProtocol(options) {
         sessionState = createSessionState();
         const status = sessionState.begin(layoutEntries(layoutState));
         editorUiSession = createEditorUiSession({ editorCore, registry, sessionState, scopeId: layoutState.uiScope });
+        scopeSessions.set(layoutState.uiScope, { editorCore, registry, sessionState, editorUiSession });
+        activeScopeId = layoutState.uiScope;
         activeSessionId = pendingSessionId;
         pendingSessionId = null;
         return { messages: [response(MESSAGE_TYPES.SESSION_STARTED, { status, elementCount: editorCore.size() }, message, activeSessionId)], shouldExit: false };
@@ -212,6 +275,32 @@ function createEditorProcessProtocol(options) {
         else if (message.messageType === MESSAGE_TYPES.SET_EDITOR_MODE) state = editorUiSession.setMode(message.payload.mode);
         else state = editorUiSession.setStepSize(message.payload.stepSize);
         return { messages: [response(MESSAGE_TYPES.EDITOR_UI_STATE, { editorUiState: state }, message, activeSessionId)], shouldExit: false };
+      }
+
+      case MESSAGE_TYPES.SELECT_EDITOR_SCOPE: {
+        const blocked = requireSession(message);
+        if (blocked) return { messages: [blocked], shouldExit: false };
+        if (pendingChange) return { messages: [error(message, "change_in_progress", "Scope kann waehrend einer Aenderung nicht gewechselt werden.")], shouldExit: false };
+        if (!activateScope(message.payload.scopeId)) return { messages: [error(message, "unknown_scope", "Scope ist nicht registriert.")], shouldExit: false };
+        return { messages: [response(MESSAGE_TYPES.EDITOR_UI_STATE, { editorUiState: editorUiSession.snapshot() }, message, activeSessionId)], shouldExit: false };
+      }
+
+      case MESSAGE_TYPES.REFRESH_EDITOR_LAYOUT_STATES: {
+        const blocked = requireSession(message);
+        if (blocked) return { messages: [blocked], shouldExit: false };
+        if (pendingChange) return { messages: [error(message, "change_in_progress", "Layout kann waehrend einer Aenderung nicht aktualisiert werden.")], shouldExit: false };
+        if (!Array.isArray(message.payload.scopeStates)) return { messages: [error(message, "invalid_layout_state", "scopeStates fehlt.")], shouldExit: false };
+        const previousScope = activeScopeId;
+        for (const scoped of message.payload.scopeStates) {
+          const previous = scopeSessions.get(scoped.scopeId);
+          const created = createScopeSession(scoped.scopeId, scoped.layoutState);
+          if (created.validation) return { messages: [error(message, "invalid_layout_state", "LayoutState ist ungueltig.", { errors: created.validation.errors })], shouldExit: false };
+          if (previous) previous.editorUiSession.destroy();
+          scopeSessions.set(scoped.scopeId, created.entry);
+        }
+        if (!activateScope(previousScope) && !activateScope(message.payload.scopeStates[0] && message.payload.scopeStates[0].scopeId))
+          return { messages: [error(message, "unknown_scope", "Aktiver Scope fehlt.")], shouldExit: false };
+        return { messages: [response(MESSAGE_TYPES.EDITOR_UI_STATE, { editorUiState: editorUiSession.snapshot() }, message, activeSessionId)], shouldExit: false };
       }
 
       case MESSAGE_TYPES.ACTIVATE_EDITOR_DIRECTION: {

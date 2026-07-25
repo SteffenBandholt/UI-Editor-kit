@@ -142,6 +142,7 @@ internal static class UiRegistryValidator
         UiElementKind.StaticText => AllTextCapabilities,
         UiElementKind.InputField => AllTextCapabilities,
         UiElementKind.StatusIndicator => AllTextCapabilities,
+        UiElementKind.Button => AllTextCapabilities,
         _ => UiCapability.None
     };
 
