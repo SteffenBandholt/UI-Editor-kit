@@ -172,6 +172,8 @@ Der UI-Editor ist fuer eine neue Ziel-App praktisch fertig.
 
 ## M76 - PDF-Grundmodell und PDF-HostAdapter
 
+Status: `[A] abgenommen` – neutraler Vertrag, Registry/Validator/Fingerprint, getrennter HostAdapter und Profilspeicher sowie reale reproduzierbare Mehrseiten-PDF durch automatisierte Tests und `--pdf-model-diagnostic` nachgewiesen.
+
 ### Ziel
 
 PDF-Layouts werden als registrierte, pruefbare und speicherbare Editorziele behandelt.
@@ -199,6 +201,8 @@ PDF-Layouts werden als registrierte, pruefbare und speicherbare Editorziele beha
 - fehlerhafte PDF-Aenderungen fuehren zum Rollback.
 
 ## M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb
+
+Status: `[ ] offen` – naechster verbindlicher Meilenstein.
 
 ### Ziel
 
@@ -318,6 +322,6 @@ Aktuell spaeter vorgesehen:
 
 Der naechste Bauauftrag ist ausschliesslich:
 
-> M76 - PDF-Grundmodell und PDF-HostAdapter.
+> M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb.
 
-M73, M74 und M75 sind abgenommen. M76 baut auf dem vollstaendigen nativen UI-Betrieb auf, ohne dessen Registry-, HostAdapter-, Prozess-, Session- oder Persistenzvertraege zu veraendern. Windows-Manager und Registrationslauf bleiben bis zu ihren vorgesehenen Meilensteinen gesperrt.
+M73, M74, M75 und M76 sind abgenommen. M77 baut sichtbar auf dem vollstaendigen nativen UI-Betrieb und dem getrennten technischen PDF-Fundament auf, ohne deren Registry-, HostAdapter-, Prozess-, Session- oder Persistenzvertraege umzudeuten. Windows-Manager und Registrationslauf bleiben bis zu ihren vorgesehenen Meilensteinen gesperrt.

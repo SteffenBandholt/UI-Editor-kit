@@ -63,13 +63,13 @@ Gebaut und geprueft sind:
 - native sichtbare Windows-Editoroberflaeche und vollstaendiger UI-End-to-End-Betrieb,
 - zwei getrennte Scopes und zwei dauerhaft getrennte Layoutprofile,
 - Save, Load, Discard, Reset, native App-Auswahl, Dirty-Schutz und Neustart-Restore,
+- neutrales A4-PDF-Modell, PDF-Registry, PDF-HostAdapter und getrenntes PDF-Profil,
+- lokale reale Mehrseiten-PDF-Erzeugung mit reproduzierbarem Umbruch und Batchrollback,
 - Ziel-App-Bootstrap, Installer und Deinstallation,
 - oeffentliche Paket-API und Release-Pruefungen.
 
 Noch nicht praktisch fertig sind:
 
-- das technische PDF-Grundmodell,
-- der PDF-HostAdapter und die PDF-Erzeugung,
 - die sichtbare PDF-Bearbeitung,
 - der zentrale Windows-Manager,
 - der Registrationslauf fuer bestehende Apps.
@@ -95,6 +95,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkenn
 | K6 / M73 | [A] | Neue WPF-Ziel-App technisch angebunden: M73.1 Grundgeruest, M73.2 Registry, M73.3 HostAdapter, M73.4 Node-Prozess/Session, M73.5 dauerhafter Layoutspeicher und Neustart-Restore | .NET-/npm-Tests und echter Zwei-Prozess-Nachweis gruen |
 | K7 / M74 | [A] | Native sichtbare UI-Editoroberflaeche mit Registry-Baum, neutralen Details, Element-/Textebene, fuenf Modi, Schrittweite, Richtungssteuerung und Einzelfenster-Lebenszyklus | 21 .NET-Tests, npm-Gesamttest und sichtbarer `--editor-ui-diagnostic`-Nachweis gruen |
 | K8 / M75 | [A] | Vollstaendiger nativer UI-Betrieb mit Save, Load, Einzel-/Gesamtverwerfen, Einzel-/Gesamtreset, zwei Scopes, zwei Profilen, direkter App-Auswahl, Neustart-Restore und Batchrollback | 29 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-full-operation-diagnostic` gruen |
+| K9 / M76 | [A] | Neutrales PDF-Dokument-/Seitenmodell, Registry mit 26 Elementen, PDF-HostAdapter, getrenntes Profil, Save/Load/Discard/Reset, Rollback und lokale reale Mehrseiten-PDF | 38 .NET-Tests, npm-Gesamttest und echter `--pdf-model-diagnostic`-Nachweis gruen |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -115,7 +116,7 @@ Ergebnis:
 - Package-Trockenlauf erfolgreich,
 - Release-Readiness fuer `0.2.0` erfolgreich,
 - keine Whitespace-Fehler,
-- 29 .NET-Tests einschliesslich Persistenz-, Kompatibilitaets-, Batchrollback-, Prozess-/Session- und nativer Editorfenster-Integration gruen,
+- 38 .NET-Tests einschliesslich aller M75- sowie PDF-Modell-, Registry-, Persistenz-, Rendering-, Kompatibilitaets- und Rollbacktests gruen,
 - sichtbare Breite nach Neustart von 368 px auf 398 px bei 125 % DPI wiederhergestellt (= +24 DIP),
 - natives M74-Editorfenster sichtbar geoeffnet; exakt acht registrierte Elemente, neutrale Details und capability-gesteuerte Modi angezeigt,
 - Position, Breite, Hoehe, Textposition und Schriftgroesse ueber Panelcontroller, Node-Session und WpfHostAdapter unmittelbar sichtbar geaendert,
@@ -125,29 +126,34 @@ Ergebnis:
 - getrennte Profile `standard` und `compact`, aktive Profilwahl und atomarer Schema-2-Startup-Restore ueber beide Scopes nach echtem Prozessneustart nachgewiesen,
 - Baum- und direkte native App-Auswahl, Unterdrueckung fachlicher Commands im Auswahlmodus, Dirty- und Profilwechselschutz sowie alle drei Schliessen-Entscheidungen nachgewiesen,
 - provozierter Adapterfehler mit vollstaendigem scopeuebergreifendem Rollback und unveraenderten Fachwerten nachgewiesen,
+- reale lokal erzeugte A4-PDF mit reproduzierbarer Mehrseitigkeit, wiederholtem Header, Tabellenkopf und Footer, Summenbereich, Seitenzahlen und registriertem Vektorlogo technisch geprueft,
+- Position, Breite, Hoehe, Textposition und Schriftgroesse ueber neutrale PDF-ChangeRequests in LayoutState und Rendergeometrie nachgewiesen,
+- getrenntes `pdf-standard`-Profil mit Save, Load vom Datentraeger, Discard zu SAVED, Reset zu BASELINE und gegenseitiger Ablehnung von UI-/PDF-Profilen nachgewiesen,
+- provozierter PDF-Adapter- und Renderfehler mit vollstaendigem Batchrollback, strukturiertem Rollbackfehler, unveraenderter vorhandener PDF und unveraenderten Fachdaten nachgewiesen,
+- echter WPF-Diagnoseprozess `--pdf-model-diagnostic` mit Exitcode 0 ausgefuehrt und alle PDF-/Profil-Diagnoseartefakte entfernt,
 - keine temporaeren Speicherdateien sowie keine Node- oder WPF-Prozesse zurueckgelassen.
 
 ## 7. Aktueller offener Meilenstein
 
-### M76 - PDF-Grundmodell und PDF-HostAdapter
+### M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb
 
 Status: `[ ] offen`
 
 Ziel:
 
-- neutrales PDF-Grundmodell,
-- klar abgegrenzter PDF-HostAdapter,
-- keine Rueckwirkung auf die abgenommenen M73- bis M75-Vertraege.
+- sichtbarer nativer Arbeitsbereich `PDF-Ausgabe`,
+- PDF-Seitenuebersicht, registrierter Elementbaum und native Vorschau,
+- gemeinsamer sichtbarer UI-/PDF-End-to-End-Betrieb auf dem abgenommenen M76-Fundament.
 
 Nicht-Ziele:
 
 - kein Windows-Manager und kein Registrationslauf.
 
-Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M76 erfuellt und praktisch nachgewiesen sind.
+Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M77 erfuellt und praktisch nachgewiesen sind.
 
 ## 8. Naechster Auftrag
 
-Der naechste Bauauftrag ist ausschliesslich M76. Der vollstaendig abgenommene native UI-Betrieb aus M75 bleibt unveraendert; Windows-Manager und Registrationslauf bleiben gesperrt.
+Der naechste Bauauftrag ist ausschliesslich M77. Die abgenommenen UI-Vertraege aus M73 bis M75 und das technische PDF-Fundament aus M76 bleiben unveraendert; Windows-Manager und Registrationslauf bleiben gesperrt.
 
 ## 9. Statuswerte
 

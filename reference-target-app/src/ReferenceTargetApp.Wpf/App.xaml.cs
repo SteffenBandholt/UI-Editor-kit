@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using ReferenceTargetApp.EditorIntegration.Persistence;
+using ReferenceTargetApp.Infrastructure.SampleData;
+using ReferenceTargetApp.PdfRendering;
 using ReferenceTargetApp.UI.Views;
 
 namespace ReferenceTargetApp;
@@ -13,6 +15,7 @@ public partial class App : Application
     private const string RootPrefix = "--layout-persistence-root=";
     private const string FullOperationDiagnosticArgument = "--ui-full-operation-diagnostic";
     private const string FullOperationPhasePrefix = "--ui-full-operation-phase=";
+    private const string PdfModelDiagnosticArgument = "--pdf-model-diagnostic";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -29,11 +32,40 @@ public partial class App : Application
             _ = RunFullOperationDiagnosticAsync();
             return;
         }
+        if (e.Args.Contains(PdfModelDiagnosticArgument, StringComparer.Ordinal))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunPdfModelDiagnosticAsync();
+            return;
+        }
 
         var root = ArgumentValue(e.Args, RootPrefix);
         var options = root is null ? LayoutStoragePathResolver.ResolveDefault() : LayoutStoragePathResolver.ForRoot(root);
         MainWindow = new MainWindow(new AtomicJsonLayoutStore(options), LayoutPersistencePhase(e.Args) is not null);
         MainWindow.Show();
+    }
+
+    private async Task RunPdfModelDiagnosticAsync()
+    {
+        var parent = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "UI-Editor-kit", "ReferenceTargetApp", "diagnostics", "pdf");
+        var root = Path.Combine(parent, $"m76-{Guid.NewGuid():N}");
+        try
+        {
+            var result = await new PdfModelDiagnosticRunner().RunAsync(root,
+                new ReferenceOrderFactory().CreatePdfDiagnosticOrder(), CancellationToken.None);
+            Shutdown(result.Success ? 0 : 76);
+        }
+        catch { Shutdown(77); }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+                if (Directory.Exists(parent) && !Directory.EnumerateFileSystemEntries(parent).Any()) Directory.Delete(parent);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     private async Task RunFullOperationDiagnosticAsync()
