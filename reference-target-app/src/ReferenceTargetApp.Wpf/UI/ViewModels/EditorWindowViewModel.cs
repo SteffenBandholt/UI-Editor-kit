@@ -35,6 +35,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private string statusMessage = "Editor wird gestartet …";
     private string errorMessage = string.Empty;
     private string errorCode = string.Empty;
+    private int activeWorkspaceIndex;
 
     public EditorWindowViewModel(
         EditorProcessCoordinator coordinator,
@@ -43,7 +44,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         IEditorDialogService dialogService,
         Func<Window?> getOwner,
         Func<Task> requestClose,
-        CancellationToken lifetimeToken)
+        CancellationToken lifetimeToken,
+        PdfEditorWorkspaceViewModel pdfWorkspace)
     {
         this.coordinator = coordinator;
         this.layoutSession = layoutSession;
@@ -52,6 +54,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         this.getOwner = getOwner;
         this.requestClose = requestClose;
         this.lifetimeToken = lifetimeToken;
+        Pdf = pdfWorkspace;
         dispatcher = Dispatcher.CurrentDispatcher;
         SetLayerCommand = new AsyncCommand(SetLayerAsync, parameter => CanInteract && parameter is string);
         SetModeCommand = new AsyncCommand(SetModeAsync, parameter => CanInteract && parameter is string);
@@ -70,6 +73,16 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public PdfEditorWorkspaceViewModel Pdf { get; }
+    public int ActiveWorkspaceIndex
+    {
+        get => activeWorkspaceIndex;
+        set
+        {
+            if (Set(ref activeWorkspaceIndex, value))
+                StatusMessage = value == 0 ? "Arbeitsbereich Programmoberfläche aktiv." : "Arbeitsbereich PDF-Ausgabe aktiv.";
+        }
+    }
     public ObservableCollection<EditorTreeNodeViewModel> TreeRoots { get; } = [];
     public ObservableCollection<EditorChoiceViewModel> Layers { get; } = [];
     public ObservableCollection<EditorChoiceViewModel> Modes { get; } = [];
@@ -143,6 +156,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             var session = await coordinator.StartSessionAsync(lifetimeToken);
             if (!session.Success) throw new EditorProcessException(session.Code, session.Message);
             var initialState = await coordinator.GetEditorUiStateAsync(lifetimeToken);
+            await Pdf.InitializeAsync();
             RunOnUi(() =>
             {
                 Profiles.ReplaceWith(LayoutProfileCatalog.All);
@@ -201,15 +215,20 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     internal async Task<bool> ConfirmCloseAsync()
     {
-        if (!IsDirty) return true;
+        if (!IsDirty && !Pdf.IsDirty) return true;
+        var dirtyAreas = IsDirty && Pdf.IsDirty ? "Programmoberfläche und PDF-Ausgabe" : IsDirty ? "Programmoberfläche" : "PDF-Ausgabe";
         var decision = dialogService.AskUnsavedChanges(getOwner()!, "Der Editor wird geschlossen. Wählen Sie Speichern und schließen, Ohne Speichern schließen oder Abbrechen.");
         if (decision == UnsavedChangesDecision.Cancel) { StatusMessage = "Schließen abgebrochen."; return false; }
-        return decision != UnsavedChangesDecision.Save || await SaveAsync();
+        if (decision != UnsavedChangesDecision.Save) return true;
+        StatusMessage = "Ungespeichert: " + dirtyAreas + ". Zustände werden gespeichert …";
+        if (IsDirty && !await SaveAsync()) return false;
+        return !Pdf.IsDirty || await Pdf.SaveAsync();
     }
 
     internal void BeginClosing(bool operationWasRunning)
     {
         selectionService.Cancel();
+        Pdf.Cancel();
         IsClosing = true;
         StatusMessage = operationWasRunning ? "Editor wird nach der laufenden Änderung geschlossen …" : "Editor wird geschlossen …";
     }
@@ -218,6 +237,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         selectionService.ElementSelected -= SelectionService_ElementSelected;
         selectionService.SelectionRejected -= SelectionService_SelectionRejected;
+        Pdf.Dispose();
         StatusMessage = "Editor geschlossen.";
     }
 

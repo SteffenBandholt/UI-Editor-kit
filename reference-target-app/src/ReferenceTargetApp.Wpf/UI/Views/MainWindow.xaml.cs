@@ -15,6 +15,8 @@ using ReferenceTargetApp.EditorIntegration.Session;
 using ReferenceTargetApp.Infrastructure.SampleData;
 using ReferenceTargetApp.UI.ViewModels;
 using ReferenceTargetApp.UI.Editor;
+using ReferenceTargetApp.EditorIntegration.Pdf;
+using ReferenceTargetApp.PdfRendering;
 
 namespace ReferenceTargetApp.UI.Views;
 
@@ -112,6 +114,13 @@ public partial class MainWindow : Window
         LayoutProfileStartupResult = await new LayoutProfileStartupCoordinator(HostAdapters, profileStore, activeProfileStore)
             .RestoreAsync(lifetimeCancellation.Token);
         var fullOperationPhase = App.UiFullOperationPhase(Environment.GetCommandLineArgs());
+        var uiPdfPhase = App.UiPdfEndToEndPhase(Environment.GetCommandLineArgs());
+        var pdfRegistry = PdfOrderDocumentRegistryFactory.Create();
+        var pdfAdapter = new PdfHostAdapter(pdfRegistry);
+        var pdfStore = new AtomicJsonPdfLayoutProfileStore(layoutStore.Options.RootDirectory);
+        var pdfSession = new PdfLayoutSession(pdfAdapter, pdfStore);
+        if (File.Exists(pdfStore.FilePath))
+            await pdfSession.LoadAsync(lifetimeCancellation.Token);
         targetAppSelectionService = new TargetAppSelectionService(
             HostAdapters.Values.Select(adapter => adapter.GetRegistry()),
             [NewOrderButton, AddPositionButton, CheckOrderButton, SaveOrderButton]);
@@ -122,8 +131,11 @@ public partial class MainWindow : Window
                 UnsavedChangesDecision.Cancel,
                 UnsavedChangesDecision.Discard,
                 UnsavedChangesDecision.Save])
-            : null;
-        editorWindowCoordinator = new EditorWindowCoordinator(this, HostAdapters, LayoutProfileStartupResult.Session, targetAppSelectionService, diagnosticDialogs);
+            : uiPdfPhase is not null ? new NativeEditorDialogService([UnsavedChangesDecision.Cancel, UnsavedChangesDecision.Save]) : null;
+        var pdfOutputPath = Path.Combine(layoutStore.Options.RootDirectory, "pdf-output", "order-preview.pdf");
+        var pdfOrder = uiPdfPhase is null ? viewModel.CurrentOrder : new ReferenceOrderFactory().CreatePdfDiagnosticOrder();
+        editorWindowCoordinator = new EditorWindowCoordinator(this, HostAdapters, LayoutProfileStartupResult.Session, targetAppSelectionService,
+            pdfRegistry, pdfAdapter, pdfSession, pdfOrder, pdfOutputPath, diagnosticDialogs);
         if (Environment.GetCommandLineArgs().Contains("--host-adapter-diagnostic", StringComparer.Ordinal))
             DiagnosticChangeResult = RunHostAdapterDiagnostic();
         if (Environment.GetCommandLineArgs().Contains("--editor-process-diagnostic", StringComparer.Ordinal))
@@ -150,7 +162,117 @@ public partial class MainWindow : Window
                 DispatcherPriority.ApplicationIdle);
         if (fullOperationPhase is not null)
             _ = Dispatcher.BeginInvoke(new Action(async () => await RunFullOperationDiagnosticPhaseAsync(fullOperationPhase)), DispatcherPriority.ApplicationIdle);
+        if (uiPdfPhase is not null)
+            _ = Dispatcher.BeginInvoke(new Action(async () => await RunUiPdfEndToEndDiagnosticPhaseAsync(uiPdfPhase)), DispatcherPriority.ApplicationIdle);
     }
+
+    private async Task RunUiPdfEndToEndDiagnosticPhaseAsync(string phase)
+    {
+        var exitCode = 170;
+        try
+        {
+            exitCode = phase == "save" ? await RunUiPdfSaveDiagnosticAsync() :
+                phase == "verify" ? await RunUiPdfVerifyDiagnosticAsync() : 171;
+        }
+        catch { exitCode = 172; }
+        finally
+        {
+            if (editorWindowCoordinator is not null) await editorWindowCoordinator.CloseAsync();
+            Application.Current.Shutdown(exitCode);
+        }
+    }
+
+    private async Task<int> RunUiPdfSaveDiagnosticAsync()
+    {
+        if (editorWindowCoordinator is null) return 173;
+        var business = CaptureBusinessValuesForDiagnostic();
+        var editor = await editorWindowCoordinator.OpenAsync();
+        if (editor.ProcessId is null || editor.Pdf.RegistryElementCount != 26 || editor.Pdf.ProfileId != "pdf-standard") return 174;
+
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.Subject);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("right");
+        if (!editor.IsDirty || !await editor.SaveForDiagnosticAsync()) return 175;
+
+        editor.ActiveWorkspaceIndex = 1;
+        var pdf = editor.Pdf;
+        pdf.SelectElement(PdfRegistryIds.Title);
+        await pdf.SetModeForDiagnosticAsync("position"); await pdf.ApplyDirectionForDiagnosticAsync("left");
+        await pdf.SetModeForDiagnosticAsync("width"); await pdf.ApplyDirectionForDiagnosticAsync("right");
+        await pdf.SetModeForDiagnosticAsync("height"); await pdf.ApplyDirectionForDiagnosticAsync("down");
+        await pdf.SetLayerForDiagnosticAsync("text"); await pdf.SetModeForDiagnosticAsync("textPosition"); await pdf.ApplyDirectionForDiagnosticAsync("right");
+        await pdf.SetModeForDiagnosticAsync("fontSize"); await pdf.ApplyDirectionForDiagnosticAsync("right");
+        pdf.SelectElement(PdfRegistryIds.DescriptionColumn); await pdf.SetLayerForDiagnosticAsync("element"); await pdf.SetModeForDiagnosticAsync("width"); await pdf.ApplyDirectionForDiagnosticAsync("left");
+        pdf.SelectElement(PdfRegistryIds.Table); await pdf.SetModeForDiagnosticAsync("width"); await pdf.ApplyDirectionForDiagnosticAsync("left");
+        pdf.SelectElement(PdfRegistryIds.Header); await pdf.SetModeForDiagnosticAsync("height"); await pdf.ApplyDirectionForDiagnosticAsync("down");
+        pdf.SelectElement(PdfRegistryIds.Footer); await pdf.SetModeForDiagnosticAsync("height"); await pdf.ApplyDirectionForDiagnosticAsync("up");
+        if (!pdf.IsDirty || !pdf.IsPreviewStale) return 176;
+        await pdf.RenderAsync();
+        if (pdf.Pages.Count < 2) return 178;
+        if (pdf.IsPreviewStale) return 196;
+        if (pdf.RenderBounds.Count != pdf.Pages.Count * 26) return 197;
+        if (pdf.SelectedPageImage is null) return 198;
+        if (!await pdf.SaveAsync() || pdf.IsDirty) return 179;
+        if (!business.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 180;
+
+        var title = pdf.LayoutStatus.Working.Elements.Single(element => element.ElementId == PdfRegistryIds.Title);
+        var statePath = Path.Combine(layoutStore.Options.RootDirectory, "m77-state.json");
+        await File.WriteAllTextAsync(statePath, JsonSerializer.Serialize(new UiPdfDiagnosticState(title.X!.Value, title.Width!.Value, business)));
+        return 0;
+    }
+
+    private async Task<int> RunUiPdfVerifyDiagnosticAsync()
+    {
+        if (editorWindowCoordinator is null) return 181;
+        var statePath = Path.Combine(layoutStore.Options.RootDirectory, "m77-state.json");
+        if (!File.Exists(statePath)) return 182;
+        var expected = JsonSerializer.Deserialize<UiPdfDiagnosticState>(await File.ReadAllTextAsync(statePath));
+        if (expected is null || !expected.Business.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 183;
+        var editor = await editorWindowCoordinator.OpenAsync();
+        var pdf = editor.Pdf;
+        var restored = pdf.LayoutStatus.Working.Elements.Single(element => element.ElementId == PdfRegistryIds.Title);
+        if (pdf.IsDirty || Math.Abs(restored.X!.Value - expected.TitleX) > 0.0001 || Math.Abs(restored.Width!.Value - expected.TitleWidth) > 0.0001) return 184;
+        editor.ActiveWorkspaceIndex = 1;
+        await pdf.RenderAsync();
+        if (pdf.Pages.Count < 2 || pdf.SelectedPageImage is null || pdf.RenderBounds.Count != pdf.Pages.Count * 26) return 185;
+        pdf.SelectElement(PdfRegistryIds.Title);
+        var hit = pdf.RenderBounds.First(bound => bound.PageNumber == 1 && bound.ElementId == PdfRegistryIds.Title);
+        var mapped = ReferenceTargetApp.PdfPreview.PdfPreviewCoordinateMapper.ToViewport(hit.Box, 700, 700);
+        pdf.SelectAtPreview(mapped.Left + mapped.Width / 2, mapped.Top + mapped.Height / 2, 700, 700);
+        if (pdf.SelectedId != PdfRegistryIds.Title) return 186;
+        var pageCount = pdf.Pages.Count;
+        var validBytes = await File.ReadAllBytesAsync(pdf.OutputPath);
+        await File.WriteAllTextAsync(pdf.OutputPath, "corrupt preview diagnostic");
+        await pdf.RefreshPreviewAsync();
+        if (pdf.Pages.Count != pageCount) return 187;
+        await File.WriteAllBytesAsync(pdf.OutputPath, validBytes);
+        await pdf.RefreshPreviewAsync();
+
+        await pdf.SetModeForDiagnosticAsync("position"); await pdf.ApplyDirectionForDiagnosticAsync("right");
+        await pdf.DiscardElementForDiagnosticAsync();
+        if (Math.Abs(pdf.LayoutStatus.Working.Elements.Single(element => element.ElementId == PdfRegistryIds.Title).X!.Value - expected.TitleX) > 0.0001) return 188;
+        await pdf.ApplyDirectionForDiagnosticAsync("right"); await pdf.ResetElementForDiagnosticAsync();
+        if (!pdf.IsDirty) return 189;
+        await pdf.DiscardAllForDiagnosticAsync();
+        if (pdf.IsDirty) return 190;
+
+        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
+        await editor.SelectElementAsync(OrderHeaderRegistryIds.Subject);
+        await editor.SetModeForDiagnosticAsync("width"); await editor.ApplyDirectionForDiagnosticAsync("right");
+        pdf.SelectElement(PdfRegistryIds.Title); await pdf.SetModeForDiagnosticAsync("position"); await pdf.ApplyDirectionForDiagnosticAsync("right");
+        if (!editor.IsDirty || !pdf.IsDirty || await editor.ConfirmCloseAsync()) return 191;
+        if (!await editor.ConfirmCloseAsync() || editor.IsDirty || pdf.IsDirty) return 192;
+
+        var modelDiagnostic = await new PdfModelDiagnosticRunner().RunAsync(Path.Combine(layoutStore.Options.RootDirectory, "model-diagnostic"),
+            new ReferenceOrderFactory().CreatePdfDiagnosticOrder());
+        if (!modelDiagnostic.Success || !modelDiagnostic.RollbackProven) return 193;
+        if (!expected.Business.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 194;
+        try { File.Delete(statePath); } catch (IOException) { return 195; }
+        return 0;
+    }
+
+    private sealed record UiPdfDiagnosticState(double TitleX, double TitleWidth, string[] Business);
 
     private async Task RunFullOperationDiagnosticPhaseAsync(string phase)
     {

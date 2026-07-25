@@ -58,6 +58,8 @@ Fenster, native Dialoge und die explizite Zuordnung registrierter WPF-Controlref
 
 `Pdf/` definiert A4 in Millimetern, 26 registrierte `pdf.`-Elemente, Capability-Matrix, Parentstruktur, SHA-256-Fingerprint, neutralen LayoutState, Validierung, einen eigenen `IPdfHostAdapter`/`PdfHostAdapter` sowie das feste Profil `pdf-standard`. UI- und PDF-IDs, Adapter und Persistenzdokumente sind gegenseitig inkompatibel. Save, Load, Discard, Reset und Batchrollback laufen programmgesteuert ohne sichtbare M77-Bedienung. Details stehen in `Pdf/README.md`.
 
+M77 bindet dieses Fundament sichtbar an, ohne Prozessprotokoll oder Schreibwege zu erweitern. Elementbezogenes PDF-Discard/Reset erzeugt weiterhin ausschließlich vorhandene neutrale Requests über denselben `PdfHostAdapter`. Der UI-Arbeitsbereich hält seine einzige Node-Session auch beim Wechsel zur PDF-Ausgabe; PDF-Rendering und Vorschau bleiben vollständig in .NET.
+
 ## Timeouts und Ende
 
 Getrennte Timeouts gelten für Prozessstart, Handshake, Aktivierung, Sessionstart, Sessionende, Deaktivierung und Shutdown. Bei Timeout oder App-Ende wird zunächst geordnet beendet und der konkrete Prozess nötigenfalls samt Prozessbaum beendet. Streams, Hintergrundaufgaben und CancellationToken werden freigegeben.

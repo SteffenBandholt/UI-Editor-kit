@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>ReferenceTargetApp.PdfPreview</RootNamespace>
+    <Description>Native Windows PDF page preview and neutral hit testing.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
+    <ProjectReference Include="../ReferenceTargetApp.PdfRendering/ReferenceTargetApp.PdfRendering.csproj" />
+  </ItemGroup>
+</Project>

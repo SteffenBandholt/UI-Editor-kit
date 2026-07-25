@@ -268,6 +268,12 @@ Status: abgenommen
 
 Zweck: Bibliotheksneutrales A4-PDF-Modell mit expliziter Registry und Capability-Matrix, getrenntem PDF-HostAdapter und Profilspeicher sowie lokaler realer Mehrseiten-PDF-Erzeugung. Abgenommen mit reproduzierbarem Umbruch, Save/Load/Discard/Reset, vollständigem Batchrollback, unveränderten Fachdaten und technischem `--pdf-model-diagnostic`-Nachweis.
 
+### K10 / M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb
+
+Status: abgenommen
+
+Zweck: Ein gemeinsames natives Editorfenster für Programmoberfläche und PDF-Ausgabe mit Seitenübersicht, Registrybaum, aus der realen Ausgabedatei gerenderter Windows-PDF-Vorschau, Bounds-Auswahl und Overlay, vollständiger capability-gesteuerter PDF-Bearbeitung, getrennten Profil-/Dirty-Zuständen und gemeinsamem Neustart-/Schließfluss. Abgenommen mit `--ui-pdf-end-to-end-diagnostic` in zwei echten WPF-Prozessen.
+
 ## L - Regel fuer kuenftige Auftraege
 
 Jeder Auftrag muss nennen:

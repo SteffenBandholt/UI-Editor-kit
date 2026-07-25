@@ -1,11 +1,13 @@
 <Window x:Class="ReferenceTargetApp.UI.Views.EditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="UI-Editor · Vollständiger UI-Betrieb"
-        Width="1040" Height="820" MinWidth="900" MinHeight="700"
+        Title="UI-/PDF-Editor · Gemeinsamer End-to-End-Betrieb"
+        Width="1380" Height="900" MinWidth="980" MinHeight="700"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource WindowBackgroundBrush}">
-    <Grid Margin="18">
+    <TabControl SelectedIndex="{Binding ActiveWorkspaceIndex, Mode=TwoWay}" Margin="10">
+      <TabItem Header="Programmoberfläche">
+    <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -133,4 +135,69 @@
             </Grid>
         </Border>
     </Grid>
+      </TabItem>
+      <TabItem Header="PDF-Ausgabe" DataContext="{Binding Pdf}">
+        <Grid Margin="8">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock Text="PDF-Profil:" VerticalAlignment="Center" Margin="0,0,8,0"/><TextBlock Grid.Column="1" Text="{Binding ProfileId}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding DirtyStatus}" FontWeight="SemiBold" Margin="0,0,18,0"/><TextBlock Text="{Binding PreviewStatus}" FontWeight="SemiBold" Foreground="#8A4B08"/></StackPanel>
+              <Button Grid.Column="3" Content="Speichern" Command="{Binding SaveCommand}" Margin="10,0,5,0"/>
+              <Button Grid.Column="4" Content="Laden" Command="{Binding LoadCommand}" Margin="5,0"/>
+              <Button Grid.Column="5" Content="PDF neu erzeugen" Command="{Binding RenderCommand}" Margin="5,0"/>
+              <Button Grid.Column="6" Content="Vorschau aktualisieren" Command="{Binding RefreshPreviewCommand}" Margin="5,0,0,0"/>
+            </Grid>
+          </Border>
+          <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="330"/></Grid.ColumnDefinitions>
+            <Grid Grid.Column="0">
+              <Grid.RowDefinitions><RowDefinition Height="170"/><RowDefinition Height="10"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+              <GroupBox Header="Seitenübersicht"><ListBox x:Name="PdfPageList" ItemsSource="{Binding Pages}" DisplayMemberPath="Label" SelectionChanged="PdfPageList_SelectionChanged"/></GroupBox>
+              <GroupBox Grid.Row="2" Header="PDF-Elementbaum · 26 registrierte Elemente">
+                <TreeView x:Name="PdfElementTree" ItemsSource="{Binding TreeRoots}" SelectedItemChanged="PdfElementTree_SelectedItemChanged">
+                  <TreeView.ItemContainerStyle><Style TargetType="TreeViewItem"><Setter Property="IsExpanded" Value="True"/></Style></TreeView.ItemContainerStyle>
+                  <TreeView.ItemTemplate><HierarchicalDataTemplate ItemsSource="{Binding Children}"><TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Id}"/></HierarchicalDataTemplate></TreeView.ItemTemplate>
+                </TreeView>
+              </GroupBox>
+            </Grid>
+            <GroupBox Grid.Column="2" Header="Native Vorschau · Seite einpassen">
+              <Grid Background="#CBD1DA" ClipToBounds="True" x:Name="PdfPreviewViewport" SizeChanged="PdfPreviewViewport_SizeChanged" MouseLeftButtonDown="PdfPreviewViewport_MouseLeftButtonDown">
+                <Border Background="White" BorderBrush="#707783" BorderThickness="1" Margin="14"><Image Source="{Binding SelectedPageImage}" Stretch="Uniform"/></Border>
+                <Canvas IsHitTestVisible="False"><Rectangle Stroke="#E03030" StrokeThickness="2" Fill="#20E03030" Canvas.Left="{Binding OverlayLeft}" Canvas.Top="{Binding OverlayTop}" Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}"/></Canvas>
+              </Grid>
+            </GroupBox>
+            <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
+              <StackPanel>
+                <GroupBox Header="PDF-Elementdetails"><Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <TextBlock Text="Name"/><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold"/>
+                  <TextBlock Grid.Row="1" Text="Element-ID"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="2" Text="Art / Rolle"/><TextBlock Grid.Row="2" Grid.Column="1"><Run Text="{Binding SelectedKind, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SelectedRole, Mode=OneWay}"/></TextBlock>
+                  <TextBlock Grid.Row="3" Text="Parent"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedParent}" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="4" Text="Scope / Zone"/><TextBlock Grid.Row="4" Grid.Column="1"><Run Text="{Binding SelectedScope, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SelectedArea, Mode=OneWay}"/></TextBlock>
+                  <TextBlock Grid.Row="5" Text="Capabilities"/><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedCapabilities}" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Row="6" Text="Position"/><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Position}"/>
+                  <TextBlock Grid.Row="7" Text="Größe"/><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Size}"/>
+                  <TextBlock Grid.Row="8" Text="Textposition"/><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding TextPosition}"/>
+                  <TextBlock Grid.Row="9" Text="Schriftgröße"/><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding FontSize}"/>
+                  <TextBlock Grid.Row="10" Text="Seite"/><TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding SelectedPageText}"/>
+                  <TextBlock Grid.Row="11" Text="Tabelle"/><TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding TableInfo}" TextWrapping="Wrap"/>
+                </Grid></GroupBox>
+                <GroupBox Header="Bearbeitung in Millimetern"><StackPanel IsEnabled="{Binding CanOperate}">
+                  <TextBlock Text="Ebene"/><WrapPanel><Button Content="Element" Command="{Binding SetLayerCommand}" CommandParameter="element"/><Button Content="Text" Command="{Binding SetLayerCommand}" CommandParameter="text" IsEnabled="{Binding CanTextPosition}" Margin="6,0,0,0"/></WrapPanel>
+                  <TextBlock Text="Modus" Margin="0,10,0,3"/><WrapPanel><Button Content="Position" Command="{Binding SetModeCommand}" CommandParameter="position" IsEnabled="{Binding CanPosition}"/><Button Content="Breite" Command="{Binding SetModeCommand}" CommandParameter="width" IsEnabled="{Binding CanWidth}"/><Button Content="Höhe" Command="{Binding SetModeCommand}" CommandParameter="height" IsEnabled="{Binding CanHeight}"/><Button Content="Textposition" Command="{Binding SetModeCommand}" CommandParameter="textPosition" IsEnabled="{Binding CanTextPosition}"/><Button Content="Schriftgröße" Command="{Binding SetModeCommand}" CommandParameter="fontSize" IsEnabled="{Binding CanFontSize}"/></WrapPanel>
+                  <StackPanel Orientation="Horizontal" Margin="0,10"><TextBlock Text="Schrittweite (mm)" VerticalAlignment="Center"/><TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="90" Margin="10,0,0,0"/></StackPanel>
+                  <Grid HorizontalAlignment="Left"><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="52"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions><Button Grid.Row="0" Grid.Column="1" Content="↑" Command="{Binding DirectionCommand}" CommandParameter="up"/><Button Grid.Row="1" Content="←" Command="{Binding DirectionCommand}" CommandParameter="left"/><Button Grid.Row="1" Grid.Column="2" Content="→" Command="{Binding DirectionCommand}" CommandParameter="right"/><Button Grid.Row="2" Grid.Column="1" Content="↓" Command="{Binding DirectionCommand}" CommandParameter="down"/></Grid>
+                </StackPanel></GroupBox>
+                <GroupBox Header="PDF-Layoutaktionen"><WrapPanel><Button Content="Änderung verwerfen" Command="{Binding DiscardElementCommand}"/><Button Content="Alle Änderungen verwerfen" Command="{Binding DiscardAllCommand}"/><Button Content="Element zurücksetzen" Command="{Binding ResetElementCommand}"/><Button Content="Gesamtes PDF-Layout zurücksetzen" Command="{Binding ResetAllCommand}"/></WrapPanel></GroupBox>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+          <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,10,0,0"><StackPanel><TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold"/><TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap"/><TextBlock Text="{Binding ErrorCodeDisplay}" Foreground="#A61B1B" FontSize="11"/></StackPanel></Border>
+        </Grid>
+      </TabItem>
+    </TabControl>
 </Window>

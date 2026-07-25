@@ -16,6 +16,8 @@ public partial class App : Application
     private const string FullOperationDiagnosticArgument = "--ui-full-operation-diagnostic";
     private const string FullOperationPhasePrefix = "--ui-full-operation-phase=";
     private const string PdfModelDiagnosticArgument = "--pdf-model-diagnostic";
+    private const string UiPdfDiagnosticArgument = "--ui-pdf-end-to-end-diagnostic";
+    private const string UiPdfPhasePrefix = "--ui-pdf-end-to-end-phase=";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -38,6 +40,12 @@ public partial class App : Application
             _ = RunPdfModelDiagnosticAsync();
             return;
         }
+        if (e.Args.Contains(UiPdfDiagnosticArgument, StringComparer.Ordinal))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunUiPdfDiagnosticAsync();
+            return;
+        }
 
         var root = ArgumentValue(e.Args, RootPrefix);
         var options = root is null ? LayoutStoragePathResolver.ResolveDefault() : LayoutStoragePathResolver.ForRoot(root);
@@ -57,6 +65,31 @@ public partial class App : Application
             Shutdown(result.Success ? 0 : 76);
         }
         catch { Shutdown(77); }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+                if (Directory.Exists(parent) && !Directory.EnumerateFileSystemEntries(parent).Any()) Directory.Delete(parent);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    private async Task RunUiPdfDiagnosticAsync()
+    {
+        var parent = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "UI-Editor-kit", "ReferenceTargetApp", "diagnostics");
+        var root = Path.Combine(parent, $"m77-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(root);
+            var first = await RunDiagnosticPhaseAsync("save", root, UiPdfPhasePrefix, TimeSpan.FromSeconds(90));
+            if (first != 0) { Shutdown(first); return; }
+            var second = await RunDiagnosticPhaseAsync("verify", root, UiPdfPhasePrefix, TimeSpan.FromSeconds(90));
+            Shutdown(second);
+        }
+        catch { Shutdown(177); }
         finally
         {
             try
@@ -154,6 +187,7 @@ public partial class App : Application
 
     internal static string? LayoutPersistencePhase(string[] args) => ArgumentValue(args, PhasePrefix);
     internal static string? UiFullOperationPhase(string[] args) => ArgumentValue(args, FullOperationPhasePrefix);
+    internal static string? UiPdfEndToEndPhase(string[] args) => ArgumentValue(args, UiPdfPhasePrefix);
 
     private static string? ArgumentValue(IEnumerable<string> args, string prefix) => args
         .FirstOrDefault(argument => argument.StartsWith(prefix, StringComparison.Ordinal))?

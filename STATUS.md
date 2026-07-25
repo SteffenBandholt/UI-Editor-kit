@@ -96,6 +96,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkenn
 | K7 / M74 | [A] | Native sichtbare UI-Editoroberflaeche mit Registry-Baum, neutralen Details, Element-/Textebene, fuenf Modi, Schrittweite, Richtungssteuerung und Einzelfenster-Lebenszyklus | 21 .NET-Tests, npm-Gesamttest und sichtbarer `--editor-ui-diagnostic`-Nachweis gruen |
 | K8 / M75 | [A] | Vollstaendiger nativer UI-Betrieb mit Save, Load, Einzel-/Gesamtverwerfen, Einzel-/Gesamtreset, zwei Scopes, zwei Profilen, direkter App-Auswahl, Neustart-Restore und Batchrollback | 29 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-full-operation-diagnostic` gruen |
 | K9 / M76 | [A] | Neutrales PDF-Dokument-/Seitenmodell, Registry mit 26 Elementen, PDF-HostAdapter, getrenntes Profil, Save/Load/Discard/Reset, Rollback und lokale reale Mehrseiten-PDF | 38 .NET-Tests, npm-Gesamttest und echter `--pdf-model-diagnostic`-Nachweis gruen |
+| K10 / M77 | [A] | Gemeinsamer nativer UI-/PDF-Editor mit Seitenuebersicht, Registrybaum, echter lokaler PDF-Vorschau, Baum-/Previewauswahl, Overlay, vollstaendiger PDF-Bedienung und gemeinsamem Dirty-/Neustartfluss | 48 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-pdf-end-to-end-diagnostic` gruen |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -116,7 +117,7 @@ Ergebnis:
 - Package-Trockenlauf erfolgreich,
 - Release-Readiness fuer `0.2.0` erfolgreich,
 - keine Whitespace-Fehler,
-- 38 .NET-Tests einschliesslich aller M75- sowie PDF-Modell-, Registry-, Persistenz-, Rendering-, Kompatibilitaets- und Rollbacktests gruen,
+- 48 .NET-Tests einschliesslich aller M75-/M76-Regressionen sowie PDF-Preview-, Bounds-, Auswahl-, Persistenz-, Rendering-, Kompatibilitaets- und Rollbacktests gruen,
 - sichtbare Breite nach Neustart von 368 px auf 398 px bei 125 % DPI wiederhergestellt (= +24 DIP),
 - natives M74-Editorfenster sichtbar geoeffnet; exakt acht registrierte Elemente, neutrale Details und capability-gesteuerte Modi angezeigt,
 - Position, Breite, Hoehe, Textposition und Schriftgroesse ueber Panelcontroller, Node-Session und WpfHostAdapter unmittelbar sichtbar geaendert,
@@ -131,29 +132,34 @@ Ergebnis:
 - getrenntes `pdf-standard`-Profil mit Save, Load vom Datentraeger, Discard zu SAVED, Reset zu BASELINE und gegenseitiger Ablehnung von UI-/PDF-Profilen nachgewiesen,
 - provozierter PDF-Adapter- und Renderfehler mit vollstaendigem Batchrollback, strukturiertem Rollbackfehler, unveraenderter vorhandener PDF und unveraenderten Fachdaten nachgewiesen,
 - echter WPF-Diagnoseprozess `--pdf-model-diagnostic` mit Exitcode 0 ausgefuehrt und alle PDF-/Profil-Diagnoseartefakte entfernt,
+- gemeinsames Editorfenster mit den Arbeitsbereichen `Programmoberflaeche` und `PDF-Ausgabe`, getrennter UI-/PDF-Dirty-Anzeige und gemeinsamem Schliessschutz sichtbar bedient,
+- PDF-Seitenuebersicht und Baum mit allen 26 Registryelementen, Details, sechs Spalten sowie Header-/Footer-, Tabellen-, Positions-, Groessen- und Textmodi nachgewiesen,
+- native Vorschau ueber `Windows.Data.Pdf` direkt aus der atomar erzeugten Ausgabedatei, neutrale RenderBounds, Previewtreffer und skalierendes Overlay nachgewiesen,
+- PDF Save/Load, Einzel-/Gesamtverwerfen, Einzel-/Gesamtreset, Vorschau aktuell/veraltet sowie getrennte UI-/PDF-Profile nachgewiesen,
+- echter Zwei-Prozess-Neustart fuer UI- und PDF-Layout sowie Vorschau-/Ausgabeseitenzahl mit `--ui-pdf-end-to-end-diagnostic` und Exitcode 0 nachgewiesen,
 - keine temporaeren Speicherdateien sowie keine Node- oder WPF-Prozesse zurueckgelassen.
 
 ## 7. Aktueller offener Meilenstein
 
-### M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb
+### M78 - Zentraler Windows-Manager und Installer
 
 Status: `[ ] offen`
 
 Ziel:
 
-- sichtbarer nativer Arbeitsbereich `PDF-Ausgabe`,
-- PDF-Seitenuebersicht, registrierter Elementbaum und native Vorschau,
-- gemeinsamer sichtbarer UI-/PDF-End-to-End-Betrieb auf dem abgenommenen M76-Fundament.
+- zentrale lokale Verwaltung registrierter Ziel-Apps,
+- Start-, Auswahl- und Installationsfluss gemaess M78-Auftrag,
+- Wiederverwendung des in M73 bis M77 abgenommenen gemeinsamen Editors.
 
 Nicht-Ziele:
 
-- kein Windows-Manager und kein Registrationslauf.
+- kein M79-Registrationslauf fuer bestehende Apps und keine automatische Elementerkennung.
 
-Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M77 erfuellt und praktisch nachgewiesen sind.
+Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M78 erfuellt und praktisch nachgewiesen sind.
 
 ## 8. Naechster Auftrag
 
-Der naechste Bauauftrag ist ausschliesslich M77. Die abgenommenen UI-Vertraege aus M73 bis M75 und das technische PDF-Fundament aus M76 bleiben unveraendert; Windows-Manager und Registrationslauf bleiben gesperrt.
+Der naechste Bauauftrag ist ausschliesslich M78. M73 bis M77 bleiben abgenommen; der M79-Registrationslauf bleibt bis zur Abnahme von M78 gesperrt.
 
 ## 9. Statuswerte
 

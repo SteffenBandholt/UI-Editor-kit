@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
@@ -14,6 +14,7 @@
     <ProjectReference Include="../../src/ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.PdfRendering/ReferenceTargetApp.PdfRendering.csproj" />
+    <ProjectReference Include="../../src/ReferenceTargetApp.PdfPreview/ReferenceTargetApp.PdfPreview.csproj" />
     <ProjectReference Include="../../src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj" />
   </ItemGroup>
   <ItemGroup>

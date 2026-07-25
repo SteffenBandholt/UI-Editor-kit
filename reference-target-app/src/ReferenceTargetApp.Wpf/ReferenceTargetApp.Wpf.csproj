@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>ReferenceTargetApp</RootNamespace>
     <AssemblyName>ReferenceTargetApp</AssemblyName>
@@ -11,6 +11,7 @@
     <ProjectReference Include="../ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
     <ProjectReference Include="../ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
     <ProjectReference Include="../ReferenceTargetApp.PdfRendering/ReferenceTargetApp.PdfRendering.csproj" />
+    <ProjectReference Include="../ReferenceTargetApp.PdfPreview/ReferenceTargetApp.PdfPreview.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="ReferenceTargetApp.Tests" />
