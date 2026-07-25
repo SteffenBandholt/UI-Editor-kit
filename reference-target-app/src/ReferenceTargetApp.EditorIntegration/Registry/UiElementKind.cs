@@ -6,5 +6,6 @@ public enum UiElementKind
     Group,
     StaticText,
     InputField,
-    StatusIndicator
+    StatusIndicator,
+    Button
 }

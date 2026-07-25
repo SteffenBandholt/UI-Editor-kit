@@ -318,6 +318,6 @@ Aktuell spaeter vorgesehen:
 
 Der naechste Bauauftrag ist ausschliesslich:
 
-> M75 - UI-Betrieb vollstaendig.
+> M76 - PDF-Grundmodell und PDF-HostAdapter.
 
-M73 und M74 sind abgenommen. M75 baut auf der nativen Editoroberflaeche, der bestehenden Prozess-/Sessionkette und der ziel-app-eigenen Layoutpersistenz auf. PDF bleibt bis M76 gesperrt.
+M73, M74 und M75 sind abgenommen. M76 baut auf dem vollstaendigen nativen UI-Betrieb auf, ohne dessen Registry-, HostAdapter-, Prozess-, Session- oder Persistenzvertraege zu veraendern. Windows-Manager und Registrationslauf bleiben bis zu ihren vorgesehenen Meilensteinen gesperrt.

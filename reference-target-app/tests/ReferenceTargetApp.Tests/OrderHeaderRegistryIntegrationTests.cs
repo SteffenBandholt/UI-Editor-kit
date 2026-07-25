@@ -274,6 +274,7 @@ public sealed class OrderHeaderRegistryIntegrationTests
                 Assert.AreEqual(editorActivity, window.ViewModel.ActivityMessage, "Editor actions must not execute business commands.");
 
                 var firstEditorProcessId = editor.ProcessId;
+                Assert.IsTrue(AwaitWithDispatcher(editor.SaveForDiagnosticAsync(), window.Dispatcher));
                 editor.CloseCommand.Execute(null);
                 WaitUntil(() => !editorLifecycle.HasOpenWindow && !editorLifecycle.HasActiveProcess, window.Dispatcher);
                 Assert.ThrowsExactly<ArgumentException>(() => System.Diagnostics.Process.GetProcessById(firstEditorProcessId!.Value));

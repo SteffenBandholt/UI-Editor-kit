@@ -9,14 +9,28 @@ namespace ReferenceTargetApp.EditorIntegration.Session;
 public sealed class EditorProcessCoordinator : IAsyncDisposable
 {
     private readonly IHostAdapter hostAdapter;
+    private readonly IReadOnlyDictionary<string, IHostAdapter> hostAdapters;
     private readonly NodeEditorProcessClient client;
     private readonly EditorProcessTimeouts timeouts;
     private readonly SemaphoreSlim transitionLock = new(1, 1);
     private bool disposed;
 
     public EditorProcessCoordinator(IHostAdapter hostAdapter, EditorProcessOptions options)
+        : this(new Dictionary<string, IHostAdapter>(StringComparer.Ordinal)
+        {
+            [hostAdapter?.GetCurrentLayoutState().ScopeId ?? throw new ArgumentNullException(nameof(hostAdapter))] = hostAdapter
+        }, options)
     {
-        this.hostAdapter = hostAdapter ?? throw new ArgumentNullException(nameof(hostAdapter));
+    }
+
+    public EditorProcessCoordinator(IReadOnlyDictionary<string, IHostAdapter> hostAdapters, EditorProcessOptions options)
+    {
+        this.hostAdapters = hostAdapters ?? throw new ArgumentNullException(nameof(hostAdapters));
+        if (hostAdapters.Count == 0) throw new ArgumentException("Mindestens ein HostAdapter ist erforderlich.", nameof(hostAdapters));
+        ActiveScopeId = hostAdapters.ContainsKey("ui.order-header")
+            ? "ui.order-header"
+            : hostAdapters.OrderBy(pair => pair.Key, StringComparer.Ordinal).First().Key;
+        hostAdapter = hostAdapters[ActiveScopeId];
         ArgumentNullException.ThrowIfNull(options);
         timeouts = options.Timeouts;
         client = new NodeEditorProcessClient(options);
@@ -26,6 +40,7 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
     public EditorSessionState State { get; private set; } = EditorSessionState.Inactive;
     public string? SessionId { get; private set; }
     public int? ProcessId => client.ProcessId;
+    public string ActiveScopeId { get; private set; }
     public IReadOnlyList<EditorProcessDiagnostic> Diagnostics => client.GetDiagnostics();
 
     public async Task<EditorSessionResult> ActivateAsync(CancellationToken cancellationToken = default)
@@ -72,7 +87,9 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             await client.SendRequestAsync(EditorMessageTypes.StartSession, new { }, EditorMessageTypes.RequestRegistry, timeouts.SessionStart, sessionId, cancellationToken).ConfigureAwait(false);
             await client.SendRequestAsync(
                 EditorMessageTypes.Registry,
-                EditorProtocolPayloadFactory.CreateRegistryPayload(hostAdapter.GetRegistry()),
+                hostAdapters.Count == 1
+                    ? EditorProtocolPayloadFactory.CreateRegistryPayload(hostAdapter.GetRegistry())
+                    : EditorProtocolPayloadFactory.CreateRegistryPayload(hostAdapters),
                 EditorMessageTypes.RequestLayoutState,
                 timeouts.SessionStart,
                 sessionId,
@@ -80,7 +97,11 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             var layoutState = hostAdapter.GetCurrentLayoutState();
             await client.SendRequestAsync(
                 EditorMessageTypes.LayoutState,
-                EditorProtocolPayloadFactory.CreateLayoutStatePayload(layoutState),
+                hostAdapters.Count == 1
+                    ? EditorProtocolPayloadFactory.CreateLayoutStatePayload(layoutState)
+                    : EditorProtocolPayloadFactory.CreateLayoutStatePayload(
+                        hostAdapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal),
+                        ActiveScopeId),
                 EditorMessageTypes.SessionStarted,
                 timeouts.SessionStart,
                 sessionId,
@@ -127,7 +148,7 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
                 return ChangeResult.Rejected(request, "invalid_protocol_payload", exception.Message);
             }
 
-            var result = hostAdapter.SubmitChangeRequest(translated);
+            var result = ResolveAdapter(translated).SubmitChangeRequest(translated);
             await client.SendRequestAsync(
                 EditorMessageTypes.ChangeResult,
                 new { changeResult = result },
@@ -162,6 +183,22 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
     public Task<EditorUiState> SetEditorStepAsync(double stepSize, CancellationToken cancellationToken = default) =>
         RunEditorUiStateRequestAsync(EditorMessageTypes.SetEditorStep, new { stepSize }, cancellationToken);
 
+    public async Task<EditorUiState> SelectEditorScopeAsync(string scopeId, CancellationToken cancellationToken = default)
+    {
+        if (!hostAdapters.ContainsKey(scopeId)) throw new EditorProcessException("unknown_scope", "Scope ist nicht registriert.");
+        var state = await RunEditorUiStateRequestAsync(EditorMessageTypes.SelectEditorScope, new { scopeId }, cancellationToken).ConfigureAwait(false);
+        ActiveScopeId = scopeId;
+        return state;
+    }
+
+    public Task<EditorUiState> RefreshEditorLayoutStatesAsync(CancellationToken cancellationToken = default) =>
+        RunEditorUiStateRequestAsync(
+            EditorMessageTypes.RefreshEditorLayoutStates,
+            EditorProtocolPayloadFactory.CreateLayoutStatePayload(
+                hostAdapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal),
+                ActiveScopeId),
+            cancellationToken);
+
     public async Task<EditorUiChangeOutcome> RunEditorDirectionAsync(string direction, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(direction);
@@ -177,7 +214,7 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
                 SessionId,
                 cancellationToken).ConfigureAwait(false);
             var request = ChangeRequestProtocolTranslator.Translate(submitMessage.Payload);
-            var result = hostAdapter.SubmitChangeRequest(request);
+            var result = ResolveAdapter(request).SubmitChangeRequest(request);
             await client.SendRequestAsync(
                 EditorMessageTypes.ChangeResult,
                 new { changeResult = result },
@@ -224,6 +261,14 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
     {
         if (State != EditorSessionState.SessionActive || SessionId is null)
             throw new EditorProcessException("session_not_active", "Editoraktion erfordert eine aktive Session.");
+    }
+
+    private IHostAdapter ResolveAdapter(ChangeRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Scope) && hostAdapters.TryGetValue(request.Scope, out var scoped)) return scoped;
+        var matches = hostAdapters.Values.Where(adapter => adapter.GetRegistry().FindById(request.ElementId) is not null).ToArray();
+        if (matches.Length == 1) return matches[0];
+        throw new EditorProcessException("wrong_scope", "Änderungsauftrag kann keinem eindeutigen Scope zugeordnet werden.");
     }
 
     public async Task<EditorSessionResult> EndSessionAsync(CancellationToken cancellationToken = default)

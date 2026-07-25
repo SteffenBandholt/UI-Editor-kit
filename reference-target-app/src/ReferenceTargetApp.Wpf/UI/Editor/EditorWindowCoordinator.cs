@@ -1,5 +1,6 @@
 using System.Windows;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Session;
 using ReferenceTargetApp.UI.ViewModels;
@@ -7,7 +8,12 @@ using ReferenceTargetApp.UI.Views;
 
 namespace ReferenceTargetApp.UI.Editor;
 
-internal sealed class EditorWindowCoordinator(Window owner, IHostAdapter hostAdapter) : IAsyncDisposable
+internal sealed class EditorWindowCoordinator(
+    Window owner,
+    IReadOnlyDictionary<string, IHostAdapter> hostAdapters,
+    LayoutProfileSession layoutSession,
+    TargetAppSelectionService selectionService,
+    IEditorDialogService? dialogService = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim lifecycleLock = new(1, 1);
     private CancellationTokenSource? lifetimeCancellation;
@@ -42,8 +48,15 @@ internal sealed class EditorWindowCoordinator(Window owner, IHostAdapter hostAda
             try
             {
                 lifetimeCancellation = new CancellationTokenSource();
-                processCoordinator = new EditorProcessCoordinator(hostAdapter, EditorProcessPathResolver.ResolveDefault());
-                viewModel = new EditorWindowViewModel(processCoordinator, CloseAsync, lifetimeCancellation.Token);
+                processCoordinator = new EditorProcessCoordinator(hostAdapters, EditorProcessPathResolver.ResolveDefault());
+                viewModel = new EditorWindowViewModel(
+                    processCoordinator,
+                    layoutSession,
+                    selectionService,
+                    dialogService ?? new NativeEditorDialogService(),
+                    () => window,
+                    CloseAsync,
+                    lifetimeCancellation.Token);
                 window = new EditorWindow(viewModel, this) { Owner = owner };
                 window.Closed += Window_Closed;
                 WindowCreationCount++;
@@ -89,6 +102,12 @@ internal sealed class EditorWindowCoordinator(Window owner, IHostAdapter hostAda
             closing = false;
             lifecycleLock.Release();
         }
+    }
+
+    internal async Task RequestCloseAsync()
+    {
+        if (viewModel is not null && !await viewModel.ConfirmCloseAsync()) return;
+        await CloseAsync();
     }
 
     public async ValueTask DisposeAsync()

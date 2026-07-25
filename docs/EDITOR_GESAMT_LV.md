@@ -258,9 +258,9 @@ Zweck: Native WPF-Bedienoberflaeche fuer den registrierten Scope mit Elementbaum
 
 ### K8 / M75 - UI-Betrieb vollstaendig
 
-Status: offen
+Status: abgenommen
 
-Zweck: Sichtbare Save-/Load-/Discard-/Reset-Bedienung und vollstaendiger praktischer Layoutbetrieb auf der abgenommenen M74-Oberflaeche.
+Zweck: Sichtbare Save-/Load-/Discard-/Reset-Bedienung und vollstaendiger praktischer Layoutbetrieb auf der abgenommenen M74-Oberflaeche. Abgenommen mit zwei Scopes, zwei Profilen, direkter App-Auswahl, Startup-Restore und vollstaendigem Batchrollback.
 
 ## L - Regel fuer kuenftige Auftraege
 
