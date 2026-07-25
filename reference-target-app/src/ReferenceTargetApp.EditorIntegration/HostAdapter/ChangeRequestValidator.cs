@@ -1,0 +1,216 @@
+using System.Collections;
+using System.Globalization;
+using ReferenceTargetApp.EditorIntegration.Registry;
+
+namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
+
+internal static class ChangeRequestValidator
+{
+    private const double MaximumFontSize = 35791d;
+    private static readonly HashSet<string> ForbiddenFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "fachDaten", "businessData", "domainData", "database", "sql", "recordId", "entity", "entityId",
+        "tableName", "customerId", "projectId", "domainStatus", "action", "actions", "save", "delete",
+        "submit", "upload", "import", "export", "filePath", "command", "commands"
+    };
+
+    public static ValidationOutcome Validate(ChangeRequest? request, IUiElementRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        if (request is null)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.InvalidChangeRequest, "Änderungsauftrag fehlt.");
+        if (string.IsNullOrWhiteSpace(request.ChangeId) || string.IsNullOrWhiteSpace(request.ElementId) ||
+            string.IsNullOrWhiteSpace(request.Operation) || string.IsNullOrWhiteSpace(request.Source) ||
+            request.CreatedAt == default)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.InvalidChangeRequest, "Pflichtfelder des Änderungsauftrags sind unvollständig.");
+
+        var entry = registry.FindById(request.ElementId);
+        if (entry is null)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.UnknownElement, $"Element '{request.ElementId}' ist nicht registriert.");
+        if (!string.IsNullOrWhiteSpace(request.Scope) && !string.Equals(request.Scope, entry.ScopeId, StringComparison.Ordinal))
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.WrongScope, $"Scope '{request.Scope}' passt nicht zum registrierten Element.");
+        if (entry.NativeElement is null)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "Native WPF-Referenz fehlt.");
+
+        var capability = RequiredCapability(request.Operation);
+        if (capability is null && request.Operation != HostAdapterOperations.Resize)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, $"Operation '{request.Operation}' ist nicht bekannt.");
+        if (capability is not null && !entry.Capabilities.HasFlag(capability.Value))
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, $"Operation '{request.Operation}' ist für '{request.ElementId}' nicht freigegeben.");
+        if (request.Payload is null)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.InvalidPayload, "Payload fehlt.");
+
+        var forbiddenPath = FindForbiddenField(request.Payload, "payload");
+        if (forbiddenPath is not null)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.ForbiddenField, $"Verbotenes Feld vorhanden: {forbiddenPath}.");
+
+        return request.Operation switch
+        {
+            HostAdapterOperations.Move => ValidateMove(request.Payload),
+            HostAdapterOperations.Resize => ValidateResize(request.Payload, entry),
+            HostAdapterOperations.ResizeWidth => ValidateSingleSize(request.Payload, "width", HostAdapterOperations.ResizeWidth),
+            HostAdapterOperations.ResizeHeight => ValidateSingleSize(request.Payload, "height", HostAdapterOperations.ResizeHeight),
+            HostAdapterOperations.TextMove => ValidateTextMove(request.Payload),
+            HostAdapterOperations.TextResize => ValidateTextResize(request.Payload),
+            _ => ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "Operation ist nicht erlaubt.")
+        };
+    }
+
+    private static ValidationOutcome ValidateMove(IReadOnlyDictionary<string, object?> payload)
+    {
+        if (!HasOnlyKeys(payload, "x", "y") || (!payload.ContainsKey("x") && !payload.ContainsKey("y")))
+            return Invalid("move erwartet ausschließlich x und/oder y.");
+        if (!TryOptionalFiniteNumber(payload, "x", out var x) || !TryOptionalFiniteNumber(payload, "y", out var y))
+            return Invalid("x und y müssen endliche Zahlen sein.");
+        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.Move, X: x, Y: y));
+    }
+
+    private static ValidationOutcome ValidateSingleSize(
+        IReadOnlyDictionary<string, object?> payload,
+        string field,
+        string operation)
+    {
+        if (!HasOnlyKeys(payload, field) || !TryRequiredFiniteNumber(payload, field, out var value) || value <= 0)
+            return Invalid($"{operation} erwartet ausschließlich eine positive endliche Zahl in {field}.");
+        return operation == HostAdapterOperations.ResizeWidth
+            ? ValidationOutcome.Ok(new ValidatedLayoutChange(operation, Width: value))
+            : ValidationOutcome.Ok(new ValidatedLayoutChange(operation, Height: value));
+    }
+
+    private static ValidationOutcome ValidateResize(
+        IReadOnlyDictionary<string, object?> payload,
+        UiRegistryEntry entry)
+    {
+        if (!HasOnlyKeys(payload, "width", "height") || (!payload.ContainsKey("width") && !payload.ContainsKey("height")) ||
+            !TryOptionalFiniteNumber(payload, "width", out var width) || !TryOptionalFiniteNumber(payload, "height", out var height) ||
+            width <= 0 || height <= 0)
+            return Invalid("resize erwartet ausschließlich positive endliche Werte in width und/oder height.");
+        if (width is not null && !entry.Capabilities.HasFlag(UiCapability.Width) ||
+            height is not null && !entry.Capabilities.HasFlag(UiCapability.Height))
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "resize enthält eine nicht freigegebene Größenachse.");
+        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.Resize, Width: width, Height: height));
+    }
+
+    private static ValidationOutcome ValidateTextMove(IReadOnlyDictionary<string, object?> payload)
+    {
+        if (!HasOnlyKeys(payload, "text") || !TryGetDictionary(payload, "text", out var text) ||
+            !HasOnlyKeys(text, "offsetX", "offsetY") || (!text.ContainsKey("offsetX") && !text.ContainsKey("offsetY")))
+            return Invalid("textMove erwartet ausschließlich text.offsetX und/oder text.offsetY.");
+        if (!TryOptionalFiniteNumber(text, "offsetX", out var offsetX) || !TryOptionalFiniteNumber(text, "offsetY", out var offsetY) ||
+            offsetX < 0 || offsetY < 0)
+            return Invalid("Textoffsets müssen endliche, nicht-negative Zahlen sein.");
+        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.TextMove, TextOffsetX: offsetX, TextOffsetY: offsetY));
+    }
+
+    private static ValidationOutcome ValidateTextResize(IReadOnlyDictionary<string, object?> payload)
+    {
+        if (!HasOnlyKeys(payload, "text") || !TryGetDictionary(payload, "text", out var text) ||
+            !HasOnlyKeys(text, "fontSize") || !TryRequiredFiniteNumber(text, "fontSize", out var fontSize) ||
+            fontSize <= 0 || fontSize > MaximumFontSize)
+            return Invalid($"textResize erwartet eine Schriftgröße größer 0 und höchstens {MaximumFontSize.ToString(CultureInfo.InvariantCulture)}.");
+        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.TextResize, FontSize: fontSize));
+    }
+
+    private static UiCapability? RequiredCapability(string operation) => operation switch
+    {
+        HostAdapterOperations.Move => UiCapability.Position,
+        HostAdapterOperations.ResizeWidth => UiCapability.Width,
+        HostAdapterOperations.ResizeHeight => UiCapability.Height,
+        HostAdapterOperations.TextMove => UiCapability.TextPosition,
+        HostAdapterOperations.TextResize => UiCapability.FontSize,
+        _ => null
+    };
+
+    private static bool HasOnlyKeys(IReadOnlyDictionary<string, object?> payload, params string[] keys)
+    {
+        var allowed = new HashSet<string>(keys, StringComparer.Ordinal);
+        return payload.Keys.All(allowed.Contains);
+    }
+
+    private static bool TryGetDictionary(
+        IReadOnlyDictionary<string, object?> source,
+        string key,
+        out IReadOnlyDictionary<string, object?> value)
+    {
+        if (source.TryGetValue(key, out var raw) && raw is IReadOnlyDictionary<string, object?> dictionary)
+        {
+            value = dictionary;
+            return true;
+        }
+        value = null!;
+        return false;
+    }
+
+    private static bool TryRequiredFiniteNumber(
+        IReadOnlyDictionary<string, object?> source,
+        string key,
+        out double value)
+    {
+        value = 0;
+        return source.TryGetValue(key, out var raw) && TryFiniteNumber(raw, out value);
+    }
+
+    private static bool TryOptionalFiniteNumber(
+        IReadOnlyDictionary<string, object?> source,
+        string key,
+        out double? value)
+    {
+        value = null;
+        if (!source.TryGetValue(key, out var raw)) return true;
+        if (!TryFiniteNumber(raw, out var number)) return false;
+        value = number;
+        return true;
+    }
+
+    private static bool TryFiniteNumber(object? value, out double number)
+    {
+        number = 0;
+        if (value is null or bool or char or string || value is not IConvertible) return false;
+        try
+        {
+            number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+            return double.IsFinite(number);
+        }
+        catch (Exception exception) when (exception is FormatException or InvalidCastException or OverflowException)
+        {
+            return false;
+        }
+    }
+
+    private static string? FindForbiddenField(object? value, string path)
+    {
+        if (value is IReadOnlyDictionary<string, object?> dictionary)
+        {
+            foreach (var pair in dictionary)
+            {
+                var fieldPath = $"{path}.{pair.Key}";
+                if (ForbiddenFields.Contains(pair.Key)) return fieldPath;
+                var nested = FindForbiddenField(pair.Value, fieldPath);
+                if (nested is not null) return nested;
+            }
+        }
+        else if (value is IEnumerable sequence and not string)
+        {
+            var index = 0;
+            foreach (var item in sequence)
+            {
+                var nested = FindForbiddenField(item, $"{path}[{index++}]");
+                if (nested is not null) return nested;
+            }
+        }
+        return null;
+    }
+
+    private static ValidationOutcome Invalid(string message) =>
+        ValidationOutcome.Fail(HostAdapterErrorCodes.InvalidPayload, message);
+}
+
+internal sealed record ValidationOutcome(
+    bool Success,
+    ValidatedLayoutChange? Change,
+    string? ErrorCode,
+    string? Message)
+{
+    public static ValidationOutcome Ok(ValidatedLayoutChange change) => new(true, change, null, null);
+    public static ValidationOutcome Fail(string errorCode, string message) => new(false, null, errorCode, message);
+}
