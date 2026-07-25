@@ -318,6 +318,6 @@ Aktuell spaeter vorgesehen:
 
 Der naechste Bauauftrag ist ausschliesslich:
 
-> M73 - Neue Referenz-Ziel-App technisch anbinden.
+> M75 - UI-Betrieb vollstaendig.
 
-Vor Beginn sind Ziel-App-Technik, Projektstruktur und der erste editorfaehige UI-Bereich festzulegen. PDF wird architektonisch beruecksichtigt, aber in M73 noch nicht gebaut.
+M73 und M74 sind abgenommen. M75 baut auf der nativen Editoroberflaeche, der bestehenden Prozess-/Sessionkette und der ziel-app-eigenen Layoutpersistenz auf. PDF bleibt bis M76 gesperrt.

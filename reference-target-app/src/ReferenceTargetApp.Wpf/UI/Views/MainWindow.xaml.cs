@@ -12,6 +12,7 @@ using ReferenceTargetApp.EditorIntegration.Registry;
 using ReferenceTargetApp.EditorIntegration.Session;
 using ReferenceTargetApp.Infrastructure.SampleData;
 using ReferenceTargetApp.UI.ViewModels;
+using ReferenceTargetApp.UI.Editor;
 
 namespace ReferenceTargetApp.UI.Views;
 
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private readonly AtomicJsonLayoutStore layoutStore;
     private bool shutdownComplete;
+    private EditorWindowCoordinator? editorWindowCoordinator;
 
     public MainWindow()
         : this(new AtomicJsonLayoutStore(LayoutStoragePathResolver.ResolveDefault()))
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
     public Task<EditorProcessDiagnosticRun>? EditorProcessDiagnosticTask { get; private set; }
     public LayoutStartupResult? LayoutStartupResult { get; private set; }
     internal MainWindowViewModel ViewModel => viewModel;
+    internal EditorWindowCoordinator? EditorWindowCoordinator => editorWindowCoordinator;
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
@@ -62,6 +65,7 @@ public partial class MainWindow : Window
             OrderStatusIndicator));
 
         HostAdapter = new WpfHostAdapter(UiRegistry);
+        editorWindowCoordinator = new EditorWindowCoordinator(this, HostAdapter);
         LayoutStartupResult = new LayoutPersistenceCoordinator(layoutStore).RestoreAtStartup(HostAdapter);
         if (Environment.GetCommandLineArgs().Contains("--host-adapter-diagnostic", StringComparer.Ordinal))
             DiagnosticChangeResult = RunHostAdapterDiagnostic();
@@ -84,7 +88,86 @@ public partial class MainWindow : Window
             _ = Dispatcher.BeginInvoke(
                 new Action(() => RunLayoutPersistenceDiagnosticPhase(persistencePhase)),
                 DispatcherPriority.ApplicationIdle);
+        if (Environment.GetCommandLineArgs().Contains("--editor-ui-diagnostic", StringComparer.Ordinal))
+            _ = Dispatcher.BeginInvoke(
+                new Action(async () => await RunEditorUiDiagnosticAsync()),
+                DispatcherPriority.ApplicationIdle);
     }
+
+    private async Task RunEditorUiDiagnosticAsync()
+    {
+        var exitCode = 80;
+        try
+        {
+            if (editorWindowCoordinator is null || HostAdapter is null) throw new InvalidOperationException("Editor-Lebenszyklus ist nicht initialisiert.");
+            var businessValue = OrderNumberInput.Text;
+            var activity = viewModel.ActivityMessage;
+            var editor = await editorWindowCoordinator.OpenAsync();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (!editorWindowCoordinator.HasOpenWindow || !editorWindowCoordinator.HasActiveProcess || editorWindowCoordinator.SessionId is null ||
+                editor.CurrentState?.Tree.Nodes.Count != 8 || editor.CurrentState.Details?.ElementId != OrderHeaderRegistryIds.OrderNumber)
+                throw new InvalidOperationException("Editorfenster, Prozess, Session, Baum oder Details fehlen.");
+
+            var before = State(OrderHeaderRegistryIds.OrderNumber);
+            editor.StepText = "1";
+            await editor.SetModeForDiagnosticAsync("move");
+            await editor.ApplyDirectionForDiagnosticAsync("right");
+            var moved = State(OrderHeaderRegistryIds.OrderNumber);
+            if (Math.Abs(moved.X - before.X - 1) > 0.001) throw new InvalidOperationException("Positionsänderung ist nicht sichtbar.");
+
+            await editor.SetModeForDiagnosticAsync("width");
+            await editor.ApplyDirectionForDiagnosticAsync("right");
+            var widened = State(OrderHeaderRegistryIds.OrderNumber);
+            if (Math.Abs(widened.Width - moved.Width - 1) > 0.001) throw new InvalidOperationException("Breitenänderung ist nicht sichtbar.");
+
+            await editor.SetModeForDiagnosticAsync("height");
+            await editor.ApplyDirectionForDiagnosticAsync("down");
+            var heightened = State(OrderHeaderRegistryIds.OrderNumber);
+            if (Math.Abs(heightened.Height - widened.Height - 1) > 0.001) throw new InvalidOperationException("Höhenänderung ist nicht sichtbar.");
+
+            await editor.SetLayerForDiagnosticAsync("text");
+            await editor.SetModeForDiagnosticAsync("text-position");
+            await editor.ApplyDirectionForDiagnosticAsync("right");
+            var textMoved = State(OrderHeaderRegistryIds.OrderNumber);
+            if (Math.Abs(textMoved.TextOffsetX!.Value - heightened.TextOffsetX!.Value - 1) > 0.001) throw new InvalidOperationException("Textpositionsänderung ist nicht sichtbar.");
+
+            await editor.SetModeForDiagnosticAsync("text-size");
+            await editor.ApplyDirectionForDiagnosticAsync("right");
+            var textSized = State(OrderHeaderRegistryIds.OrderNumber);
+            if (Math.Abs(textSized.FontSize!.Value - textMoved.FontSize!.Value - 1) > 0.001) throw new InvalidOperationException("Schriftgrößenänderung ist nicht sichtbar.");
+
+            await editor.SelectElementAsync(OrderHeaderRegistryIds.CoreGroup);
+            if (editor.CurrentState!.Panel.Layers.Single(layer => layer.Id == "text").Enabled)
+                throw new InvalidOperationException("Nicht erlaubte Textebene ist aktivierbar.");
+            if (!string.Equals(OrderNumberInput.Text, businessValue, StringComparison.Ordinal) || !string.Equals(viewModel.ActivityMessage, activity, StringComparison.Ordinal))
+                throw new InvalidOperationException("Editor hat einen Fachwert oder Fachcommand verändert.");
+            CheckOrderButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            if (!string.Equals(viewModel.ActivityMessage, "Plausibilitätsprüfung ohne Beanstandung abgeschlossen", StringComparison.Ordinal))
+                throw new InvalidOperationException("Normaler Fachbutton funktioniert nicht mehr.");
+
+            await editorWindowCoordinator.CloseAsync();
+            if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess || editorWindowCoordinator.SessionId is not null)
+                throw new InvalidOperationException("Erster Editor wurde nicht vollständig geschlossen.");
+            await editorWindowCoordinator.OpenAsync();
+            if (editorWindowCoordinator.WindowCreationCount != 2 || !editorWindowCoordinator.HasActiveProcess)
+                throw new InvalidOperationException("Editor konnte nicht erneut geöffnet werden.");
+            await editorWindowCoordinator.CloseAsync();
+            if (editorWindowCoordinator.HasActiveProcess) throw new InvalidOperationException("Node-Prozess blieb nach Wiederöffnung aktiv.");
+            exitCode = 0;
+        }
+        catch
+        {
+            exitCode = 81;
+        }
+        finally
+        {
+            if (editorWindowCoordinator is not null) await editorWindowCoordinator.CloseAsync();
+            shutdownComplete = true;
+            Application.Current.Shutdown(exitCode);
+        }
+    }
+
+    private ElementLayoutState State(string elementId) => HostAdapter!.GetCurrentLayoutState().Elements.Single(element => element.ElementId == elementId);
 
     private void RunLayoutPersistenceDiagnosticPhase(string phase)
     {
@@ -233,16 +316,22 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
-        if (shutdownComplete || EditorProcessCoordinator is null) return;
+        if (shutdownComplete) return;
+        var visibleEditorActive = editorWindowCoordinator is { HasOpenWindow: true } || editorWindowCoordinator is { HasActiveProcess: true };
+        if (!visibleEditorActive && EditorProcessCoordinator is null) return;
         e.Cancel = true;
         IsEnabled = false;
-        lifetimeCancellation.Cancel();
+        if (editorWindowCoordinator is not null)
+            await editorWindowCoordinator.DisposeAsync();
+        try { lifetimeCancellation.Cancel(); }
+        catch (ObjectDisposedException) { }
         if (EditorProcessDiagnosticTask is not null)
         {
             try { await EditorProcessDiagnosticTask; }
             catch (OperationCanceledException) { }
         }
-        await EditorProcessCoordinator.DisposeAsync();
+        if (EditorProcessCoordinator is not null)
+            await EditorProcessCoordinator.DisposeAsync();
         shutdownComplete = true;
         if (Application.Current is not null) Application.Current.Shutdown();
         else Close();
@@ -252,4 +341,15 @@ public partial class MainWindow : Window
     private void AddPosition_Click(object sender, RoutedEventArgs e) => viewModel.AddSamplePosition();
     private void CheckOrder_Click(object sender, RoutedEventArgs e) => viewModel.MarkAsChecked();
     private void SaveOrder_Click(object sender, RoutedEventArgs e) => viewModel.SaveInMemory();
+    private async void OpenEditor_Click(object sender, RoutedEventArgs e)
+    {
+        if (editorWindowCoordinator is null) return;
+        OpenEditorButton.IsEnabled = false;
+        try { await editorWindowCoordinator.OpenAsync(); }
+        catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or System.Windows.Markup.XamlParseException)
+        {
+            MessageBox.Show(this, $"Der UI-Editor konnte nicht geöffnet werden.\n\n{exception.Message}", "UI-Editor", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { OpenEditorButton.IsEnabled = true; }
+    }
 }

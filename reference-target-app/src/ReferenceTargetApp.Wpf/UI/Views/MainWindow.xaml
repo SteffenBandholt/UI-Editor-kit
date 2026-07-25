@@ -17,12 +17,14 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="AUFTRAGSVERWALTUNG" Foreground="#AFC9EA" FontSize="11" FontWeight="SemiBold" />
                     <TextBlock Text="Auftrag bearbeiten" Foreground="White" FontSize="24" FontWeight="SemiBold" />
                 </StackPanel>
-                <Border x:Name="OrderStatusIndicator" Grid.Column="1" Background="#274A76" CornerRadius="16" Padding="14,7" VerticalAlignment="Center">
+                <Button x:Name="OpenEditorButton" Grid.Column="1" Content="UI bearbeiten" Click="OpenEditor_Click" Margin="0,0,14,0" Background="#F5F8FC" Foreground="#162A46" VerticalAlignment="Center" />
+                <Border x:Name="OrderStatusIndicator" Grid.Column="2" Background="#274A76" CornerRadius="16" Padding="14,7" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <Ellipse Width="8" Height="8" Fill="#65D49A" Margin="0,0,8,0" />
                         <TextBlock Text="{Binding StatusLabel}" Foreground="White" FontWeight="SemiBold" />
@@ -180,7 +182,7 @@
                 </Grid.ColumnDefinitions>
                 <Ellipse Width="8" Height="8" Fill="#2FA36B" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="1" Text="{Binding ActivityMessage}" VerticalAlignment="Center" Foreground="{StaticResource MutedTextBrush}" />
-                <TextBlock Grid.Column="2" Text="M73.1 · Native WPF" VerticalAlignment="Center" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
+                <TextBlock Grid.Column="2" Text="M74 · Native WPF" VerticalAlignment="Center" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
             </Grid>
         </Border>
     </Grid>

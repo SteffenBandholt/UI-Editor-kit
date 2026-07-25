@@ -227,34 +227,40 @@ Status: abgenommen
 
 Zweck: Verschiebbares Bedienpanel, getrennte Element-/Textebene, Schrittweiten, Grenzen, Speicherung und Rollback.
 
-### K6 / M73 - Release Candidate
+### K6 / M73 - Neue Ziel-App technisch anbinden
 
-Status: offen
+Status: abgenommen
 
 Zweck:
 
-- Public API festschreiben,
-- Packaging und lokale Moduleinbindung absichern,
-- Integrationshandbuch konsolidieren,
-- HostAdapter-/Registry-/Storage-Vertraege finalisieren,
-- Release-Candidate-Pruefung definieren,
-- verbleibende plattformspezifische Produktannahmen ausschliessen.
+- native Referenz-Ziel-App bereitstellen,
+- Registry und WpfHostAdapter anbinden,
+- lokalen Node-Prozess und genau eine Session steuern,
+- ziel-app-eigene Layoutpersistenz und Startup-Restore bereitstellen.
 
 Nicht-Ziele:
 
-- keine zweite Ziel-App als zwingende Voraussetzung,
-- keine bestimmte Laufzeitumgebung als Produktziel,
+- keine sichtbare Editoroberflaeche,
 - keine Fachlogik,
 - keine automatische UI-Erkennung,
-- noch kein Release-Tag ohne abgeschlossene Abnahme.
+- keine Browser- oder Netzwerkkommunikation.
 
 Abnahme:
 
-- Dokumentation widerspruchsfrei,
-- Public API dokumentiert,
-- Package-Inhalt geprueft,
-- Integrationsvertrag vollstaendig,
+- Registry, HostAdapter, Prozess-/Sessionweg und Persistenz praktisch nachgewiesen,
 - alle Pflichtpruefungen gruen.
+
+### K7 / M74 - Native sichtbare UI-Editoroberflaeche
+
+Status: abgenommen
+
+Zweck: Native WPF-Bedienoberflaeche fuer den registrierten Scope mit Elementbaum, neutralen Details, Element-/Textmodi, Schrittweite, Richtungssteuerung und kontrolliertem Prozess-/Sessionlebenszyklus.
+
+### K8 / M75 - UI-Betrieb vollstaendig
+
+Status: offen
+
+Zweck: Sichtbare Save-/Load-/Discard-/Reset-Bedienung und vollstaendiger praktischer Layoutbetrieb auf der abgenommenen M74-Oberflaeche.
 
 ## L - Regel fuer kuenftige Auftraege
 

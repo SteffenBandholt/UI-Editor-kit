@@ -1,0 +1,106 @@
+<Window x:Class="ReferenceTargetApp.UI.Views.EditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="UI-Editor · Auftragskopf"
+        Width="940" Height="700" MinWidth="820" MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackgroundBrush}">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="310" />
+            <ColumnDefinition Width="18" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <GroupBox Grid.Row="0" Grid.Column="0" Header="Registrierte Elemente" Margin="0">
+            <TreeView x:Name="ElementTree" ItemsSource="{Binding TreeRoots}" SelectedItemChanged="ElementTree_SelectedItemChanged">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True" />
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneTime}" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Id}" />
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </GroupBox>
+
+        <ScrollViewer Grid.Row="0" Grid.Column="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <GroupBox Header="Elementdetails">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Name" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="1" Text="Element-ID" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="2" Text="Art" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedType}" />
+                        <TextBlock Grid.Row="3" Text="Scope" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedScope}" />
+                        <TextBlock Grid.Row="4" Text="Parent" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedParent}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="5" Text="Rolle" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedRole}" />
+                        <TextBlock Grid.Row="6" Text="Operationen" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Operations}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="7" Text="Position" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Position}" />
+                        <TextBlock Grid.Row="8" Text="Größe" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Size}" />
+                        <TextBlock Grid.Row="9" Text="Textposition" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding TextPosition}" />
+                        <TextBlock Grid.Row="10" Text="Schriftgröße" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding FontSize}" />
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Bearbeitung">
+                    <StackPanel IsEnabled="{Binding ControlsEnabled}">
+                        <TextBlock Text="Ebene" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
+                        <ItemsControl ItemsSource="{Binding Layers}" Margin="0,0,0,12">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetLayerCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,0"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Modus" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
+                        <ItemsControl ItemsSource="{Binding Modes}" Margin="0,0,0,12">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetModeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,8"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="Schrittweite (DIP)" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="110" />
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Left">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="58" /><ColumnDefinition Width="58" /><ColumnDefinition Width="58" /></Grid.ColumnDefinitions>
+                            <Button Grid.Row="0" Grid.Column="1" Content="↑" IsEnabled="{Binding UpEnabled}" Command="{Binding DirectionCommand}" CommandParameter="up" ToolTip="Nach oben / Höhe oder Schrift vergrößern" Margin="3" />
+                            <Button Grid.Row="1" Grid.Column="0" Content="←" IsEnabled="{Binding LeftEnabled}" Command="{Binding DirectionCommand}" CommandParameter="left" ToolTip="Nach links / verkleinern" Margin="3" />
+                            <Border Grid.Row="1" Grid.Column="1" Margin="8" Background="#E7EBF1" CornerRadius="4" />
+                            <Button Grid.Row="1" Grid.Column="2" Content="→" IsEnabled="{Binding RightEnabled}" Command="{Binding DirectionCommand}" CommandParameter="right" ToolTip="Nach rechts / vergrößern" Margin="3" />
+                            <Button Grid.Row="2" Grid.Column="1" Content="↓" IsEnabled="{Binding DownEnabled}" Command="{Binding DirectionCommand}" CommandParameter="down" ToolTip="Nach unten / Höhe oder Schrift verkleinern" Margin="3" />
+                        </Grid>
+                        <TextBlock Text="Schriftgröße: ← kleiner, → größer. Nicht verwendete Richtungen sind deaktiviert." Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="12" Margin="0,16,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ErrorCodeDisplay}" Foreground="#A61B1B" FontSize="11" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Schließen" Command="{Binding CloseCommand}" MinWidth="110" Margin="18,0,0,0" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

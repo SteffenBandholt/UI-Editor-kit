@@ -196,6 +196,92 @@ public sealed class OrderHeaderRegistryIntegrationTests
                 window.CheckOrderButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.AreEqual("Plausibilitätsprüfung ohne Beanstandung abgeschlossen", window.ViewModel.ActivityMessage,
                     "Business buttons must remain ordinary usable WPF actions independent from the HostAdapter.");
+
+                var editorLifecycle = window.EditorWindowCoordinator;
+                Assert.IsNotNull(editorLifecycle);
+                var editorBusinessValues = CaptureBusinessValues(window);
+                var editorActivity = window.ViewModel.ActivityMessage;
+                var editor = AwaitWithDispatcher(editorLifecycle.OpenAsync(), window.Dispatcher);
+                Assert.IsTrue(editorLifecycle.HasOpenWindow);
+                Assert.IsTrue(editorLifecycle.HasActiveProcess);
+                Assert.IsNotNull(editorLifecycle.SessionId);
+                Assert.IsNotNull(editor.CurrentState);
+                Assert.HasCount(ExpectedIds.Length, editor.CurrentState.Tree.Nodes);
+                CollectionAssert.AreEquivalent(ExpectedIds, editor.CurrentState.Tree.Nodes.Select(node => node.Id).ToArray());
+                Assert.AreEqual(OrderHeaderRegistryIds.OrderNumber, editor.CurrentState.Details?.ElementId);
+                Assert.AreEqual(OrderHeaderRegistryIds.CoreGroup, editor.CurrentState.Tree.Nodes.Single(node => node.Id == OrderHeaderRegistryIds.OrderNumber).ParentId);
+
+                var duplicateEditor = AwaitWithDispatcher(editorLifecycle.OpenAsync(), window.Dispatcher);
+                Assert.AreSame(editor, duplicateEditor);
+                Assert.AreEqual(1, editorLifecycle.WindowCreationCount);
+                Assert.AreEqual(1, editorLifecycle.ExistingWindowActivationCount);
+
+                var editorBefore = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                editor.StepText = "1,5";
+                Assert.AreEqual(1.5, editor.LastValidStep, 0.001);
+                AwaitWithDispatcher(editor.SetModeForDiagnosticAsync("move"), window.Dispatcher);
+                AwaitWithDispatcher(editor.ApplyDirectionForDiagnosticAsync("right"), window.Dispatcher);
+                var editorMoved = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                Assert.AreEqual(editorBefore.X + 1.5, editorMoved.X, 0.001);
+
+                AwaitWithDispatcher(editor.SetModeForDiagnosticAsync("width"), window.Dispatcher);
+                AwaitWithDispatcher(editor.ApplyDirectionForDiagnosticAsync("right"), window.Dispatcher);
+                var editorWidened = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                Assert.AreEqual(editorMoved.Width + 1.5, editorWidened.Width, 0.001);
+                Assert.IsFalse(editor.UpEnabled);
+                Assert.IsFalse(editor.DownEnabled);
+
+                AwaitWithDispatcher(editor.SetModeForDiagnosticAsync("height"), window.Dispatcher);
+                AwaitWithDispatcher(editor.ApplyDirectionForDiagnosticAsync("down"), window.Dispatcher);
+                var editorHeightened = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                Assert.AreEqual(editorWidened.Height + 1.5, editorHeightened.Height, 0.001);
+                Assert.IsFalse(editor.LeftEnabled);
+                Assert.IsFalse(editor.RightEnabled);
+
+                AwaitWithDispatcher(editor.SetLayerForDiagnosticAsync("text"), window.Dispatcher);
+                AwaitWithDispatcher(editor.SetModeForDiagnosticAsync("text-position"), window.Dispatcher);
+                AwaitWithDispatcher(editor.ApplyDirectionForDiagnosticAsync("right"), window.Dispatcher);
+                var editorTextMoved = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                Assert.AreEqual(editorHeightened.TextOffsetX!.Value + 1.5, editorTextMoved.TextOffsetX!.Value, 0.001);
+
+                AwaitWithDispatcher(editor.SetModeForDiagnosticAsync("text-size"), window.Dispatcher);
+                AwaitWithDispatcher(editor.ApplyDirectionForDiagnosticAsync("right"), window.Dispatcher);
+                var editorTextSized = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                Assert.AreEqual(editorTextMoved.FontSize!.Value + 1.5, editorTextSized.FontSize!.Value, 0.001);
+                Assert.IsFalse(editor.UpEnabled);
+                Assert.IsFalse(editor.DownEnabled);
+
+                var lastValidStep = editor.LastValidStep;
+                var beforeInvalidStep = State(hostAdapter, OrderHeaderRegistryIds.OrderNumber);
+                editor.StepText = "0";
+                Assert.AreEqual("invalid_step_size", editor.ErrorCode);
+                Assert.IsTrue(editor.ControlsEnabled, "Invalid input must remain editable.");
+                Assert.IsFalse(editor.CanInteract, "Invalid input must block change requests.");
+                AwaitWithDispatcher(editor.ApplyDirectionForDiagnosticAsync("right"), window.Dispatcher);
+                Assert.AreEqual(beforeInvalidStep, State(hostAdapter, OrderHeaderRegistryIds.OrderNumber));
+                Assert.AreEqual(lastValidStep, editor.LastValidStep);
+                editor.StepText = "-2";
+                Assert.AreEqual("invalid_step_size", editor.ErrorCode);
+                editor.StepText = "Infinity";
+                Assert.AreEqual("invalid_step_size", editor.ErrorCode);
+                editor.StepText = "1";
+                Assert.IsTrue(editor.CanInteract);
+
+                AwaitWithDispatcher(editor.SelectElementAsync(OrderHeaderRegistryIds.CoreGroup), window.Dispatcher);
+                Assert.IsFalse(editor.CurrentState!.Panel.Layers.Single(layer => layer.Id == "text").Enabled);
+                Assert.IsTrue(editor.CurrentState.Panel.Modes.All(mode => mode.Id is "move" or "width" or "height"));
+                AssertBusinessValuesUnchanged(window, editorBusinessValues);
+                Assert.AreEqual(editorActivity, window.ViewModel.ActivityMessage, "Editor actions must not execute business commands.");
+
+                var firstEditorProcessId = editor.ProcessId;
+                editor.CloseCommand.Execute(null);
+                WaitUntil(() => !editorLifecycle.HasOpenWindow && !editorLifecycle.HasActiveProcess, window.Dispatcher);
+                Assert.ThrowsExactly<ArgumentException>(() => System.Diagnostics.Process.GetProcessById(firstEditorProcessId!.Value));
+                var reopenedEditor = AwaitWithDispatcher(editorLifecycle.OpenAsync(), window.Dispatcher);
+                Assert.AreEqual(2, editorLifecycle.WindowCreationCount);
+                Assert.HasCount(ExpectedIds.Length, reopenedEditor.CurrentState!.Tree.Nodes);
+                editorLifecycle.Window!.Close();
+                WaitUntil(() => !editorLifecycle.HasOpenWindow && !editorLifecycle.HasActiveProcess, window.Dispatcher);
             }
             finally
             {
@@ -247,6 +333,7 @@ public sealed class OrderHeaderRegistryIntegrationTests
         Assert.IsFalse(nativeReferences.Contains(window.AddPositionButton));
         Assert.IsFalse(nativeReferences.Contains(window.CheckOrderButton));
         Assert.IsFalse(nativeReferences.Contains(window.SaveOrderButton));
+        Assert.IsFalse(nativeReferences.Contains(window.OpenEditorButton));
     }
 
     private static void AssertLayoutStateHasNoBusinessValueProperties()
@@ -334,6 +421,29 @@ public sealed class OrderHeaderRegistryIntegrationTests
             Dispatcher.PushFrame(frame);
         }
         return task.GetAwaiter().GetResult();
+    }
+
+    private static void AwaitWithDispatcher(Task task, Dispatcher dispatcher)
+    {
+        if (!task.IsCompleted)
+        {
+            var frame = new DispatcherFrame();
+            _ = task.ContinueWith(
+                _ => dispatcher.BeginInvoke(new Action(() => frame.Continue = false), DispatcherPriority.Send),
+                TaskScheduler.Default);
+            Dispatcher.PushFrame(frame);
+        }
+        task.GetAwaiter().GetResult();
+    }
+
+    private static void WaitUntil(Func<bool> condition, Dispatcher dispatcher)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!condition())
+        {
+            if (DateTime.UtcNow >= deadline) Assert.Fail("Timeout beim Warten auf den Editor-Lebenszyklus.");
+            AwaitWithDispatcher(Task.Delay(10), dispatcher);
+        }
     }
 
     private sealed class ThrowAfterApplyLayoutAccess : IWpfLayoutAccess

@@ -1,6 +1,6 @@
-# EditorIntegration – M73.5 und Abschluss von M73
+# EditorIntegration – M74 Prozessanbindung der nativen Editoroberfläche
 
-Dieser Projektbereich besitzt die explizite WPF-UI-Registry aus M73.2, den nativen HostAdapter aus M73.3, die lokale Prozess-/Sessiongrenze aus M73.4 und den ziel-app-eigenen dauerhaften Layoutspeicher aus M73.5 für genau den Bereich `ui.order-header`.
+Dieser Projektbereich besitzt die explizite WPF-UI-Registry aus M73.2, den nativen HostAdapter aus M73.3, die lokale Prozess-/Sessiongrenze aus M73.4 und den ziel-app-eigenen dauerhaften Layoutspeicher aus M73.5 für genau den Bereich `ui.order-header`. M74 ergänzt neutrale DTOs und additive UI-Intents für das native WPF-Editorfenster.
 
 ## Bestehender HostAdapter
 
@@ -20,6 +20,9 @@ Jede JSONL-Nachricht enthält `protocolVersion`, `messageId`, `messageType`, `ti
 - Aktivierung: `activate` / `activated`
 - Sessionstart: `startSession` / `requestRegistry`, danach `registry` / `requestLayoutState`, danach `layoutState` / `sessionStarted`
 - Änderung: `diagnostic` / `submitChangeRequest`, danach `changeResult` / `changeResultAccepted`
+- M74-UI-Zustand: `getEditorUiState` / `editorUiState`
+- M74-Auswahl und Bedienzustand: `selectEditorElement`, `setEditorLayer`, `setEditorMode`, `setEditorStep`, jeweils beantwortet mit `editorUiState`
+- M74-Richtung: `activateEditorDirection` / `submitChangeRequest`, danach unverändert `changeResult` / `changeResultAccepted`
 - Sessionende: `endSession` / `sessionEnded`
 - Deaktivierung: `deactivate` / `deactivated`
 - Prozessende: `shutdown` / `shutdownComplete`
@@ -32,6 +35,12 @@ Unbekannte oder inkompatible Versionen werden nicht konvertiert. Falsche Session
 `Session/EditorProcessCoordinator` besitzt die Zustände `Inactive`, `Activating`, `Active`, `StartingSession`, `SessionActive`, `EndingSession`, `Deactivating` und `Faulted`. Genau eine Session ist zulässig. Als aktiv gilt sie erst nach bestätigter Registry- und LayoutState-Übernahme. Neue Änderungen werden während Sessionende nicht angenommen.
 
 Die Registryserialisierung enthält Metadaten und Operationsfreigaben, aber niemals native WPF-Referenzen. Der LayoutState enthält nur Element- und Textgeometrie. Ein vom Node-Core validierter Auftrag wird in das bestehende C#-`ChangeRequest`-Modell übersetzt, an den vorhandenen `WpfHostAdapter` weitergegeben und als `ChangeResult` zurückgesendet. Es existiert keine zweite Layoutänderungslogik.
+
+## M74-UI-Koordination
+
+`EditorUi/EditorUiState` übersetzt ausschließlich neutrale Baum-, Detail-, Panel- und Layoutwerte. `EditorProcessCoordinator` serialisiert Auswahl, Ebene, Modus, Schrittweite und Richtungsintent innerhalb der bereits aktiven Session. Die Node-Seite erzeugt den Änderungsauftrag über den vorhandenen M70-Panelcontroller und die bestehenden Baum-/Detail-ViewModels. Der C#-Coordinator gibt den Auftrag unverändert an den vorhandenen HostAdapter weiter und liest Details erst nach dem `ChangeResult` neu.
+
+Die Einzelfensterregel und die WPF-Fensterereignisse liegen in der WPF-Schicht. EditorIntegration kennt kein Fenster und schreibt keine native Layoutproperty. Die explizite UTF-8-Kodierung ohne BOM sichert deutsche Anzeigenamen und Statusmeldungen über alle drei Prozessstreams.
 
 ## Timeouts und Ende
 
@@ -47,4 +56,4 @@ Getrennte Timeouts gelten für Prozessstart, Handshake, Aktivierung, Sessionstar
 
 Der Normalstart lädt nach `Loaded`, Registryaufbau und HostAdapter-Erzeugung. Fehlende Dateien sind kein Fehler. Beschädigte, fachlich unzulässige oder inkompatible Dateien werden nicht teilweise angewandt und blockieren die normale App nicht. `--layout-persistence-diagnostic` weist Speichern und Restore in zwei echten, nacheinander gestarteten WPF-Prozessen nach und räumt das isolierte Testprofil auf.
 
-Nicht enthalten sind sichtbare Editoroberfläche, Selektion, Reset-/Discard-Bedienung, mehrere Profile oder Registry-Bereiche, PDF, Netzwerkkommunikation, automatische Registrierung oder Fachdatenspeicherung.
+Nicht enthalten sind Reset-/Discard-/Save-/Load-Bedienung, mehrere Profile oder Registry-Bereiche, PDF, Netzwerkkommunikation, automatische Registrierung oder Fachdatenspeicherung.
