@@ -25,6 +25,13 @@ public static class EditorMessageTypes
     public const string SubmitChangeRequest = "submitChangeRequest";
     public const string ChangeResult = "changeResult";
     public const string ChangeResultAccepted = "changeResultAccepted";
+    public const string GetEditorUiState = "getEditorUiState";
+    public const string EditorUiState = "editorUiState";
+    public const string SelectEditorElement = "selectEditorElement";
+    public const string SetEditorLayer = "setEditorLayer";
+    public const string SetEditorMode = "setEditorMode";
+    public const string SetEditorStep = "setEditorStep";
+    public const string ActivateEditorDirection = "activateEditorDirection";
     public const string Shutdown = "shutdown";
     public const string ShutdownComplete = "shutdownComplete";
     public const string Error = "error";

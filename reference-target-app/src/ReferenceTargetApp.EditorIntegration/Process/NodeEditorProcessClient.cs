@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Text;
 using ReferenceTargetApp.EditorIntegration.Protocol;
 using DiagnosticsProcess = System.Diagnostics.Process;
 
@@ -51,7 +52,10 @@ public sealed class NodeEditorProcessClient : IAsyncDisposable
             CreateNoWindow = true,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = true
+            RedirectStandardError = true,
+            StandardInputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            StandardOutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            StandardErrorEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
         };
         startInfo.ArgumentList.Add(options.ScriptPath);
 

@@ -5,6 +5,7 @@ const { createEditorCore } = require("../core/editor-core.cjs");
 const { validateChangeRequest } = require("../core/change-request-validator.cjs");
 const { validateLayoutState } = require("../core/layout-state-contract.cjs");
 const { createSessionState } = require("../runtime/session-state.cjs");
+const { createEditorUiSession } = require("./editor-ui-session.cjs");
 
 const PROTOCOL_VERSION = "1.0";
 const MESSAGE_TYPES = Object.freeze({
@@ -26,6 +27,13 @@ const MESSAGE_TYPES = Object.freeze({
   SUBMIT_CHANGE_REQUEST: "submitChangeRequest",
   CHANGE_RESULT: "changeResult",
   CHANGE_RESULT_ACCEPTED: "changeResultAccepted",
+  GET_EDITOR_UI_STATE: "getEditorUiState",
+  EDITOR_UI_STATE: "editorUiState",
+  SELECT_EDITOR_ELEMENT: "selectEditorElement",
+  SET_EDITOR_LAYER: "setEditorLayer",
+  SET_EDITOR_MODE: "setEditorMode",
+  SET_EDITOR_STEP: "setEditorStep",
+  ACTIVATE_EDITOR_DIRECTION: "activateEditorDirection",
   SHUTDOWN: "shutdown",
   SHUTDOWN_COMPLETE: "shutdownComplete",
   ERROR: "error",
@@ -45,7 +53,9 @@ function createEditorProcessProtocol(options) {
   let pendingSessionId = null;
   let activeSessionId = null;
   let editorCore = null;
+  let registry = null;
   let sessionState = null;
+  let editorUiSession = null;
   let pendingChange = null;
 
   function response(messageType, payload, request, sessionId) {
@@ -89,9 +99,9 @@ function createEditorProcessProtocol(options) {
   }
 
   function buildCore(elements) {
-    const registry = createUiElementRegistry();
-    elements.forEach((element) => registry.registerElement(element));
-    return createEditorCore(registry);
+    const builtRegistry = createUiElementRegistry();
+    elements.forEach((element) => builtRegistry.registerElement(element));
+    return { registry: builtRegistry, editorCore: createEditorCore(builtRegistry) };
   }
 
   function layoutEntries(layoutState) {
@@ -102,7 +112,10 @@ function createEditorProcessProtocol(options) {
     pendingSessionId = null;
     activeSessionId = null;
     editorCore = null;
+    registry = null;
     sessionState = null;
+    if (editorUiSession) editorUiSession.destroy();
+    editorUiSession = null;
     pendingChange = null;
   }
 
@@ -139,7 +152,9 @@ function createEditorProcessProtocol(options) {
         }
         try {
           if (!Array.isArray(message.payload.elements)) throw new TypeError("registry.elements muss ein Array sein.");
-          editorCore = buildCore(message.payload.elements);
+          const built = buildCore(message.payload.elements);
+          registry = built.registry;
+          editorCore = built.editorCore;
           return { messages: [response(MESSAGE_TYPES.REQUEST_LAYOUT_STATE, { elementCount: editorCore.size() }, message, pendingSessionId)], shouldExit: false };
         } catch (exception) {
           editorCore = null;
@@ -158,6 +173,7 @@ function createEditorProcessProtocol(options) {
         }
         sessionState = createSessionState();
         const status = sessionState.begin(layoutEntries(layoutState));
+        editorUiSession = createEditorUiSession({ editorCore, registry, sessionState, scopeId: layoutState.uiScope });
         activeSessionId = pendingSessionId;
         pendingSessionId = null;
         return { messages: [response(MESSAGE_TYPES.SESSION_STARTED, { status, elementCount: editorCore.size() }, message, activeSessionId)], shouldExit: false };
@@ -174,6 +190,41 @@ function createEditorProcessProtocol(options) {
         }
         pendingChange = { changeId: changeRequest.changeId };
         return { messages: [response(MESSAGE_TYPES.SUBMIT_CHANGE_REQUEST, { changeRequest }, message, activeSessionId)], shouldExit: false };
+      }
+
+      case MESSAGE_TYPES.GET_EDITOR_UI_STATE: {
+        const blocked = requireSession(message);
+        if (blocked) return { messages: [blocked], shouldExit: false };
+        if (!editorUiSession) return { messages: [error(message, "editor_ui_unavailable", "Editor-UI ist nicht initialisiert.")], shouldExit: false };
+        return { messages: [response(MESSAGE_TYPES.EDITOR_UI_STATE, { editorUiState: editorUiSession.snapshot() }, message, activeSessionId)], shouldExit: false };
+      }
+
+      case MESSAGE_TYPES.SELECT_EDITOR_ELEMENT:
+      case MESSAGE_TYPES.SET_EDITOR_LAYER:
+      case MESSAGE_TYPES.SET_EDITOR_MODE:
+      case MESSAGE_TYPES.SET_EDITOR_STEP: {
+        const blocked = requireSession(message);
+        if (blocked) return { messages: [blocked], shouldExit: false };
+        if (!editorUiSession) return { messages: [error(message, "editor_ui_unavailable", "Editor-UI ist nicht initialisiert.")], shouldExit: false };
+        let state;
+        if (message.messageType === MESSAGE_TYPES.SELECT_EDITOR_ELEMENT) state = editorUiSession.selectElement(message.payload.elementId);
+        else if (message.messageType === MESSAGE_TYPES.SET_EDITOR_LAYER) state = editorUiSession.setLayer(message.payload.layer);
+        else if (message.messageType === MESSAGE_TYPES.SET_EDITOR_MODE) state = editorUiSession.setMode(message.payload.mode);
+        else state = editorUiSession.setStepSize(message.payload.stepSize);
+        return { messages: [response(MESSAGE_TYPES.EDITOR_UI_STATE, { editorUiState: state }, message, activeSessionId)], shouldExit: false };
+      }
+
+      case MESSAGE_TYPES.ACTIVATE_EDITOR_DIRECTION: {
+        const blocked = requireSession(message);
+        if (blocked) return { messages: [blocked], shouldExit: false };
+        if (pendingChange) return { messages: [error(message, "change_in_progress", "Ein Aenderungsauftrag wird bereits verarbeitet.")], shouldExit: false };
+        if (!editorUiSession) return { messages: [error(message, "editor_ui_unavailable", "Editor-UI ist nicht initialisiert.")], shouldExit: false };
+        const prepared = editorUiSession.prepareDirection(message.payload.direction);
+        if (!prepared.ok) return { messages: [error(message, prepared.code || "invalid_editor_intent", prepared.reason || "Editoraktion ist ungueltig.")], shouldExit: false };
+        const validation = validateChangeRequest(prepared.changeRequest, editorCore);
+        if (!validation.ok) return { messages: [error(message, "invalid_change_request", "Aenderungsauftrag ist ungueltig.", { errors: validation.errors })], shouldExit: false };
+        pendingChange = { changeId: prepared.changeRequest.changeId };
+        return { messages: [response(MESSAGE_TYPES.SUBMIT_CHANGE_REQUEST, { changeRequest: prepared.changeRequest }, message, activeSessionId)], shouldExit: false };
       }
 
       case MESSAGE_TYPES.CHANGE_RESULT: {
@@ -197,6 +248,7 @@ function createEditorProcessProtocol(options) {
             }),
           });
         }
+        if (editorUiSession) editorUiSession.acceptChangeResult(result);
         pendingChange = null;
         return { messages: [response(MESSAGE_TYPES.CHANGE_RESULT_ACCEPTED, { accepted: true, status: sessionState && sessionState.status() }, message, activeSessionId)], shouldExit: false };
       }

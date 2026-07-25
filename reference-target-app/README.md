@@ -1,6 +1,6 @@
-# Referenz-Ziel-App – M73 abgeschlossen mit M73.5
+# Referenz-Ziel-App – M74 native Editoroberfläche
 
-`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73.1 bis M73.5 stellen Grundgerüst, explizite Registry, nativen HostAdapter, lokalen Node-Prozess mit Sessionsteuerung sowie ziel-app-eigene Layoutpersistenz und Wiederherstellung nach Neustart bereit. Die normale sichtbare Oberfläche, die Fachdaten und die fachlichen Aktionen bleiben unverändert.
+`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73.1 bis M73.5 stellen Grundgerüst, explizite Registry, nativen HostAdapter, lokalen Node-Prozess mit Sessionsteuerung sowie ziel-app-eigene Layoutpersistenz und Wiederherstellung nach Neustart bereit. M74 ergänzt darauf eine sichtbare native Editoroberfläche; Fachdaten und fachliche Aktionen bleiben unverändert.
 
 ## Entwurfsentscheidung M73.2
 
@@ -121,6 +121,38 @@ dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTa
 
 Der Diagnoseprozess verwendet ein isoliertes Profil unter LocalApplicationData, startet einen ersten echten WPF-Prozess zum Ändern und Speichern und erst nach dessen Ende einen zweiten WPF-Prozess. Dieser stellt das Layout über den normalen Startup-Pfad wieder her, prüft die sichtbare Geometrie, den unveränderten Fachwert und den bestehenden Button-/Statusfluss und entfernt danach Datei, Hilfsdaten und Diagnoseordner.
 
+## Native Editoroberfläche M74
+
+Der Button `UI bearbeiten` öffnet ein nichtmodales natives WPF-Fenster für genau den Registry-Scope `ui.order-header`. Pro Ziel-App-Instanz existiert höchstens ein Editorfenster: Ein erneuter Klick aktiviert das vorhandene Fenster, ohne einen zweiten Node-Prozess oder eine zweite Session zu starten.
+
+Das Fenster zeigt links den ausschließlich aus der Registry aufgebauten Baum mit allen acht Elementen. Rechts stehen neutrale Elementdetails einschließlich ID, Art, Scope, Parent, Rolle, erlaubten Operationen sowie aktueller Element- und Textgeometrie. Die Bearbeitung verwendet die vorhandenen M70-/M72-Panelmodelle für:
+
+- Ebene `ELEMENT`: Verschieben, Breite und Höhe;
+- Ebene `TEXT`: Textposition und Schriftgröße;
+- positive endliche Schrittweite in DIP, mit deutscher oder invarianter Dezimalschreibweise;
+- Richtungstasten: Position und Textposition auf allen vier Achsen, Breite mit links/rechts, Höhe mit oben/unten, Schriftgröße mit links kleiner/rechts größer.
+
+Nicht erlaubte Ebenen, Modi und Richtungen sind deaktiviert und bleiben zusätzlich im Node-Core und im HostAdapter validiert. Ein Klick erzeugt genau einen neutralen `ChangeRequest`. Die Kette lautet:
+
+```text
+EditorWindow -> vorhandener Panelcontroller/ViewModels -> JSONL-Prozesssession
+             -> ChangeRequest -> WpfHostAdapter -> ChangeResult -> aktualisierte Details
+```
+
+Das Editorfenster schreibt keine WPF-Layoutproperty direkt. Es ändert keine Feldtexte, speichert keine Fachwerte und löst keinen Fachcommand aus. Status und strukturierte Fehler erscheinen im unteren Fensterbereich. Während eines Requests sind weitere Richtungsaktionen gesperrt.
+
+Schließen per Button oder X beendet zuerst die Session und anschließend den Node-Prozess; die Ziel-App bleibt geöffnet. Beim Beenden der Ziel-App wird ein offener Editor auf demselben Weg aufgeräumt. Danach kann der Editor erneut geöffnet werden.
+
+Der sichtbare End-to-End-Nachweis ist:
+
+```powershell
+dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj -- --editor-ui-diagnostic
+```
+
+Er öffnet echte WPF-Fenster, prüft einen Node-Prozess und eine Session, Baum und Details, alle fünf M74-Operationen, eine deaktivierte Capability, unveränderte Fachwerte, den normalen Fachbutton, Schließen und Wiederöffnen sowie vollständiges Prozessende.
+
+M74 enthält bewusst keine sichtbaren Save-, Load-, Discard- oder Reset-Funktionen, keine mehreren Profile oder Scopes und keine PDF-, Manager-, Browser- oder Netzwerkfunktion. Diese Layoutbedienung beginnt erst mit M75.
+
 ## Voraussetzungen
 
 - Windows 10 oder Windows 11
@@ -172,16 +204,16 @@ dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTa
 
 Die Buttons führen ausschließlich lokale fachliche Beispielaktionen aus. „Im Arbeitsspeicher sichern“ schreibt bewusst keine Datei oder Layoutdaten.
 
-## Verbindliche Grenze nach Abschluss von M73
+## Verbindliche Grenze nach Abschluss von M74
 
-M73 stellt ausschließlich die technische Anbindung der Referenz-Ziel-App einschließlich lokalem Prozess-/Sessionweg und einem dauerhaften lokalen Layoutprofil bereit. Es existieren ausdrücklich:
+M73 stellt die technische Anbindung bereit; M74 ergänzt ausschließlich das native sichtbare Editorfenster und die unmittelbare Bearbeitung des einen registrierten Scopes. Es existieren ausdrücklich:
 
-- keine dauerhafte Session, keine Selektion und kein sichtbares Editorfenster;
+- keine dauerhafte Session außerhalb eines geöffneten Editorfensters;
 - kein HTTP, WebSocket, Netzwerkdienst oder anderes Transportprotokoll neben lokalem JSONL über `stdin`/`stdout`;
 - keine Ziel-App-Auswahl, kein Windows-Manager und keine PDF-Funktion;
 - keine automatische Registrierung und keine Visual-Tree-Heuristik;
 - keine Browser-, HTML-, DOM-, Electron- oder WebView-Lösung.
 
-## Offen ab M74 und in späteren Meilensteinen
+## Offen ab M75 und in späteren Meilensteinen
 
-Eine sichtbare native Editoroberfläche mit Elementbaum, Details, Modi und Bedienung bleibt vollständig M74 vorbehalten. Reset/Discard-Bedienung, mehrere Profile und mehrere Scopes bleiben M75 vorbehalten; PDF beginnt erst mit M76.
+Save-/Load-/Reset-/Discard-Bedienung, mehrere Profile und mehrere Scopes bleiben M75 vorbehalten; PDF beginnt erst mit M76.

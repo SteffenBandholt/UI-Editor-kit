@@ -1,5 +1,6 @@
 using System.IO;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.EditorUi;
 using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Protocol;
 
@@ -144,6 +145,85 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
         {
             transitionLock.Release();
         }
+    }
+
+    public Task<EditorUiState> GetEditorUiStateAsync(CancellationToken cancellationToken = default) =>
+        RunEditorUiStateRequestAsync(EditorMessageTypes.GetEditorUiState, new { }, cancellationToken);
+
+    public Task<EditorUiState> SelectEditorElementAsync(string elementId, CancellationToken cancellationToken = default) =>
+        RunEditorUiStateRequestAsync(EditorMessageTypes.SelectEditorElement, new { elementId }, cancellationToken);
+
+    public Task<EditorUiState> SetEditorLayerAsync(string layer, CancellationToken cancellationToken = default) =>
+        RunEditorUiStateRequestAsync(EditorMessageTypes.SetEditorLayer, new { layer }, cancellationToken);
+
+    public Task<EditorUiState> SetEditorModeAsync(string mode, CancellationToken cancellationToken = default) =>
+        RunEditorUiStateRequestAsync(EditorMessageTypes.SetEditorMode, new { mode }, cancellationToken);
+
+    public Task<EditorUiState> SetEditorStepAsync(double stepSize, CancellationToken cancellationToken = default) =>
+        RunEditorUiStateRequestAsync(EditorMessageTypes.SetEditorStep, new { stepSize }, cancellationToken);
+
+    public async Task<EditorUiChangeOutcome> RunEditorDirectionAsync(string direction, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(direction);
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureActiveSession();
+            var submitMessage = await client.SendRequestAsync(
+                EditorMessageTypes.ActivateEditorDirection,
+                new { direction },
+                EditorMessageTypes.SubmitChangeRequest,
+                timeouts.SessionStart,
+                SessionId,
+                cancellationToken).ConfigureAwait(false);
+            var request = ChangeRequestProtocolTranslator.Translate(submitMessage.Payload);
+            var result = hostAdapter.SubmitChangeRequest(request);
+            await client.SendRequestAsync(
+                EditorMessageTypes.ChangeResult,
+                new { changeResult = result },
+                EditorMessageTypes.ChangeResultAccepted,
+                timeouts.SessionStart,
+                SessionId,
+                cancellationToken).ConfigureAwait(false);
+            var state = await RequestEditorUiStateCoreAsync(EditorMessageTypes.GetEditorUiState, new { }, cancellationToken).ConfigureAwait(false);
+            return new EditorUiChangeOutcome(state, result);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    private async Task<EditorUiState> RunEditorUiStateRequestAsync(string messageType, object payload, CancellationToken cancellationToken)
+    {
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureActiveSession();
+            return await RequestEditorUiStateCoreAsync(messageType, payload, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    private async Task<EditorUiState> RequestEditorUiStateCoreAsync(string messageType, object payload, CancellationToken cancellationToken)
+    {
+        var response = await client.SendRequestAsync(
+            messageType,
+            payload,
+            EditorMessageTypes.EditorUiState,
+            timeouts.SessionStart,
+            SessionId,
+            cancellationToken).ConfigureAwait(false);
+        return EditorUiStateTranslator.Translate(response.Payload);
+    }
+
+    private void EnsureActiveSession()
+    {
+        if (State != EditorSessionState.SessionActive || SessionId is null)
+            throw new EditorProcessException("session_not_active", "Editoraktion erfordert eine aktive Session.");
     }
 
     public async Task<EditorSessionResult> EndSessionAsync(CancellationToken cancellationToken = default)

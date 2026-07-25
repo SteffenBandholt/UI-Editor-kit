@@ -92,6 +92,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkenn
 | K4 / M71 | [A] | Plattformneutrale Host- und Integrationsschicht | Integrations- und Boundary-Tests gruen |
 | K5 / M72 | [A] | Element- und Textbearbeitungslogik | M72-Tests und Gesamttest gruen |
 | K6 / M73 | [A] | Neue WPF-Ziel-App technisch angebunden: M73.1 Grundgeruest, M73.2 Registry, M73.3 HostAdapter, M73.4 Node-Prozess/Session, M73.5 dauerhafter Layoutspeicher und Neustart-Restore | .NET-/npm-Tests und echter Zwei-Prozess-Nachweis gruen |
+| K7 / M74 | [A] | Native sichtbare UI-Editoroberflaeche mit Registry-Baum, neutralen Details, Element-/Textebene, fuenf Modi, Schrittweite, Richtungssteuerung und Einzelfenster-Lebenszyklus | 21 .NET-Tests, npm-Gesamttest und sichtbarer `--editor-ui-diagnostic`-Nachweis gruen |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -111,39 +112,39 @@ Ergebnis:
 - komplette Testsuite gruen,
 - Package-Trockenlauf erfolgreich,
 - Release-Readiness fuer `0.2.0` erfolgreich,
-- keine Whitespace-Fehler.
-- 21 .NET-Tests einschliesslich Persistenz-, Kompatibilitaets-, Batchrollback- und echtem Zwei-Prozess-Neustartnachweis gruen,
+- keine Whitespace-Fehler,
+- 21 .NET-Tests einschliesslich Persistenz-, Kompatibilitaets-, Batchrollback-, Prozess-/Session- und nativer Editorfenster-Integration gruen,
 - sichtbare Breite nach Neustart von 368 px auf 398 px bei 125 % DPI wiederhergestellt (= +24 DIP),
+- natives M74-Editorfenster sichtbar geoeffnet; exakt acht registrierte Elemente, neutrale Details und capability-gesteuerte Modi angezeigt,
+- Position, Breite, Hoehe, Textposition und Schriftgroesse ueber Panelcontroller, Node-Session und WpfHostAdapter unmittelbar sichtbar geaendert,
+- Einzelfensterregel, Schliessen per Button und X sowie Wiedereroeffnung mit jeweils vollstaendig beendetem Node-Prozess nachgewiesen,
 - Fachwert `AU-2026-0471` unveraendert und fachlicher Button-/Statusfluss weiterhin funktionsfaehig,
 - keine temporaeren Speicherdateien sowie keine Node- oder WPF-Prozesse zurueckgelassen.
 
 ## 7. Aktueller offener Meilenstein
 
-### M74 - Native sichtbare UI-Editoroberflaeche
+### M75 - UI-Betrieb vollstaendig
 
 Status: `[ ] offen`
 
 Ziel:
 
-- native Windows-Editoroberflaeche,
-- Elementbaum und Elementdetails,
-- Auswahl genau eines registrierten Elements,
-- Umschaltung Element/Text,
-- Bedienmodi fuer Position, Breite, Hoehe, Textposition und Schriftgroesse,
-- Schrittweite, Richtungstasten sowie sichtbare Status- und Fehlermeldungen,
-- Editor aus der Ziel-App oeffnen und schliessen.
+- normale Bedienung fuer Save und Load des Layouts,
+- Einzel- und Gesamtverwerfen,
+- Einzel- und Gesamtreset,
+- vollstaendiger Fehler-, Rollback- und Wiederanwendungsfluss,
+- vollstaendiger praktischer UI-Betrieb fuer die Referenz-Ziel-App.
 
 Nicht-Ziele:
 
-- noch kein vollstaendiger Save-/Load-/Discard-/Reset-Betrieb aus M75,
 - noch kein PDF-Editor,
 - kein Windows-Manager und kein Registrationslauf.
 
-Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M74 erfuellt und praktisch nachgewiesen sind.
+Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M75 erfuellt und praktisch nachgewiesen sind.
 
 ## 8. Naechster Auftrag
 
-Der naechste Bauauftrag ist ausschliesslich M74. Die bestehende M73-Registry, der WpfHostAdapter, der Prozess-/Sessionvertrag und die Layoutpersistenz bleiben die technische Grundlage. M75-Funktionen, PDF, Manager und Registrationslauf bleiben gesperrt.
+Der naechste Bauauftrag ist ausschliesslich M75. Die abgenommene native M74-Oberflaeche, die M73-Registry, der WpfHostAdapter, der Prozess-/Sessionvertrag und die Layoutpersistenz bleiben die technische Grundlage. PDF, Manager und Registrationslauf bleiben gesperrt.
 
 ## 9. Statuswerte
 

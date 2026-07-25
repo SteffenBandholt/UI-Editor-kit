@@ -207,7 +207,7 @@ function createUiEditorPanelController(options) {
     return { ok: true, value: Number.isFinite(value) ? value : undefined };
   }
 
-  function createChange(direction) {
+  function prepareDirectionChange(direction) {
     if (!state.selectedElementId) return blocked(PANEL_ERROR_CODES.NO_SELECTION, "no element selected.");
     const activeModes = state.layer === PANEL_LAYERS.TEXT ? state.availableTextModes : state.availableModes;
     if (!activeModes.includes(state.mode)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
@@ -230,7 +230,7 @@ function createUiEditorPanelController(options) {
       else if (direction === "down") payload = { y: (Number.isFinite(elementLayout.y) ? elementLayout.y : 0) + step };
       else return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for move.");
       if (state.modernOperations) payload = { element: payload };
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+      return { ok: true, changeRequest: { elementId: state.selectedElementId, operation: "move", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
     }
 
     if (state.mode === PANEL_MODES.WIDTH) {
@@ -243,8 +243,9 @@ function createUiEditorPanelController(options) {
       const width = elementLayout.width + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
       if (Number.isFinite(max.value) && width > max.value) return blocked("MAX_SIZE_REACHED", "maximum width reached.", { field: "width", max: max.value });
-      payload = state.modernOperations ? { element: { width } } : { width, ...(Number.isFinite(elementLayout.height) ? { height: elementLayout.height } : {}) };
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: state.effectiveOps.includes("resizeWidth") ? "resizeWidth" : "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+      const operation = state.effectiveOps.includes("resizeWidth") ? "resizeWidth" : "resize";
+      payload = state.modernOperations ? { element: { width } } : operation === "resizeWidth" ? { width } : { width, ...(Number.isFinite(elementLayout.height) ? { height: elementLayout.height } : {}) };
+      return { ok: true, changeRequest: { elementId: state.selectedElementId, operation, payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
     }
 
     if (state.mode === PANEL_MODES.HEIGHT) {
@@ -257,8 +258,9 @@ function createUiEditorPanelController(options) {
       const height = elementLayout.height + (direction === "up" ? -step : step);
       if (Number.isFinite(min.value) && height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
       if (Number.isFinite(max.value) && height > max.value) return blocked("MAX_SIZE_REACHED", "maximum height reached.", { field: "height", max: max.value });
-      payload = state.modernOperations ? { element: { height } } : { height, ...(Number.isFinite(elementLayout.width) ? { width: elementLayout.width } : {}) };
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: state.effectiveOps.includes("resizeHeight") ? "resizeHeight" : "resize", payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() });
+      const operation = state.effectiveOps.includes("resizeHeight") ? "resizeHeight" : "resize";
+      payload = state.modernOperations ? { element: { height } } : operation === "resizeHeight" ? { height } : { height, ...(Number.isFinite(elementLayout.width) ? { width: elementLayout.width } : {}) };
+      return { ok: true, changeRequest: { elementId: state.selectedElementId, operation, payload, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
     }
 
     if (state.mode === PANEL_MODES.TEXT_POSITION) {
@@ -270,14 +272,14 @@ function createUiEditorPanelController(options) {
         const offsetX = currentX + (direction === "left" ? -step : step);
         if (Number.isFinite(limits.minTextOffsetX) && offsetX < limits.minTextOffsetX) return blocked("MIN_TEXT_OFFSET_REACHED", "minimum horizontal text offset reached.");
         if (Number.isFinite(limits.maxTextOffsetX) && offsetX > limits.maxTextOffsetX) return blocked("MAX_TEXT_OFFSET_REACHED", "maximum horizontal text offset reached.");
-        return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX } }, source: "ui-editor-panel" });
+        return { ok: true, changeRequest: { elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetX } }, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
       }
       if (["up", "down"].includes(direction)) {
         const step = resolveOperationStep({ registryElement, operation: "textMove", axis: "y", panelStepSize: state.stepSize });
         const offsetY = currentY + (direction === "up" ? -step : step);
         if (Number.isFinite(limits.minTextOffsetY) && offsetY < limits.minTextOffsetY) return blocked("MIN_TEXT_OFFSET_REACHED", "minimum vertical text offset reached.");
         if (Number.isFinite(limits.maxTextOffsetY) && offsetY > limits.maxTextOffsetY) return blocked("MAX_TEXT_OFFSET_REACHED", "maximum vertical text offset reached.");
-        return runtime.applyChange({ elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetY } }, source: "ui-editor-panel" });
+        return { ok: true, changeRequest: { elementId: state.selectedElementId, operation: "textMove", payload: { text: { offsetY } }, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
       }
       return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text position.");
     }
@@ -290,10 +292,16 @@ function createUiEditorPanelController(options) {
       const fontSize = current + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && fontSize < min.value) return blocked("MIN_SIZE_REACHED", "minimum font size reached.");
       if (Number.isFinite(max.value) && fontSize > max.value) return blocked("MAX_SIZE_REACHED", "maximum font size reached.");
-      return runtime.applyChange({ elementId: state.selectedElementId, operation: "textResize", payload: { text: { fontSize } }, source: "ui-editor-panel" });
+      return { ok: true, changeRequest: { elementId: state.selectedElementId, operation: "textResize", payload: { text: { fontSize } }, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
     }
 
     return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not allowed.");
+  }
+
+  function createChange(direction) {
+    const prepared = prepareDirectionChange(direction);
+    if (!prepared.ok) return prepared;
+    return runtime.applyChange(prepared.changeRequest);
   }
 
   function invalidDialog() {
@@ -361,6 +369,12 @@ function createUiEditorPanelController(options) {
       state.stepSize = Math.max(1, Number(stepSize) || 5);
       emit();
       return getState();
+    },
+    prepareDirectionChange(direction) {
+      const prepared = prepareDirectionChange(direction);
+      state.lastResult = prepared.ok ? null : prepared;
+      emit();
+      return clone(prepared);
     },
     activateDirection(direction) { return run(() => createChange(direction), "CHANGE_APPLIED"); },
     activateCenter() { return run(() => state.selectedElementId ? runtime.discardElementChanges(state.selectedElementId) : blocked(PANEL_ERROR_CODES.NO_SELECTION, "no element selected."), "ELEMENT_CHANGES_DISCARDED"); },
