@@ -123,7 +123,7 @@ function assertNoForbiddenFragments(text, label) {
 
 function run() {
   const { ALLOWED_LAYOUT_PAYLOAD_FIELDS, validateChangeRequest, validateChangeRequestShape } = loadValidatorModule();
-  assert.deepEqual(Array.from(ALLOWED_LAYOUT_PAYLOAD_FIELDS), ["x", "y", "width", "height", "spacing", "order", "visibility", "visible", "label"]);
+  assert.deepEqual(Array.from(ALLOWED_LAYOUT_PAYLOAD_FIELDS), ["x", "y", "width", "height", "text", "spacing", "order", "visibility", "visible", "label"]);
 
   const realCore = createRealCore();
   assert.deepEqual(validateChangeRequest(validChangeRequest(), realCore), { ok: true, errors: [] });
@@ -142,6 +142,9 @@ function run() {
   assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: "wide" }), realCore), "invalid_payload", "payload");
   assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: [] }), realCore), "invalid_payload", "payload");
   assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: { status: "open" } }), realCore), "invalid_payload", "payload.status");
+  assert.equal(validateChangeRequestShape(validChangeRequest({ payload: { text: { offsetX: 2, offsetY: 1, fontSize: 16 } } })).ok, true);
+  assertRejectedWith(validateChangeRequestShape(validChangeRequest({ payload: { text: "wide" } })), "invalid_payload", "payload.text");
+  assertRejectedWith(validateChangeRequestShape(validChangeRequest({ payload: { text: { value: "fachlich" } } })), "invalid_payload", "payload.text.value");
   assertRejectedWith(validateChangeRequest(validChangeRequest({ payload: { label: "Neutral" } }), realCore), "forbidden_field", "payload.label");
   assert.equal(validateChangeRequest(validChangeRequest({ payload: { label: "Neutral" }, allowedPayloadFields: ["label"] }), realCore).ok, true);
 
@@ -243,7 +246,7 @@ function run() {
 
   const validatorSource = fs.readFileSync(VALIDATOR_PATH, "utf8");
   assertNoForbiddenFragments(validatorSource, "change-request-validator");
-  assert.equal(validatorSource.includes("fs"), false);
+  assert.equal(/require\(["'](?:node:)?fs["']\)/.test(validatorSource), false);
   assert.equal(validatorSource.includes("child_process"), false);
 
   const forbiddenPaths = ["browser", "demo", "examples/beispiel-ui", "examples/mini-inspector", "examples/host-app-basic"];

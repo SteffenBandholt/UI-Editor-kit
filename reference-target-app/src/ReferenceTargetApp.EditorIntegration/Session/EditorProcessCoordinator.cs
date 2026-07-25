@@ -1,0 +1,242 @@
+using System.IO;
+using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.Process;
+using ReferenceTargetApp.EditorIntegration.Protocol;
+
+namespace ReferenceTargetApp.EditorIntegration.Session;
+
+public sealed class EditorProcessCoordinator : IAsyncDisposable
+{
+    private readonly IHostAdapter hostAdapter;
+    private readonly NodeEditorProcessClient client;
+    private readonly EditorProcessTimeouts timeouts;
+    private readonly SemaphoreSlim transitionLock = new(1, 1);
+    private bool disposed;
+
+    public EditorProcessCoordinator(IHostAdapter hostAdapter, EditorProcessOptions options)
+    {
+        this.hostAdapter = hostAdapter ?? throw new ArgumentNullException(nameof(hostAdapter));
+        ArgumentNullException.ThrowIfNull(options);
+        timeouts = options.Timeouts;
+        client = new NodeEditorProcessClient(options);
+        client.UnexpectedlyExited += Client_UnexpectedlyExited;
+    }
+
+    public EditorSessionState State { get; private set; } = EditorSessionState.Inactive;
+    public string? SessionId { get; private set; }
+    public int? ProcessId => client.ProcessId;
+    public IReadOnlyList<EditorProcessDiagnostic> Diagnostics => client.GetDiagnostics();
+
+    public async Task<EditorSessionResult> ActivateAsync(CancellationToken cancellationToken = default)
+    {
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (State is EditorSessionState.Active or EditorSessionState.SessionActive)
+                return EditorSessionResult.Ok("already_active", "Editor-Prozess ist bereits aktiviert.", State, SessionId);
+            if (State != EditorSessionState.Inactive)
+                return EditorSessionResult.Fail("invalid_state", "Aktivierung ist im aktuellen Zustand nicht erlaubt.", State, SessionId);
+
+            State = EditorSessionState.Activating;
+            await client.StartAsync(cancellationToken).ConfigureAwait(false);
+            await client.SendRequestAsync(EditorMessageTypes.Handshake, new { }, EditorMessageTypes.HandshakeAccepted, timeouts.Handshake, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await client.SendRequestAsync(EditorMessageTypes.Activate, new { }, EditorMessageTypes.Activated, timeouts.Activation, cancellationToken: cancellationToken).ConfigureAwait(false);
+            State = EditorSessionState.Active;
+            return EditorSessionResult.Ok("activated", "Editor-Prozess wurde aktiviert.", State);
+        }
+        catch (Exception exception) when (exception is EditorProcessException or OperationCanceledException)
+        {
+            State = EditorSessionState.Faulted;
+            await SafeStopClientAsync().ConfigureAwait(false);
+            return EditorSessionResult.Fail(ErrorCode(exception), exception.Message, State);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    public async Task<EditorSessionResult> StartSessionAsync(CancellationToken cancellationToken = default)
+    {
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (State == EditorSessionState.SessionActive)
+                return EditorSessionResult.Fail("session_already_active", "Es ist bereits eine Session aktiv.", State, SessionId);
+            if (State != EditorSessionState.Active)
+                return EditorSessionResult.Fail("not_activated", "Sessionstart erfordert eine aktive Prozessanbindung.", State);
+
+            State = EditorSessionState.StartingSession;
+            var sessionId = $"session-{Guid.NewGuid():N}";
+            await client.SendRequestAsync(EditorMessageTypes.StartSession, new { }, EditorMessageTypes.RequestRegistry, timeouts.SessionStart, sessionId, cancellationToken).ConfigureAwait(false);
+            await client.SendRequestAsync(
+                EditorMessageTypes.Registry,
+                EditorProtocolPayloadFactory.CreateRegistryPayload(hostAdapter.GetRegistry()),
+                EditorMessageTypes.RequestLayoutState,
+                timeouts.SessionStart,
+                sessionId,
+                cancellationToken).ConfigureAwait(false);
+            var layoutState = hostAdapter.GetCurrentLayoutState();
+            await client.SendRequestAsync(
+                EditorMessageTypes.LayoutState,
+                EditorProtocolPayloadFactory.CreateLayoutStatePayload(layoutState),
+                EditorMessageTypes.SessionStarted,
+                timeouts.SessionStart,
+                sessionId,
+                cancellationToken).ConfigureAwait(false);
+            SessionId = sessionId;
+            State = EditorSessionState.SessionActive;
+            return EditorSessionResult.Ok("session_started", "Editor-Session wurde gestartet.", State, SessionId);
+        }
+        catch (Exception exception) when (exception is EditorProcessException or OperationCanceledException or InvalidOperationException)
+        {
+            State = client.IsRunning ? EditorSessionState.Active : EditorSessionState.Faulted;
+            SessionId = null;
+            return EditorSessionResult.Fail(ErrorCode(exception), exception.Message, State);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    public async Task<ChangeResult> RunDiagnosticChangeAsync(ChangeRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (State != EditorSessionState.SessionActive || SessionId is null)
+                return ChangeResult.Rejected(request, "session_not_active", "Diagnoseauftrag erfordert eine aktive Session.");
+
+            var submitMessage = await client.SendRequestAsync(
+                EditorMessageTypes.Diagnostic,
+                new { changeRequest = request },
+                EditorMessageTypes.SubmitChangeRequest,
+                timeouts.SessionStart,
+                SessionId,
+                cancellationToken).ConfigureAwait(false);
+            ChangeRequest translated;
+            try
+            {
+                translated = ChangeRequestProtocolTranslator.Translate(submitMessage.Payload);
+            }
+            catch (InvalidDataException exception)
+            {
+                return ChangeResult.Rejected(request, "invalid_protocol_payload", exception.Message);
+            }
+
+            var result = hostAdapter.SubmitChangeRequest(translated);
+            await client.SendRequestAsync(
+                EditorMessageTypes.ChangeResult,
+                new { changeResult = result },
+                EditorMessageTypes.ChangeResultAccepted,
+                timeouts.SessionStart,
+                SessionId,
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception exception) when (exception is EditorProcessException or OperationCanceledException)
+        {
+            return ChangeResult.Rejected(request, ErrorCode(exception), exception.Message);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    public async Task<EditorSessionResult> EndSessionAsync(CancellationToken cancellationToken = default)
+    {
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (State == EditorSessionState.Active)
+                return EditorSessionResult.Ok("session_not_active", "Es ist keine Session aktiv.", State);
+            if (State != EditorSessionState.SessionActive || SessionId is null)
+                return EditorSessionResult.Fail("invalid_state", "Sessionende ist im aktuellen Zustand nicht erlaubt.", State, SessionId);
+
+            State = EditorSessionState.EndingSession;
+            var endedSessionId = SessionId;
+            await client.SendRequestAsync(EditorMessageTypes.EndSession, new { }, EditorMessageTypes.SessionEnded, timeouts.SessionEnd, endedSessionId, cancellationToken).ConfigureAwait(false);
+            SessionId = null;
+            State = EditorSessionState.Active;
+            return EditorSessionResult.Ok("session_ended", "Editor-Session wurde beendet.", State);
+        }
+        catch (Exception exception) when (exception is EditorProcessException or OperationCanceledException)
+        {
+            State = client.IsRunning ? EditorSessionState.Active : EditorSessionState.Faulted;
+            SessionId = null;
+            return EditorSessionResult.Fail(ErrorCode(exception), exception.Message, State);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    public async Task<EditorSessionResult> DeactivateAsync(CancellationToken cancellationToken = default)
+    {
+        if (State == EditorSessionState.SessionActive)
+        {
+            var sessionResult = await EndSessionAsync(cancellationToken).ConfigureAwait(false);
+            if (!sessionResult.Success) return sessionResult;
+        }
+
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (State == EditorSessionState.Inactive)
+                return EditorSessionResult.Ok("already_inactive", "Editor-Prozess ist bereits deaktiviert.", State);
+            if (State != EditorSessionState.Active && State != EditorSessionState.Faulted)
+                return EditorSessionResult.Fail("invalid_state", "Deaktivierung ist im aktuellen Zustand nicht erlaubt.", State, SessionId);
+
+            State = EditorSessionState.Deactivating;
+            if (client.IsRunning)
+            {
+                await client.SendRequestAsync(EditorMessageTypes.Deactivate, new { }, EditorMessageTypes.Deactivated, timeouts.Deactivation, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await client.StopAsync(cancellationToken).ConfigureAwait(false);
+            }
+            SessionId = null;
+            State = EditorSessionState.Inactive;
+            return EditorSessionResult.Ok("deactivated", "Editor-Prozess wurde deaktiviert und beendet.", State);
+        }
+        catch (Exception exception) when (exception is EditorProcessException or OperationCanceledException)
+        {
+            await SafeStopClientAsync().ConfigureAwait(false);
+            SessionId = null;
+            State = EditorSessionState.Faulted;
+            return EditorSessionResult.Fail(ErrorCode(exception), exception.Message, State);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed) return;
+        disposed = true;
+        await DeactivateAsync(CancellationToken.None).ConfigureAwait(false);
+        client.UnexpectedlyExited -= Client_UnexpectedlyExited;
+        await client.DisposeAsync().ConfigureAwait(false);
+        transitionLock.Dispose();
+    }
+
+    private void Client_UnexpectedlyExited(object? sender, EventArgs e)
+    {
+        SessionId = null;
+        State = EditorSessionState.Faulted;
+    }
+
+    private async Task SafeStopClientAsync()
+    {
+        try { await client.StopAsync(CancellationToken.None).ConfigureAwait(false); }
+        catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException) { }
+    }
+
+    private static string ErrorCode(Exception exception) => exception is EditorProcessException processException
+        ? processException.Code
+        : exception is OperationCanceledException ? "cancelled" : "integration_failed";
+}

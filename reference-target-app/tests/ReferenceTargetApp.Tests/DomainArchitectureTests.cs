@@ -27,6 +27,16 @@ public sealed class DomainArchitectureTests
     }
 
     [TestMethod]
+    public void DomainAssemblyHasNoProcessOrJsonProtocolDependency()
+    {
+        var referencedAssemblies = typeof(Order).Assembly.GetReferencedAssemblies().Select(reference => reference.Name ?? string.Empty).ToArray();
+
+        Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("Diagnostics.Process", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("System.Text.Json", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsFalse(referencedAssemblies.Any(name => name.Contains("EditorIntegration", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
     public void RegistryAssemblyHasNoDomainOrUiEditorKitDependency()
     {
         var referencedAssemblies = typeof(UiElementRegistry).Assembly.GetReferencedAssemblies().Select(reference => reference.Name ?? string.Empty).ToArray();

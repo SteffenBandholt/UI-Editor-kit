@@ -98,12 +98,31 @@ function validateNeutralLayoutValue(value, pathPrefix, errors, allowedConditiona
   }
   Object.keys(value).forEach((fieldName) => {
     const fieldPath = pathPrefix ? `${pathPrefix}.${fieldName}` : fieldName;
+    if (fieldName === "element") {
+      validateNestedLayoutContainer(value[fieldName], fieldPath, ["x", "y", "width", "height", "visible"], errors);
+      return;
+    }
+    if (fieldName === "text") {
+      validateNestedLayoutContainer(value[fieldName], fieldPath, ["offsetX", "offsetY", "fontSize"], errors);
+      return;
+    }
     if (!ALLOWED_LAYOUT_PAYLOAD_FIELDS.includes(fieldName)) {
       errors.push(createError("invalid_layout_state", `Layoutwert ist nicht erlaubt: ${fieldName}`, { field: fieldPath }));
       return;
     }
     if (CONDITIONAL_LAYOUT_PAYLOAD_FIELDS.includes(fieldName) && !allowedConditionalFields.includes(fieldName)) {
       errors.push(createError("invalid_layout_state", `Layoutwert braucht eine ausdrueckliche Freigabe: ${fieldName}`, { field: fieldPath }));
+    }
+  });
+}
+function validateNestedLayoutContainer(value, pathPrefix, allowedFields, errors) {
+  if (!isPlainObject(value)) {
+    errors.push(createError("invalid_layout_state", "Verschachtelter Layoutwert muss ein Objekt sein.", { field: pathPrefix }));
+    return;
+  }
+  Object.keys(value).forEach((fieldName) => {
+    if (!allowedFields.includes(fieldName)) {
+      errors.push(createError("invalid_layout_state", `Layoutwert ist nicht erlaubt: ${fieldName}`, { field: `${pathPrefix}.${fieldName}` }));
     }
   });
 }
