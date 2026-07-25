@@ -1,6 +1,6 @@
-# EditorIntegration – Grenze in M73.4
+# EditorIntegration – M73.5 und Abschluss von M73
 
-Dieser Projektbereich besitzt die explizite WPF-UI-Registry aus M73.2, den nativen HostAdapter aus M73.3 und die lokale Prozess-/Sessiongrenze aus M73.4 für genau den Bereich `ui.order-header`.
+Dieser Projektbereich besitzt die explizite WPF-UI-Registry aus M73.2, den nativen HostAdapter aus M73.3, die lokale Prozess-/Sessiongrenze aus M73.4 und den ziel-app-eigenen dauerhaften Layoutspeicher aus M73.5 für genau den Bereich `ui.order-header`.
 
 ## Bestehender HostAdapter
 
@@ -39,4 +39,12 @@ Getrennte Timeouts gelten für Prozessstart, Handshake, Aktivierung, Sessionstar
 
 `--editor-process-diagnostic` führt nach `Loaded` den vollständigen Aktivierungs-/Sessionablauf mit genau einem nicht persistenten `resizeWidth`-Auftrag aus und beendet Node anschließend wieder. Der Normalstart erzeugt weder Prozess noch Editoroberfläche.
 
-Nicht enthalten sind dauerhafte Layoutspeicherung, Laden nach Neustart, sichtbare Editoroberfläche, Selektion, weitere Registry-Bereiche, PDF, Netzwerkkommunikation, automatische Registrierung oder Fachaktionen.
+## Persistenz und Startup-Restore
+
+`Persistence/` enthält den zentralen LocalApplicationData-Pfad, das strikt versionierte JSON-Dokument, den stabilen SHA-256-Registry-Fingerprint, vollständige Dokumentvalidierung, den atomaren JSON-Speicher und den Batch-Restore. Pro Element werden nur capability-gedeckte neutrale Geometriewerte serialisiert. Fachwerte und native WPF-Referenzen kommen im Persistenzmodell nicht vor.
+
+`LayoutRestoreCoordinator` liest oder schreibt keine WPF-Eigenschaft direkt. Er sichert den vollständigen aktuellen LayoutState und reicht den Zielzustand in stabiler Registryreihenfolge ausschließlich als vorhandene ChangeRequests an `IHostAdapter.SubmitChangeRequest`. Bei einem Fehler wird der vollständige Ausgangszustand auf demselben Weg wiederhergestellt; Rollbackfehler bleiben strukturiert sichtbar.
+
+Der Normalstart lädt nach `Loaded`, Registryaufbau und HostAdapter-Erzeugung. Fehlende Dateien sind kein Fehler. Beschädigte, fachlich unzulässige oder inkompatible Dateien werden nicht teilweise angewandt und blockieren die normale App nicht. `--layout-persistence-diagnostic` weist Speichern und Restore in zwei echten, nacheinander gestarteten WPF-Prozessen nach und räumt das isolierte Testprofil auf.
+
+Nicht enthalten sind sichtbare Editoroberfläche, Selektion, Reset-/Discard-Bedienung, mehrere Profile oder Registry-Bereiche, PDF, Netzwerkkommunikation, automatische Registrierung oder Fachdatenspeicherung.

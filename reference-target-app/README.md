@@ -1,6 +1,6 @@
-# Referenz-Ziel-App – M73.4
+# Referenz-Ziel-App – M73 abgeschlossen mit M73.5
 
-`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73.4 bindet den vorhandenen Node.js-Editor-Kern als explizit gestarteten lokalen Unterprozess an die unveränderte M73.2-Registry und den nativen HostAdapter aus M73.3 an. Die normale sichtbare Oberfläche, die Fachdaten und die fachlichen Aktionen bleiben unverändert.
+`reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73.1 bis M73.5 stellen Grundgerüst, explizite Registry, nativen HostAdapter, lokalen Node-Prozess mit Sessionsteuerung sowie ziel-app-eigene Layoutpersistenz und Wiederherstellung nach Neustart bereit. Die normale sichtbare Oberfläche, die Fachdaten und die fachlichen Aktionen bleiben unverändert.
 
 ## Entwurfsentscheidung M73.2
 
@@ -99,6 +99,28 @@ dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTa
 
 Er startet Node, aktiviert den Kern, eröffnet eine Session, überträgt Registry und LayoutState, lässt Node genau einen neutralen `resizeWidth`-Auftrag für die registrierte Auftragsnummer senden, gibt das Adapterergebnis zurück und beendet Session sowie Prozess wieder. Die Breitenänderung bleibt nur im laufenden WPF-Prozess; es wird nichts gespeichert. Ein Normalstart startet keinen Node-Prozess.
 
+## Dauerhafter Layoutspeicher M73.5
+
+Die Ziel-App besitzt genau ein lokales Profil `order-header-default` für den Scope `ui.order-header`. Der Produktionspfad lautet:
+
+```text
+%LOCALAPPDATA%\UI-Editor-kit\ReferenceTargetApp\layouts\order-header-default.layout.json
+```
+
+Das versionierte JSON-Dokument (`schemaVersion: 1`) enthält `applicationId`, `profileId`, `scopeId`, `savedAt`, einen SHA-256-Registry-Fingerprint und den neutralen LayoutState. Der Fingerprint wird stabil aus Element-ID, Scope, Parent-ID, Elementart und sortierten Capabilities gebildet. Anzeigenamen, native Referenzen und Fachwerte werden nicht einbezogen.
+
+Vor Save und Load werden Dokumentstruktur, Profilzuordnung, Registry-Kompatibilität, vollständige registrierte Elementmenge, erlaubte Felder und Capabilities sowie endliche und zulässige Zahlen geprüft. Das Schreiben erfolgt über eine temporäre Datei im selben Ordner mit Flush auf den Datenträger und anschließendem kontrolliertem Replace. Eine vorhandene gültige Datei bleibt bei Schreibfehlern unverändert.
+
+Beim normalen Start wird nach `Loaded` zuerst die Registry und danach der bestehende `WpfHostAdapter` aufgebaut. Eine vorhandene gültige Datei wird dann vollständig validiert und atomar reapplied. Alle Einzeländerungen und der Gesamtrollback laufen ausschließlich über `IHostAdapter.SubmitChangeRequest`. Eine fehlende Datei ist ein normaler Erststart; beschädigte oder inkompatible Dateien blockieren die App nicht und ändern das Ausgangslayout nicht. Der Normalstart startet weiterhin keinen Node-Prozess.
+
+Der echte Zwei-Prozess-Nachweis lautet:
+
+```powershell
+dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj -- --layout-persistence-diagnostic
+```
+
+Der Diagnoseprozess verwendet ein isoliertes Profil unter LocalApplicationData, startet einen ersten echten WPF-Prozess zum Ändern und Speichern und erst nach dessen Ende einen zweiten WPF-Prozess. Dieser stellt das Layout über den normalen Startup-Pfad wieder her, prüft die sichtbare Geometrie, den unveränderten Fachwert und den bestehenden Button-/Statusfluss und entfernt danach Datei, Hilfsdaten und Diagnoseordner.
+
 ## Voraussetzungen
 
 - Windows 10 oder Windows 11
@@ -120,7 +142,7 @@ reference-target-app/
 ├─ src/
 │  ├─ ReferenceTargetApp.Domain/             reines Fachmodell ohne WPF- oder Editor-Abhängigkeit
 │  ├─ ReferenceTargetApp.Infrastructure/     Erzeugung realistischer In-Memory-Beispieldaten
-│  ├─ ReferenceTargetApp.EditorIntegration/  Registry, HostAdapter, Prozessprotokoll und Sessionkoordination
+│  ├─ ReferenceTargetApp.EditorIntegration/  Registry, HostAdapter, Prozess/Session und lokale Layoutpersistenz
 │  └─ ReferenceTargetApp.Wpf/                native Oberfläche und explizite Adapter-Anbindung
 └─ tests/
    └─ ReferenceTargetApp.Tests/               Fachmodell-, Registry- und WPF-Integrationstests
@@ -150,17 +172,16 @@ dotnet run --project reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTa
 
 Die Buttons führen ausschließlich lokale fachliche Beispielaktionen aus. „Im Arbeitsspeicher sichern“ schreibt bewusst keine Datei oder Layoutdaten.
 
-## Verbindliche Grenze von M73.4
+## Verbindliche Grenze nach Abschluss von M73
 
-M73.4 stellt zusätzlich nur den lokalen Node-Unterprozess, Protokoll `1.0`, kontrollierte Aktivierung/Deaktivierung, genau eine Session, fachneutrale Registry-/Layoutübertragung und den ChangeRequest-/ChangeResult-Weg zum vorhandenen HostAdapter bereit. Es existieren ausdrücklich:
+M73 stellt ausschließlich die technische Anbindung der Referenz-Ziel-App einschließlich lokalem Prozess-/Sessionweg und einem dauerhaften lokalen Layoutprofil bereit. Es existieren ausdrücklich:
 
-- kein dauerhafter Layoutspeicher und kein Laden nach Neustart;
 - keine dauerhafte Session, keine Selektion und kein sichtbares Editorfenster;
 - kein HTTP, WebSocket, Netzwerkdienst oder anderes Transportprotokoll neben lokalem JSONL über `stdin`/`stdout`;
 - keine Ziel-App-Auswahl, kein Windows-Manager und keine PDF-Funktion;
 - keine automatische Registrierung und keine Visual-Tree-Heuristik;
 - keine Browser-, HTML-, DOM-, Electron- oder WebView-Lösung.
 
-## Offen für den nächsten Schritt und spätere Meilensteine
+## Offen ab M74 und in späteren Meilensteinen
 
-Dauerhafte Layoutspeicherung, Wiederherstellung nach Neustart und die weitere technische M73-Vervollständigung bleiben dem nächsten ausdrücklichen Schritt vorbehalten. Eine sichtbare Editoroberfläche bleibt M74 vorbehalten.
+Eine sichtbare native Editoroberfläche mit Elementbaum, Details, Modi und Bedienung bleibt vollständig M74 vorbehalten. Reset/Discard-Bedienung, mehrere Profile und mehrere Scopes bleiben M75 vorbehalten; PDF beginnt erst mit M76.

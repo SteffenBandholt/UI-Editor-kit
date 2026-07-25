@@ -65,7 +65,6 @@ Gebaut und geprueft sind:
 
 Noch nicht praktisch fertig sind:
 
-- eine reale neue Referenz-Ziel-App mit echtem HostAdapter,
 - die native sichtbare Windows-Editoroberflaeche,
 - der UI-End-to-End-Betrieb,
 - das technische PDF-Grundmodell,
@@ -92,6 +91,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkenn
 | H1 / M70 | [A] | Bedienpanel-Controller und ViewModels | M70-Tests gruen |
 | K4 / M71 | [A] | Plattformneutrale Host- und Integrationsschicht | Integrations- und Boundary-Tests gruen |
 | K5 / M72 | [A] | Element- und Textbearbeitungslogik | M72-Tests und Gesamttest gruen |
+| K6 / M73 | [A] | Neue WPF-Ziel-App technisch angebunden: M73.1 Grundgeruest, M73.2 Registry, M73.3 HostAdapter, M73.4 Node-Prozess/Session, M73.5 dauerhafter Layoutspeicher und Neustart-Restore | .NET-/npm-Tests und echter Zwei-Prozess-Nachweis gruen |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -102,6 +102,8 @@ npm test
 npm pack --dry-run
 npm run release:check
 git diff --check
+dotnet build reference-target-app
+dotnet test reference-target-app
 ```
 
 Ergebnis:
@@ -110,45 +112,38 @@ Ergebnis:
 - Package-Trockenlauf erfolgreich,
 - Release-Readiness fuer `0.2.0` erfolgreich,
 - keine Whitespace-Fehler.
+- 21 .NET-Tests einschliesslich Persistenz-, Kompatibilitaets-, Batchrollback- und echtem Zwei-Prozess-Neustartnachweis gruen,
+- sichtbare Breite nach Neustart von 368 px auf 398 px bei 125 % DPI wiederhergestellt (= +24 DIP),
+- Fachwert `AU-2026-0471` unveraendert und fachlicher Button-/Statusfluss weiterhin funktionsfaehig,
+- keine temporaeren Speicherdateien sowie keine Node- oder WPF-Prozesse zurueckgelassen.
 
 ## 7. Aktueller offener Meilenstein
 
-### M73 - Neue Ziel-App technisch anbinden
+### M74 - Native sichtbare UI-Editoroberflaeche
 
 Status: `[ ] offen`
 
 Ziel:
 
-- eine neue Referenz-Ziel-App anlegen,
-- Editor-Paket lokal einbinden,
-- vollstaendige Registry fuer einen ersten UI-Bereich bauen,
-- echten HostAdapter bauen,
-- dauerhaften lokalen Layoutspeicher anbinden,
-- Editor aktivieren und deaktivieren,
-- eine sichtbare Layoutaenderung ueber den neutralen Aenderungsweg ausfuehren,
-- gespeichertes Layout nach Neustart wiederherstellen.
+- native Windows-Editoroberflaeche,
+- Elementbaum und Elementdetails,
+- Auswahl genau eines registrierten Elements,
+- Umschaltung Element/Text,
+- Bedienmodi fuer Position, Breite, Hoehe, Textposition und Schriftgroesse,
+- Schrittweite, Richtungstasten sowie sichtbare Status- und Fehlermeldungen,
+- Editor aus der Ziel-App oeffnen und schliessen.
 
 Nicht-Ziele:
 
-- noch keine vollstaendige sichtbare Editoroberflaeche,
+- noch kein vollstaendiger Save-/Load-/Discard-/Reset-Betrieb aus M75,
 - noch kein PDF-Editor,
-- kein Windows-Manager,
-- keine alte App,
-- kein Registrationslauf.
+- kein Windows-Manager und kein Registrationslauf.
 
-Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M73 erfuellt und praktisch nachgewiesen sind.
+Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M74 erfuellt und praktisch nachgewiesen sind.
 
 ## 8. Naechster Auftrag
 
-Vor dem ersten M73-Code werden verbindlich festgelegt:
-
-- Technik der neuen Referenz-Ziel-App,
-- Repository- und Projektstruktur,
-- erster editorfaehiger UI-Bereich,
-- Start- und Aktivierungsweg des Editors,
-- dauerhafter lokaler Speicherort fuer Layoutprofile.
-
-Danach wird ausschliesslich M73 gebaut.
+Der naechste Bauauftrag ist ausschliesslich M74. Die bestehende M73-Registry, der WpfHostAdapter, der Prozess-/Sessionvertrag und die Layoutpersistenz bleiben die technische Grundlage. M75-Funktionen, PDF, Manager und Registrationslauf bleiben gesperrt.
 
 ## 9. Statuswerte
 
