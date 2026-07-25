@@ -202,7 +202,7 @@ PDF-Layouts werden als registrierte, pruefbare und speicherbare Editorziele beha
 
 ## M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb
 
-Status: `[ ] offen` – naechster verbindlicher Meilenstein.
+Status: `[A] abgenommen` – gemeinsames natives Fenster, vollstaendige UI-/PDF-Bedienung, echte lokale Vorschau und Zwei-Prozess-End-to-End-Nachweis erfolgreich.
 
 ### Ziel
 
@@ -322,6 +322,6 @@ Aktuell spaeter vorgesehen:
 
 Der naechste Bauauftrag ist ausschliesslich:
 
-> M77 - Sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb.
+> M78 - Zentraler Windows-Manager und Installer.
 
-M73, M74, M75 und M76 sind abgenommen. M77 baut sichtbar auf dem vollstaendigen nativen UI-Betrieb und dem getrennten technischen PDF-Fundament auf, ohne deren Registry-, HostAdapter-, Prozess-, Session- oder Persistenzvertraege umzudeuten. Windows-Manager und Registrationslauf bleiben bis zu ihren vorgesehenen Meilensteinen gesperrt.
+M73 bis M77 sind abgenommen. Der gemeinsame native UI-/PDF-Editor verwendet weiterhin die getrennten Registry-, HostAdapter-, Prozess-, Session- und Persistenzvertraege. M78 ist der naechste offene Meilenstein; der Registrationslauf bleibt bis M79 gesperrt.

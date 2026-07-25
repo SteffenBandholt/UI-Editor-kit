@@ -17,3 +17,7 @@ ReferenceTargetApp.exe --pdf-model-diagnostic
 ```
 
 Er erzeugt Baseline-, geänderte und geladene Mehrseiten-PDFs, prüft registrierte Geometrien, Persistenz, Discard, Reset, Load, Rollback, unveränderte Fachdaten und reproduzierbare Seitenzahl. Danach entfernt er PDFs, Profil, temporäre Dateien und Diagnoseordner. Ein Normalstart erzeugt keine PDF und startet weiterhin keinen Node-Prozess.
+
+## Render-Geometrie für M77
+
+Jeder erfolgreiche Renderlauf liefert additiv `PdfRenderBound` für alle 26 registrierten Elemente auf jeder tatsächlich erzeugten Seite: `elementId`, `pageNumber`, neutrale Millimeter-Bounds, `stableOrder` und `editable`. Die Zuordnung wird aus demselben aufgelösten Layout und denselben effektiven Flowpositionen wie die PDF-Zeichenoperationen gebildet; sie enthält weder PDFsharp-Objekte noch Fachdaten. Die sichtbare Vorschau liest anschließend genau die atomar ersetzte Ausgabedatei. Bestehende M76-Traces und deren Semantik bleiben erhalten.

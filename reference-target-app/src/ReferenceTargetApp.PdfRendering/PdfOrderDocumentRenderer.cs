@@ -15,8 +15,12 @@ public interface IPdfRenderFaultInjector
 }
 
 public sealed record PdfRenderTrace(string ElementId, int PageNumber, PdfBox Box, string Marker);
+public sealed record PdfRenderBound(string ElementId, int PageNumber, PdfBox Box, int StableOrder, bool Editable);
 public sealed record PdfRenderResult(bool Success, string Code, string Message, string OutputPath, int PageCount,
-    long FileSize, IReadOnlyList<PdfRenderTrace> Traces);
+    long FileSize, IReadOnlyList<PdfRenderTrace> Traces)
+{
+    public IReadOnlyList<PdfRenderBound> RenderBounds { get; init; } = [];
+}
 public sealed record PdfInspectionResult(bool Success, int PageCount, long FileSize, double FirstPageWidthMm, double FirstPageHeightMm, string Message);
 
 public sealed class PdfOrderDocumentRenderer
@@ -49,7 +53,7 @@ public sealed class PdfOrderDocumentRenderer
             document.Save(memory, false);
             bytes = memory.ToArray();
             using var verification = PdfReader.Open(new MemoryStream(bytes, writable: false), PdfDocumentOpenMode.Import);
-            if (verification.PageCount < 2) return Fail(PdfErrorCodes.RenderFailed, "PDF-Erzeugung lieferte weniger als zwei Seiten.", fullPath, traces);
+            if (verification.PageCount == 0) return Fail(PdfErrorCodes.RenderFailed, "PDF-Erzeugung lieferte keine Seite.", fullPath, traces);
         }
         catch (OperationCanceledException) { return Fail("cancelled", "PDF-Erzeugung wurde abgebrochen.", fullPath, traces); }
         catch (Exception exception)
@@ -81,7 +85,10 @@ public sealed class PdfOrderDocumentRenderer
                 return Fail(PdfErrorCodes.RenderFailed, inspection.Message, fullPath, traces);
             }
             return new(true, "pdf_rendered", "Mehrseitige PDF wurde atomar erzeugt.", fullPath,
-                inspection.PageCount, inspection.FileSize, traces);
+                inspection.PageCount, inspection.FileSize, traces)
+            {
+                RenderBounds = CreateRenderBounds(registry, layout, traces, inspection.PageCount)
+            };
         }
         catch (OperationCanceledException) { return Fail("cancelled", "PDF-Ausgabe wurde abgebrochen.", fullPath, traces); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -304,6 +311,32 @@ public sealed class PdfOrderDocumentRenderer
     private static void ConfigureFonts()
     {
         if (Interlocked.Exchange(ref fontsConfigured, 1) == 0) GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+    }
+
+    private static IReadOnlyList<PdfRenderBound> CreateRenderBounds(PdfElementRegistry registry, PdfLayoutState layout,
+        IReadOnlyList<PdfRenderTrace> traces, int pageCount)
+    {
+        var states = layout.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+        var traceLookup = traces.GroupBy(trace => (trace.ElementId, trace.PageNumber))
+            .ToDictionary(group => group.Key, group => group.Last().Box);
+        var bounds = new List<PdfRenderBound>(registry.Entries.Count * pageCount);
+        for (var page = 1; page <= pageCount; page++)
+        {
+            var table = PdfLayoutStateFactory.Resolve(registry.FindById(PdfRegistryIds.Table)!, states[PdfRegistryIds.Table]);
+            var columnX = table.X;
+            foreach (var definition in registry.Entries.OrderBy(element => element.StableOrder))
+            {
+                var box = traceLookup.GetValueOrDefault((definition.ElementId, page)) ??
+                          PdfLayoutStateFactory.Resolve(definition, states[definition.ElementId]);
+                if (definition.Kind == PdfElementKind.TableColumn)
+                {
+                    box = box with { X = columnX, Y = table.Y, Height = Math.Max(8, table.Height) };
+                    columnX += box.Width;
+                }
+                bounds.Add(new(definition.ElementId, page, box, definition.StableOrder, definition.Editable));
+            }
+        }
+        return bounds;
     }
 
     private static PdfRenderResult Fail(string code, string message, string path, IReadOnlyList<PdfRenderTrace> traces) =>

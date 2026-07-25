@@ -5,6 +5,10 @@ using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Session;
 using ReferenceTargetApp.UI.ViewModels;
 using ReferenceTargetApp.UI.Views;
+using ReferenceTargetApp.Domain.Models;
+using ReferenceTargetApp.EditorIntegration.Pdf;
+using ReferenceTargetApp.PdfPreview;
+using ReferenceTargetApp.PdfRendering;
 
 namespace ReferenceTargetApp.UI.Editor;
 
@@ -13,6 +17,11 @@ internal sealed class EditorWindowCoordinator(
     IReadOnlyDictionary<string, IHostAdapter> hostAdapters,
     LayoutProfileSession layoutSession,
     TargetAppSelectionService selectionService,
+    PdfElementRegistry pdfRegistry,
+    IPdfHostAdapter pdfAdapter,
+    PdfLayoutSession pdfSession,
+    Order order,
+    string pdfOutputPath,
     IEditorDialogService? dialogService = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim lifecycleLock = new(1, 1);
@@ -49,6 +58,8 @@ internal sealed class EditorWindowCoordinator(
             {
                 lifetimeCancellation = new CancellationTokenSource();
                 processCoordinator = new EditorProcessCoordinator(hostAdapters, EditorProcessPathResolver.ResolveDefault());
+                var pdfWorkspace = new PdfEditorWorkspaceViewModel(pdfRegistry, pdfAdapter, pdfSession,
+                    new PdfOrderDocumentRenderer(), new NativePdfPreviewRenderer(), order, pdfOutputPath, lifetimeCancellation.Token);
                 viewModel = new EditorWindowViewModel(
                     processCoordinator,
                     layoutSession,
@@ -56,7 +67,8 @@ internal sealed class EditorWindowCoordinator(
                     dialogService ?? new NativeEditorDialogService(),
                     () => window,
                     CloseAsync,
-                    lifetimeCancellation.Token);
+                    lifetimeCancellation.Token,
+                    pdfWorkspace);
                 window = new EditorWindow(viewModel, this) { Owner = owner };
                 window.Closed += Window_Closed;
                 WindowCreationCount++;

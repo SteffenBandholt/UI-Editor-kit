@@ -3,7 +3,20 @@ namespace ReferenceTargetApp.EditorIntegration.Pdf;
 public sealed record PdfLayoutFailure(string ElementId, string Operation, string Code, string Message);
 public sealed record PdfLayoutOperationResult(bool Success, string Code, string Message, bool RollbackSucceeded = true,
     IReadOnlyList<PdfLayoutFailure>? Failures = null);
-public sealed record PdfLayoutSessionStatus(bool IsDirty, PdfLayoutState Working, PdfLayoutState Saved, PdfLayoutState Baseline);
+public sealed record PdfLayoutSessionStatus(bool IsDirty, PdfLayoutState Working, PdfLayoutState Saved, PdfLayoutState Baseline)
+{
+    public IReadOnlyList<string> DirtyElementIds => Working.Elements
+        .Where(element => !ElementEquivalent(element, Saved.Elements.Single(saved => saved.ElementId == element.ElementId)))
+        .Select(element => element.ElementId).ToArray();
+
+    private static bool ElementEquivalent(PdfElementLayoutState left, PdfElementLayoutState right) =>
+        left.ElementId == right.ElementId && Same(left.X, right.X) && Same(left.Y, right.Y) &&
+        Same(left.Width, right.Width) && Same(left.Height, right.Height) &&
+        Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize);
+
+    private static bool Same(double? left, double? right) => left is null && right is null ||
+        left.HasValue && right.HasValue && Math.Abs(left.Value - right.Value) <= 0.000001;
+}
 
 public sealed class PdfLayoutSession
 {
@@ -53,6 +66,12 @@ public sealed class PdfLayoutSession
     public Task<PdfLayoutOperationResult> ResetAsync(CancellationToken cancellationToken = default) =>
         Exclusive(() => Task.FromResult(ApplyState(baseline, "pdf-reset")), cancellationToken);
 
+    public Task<PdfLayoutOperationResult> DiscardElementAsync(string elementId, CancellationToken cancellationToken = default) =>
+        ApplyElementAsync(elementId, saved, "pdf-discard-element", cancellationToken);
+
+    public Task<PdfLayoutOperationResult> ResetElementAsync(string elementId, CancellationToken cancellationToken = default) =>
+        ApplyElementAsync(elementId, baseline, "pdf-reset-element", cancellationToken);
+
     public Task<PdfLayoutOperationResult> ApplyBatchAsync(IEnumerable<PdfChangeRequest> requests, CancellationToken cancellationToken = default) =>
         Exclusive(() => Task.FromResult(ApplyRequests(requests.ToArray(), "pdf-batch")), cancellationToken);
 
@@ -62,6 +81,21 @@ public sealed class PdfLayoutSession
         try { return await operation().ConfigureAwait(false); }
         catch (OperationCanceledException) { return Fail("cancelled", "PDF-Layoutoperation wurde abgebrochen."); }
         finally { operationLock.Release(); }
+    }
+
+    private Task<PdfLayoutOperationResult> ApplyElementAsync(string elementId, PdfLayoutState desired, string source,
+        CancellationToken cancellationToken)
+    {
+        return Exclusive(() =>
+        {
+            if (adapter.GetRegistry().FindById(elementId) is null)
+                return Task.FromResult(Fail(PdfErrorCodes.UnknownElement, "PDF-Element ist nicht registriert: " + elementId));
+            var current = adapter.GetCurrentLayoutState();
+            var target = desired.Elements.Single(element => element.ElementId == elementId);
+            var merged = new PdfLayoutState(PdfRegistryIds.Scope, DateTimeOffset.UtcNow,
+                current.Elements.Select(element => element.ElementId == elementId ? target with { } : element with { }).ToArray());
+            return Task.FromResult(ApplyState(merged, source));
+        }, cancellationToken);
     }
 
     private PdfLayoutOperationResult ApplyState(PdfLayoutState desired, string source)

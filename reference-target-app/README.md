@@ -1,4 +1,4 @@
-# Referenz-Ziel-App – M75 vollständiger nativer UI-Betrieb
+# Referenz-Ziel-App – M77 gemeinsamer nativer UI-/PDF-Editor
 
 `reference-target-app/` enthält die native C#-/WPF-Referenzanwendung auf .NET 10. M73 stellt Anbindung und Persistenz bereit, M74 die sichtbare native Editoroberfläche. M75 vervollständigt darauf den praktischen UI-Betrieb mit zwei Scopes, zwei Profilen, Save, Load, Verwerfen, Reset, direkter App-Auswahl und Neustart-Restore; Fachdaten und fachliche Aktionen bleiben unverändert.
 
@@ -176,6 +176,7 @@ reference-target-app/
 │  ├─ ReferenceTargetApp.Infrastructure/     Erzeugung realistischer In-Memory-Beispieldaten
 │  ├─ ReferenceTargetApp.EditorIntegration/  Registry, HostAdapter, Prozess/Session und lokale Layoutpersistenz
 │  ├─ ReferenceTargetApp.PdfRendering/       gekapselte lokale PDFsharp-Zeichenschicht
+│  ├─ ReferenceTargetApp.PdfPreview/         native Windows-PDF-Seitenvorschau und Hit-Testing
 │  └─ ReferenceTargetApp.Wpf/                native Oberfläche und explizite Adapter-Anbindung
 └─ tests/
    └─ ReferenceTargetApp.Tests/               Fachmodell-, Registry- und WPF-Integrationstests
@@ -230,9 +231,13 @@ M73 stellt die technische Anbindung bereit; M74 das native Editorfenster; M75 de
 - keine automatische Registrierung und keine Visual-Tree-Heuristik;
 - keine Browser-, HTML-, DOM-, Electron- oder WebView-Lösung.
 
-## Offen ab M77 und in späteren Meilensteinen
+## Abgenommener gemeinsamer UI-/PDF-Betrieb M77
 
-M76 ist technisch und praktisch abgenommen. Offen ab M77 bleiben die sichtbare PDF-Editoroberfläche, Seitenübersicht, Elementbaum, native Vorschau und die gemeinsame sichtbare UI-/PDF-Bedienung. Windows-Manager, Installerarbeit für diesen Ausbau, Alt-App-Registrationslauf, automatische Elementerkennung, Browser, Netzwerk, Cloud, freie Profilverwaltung und Undo/Redo bleiben späteren Meilensteinen beziehungsweise den dauerhaften Produktgrenzen zugeordnet.
+Das einzelne native Editorfenster besitzt die zustandserhaltenden Arbeitsbereiche `Programmoberfläche` und `PDF-Ausgabe`. Der M75-UI-Ablauf und seine einzige Node-Session bleiben unverändert aktiv. Der PDF-Bereich zeigt alle erzeugten Seiten, die 26 Einträge der M76-Registry, neutrale Details, capability-gesteuerte Element-/Textmodi, sechs Spalten sowie Header und Footer. Save, Load, Einzel-/Gesamtverwerfen und Einzel-/Gesamtreset verwenden die bestehende M76-Session und das getrennte Profil `pdf-standard`.
+
+Die Vorschau wird lokal über die in Windows enthaltene API `Windows.Data.Pdf` direkt aus der echten PDF-Ausgabedatei in Speicherbitmaps gerendert. Es gibt keine zusätzliche Bibliothek oder Lizenz. Der PDF-Renderer liefert neutrale Bounds aus demselben Layoutlauf; Baumwahl und Klick in der Vorschau synchronisieren Seite, Details und ein rein visuelles WPF-Overlay. Layout-Dirty und Vorschau aktuell/veraltet bleiben getrennt. Der Schließdialog nennt ungespeicherte UI-/PDF-Bereiche und der Startup-Restore stellt beide Profilarten wieder her.
+
+Der praktische Nachweis lautet `ReferenceTargetApp.exe --ui-pdf-end-to-end-diagnostic`. Er verwendet zwei echte WPF-Prozesse, den echten Node-Prozess, echte Profile und mehrseitige PDFs und entfernt anschließend sämtliche Diagnoseartefakte. M78 ist der nächste offene Meilenstein; Windows-Manager und M79-Registrationslauf wurden nicht vorgezogen.
 
 ## PDF-Grundmodell und Erzeugung M76
 

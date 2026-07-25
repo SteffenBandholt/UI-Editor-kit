@@ -55,6 +55,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    internal Order CurrentOrder => order;
+
     public void CreateNewSampleOrder()
     {
         order = orderFactory.Create();

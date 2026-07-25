@@ -43,6 +43,6 @@ Das feste Profil `pdf-standard` verwendet den eigenen Dokumenttyp `pdf-layout-pr
 
 Save validiert vollständig und schreibt über eine eindeutige `.tmp`-Datei mit Write-through/Flush und anschließendem Replace beziehungsweise Move. Load liest jedes Mal neu vom Datenträger. UI-Profile und PDF-Profile besitzen andere Dateinamen und inkompatible Dokumentformen; gegenseitiges Laden wird abgewiesen. Im PDF-Profil stehen ausschließlich capability-gedeckte Layoutzahlen, niemals Kunden-, Auftrags-, Positions-, Preis- oder Dateidaten.
 
-## Grenze zu M77
+## Sichtbare Anbindung M77
 
-M76 ergänzt keine sichtbare PDF-Oberfläche, Seitenübersicht, Vorschau, Auswahl oder PDF-Bedienbuttons und erweitert das Node-Protokoll nicht. Diese sichtbaren Funktionen beginnen frühestens mit M77.
+M77 bindet diese unveränderten Verträge im gemeinsamen WPF-Editor sichtbar an. `PdfLayoutSession` besitzt additiv elementbezogenes Discard und Reset; Gesamtsemantik, Validierung, Adapterweg und Profilformat bleiben unverändert. Die Vorschau lebt in einer eigenen technischen Schicht und erhält nur neutrale Registry-IDs, Layoutwerte und RenderBounds. Das Node-Protokoll wurde nicht erweitert.

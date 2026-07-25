@@ -1,4 +1,4 @@
-# Native Editor-UI – M75
+# Native Editor-UI – M77
 
 Das WPF-Editorfenster bleibt ein einzelnes, von der Ziel-App besessenes Fenster mit genau einem lokalen Node-Prozess und einer Session. Es zeigt die festen Profile `Standard` und `Kompakt`, die Scopes `Auftragskopf` und `Kundendaten`, den Registry-Baum, neutrale Details und die vorhandene Live-Bearbeitung aus M74.
 
@@ -11,3 +11,9 @@ Dirty-State wird profilbezogen über beide Scopes angezeigt. Profilwechsel und S
 Das ViewModel manipuliert keine WPF-Layoutproperty. Jede Änderung, jedes Verwerfen und jeder Reset läuft als neutraler ChangeRequest über den vorhandenen HostAdapter. Datei- und Prozessarbeit ist asynchron; Batchoperationen sind exklusiv, Dispatcheränderungen bleiben auf dem UI-Thread und Ergebnisse werden nach dem Schließen nicht mehr übernommen.
 
 `--ui-full-operation-diagnostic` bedient echte WPF-Fenster und native Dialoge programmgesteuert. PDF, Vorschau, Windows-Manager, freie Profilverwaltung, Undo/Redo, Browser und Netzwerk gehören nicht zu M75; PDF beginnt mit M76.
+
+## Gemeinsamer Arbeitsbereich M77
+
+Dasselbe Editorfenster enthält jetzt die Tabs `Programmoberfläche` und `PDF-Ausgabe`. Ein Wechsel beendet weder die UI-Node-Session noch verwirft oder speichert er Working-State. Das PDF-ViewModel besitzt Seitenliste, Registrybaum, Details, Modi, mm-Schrittweite, Render-/Reloadbefehle, Profilaktionen und einen eigenen Dirty-/Previewzustand. WPF aktualisiert Bitmap, Auswahl und Overlay ausschließlich auf dem Dispatcher; Cancellation und eine Render-Sperre verhindern parallele oder veraltete Veröffentlichungen.
+
+Der gemeinsame Schließdialog nennt Programmoberfläche, PDF-Ausgabe oder beide. „Speichern und schließen“ speichert jeden tatsächlich schmutzigen Bereich kontrolliert; ein Fehler lässt das Fenster offen. `--ui-pdf-end-to-end-diagnostic` öffnet echte Fenster in zwei Prozessen, prüft UI-/PDF-Restore, Vorschau, Auswahl, Bearbeitung, Persistenz, Fehlererhalt und vollständiges Ressourcenende.

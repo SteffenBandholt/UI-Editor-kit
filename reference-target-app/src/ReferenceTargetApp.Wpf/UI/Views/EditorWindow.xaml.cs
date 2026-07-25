@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using ReferenceTargetApp.UI.Editor;
 using ReferenceTargetApp.UI.ViewModels;
 
@@ -49,5 +50,32 @@ public partial class EditorWindow : Window
     {
         if (DataContext is EditorWindowViewModel viewModel && ProfileSelector.SelectedValue is string profileId)
             await viewModel.SelectProfileAsync(profileId);
+    }
+
+    private void PdfElementTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (DataContext is EditorWindowViewModel viewModel && e.NewValue is PdfTreeNodeViewModel node)
+            viewModel.Pdf.SelectElement(node.Id);
+    }
+
+    private void PdfPageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is EditorWindowViewModel viewModel)
+            viewModel.Pdf.SelectPage(PdfPageList.SelectedItem as PdfPageViewModel);
+    }
+
+    private void PdfPreviewViewport_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is EditorWindowViewModel viewModel)
+        {
+            var point = e.GetPosition(PdfPreviewViewport);
+            viewModel.Pdf.SelectAtPreview(point.X, point.Y, PdfPreviewViewport.ActualWidth, PdfPreviewViewport.ActualHeight);
+        }
+    }
+
+    private void PdfPreviewViewport_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (DataContext is EditorWindowViewModel viewModel)
+            viewModel.Pdf.UpdateOverlay(e.NewSize.Width, e.NewSize.Height);
     }
 }

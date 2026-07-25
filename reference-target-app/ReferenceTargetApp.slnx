@@ -4,6 +4,7 @@
     <Project Path="src/ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj" />
     <Project Path="src/ReferenceTargetApp.Infrastructure/ReferenceTargetApp.Infrastructure.csproj" />
     <Project Path="src/ReferenceTargetApp.PdfRendering/ReferenceTargetApp.PdfRendering.csproj" />
+    <Project Path="src/ReferenceTargetApp.PdfPreview/ReferenceTargetApp.PdfPreview.csproj" />
     <Project Path="src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
