@@ -14,13 +14,15 @@ public sealed record LayoutProfileStartupResult(
 public sealed class LayoutProfileStartupCoordinator(
     IReadOnlyDictionary<string, IHostAdapter> adapters,
     AtomicJsonLayoutProfileStore profileStore,
-    ActiveLayoutProfileStore activeProfileStore)
+    ActiveLayoutProfileStore activeProfileStore,
+    bool allowCompatibleRegistryReconciliation = false)
 {
     public async Task<LayoutProfileStartupResult> RestoreAsync(CancellationToken cancellationToken = default)
     {
         var baseline = adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
         var profileId = await activeProfileStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-        var session = new LayoutProfileSession(adapters, baseline, profileStore, activeProfileStore, profileId);
+        var session = new LayoutProfileSession(adapters, baseline, profileStore, activeProfileStore, profileId,
+            allowCompatibleRegistryReconciliation: allowCompatibleRegistryReconciliation);
         var load = await session.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (!load.Success && load.Code == "layout_profile_not_found")
             return new(true, false, load.Code, load.Message, profileId, true, session);

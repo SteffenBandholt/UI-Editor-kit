@@ -94,7 +94,8 @@ async function pipeServer({ identifiers: ids, ignoreRequests = false }) {
 
 async function run() {
   const contract = createElectronTargetContract({
-    applicationId: "electron-test", displayName: "Electron Test", registryVersion: 1,
+    applicationId: "electron-test", displayName: "Electron Test", appVersion: "1.0.0", registryVersion: 1,
+    registryFingerprint: `sha256:${"a".repeat(64)}`, registryStatus: "complete",
     activeScopes: ["pilot.root"], profileRoot: "C:\\profiles\\electron-test",
     supportedOperations: ELECTRON_TARGET_OPERATIONS, transportProtocolVersion: LOCAL_TARGET_PROTOCOL_VERSION,
     sessionId: identifiers.sessionId, processId: process.pid,

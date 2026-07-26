@@ -55,7 +55,8 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
 
             var profileStore = new AtomicJsonLayoutProfileStore(expectedProfileRoot, expectedApplicationId);
             var activeProfileStore = new ActiveLayoutProfileStore(expectedProfileRoot);
-            var startup = await new LayoutProfileStartupCoordinator(target.HostAdapters, profileStore, activeProfileStore)
+            var startup = await new LayoutProfileStartupCoordinator(target.HostAdapters, profileStore, activeProfileStore,
+                    allowCompatibleRegistryReconciliation: true)
                 .RestoreAsync(cancellationToken);
             if (!startup.Success)
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RestoreFailed, startup.Message);
@@ -78,6 +79,11 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 editorProcessOptions: EditorProcessOptions.FromRepositoryRoot(editorRuntimeRoot),
                 pdfWorkspaceOverride: unavailablePdf);
             var session = new ElectronTargetEditorSession(target, selection, coordinator);
+            target.ConfigureRegistryRefreshStatus(() =>
+            {
+                var status = startup.Session.GetStatus();
+                return new(status.IsDirty, status.DirtyElementIds);
+            });
             await coordinator.OpenAsync();
             if (coordinator.ViewModel?.CurrentState is null)
             {

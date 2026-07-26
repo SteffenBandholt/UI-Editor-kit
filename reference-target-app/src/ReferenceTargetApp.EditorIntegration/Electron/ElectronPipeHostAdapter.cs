@@ -8,6 +8,7 @@ using ReferenceTargetApp.EditorIntegration.Registry;
 namespace ReferenceTargetApp.EditorIntegration.Electron;
 
 public sealed record ElectronTargetElementSelectedEventArgs(string ScopeId, string ElementId);
+public sealed record ElectronRegistryRefreshStatus(bool IsDirty, IReadOnlyList<string> DirtyElementIds);
 
 public sealed class ElectronTargetSession : IAsyncDisposable
 {
@@ -15,6 +16,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
     private readonly LocalTargetPipeConnection connection;
     private readonly IReadOnlyDictionary<string, ElectronPipeHostAdapter> adapters;
     private bool disposed;
+    private Func<ElectronRegistryRefreshStatus>? registryRefreshStatus;
 
     private ElectronTargetSession(
         LocalTargetPipeConnection connection,
@@ -25,6 +27,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         Contract = contract;
         this.adapters = adapters;
         connection.EventReceived += Connection_EventReceived;
+        connection.RequestHandler = HandleTargetRequestAsync;
         connection.Disconnected += (_, reason) => Disconnected?.Invoke(this, reason);
     }
 
@@ -46,11 +49,17 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             var contract = ElectronTargetContract.FromHandshake(accepted.Handshake);
             var registryResponse = await accepted.Connection.RequestAsync("getRegistry", timeout: TimeSpan.FromSeconds(10), cancellationToken: cancellationToken).ConfigureAwait(false);
             var registryScopes = RequiredArray<RemoteRegistryScope>(registryResponse, "registryScopes");
+            if (Int(registryResponse, "registryVersion") != contract.RegistryVersion)
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryVersionMissing, "Registryversion aus Preflight und Registryantwort stimmen nicht überein.");
+            if (!string.Equals(Text(registryResponse, "registryFingerprint"), contract.RegistryFingerprint, StringComparison.Ordinal))
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryFingerprintMismatch, "Registry-Fingerprint hat sich nach dem Preflight geändert.");
             ValidateScopes(contract, registryScopes);
             var layoutResponse = await accepted.Connection.RequestAsync("getLayoutState", timeout: TimeSpan.FromSeconds(10), cancellationToken: cancellationToken).ConfigureAwait(false);
             var scopeStates = RequiredArray<RemoteScopeLayoutState>(layoutResponse, "scopeStates");
             var statesByScope = scopeStates.ToDictionary(item => item.ScopeId, StringComparer.Ordinal);
-            Dictionary<string, ElectronPipeHostAdapter> CreateAdapters() => registryScopes.ToDictionary(
+            Dictionary<string, ElectronPipeHostAdapter> CreateAdapters() => registryScopes
+                .Where(scope => contract.ActiveScopes.Contains(scope.ScopeId, StringComparer.Ordinal))
+                .ToDictionary(
                 scope => scope.ScopeId,
                 scope => new ElectronPipeHostAdapter(accepted.Connection, scope, statesByScope.GetValueOrDefault(scope.ScopeId)
                     ?? throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"LayoutState für Scope '{scope.ScopeId}' fehlt.")),
@@ -91,6 +100,21 @@ public sealed class ElectronTargetSession : IAsyncDisposable
     public Task ShutdownTargetSessionAsync(CancellationToken cancellationToken = default) =>
         connection.SendEventAsync("editorClosed", cancellationToken: cancellationToken);
 
+    public void ConfigureRegistryRefreshStatus(Func<ElectronRegistryRefreshStatus> statusProvider) =>
+        registryRefreshStatus = statusProvider ?? throw new ArgumentNullException(nameof(statusProvider));
+
+    private Task<object?> HandleTargetRequestAsync(LocalTargetRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request.Action == "prepareRegistryRefresh")
+        {
+            var status = registryRefreshStatus?.Invoke() ?? new(false, []);
+            return Task.FromResult<object?>(new { isDirty = status.IsDirty, dirtyElementIds = status.DirtyElementIds });
+        }
+        if (request.Action == "heartbeatProbe") return Task.FromResult<object?>(new { alive = true });
+        throw new ElectronEditorException(ElectronEditorErrorCodes.MessageInvalid, "Unbekannte Ziel-App-Anfrage.");
+    }
+
     private void Connection_EventReceived(object? sender, LocalTargetRequest request)
     {
         if (request.Action == "activateEditor") { ActivationRequested?.Invoke(this, EventArgs.Empty); return; }
@@ -104,20 +128,26 @@ public sealed class ElectronTargetSession : IAsyncDisposable
 
     private static void ValidateScopes(ElectronTargetContract contract, IReadOnlyList<RemoteRegistryScope> scopes)
     {
-        if (scopes.Count != contract.ActiveScopes.Count || contract.ActiveScopes.Any(scopeId => scopes.All(scope => scope.ScopeId != scopeId)))
+        if (scopes.Select(scope => scope.ScopeId).Distinct(StringComparer.Ordinal).Count() != scopes.Count ||
+            contract.ActiveScopes.Any(scopeId => scopes.All(scope => scope.ScopeId != scopeId || scope.Status != "complete")))
             throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Aktive Scopes und Registry stimmen nicht überein.");
         foreach (var scope in scopes) ValidateScope(scope);
     }
 
     private static void ValidateScope(RemoteRegistryScope scope)
     {
-        if (string.IsNullOrWhiteSpace(scope.ScopeId) || scope.Elements.Count == 0)
+        if (string.IsNullOrWhiteSpace(scope.ScopeId) || scope.Status is not ("complete" or "incomplete" or "changed" or "incompatible" or "blocked"))
             throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registry-Scope ist leer.");
+        if (scope.Status != "complete") return;
+        if (scope.Elements.Count == 0 || scope.ExpectedElementIds.Count == 0)
+            throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryScopeIncomplete, "Vollständiger Registry-Scope ist leer.");
         var byId = new Dictionary<string, RemoteRegistrationEntry>(StringComparer.Ordinal);
         foreach (var element in scope.Elements)
         {
             if (string.IsNullOrWhiteSpace(element.Id) || !byId.TryAdd(element.Id, element) ||
                 string.IsNullOrWhiteSpace(element.Name) || string.IsNullOrWhiteSpace(element.Type) || string.IsNullOrWhiteSpace(element.Role) ||
+                string.IsNullOrWhiteSpace(element.SemanticKey) || element.RegistrationStatus is not ("editorEnabled" or "editorContainer" or "locked") ||
+                string.IsNullOrWhiteSpace(element.RefKey) || !element.ReferenceResolved || element.Baseline is null ||
                 element.AllowedOps.Intersect(element.LockedOps, StringComparer.Ordinal).Any())
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registryelement ist ungültig oder doppelt.");
             var supported = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility"], StringComparer.Ordinal);
@@ -125,6 +155,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 element.LockedOps.Any(operation => operation is not ("executeTargetAction" or "modifyDomainData" or "createRecord" or "deleteRecord")))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registry enthält unzulässige Operationen.");
         }
+        if (scope.ExpectedElementIds.Count != byId.Count || scope.ExpectedElementIds.Any(id => !byId.ContainsKey(id)))
+            throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryExpectedElementMissing, "Erwartetes Registryelement fehlt.");
         var roots = scope.Elements.Where(element => element.Type == "root" && element.ParentId is null).ToArray();
         if (roots.Length != 1 || roots[0].Id != scope.ScopeId)
             throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registry-Scope braucht einen eindeutigen Root.");
@@ -155,6 +187,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
 
     private static string? Text(JsonElement payload, string name) =>
         payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    private static int? Int(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result) ? result : null;
 
     public async ValueTask DisposeAsync()
     {
@@ -165,11 +199,23 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         await connection.DisposeAsync().ConfigureAwait(false);
     }
 
-    internal sealed record RemoteRegistryScope(string ScopeId, IReadOnlyList<RemoteRegistrationEntry> Elements);
+    internal sealed record RemoteRegistryScope(
+        string ScopeId,
+        string Status,
+        IReadOnlyList<string> ExpectedElementIds,
+        IReadOnlyList<RemoteRegistrationEntry> Elements,
+        string? InventoryStatus = null,
+        string? Reason = null);
     internal sealed record RemoteRegistrationEntry(
         string Id, string Name, string Type, string Role, string? ParentId, int Order, bool Visible, bool Editable,
         IReadOnlyList<string> AllowedOps, IReadOnlyList<string> LockedOps, string? ColumnRole = null,
-        string? FieldKind = null, string? ActionKind = null, string? ComponentKind = null);
+        string? FieldKind = null, string? ActionKind = null, string? ComponentKind = null,
+        string? RefKey = null, bool ReferenceResolved = false, RemoteRegistryBaseline? Baseline = null,
+        string? SemanticKey = null, string? RegistrationStatus = null);
+    internal sealed record RemoteRegistryBaseline(
+        double? X, double? Y, double? Width, double? Height,
+        double? TextOffsetX, double? TextOffsetY, double? FontSize, bool? Visible,
+        double? MinWidth, double? MaxWidth, double? MinHeight, double? MaxHeight);
     internal sealed record RemoteScopeLayoutState(string ScopeId, DateTimeOffset CapturedAt, IReadOnlyList<RemoteElementLayoutState> Elements);
     internal sealed record RemoteElementLayoutState(
         string ElementId, double X, double Y, double Width, double Height,

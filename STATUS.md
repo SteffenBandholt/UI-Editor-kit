@@ -42,9 +42,11 @@ Die feste Reihenfolge lautet:
 6. M78 - zentraler Windows-Manager und Installer,
 7. M79 - bestehende Apps registrieren,
 8. M80 - Electron-Ziel-App-Vertrag und BBM-UI-Pilot,
-9. M81 - BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich.
+9. M80.1 - Bestands-App-Registrierung, Registry-Refresh und vollständige BBM-UI-Anbindung,
+10. M81 - BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich,
+11. M82 - App-Starterpaket.
 
-M73 bis M80 sind abgenommen. M81 ist der nächste offene Meilenstein.
+M73 bis M80.1 sind abgenommen. M81 ist der nächste offene Meilenstein; M82 bleibt offen.
 
 ## 4. Produktstand
 
@@ -104,6 +106,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, ungepruefte automatisc
 | K11 / M78 | [A] | Eigenstaendiger nativer Windows-Manager fuer vorbereitete neue Ziel-Apps mit LocalAppData-Bereitstellung, Desktop-Verknuepfung, Auswahl, Vertrag/Sicherheit, Vorschau, bekannten Apps, Installation, Update, Deinstallation, Prozessstart und Transaktionsrollback | 73 Manager-Tests, alle bestehenden Tests und sichtbarer `--manager-installer-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
 | K12 / M79 | [A] | Kontrollierte Registrierung bestehender SDK-C#-/WPF-Apps mit bytegleicher read-only XAML-/Roslyn-Analyse, manuellen Proposals, IDs/Parents/Actionlocks, Registry-/HostAdapter-Generator, lokaler Pipe-Anbindung an den vorhandenen M77-Editor, exakter Vorschau, Git-Schutz, Installation, Reanalyse, Update, Rollback und Deinstallation | 88 Manager-Tests, kontrollierte Bestandsfixture und sichtbarer `--existing-app-registration-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
 | K13 / M80 | [A] | Frameworkneutraler Electron-Ziel-App-Vertrag und BBM-UI-Pilot über denselben nativen Editor/Node-Core: Sichtbarkeit, getrennte Labels/Felder, explizite Registry/Refs, sichere lokale Pipe, ein Editorprozess, Profile und Rollback | npm-Gesamttests, 88 Manager- und 50 Referenz-App-Tests sowie sichtbarer Entwicklungs- und gepackter BBM-Ende-zu-Ende-Nachweis grün |
+| K14 / M80.1 | [A] | Frameworkneutraler Bestands-App-Status, deterministischer Registry-Fingerprint, Refresh bei Öffnen/Fokus/Laufzeitereignissen, capability-basierter Profilabgleich sowie vollständige und gesperrte Scope-Inventare | npm-Gesamttests, 88 Manager- und 51 Referenz-App-Tests sowie sichtbarer gepackter BBM-Ende-zu-Ende-Nachweis mit Registry-Reload, Dirty-Konflikt, Restore und Rollback grün |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -193,7 +196,7 @@ M79 ist fuer den belegten SDK-basierten C#-/WPF-Erstframeworkadapter vollstaendi
 
 ## 8. Naechster Auftrag
 
-M81 ist als nächster offener Meilenstein eingetragen: `BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich`. M73 bis M80 bleiben abgenommen.
+M81 ist als nächster offener Meilenstein eingetragen: `BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich`. M82 `App-Starterpaket` bleibt ebenfalls offen. M73 bis M80.1 bleiben abgenommen.
 
 ## 9. Statuswerte
 

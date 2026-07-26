@@ -5,13 +5,18 @@ namespace ReferenceTargetApp.EditorIntegration.Electron;
 public sealed record ElectronTargetContract(
     string ApplicationId,
     string DisplayName,
+    string AppVersion,
     string Framework,
     string ContractVersion,
+    string AdapterVersion,
     int RegistryVersion,
+    string RegistryFingerprint,
+    string RegistryStatus,
     IReadOnlyList<string> ActiveScopes,
     string ProfileRoot,
     IReadOnlyList<string> SupportedOperations,
     string SelectionCapability,
+    string UiCapability,
     bool VisibilityCapability,
     bool LabelFieldSeparation,
     string TransportProtocolVersion,
@@ -19,7 +24,8 @@ public sealed record ElectronTargetContract(
     int ProcessId,
     string PdfCapability)
 {
-    public const string CurrentVersion = "1.0";
+    public const string CurrentVersion = "1.1";
+    public const string CurrentAdapterVersion = "1.1";
 
     public static ElectronTargetContract FromHandshake(JsonElement handshake)
     {
@@ -41,10 +47,12 @@ public sealed record ElectronTargetContract(
 
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(ApplicationId) || string.IsNullOrWhiteSpace(DisplayName) ||
-            Framework != "electron" || ContractVersion != CurrentVersion || RegistryVersion < 1 ||
+        if (string.IsNullOrWhiteSpace(ApplicationId) || string.IsNullOrWhiteSpace(DisplayName) || string.IsNullOrWhiteSpace(AppVersion) ||
+            Framework != "electron" || ContractVersion != CurrentVersion || AdapterVersion != CurrentAdapterVersion || RegistryVersion < 1 ||
+            string.IsNullOrWhiteSpace(RegistryFingerprint) || !RegistryFingerprint.StartsWith("sha256:", StringComparison.Ordinal) || RegistryFingerprint.Length != 71 ||
+            RegistryStatus is not ("complete" or "incomplete" or "changed") ||
             ActiveScopes.Count == 0 || ActiveScopes.Distinct(StringComparer.Ordinal).Count() != ActiveScopes.Count ||
-            string.IsNullOrWhiteSpace(ProfileRoot) || SelectionCapability != "bidirectional" ||
+            string.IsNullOrWhiteSpace(ProfileRoot) || SelectionCapability != "bidirectional" || UiCapability != "layout" ||
             !VisibilityCapability || !LabelFieldSeparation || TransportProtocolVersion != LocalTargetProtocol.Version ||
             string.IsNullOrWhiteSpace(SessionId) || ProcessId < 1 || PdfCapability != "unavailable")
             throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-Ziel-App-Vertrag verletzt M80.");

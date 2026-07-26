@@ -194,6 +194,18 @@ Der Electron-Vertrag enthält mindestens `applicationId`, `displayName`, `framew
 Die Verbindung verwendet ausschließlich einen zufälligen lokalen Pipe-Namen und eine kryptografische Sitzungs-Nonce. Handshake, Current-User-only, eine Verbindung, Korrelations-IDs, Nachrichtenlimit, Timeout, strukturierter Disconnect und feste vertrauenswürdige Executable sind Pflicht. Renderer dürfen weder freie Pfade noch Shell-Strings liefern.
 
 Für asynchrone lokale Ziel-App-Transporte darf der kleine HostAdapter-Vertrag additiv als `IAsyncHostAdapter` umgesetzt werden. Registry, Validierung, neutrale Semantik und ChangeResult bleiben identisch; eine zweite Layoutlogik ist nicht zulässig.
+
+## Bestands-App-Registrierungsweg M80.1
+
+Der allgemeine Bestands-App-Weg bewertet Installation, Ziel-App-Vertrag, Adapter, Registry, erwartetes Scope-Inventar, Ref-Auflösung, Baselines, Fachaktionsschutz und Vertragskompatibilität. Sein Statusmodell lautet `notInstalled`, `registrationRequired`, `registrationInProgress`, `incomplete`, `complete`, `changed`, `incompatible` und `blocked`. Ein vorhandener Adapter allein ist keine vollständige Registrierung.
+
+Eine angeschlossene Ziel-App liefert mindestens `applicationId`, `displayName`, `appVersion`, `framework`, `contractVersion`, `adapterVersion`, `registryVersion`, `registryFingerprint`, `registryStatus`, `activeScopes`, `supportedOperations`, UI-/PDF-Capability, Label-/Feldtrennung und Visibility-Capability. Jeder Scope weist sein vollständiges erwartetes Inventar aus. Nicht sicher inventarisierte Bereiche werden ausdrücklich als unvollständig oder gesperrt geführt und nie als vollständig ausgegeben.
+
+Vor jedem Öffnen oder Fokussieren und bei den Laufzeitereignissen `registryChanged`, `registryStatusChanged`, `scopeAdded`, `scopeChanged` und `scopeRemoved` wird der aktuelle Ziel-App-Stand angefordert, versioniert, gefingerprintet, validiert und verglichen. Nur dann wird der vorhandene Editorbaum weiterverwendet oder kontrolliert aktualisiert. Ein Refreshfehler erhält die letzte gültige Registry; Dirty- oder Migrationskonflikte blockieren den Wechsel.
+
+Der Fingerprint ist deterministisch und umfasst die sortierte Element-/Parent-/Scope-/Typ-/Rollen-/Capability-/Lock-/Baseline-/Ref-Struktur. Fachwerte, Eingaben, Kundendaten, dynamische Tabellenzeilen, Termine oder Statuswerte sind ausgeschlossen. Profile werden über stabile IDs abgeglichen: kompatible Werte bleiben, neue Elemente beginnen mit Baseline, entfernte Elemente werden ignoriert/archiviert und entfallene Capabilities werden nicht mehr angewendet.
+
+M80.1 baut keinen automatischen Inventarisierer. Eine bestehende App muss ihre heutige UI anhand bestätigter Bestände manuell und explizit registrieren. Der vollständige Starter für neue Apps bleibt M82.
 - Datenbankaktionen auszufuehren
 - fachliche Buttons auszufuehren
 - Speicher-, Loesch-, Upload-, Import- oder Exportaktionen als Editoroperation zu behandeln

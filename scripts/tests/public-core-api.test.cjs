@@ -27,7 +27,9 @@ const expectedExports = [
   "normalizeLayoutEntry",
   "resolveOperationStep",
   "ELECTRON_TARGET_CONTRACT_VERSION",
+  "ELECTRON_TARGET_ADAPTER_VERSION",
   "ELECTRON_TARGET_FRAMEWORK",
+  "ELECTRON_REGISTRY_STATUSES",
   "ELECTRON_TARGET_OPERATIONS",
   "createElectronTargetContract",
   "validateElectronTargetContract",
@@ -45,6 +47,15 @@ const expectedExports = [
   "ElectronEditorError",
   "NamedPipeTargetClient",
   "windowsPipePath",
+  "TARGET_REGISTRATION_STATUSES",
+  "REGISTRY_SCOPE_STATUSES",
+  "canonicalRegistry",
+  "createRegistryFingerprint",
+  "validateRegistrationSnapshot",
+  "assessExistingTargetRegistration",
+  "compareRegistrySnapshots",
+  "reconcileRegistryProfile",
+  "createRegistryRefreshCoordinator",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -66,11 +77,12 @@ assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
   if ([
     "RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS",
-    "ELECTRON_TARGET_OPERATIONS", "LOCAL_TARGET_MESSAGE_TYPES", "ELECTRON_EDITOR_ERROR_CODES",
+    "ELECTRON_TARGET_OPERATIONS", "ELECTRON_REGISTRY_STATUSES", "LOCAL_TARGET_MESSAGE_TYPES", "ELECTRON_EDITOR_ERROR_CODES",
+    "TARGET_REGISTRATION_STATUSES", "REGISTRY_SCOPE_STATUSES",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else if ([
-    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION",
+    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_ADAPTER_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
   } else if (name === "LOCAL_TARGET_MAX_MESSAGE_BYTES") {

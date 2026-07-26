@@ -25,6 +25,7 @@ public sealed class LayoutProfileSession
     private readonly SemaphoreSlim operationLock = new(1, 1);
     private readonly IReadOnlyDictionary<string, LayoutState> baseline;
     private IReadOnlyDictionary<string, LayoutState> saved;
+    private readonly bool allowCompatibleRegistryReconciliation;
 
     public LayoutProfileSession(
         IReadOnlyDictionary<string, IHostAdapter> adapters,
@@ -32,7 +33,8 @@ public sealed class LayoutProfileSession
         AtomicJsonLayoutProfileStore profileStore,
         ActiveLayoutProfileStore activeProfileStore,
         string activeProfileId,
-        IReadOnlyDictionary<string, LayoutState>? saved = null)
+        IReadOnlyDictionary<string, LayoutState>? saved = null,
+        bool allowCompatibleRegistryReconciliation = false)
     {
         this.adapters = adapters ?? throw new ArgumentNullException(nameof(adapters));
         this.baseline = CloneStates(baseline ?? throw new ArgumentNullException(nameof(baseline)));
@@ -41,6 +43,7 @@ public sealed class LayoutProfileSession
         if (adapters.Count == 0) throw new ArgumentException("Mindestens ein Scope ist erforderlich.", nameof(adapters));
         if (LayoutProfileCatalog.Find(activeProfileId) is null) throw new ArgumentException("Unbekanntes Profil.", nameof(activeProfileId));
         ActiveProfileId = activeProfileId;
+        this.allowCompatibleRegistryReconciliation = allowCompatibleRegistryReconciliation;
         this.saved = CloneStates(saved ?? baseline);
     }
 
@@ -49,7 +52,7 @@ public sealed class LayoutProfileSession
 
     public async Task InitializeSavedStateAsync(CancellationToken cancellationToken = default)
     {
-        var load = await profileStore.LoadAsync(ActiveProfileId, adapters, cancellationToken).ConfigureAwait(false);
+        var load = await profileStore.LoadAsync(ActiveProfileId, adapters, cancellationToken, allowCompatibleRegistryReconciliation).ConfigureAwait(false);
         saved = load.Success && load.Found && load.Document is not null
             ? StatesFromDocument(load.Document)
             : CloneStates(baseline);
@@ -75,7 +78,7 @@ public sealed class LayoutProfileSession
     public async Task<LayoutOperationResult> LoadAsync(CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
         {
-            var load = await profileStore.LoadAsync(ActiveProfileId, adapters, cancellationToken).ConfigureAwait(false);
+            var load = await profileStore.LoadAsync(ActiveProfileId, adapters, cancellationToken, allowCompatibleRegistryReconciliation).ConfigureAwait(false);
             if (!load.Success || !load.Found || load.Document is null)
                 return Fail(load.Code, load.Message);
             var desired = StatesFromDocument(load.Document);
@@ -104,7 +107,7 @@ public sealed class LayoutProfileSession
             if (string.Equals(profileId, ActiveProfileId, StringComparison.Ordinal)) return Ok("profile_already_active", "Profil ist bereits aktiv.");
 
             var original = CaptureWorking();
-            var load = await profileStore.LoadAsync(profileId, adapters, cancellationToken).ConfigureAwait(false);
+            var load = await profileStore.LoadAsync(profileId, adapters, cancellationToken, allowCompatibleRegistryReconciliation).ConfigureAwait(false);
             if (!load.Success) return Fail(load.Code, load.Message);
             var desired = load.Found && load.Document is not null ? StatesFromDocument(load.Document) : CloneStates(baseline);
             var applied = await ApplyAllAsync(desired, "m75-profile-switch", cancellationToken).ConfigureAwait(false);
@@ -253,7 +256,7 @@ public sealed class LayoutProfileSession
     private IReadOnlyDictionary<string, LayoutState> CaptureWorking() => adapters.ToDictionary(
         pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
 
-    private static IReadOnlyList<string> DirtyElementIds(
+    private IReadOnlyList<string> DirtyElementIds(
         IReadOnlyDictionary<string, LayoutState> working,
         IReadOnlyDictionary<string, LayoutState> saved)
     {
@@ -261,15 +264,23 @@ public sealed class LayoutProfileSession
         foreach (var pair in working.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             var savedById = saved[pair.Key].Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
-            dirty.AddRange(pair.Value.Elements.Where(element => !Equivalent(element, savedById[element.ElementId])).Select(element => element.ElementId));
+            var registry = adapters[pair.Key].GetRegistry();
+            dirty.AddRange(pair.Value.Elements.Where(element =>
+            {
+                var entry = registry.FindById(element.ElementId);
+                return entry is not null && !Equivalent(element, savedById[element.ElementId], entry.Capabilities);
+            }).Select(element => element.ElementId));
         }
         return dirty.OrderBy(value => value, StringComparer.Ordinal).ToArray();
     }
 
-    private static bool Equivalent(ElementLayoutState left, ElementLayoutState right) =>
-        Same(left.X, right.X) && Same(left.Y, right.Y) && Same(left.Width, right.Width) && Same(left.Height, right.Height) &&
-        Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize) &&
-        left.Visible == right.Visible;
+    private static bool Equivalent(ElementLayoutState left, ElementLayoutState right, Registry.UiCapability capabilities) =>
+        (!capabilities.HasFlag(Registry.UiCapability.Position) || Same(left.X, right.X) && Same(left.Y, right.Y)) &&
+        (!capabilities.HasFlag(Registry.UiCapability.Width) || Same(left.Width, right.Width)) &&
+        (!capabilities.HasFlag(Registry.UiCapability.Height) || Same(left.Height, right.Height)) &&
+        (!capabilities.HasFlag(Registry.UiCapability.TextPosition) || Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY)) &&
+        (!capabilities.HasFlag(Registry.UiCapability.FontSize) || Same(left.FontSize, right.FontSize)) &&
+        (!capabilities.HasFlag(Registry.UiCapability.Visibility) || left.Visible == right.Visible);
 
     private static bool Same(double? left, double? right) => left is null && right is null || left is not null && right is not null && Math.Abs(left.Value - right.Value) <= 0.000001;
 
