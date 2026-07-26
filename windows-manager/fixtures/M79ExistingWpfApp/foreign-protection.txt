@@ -1,0 +1,2 @@
+Diese fremde Schutzdatei gehört ausschließlich der kontrollierten Bestands-App.
+M79 darf sie bei Analyse, Installation, Update, Rollback und Deinstallation niemals verändern.

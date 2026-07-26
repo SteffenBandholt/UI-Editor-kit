@@ -26,6 +26,29 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _ = RunDiagnosticAsync(window, e.Args);
         }
+        else if (e.Args.Contains("--existing-app-registration-diagnostic", StringComparer.Ordinal))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunRegistrationDiagnosticAsync(window, e.Args);
+        }
+    }
+    private async Task RunRegistrationDiagnosticAsync(MainWindow window, string[] args)
+    {
+        var prefix = "--repository-root=";
+        var repositoryRoot = args.FirstOrDefault(arg => arg.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..] ?? Environment.CurrentDirectory;
+        try
+        {
+            var errorPath = Path.Combine(ManagerPaths.ForDefault().Logs, "m79-diagnostic-error.txt");
+            if (File.Exists(errorPath)) File.Delete(errorPath);
+            var result = await new ExistingAppRegistrationDiagnosticRunner().RunAsync(repositoryRoot, window);
+            Shutdown(result ? 0 : 79);
+        }
+        catch (Exception exception)
+        {
+            var paths = ManagerPaths.ForDefault(); paths.Ensure();
+            await File.WriteAllTextAsync(Path.Combine(paths.Logs, "m79-diagnostic-error.txt"), exception.ToString());
+            Shutdown(179);
+        }
     }
     private async Task RunDiagnosticAsync(Window window, string[] args)
     {

@@ -38,7 +38,7 @@ public sealed class LayoutProfileSession
         this.baseline = CloneStates(baseline ?? throw new ArgumentNullException(nameof(baseline)));
         this.profileStore = profileStore ?? throw new ArgumentNullException(nameof(profileStore));
         this.activeProfileStore = activeProfileStore ?? throw new ArgumentNullException(nameof(activeProfileStore));
-        if (adapters.Count < 2) throw new ArgumentException("M75 benötigt mindestens zwei Scopes.", nameof(adapters));
+        if (adapters.Count == 0) throw new ArgumentException("Mindestens ein Scope ist erforderlich.", nameof(adapters));
         if (LayoutProfileCatalog.Find(activeProfileId) is null) throw new ArgumentException("Unbekanntes Profil.", nameof(activeProfileId));
         ActiveProfileId = activeProfileId;
         this.saved = CloneStates(saved ?? baseline);
@@ -187,7 +187,7 @@ public sealed class LayoutProfileSession
             var state = desired[pair.Key];
             var document = ScopeDocument(pair.Key, state, source);
             var restored = new LayoutRestoreCoordinator(pair.Value).Restore(document,
-                LayoutProfileDocumentFactory.ScopeOptions(AtomicJsonLayoutProfileStore.ApplicationId, ActiveProfileId, pair.Key));
+                LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, pair.Key));
             if (restored.Success) continue;
             failures.AddRange(restored.Failures);
             var rollbackFailures = RollbackAll(original, $"{source}-rollback");
@@ -206,7 +206,7 @@ public sealed class LayoutProfileSession
         {
             var document = ScopeDocument(pair.Key, original[pair.Key], source);
             var result = new LayoutRestoreCoordinator(pair.Value).Restore(document,
-                LayoutProfileDocumentFactory.ScopeOptions(AtomicJsonLayoutProfileStore.ApplicationId, ActiveProfileId, pair.Key));
+                LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, pair.Key));
             failures.AddRange(result.Failures);
         }
         return failures;
@@ -216,7 +216,7 @@ public sealed class LayoutProfileSession
     {
         var adapter = adapters[scopeId];
         return PersistedLayoutDocumentFactory.Create(
-            LayoutProfileDocumentFactory.ScopeOptions(AtomicJsonLayoutProfileStore.ApplicationId, ActiveProfileId, scopeId),
+            LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, scopeId),
             adapter.GetRegistry(), state, DateTimeOffset.UtcNow);
     }
 

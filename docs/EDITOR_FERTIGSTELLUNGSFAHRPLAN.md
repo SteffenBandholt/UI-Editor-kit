@@ -281,7 +281,9 @@ Erst nach Fertigstellung des Editors fuer neue Apps wird die Nachruestung besteh
 
 ### Abnahmekriterien
 
-M78 ist abgenommen. M79 ist damit als naechster Meilenstein offen, aber noch nicht begonnen oder gebaut.
+Status: abgenommen.
+
+Der vorhandene native Manager analysiert die kontrollierte C#-/WPF-Bestandsfixture zuerst bytegleich read-only über XDocument und Roslyn, zeigt ausschließlich ungeprüfte Vorschläge, erzwingt Einzelentscheidung, stabile IDs, valide Parents und Fachaktionssperren und erzeugt daraus deterministisch Registry und kontrollierten HostAdapter. Exakte Vorschau, Git-Schutz, Build/Vertrag, Ziel-App-/Editorstart, Reanalyse/Update, Fehlerrollback und Deinstallation mit bytegleichem Original wurden durch `--existing-app-registration-diagnostic` praktisch nachgewiesen. M73 bis M78 bleiben abgenommen.
 
 ## 6. Feste Abnahmereihenfolge
 
@@ -313,17 +315,8 @@ Jede Abnahme benoetigt:
 
 Neue Anforderungen werden hier oder in einer gesonderten Backlog-Datei gesammelt. Sie duerfen den laufenden Meilenstein nicht veraendern.
 
-Aktuell spaeter vorgesehen:
-
-- Registrationslauf fuer bestehende Apps: M79,
-- weitere Ziel-App-Technologien und Frameworkadapter: nach M79,
-- Komfortfunktionen und Designvarianten: nach funktionaler Gesamt-Abnahme,
-- Cloud-, Browser- oder Webbetrieb: dauerhaft ausgeschlossen.
+M79 ist abgeschlossen. Weitere Ziel-App-Technologien, Frameworkadapter oder Komfortfunktionen sind nicht Bestandteil des belegten Umfangs und benötigen vor einer Umsetzung einen neuen ausdrücklichen Auftrag. Cloud-, Browser- oder Webbetrieb bleibt dauerhaft ausgeschlossen.
 
 ## 9. Naechster verbindlicher Auftrag
 
-Der naechste Bauauftrag ist ausschliesslich:
-
-> M79 - Bestehende Apps registrieren.
-
-M73 bis M78 sind abgenommen. Der gemeinsame native UI-/PDF-Editor und der kontrollierte Manager fuer ausdruecklich vorbereitete Apps verwenden weiterhin die getrennten Registry-, HostAdapter-, Prozess-, Session- und Persistenzvertraege. M79 ist der naechste offene Meilenstein.
+M73 bis M79 sind abgenommen. Es ist kein weiterer Meilenstein festgelegt. Ein neuer Bauauftrag benötigt zuerst eine ausdrückliche fachliche Umfangs- und Abnahmeentscheidung.

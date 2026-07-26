@@ -4,4 +4,5 @@
     <ProjectReference Include="../UiEditorKit.Manager.Domain/UiEditorKit.Manager.Domain.csproj" />
     <ProjectReference Include="../UiEditorKit.Manager.Core/UiEditorKit.Manager.Core.csproj" />
   </ItemGroup>
+  <ItemGroup><PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" /></ItemGroup>
 </Project>

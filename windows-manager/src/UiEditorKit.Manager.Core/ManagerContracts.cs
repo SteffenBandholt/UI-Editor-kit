@@ -10,8 +10,8 @@ public static partial class TargetContractValidator
     public const int SchemaVersion = 1;
     public const string ContractVersion = "1.0";
     public const string ManifestFileName = "ui-editor-target.json";
-    private static readonly HashSet<string> ProjectTypes = new(StringComparer.Ordinal) { "wpf-net10" };
-    private static readonly HashSet<string> IntegrationModes = new(StringComparer.Ordinal) { "prepared-native-editor" };
+    private static readonly HashSet<string> ProjectTypes = new(StringComparer.Ordinal) { "wpf-net10", "wpf-sdk-existing" };
+    private static readonly HashSet<string> IntegrationModes = new(StringComparer.Ordinal) { "prepared-native-editor", "registered-existing-wpf" };
 
     public static IReadOnlyList<string> Validate(TargetAppManifest? manifest)
     {
@@ -22,9 +22,14 @@ public static partial class TargetContractValidator
         if (string.IsNullOrWhiteSpace(manifest.DisplayName)) errors.Add("displayName fehlt.");
         if (!ProjectTypes.Contains(manifest.ProjectType)) errors.Add("projectType ist für M78 nicht freigegeben.");
         if (!IntegrationModes.Contains(manifest.IntegrationMode)) errors.Add("integrationMode verlangt M79 oder ist unbekannt.");
+        if ((manifest.ProjectType == "wpf-sdk-existing") != (manifest.IntegrationMode == "registered-existing-wpf"))
+            errors.Add("projectType und integrationMode bilden keinen zulässigen M78-/M79-Vertrag.");
         if (manifest.SupportedEditorContractVersion != ContractVersion) errors.Add("Editorvertragsversion wird nicht unterstützt.");
         foreach (var path in Paths(manifest)) if (!ManagerPathRules.IsSafeRelativePath(path)) errors.Add("Unsicherer relativer Pfad: " + path);
-        if (manifest.ExpectedFiles is null || !manifest.ExpectedFiles.Contains(".ui-editor-kit/installation.json", StringComparer.Ordinal))
+        var statePath = manifest.IntegrationMode == "registered-existing-wpf"
+            ? ".ui-editor-kit/registration-installation.json"
+            : ".ui-editor-kit/installation.json";
+        if (manifest.ExpectedFiles is null || !manifest.ExpectedFiles.Contains(statePath, StringComparer.Ordinal))
             errors.Add("Eigener Installationsstatuspfad fehlt.");
         if (manifest.TargetStart is null || manifest.EditorStart is null ||
             manifest.TargetStart.Kind is not ("dotnetProject" or "executable") || manifest.EditorStart.Kind is not ("dotnetProject" or "executable"))

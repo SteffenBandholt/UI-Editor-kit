@@ -42,7 +42,7 @@ Die feste Reihenfolge lautet:
 6. M78 - zentraler Windows-Manager und Installer,
 7. M79 - bestehende Apps registrieren.
 
-M78 ist abgenommen; M79 ist der naechste offene Meilenstein.
+M73 bis M79 sind abgenommen. Es ist kein weiterer Meilenstein festgelegt.
 
 ## 4. Produktstand
 
@@ -66,15 +66,17 @@ Gebaut und geprueft sind:
 - neutrales A4-PDF-Modell, PDF-Registry, PDF-HostAdapter und getrenntes PDF-Profil,
 - lokale reale Mehrseiten-PDF-Erzeugung mit reproduzierbarem Umbruch und Batchrollback,
 - Ziel-App-Bootstrap, Installer und Deinstallation,
+- kontrollierte read-only Bestands-App-Analyse fuer SDK-basiertes C#-/WPF mit XDocument und Roslyn,
+- manuell zu pruefende Registrierungsvorschlaege, stabile IDs, Parentvalidierung und Fachaktionssperren,
+- deterministische Registry-/HostAdapter-Erzeugung, exakte Hash-/Ownership-/Diffvorschau und Git-Schutz,
+- transaktionale M79-Installation, Reanalyse, Update, Rollback und Deinstallation mit bytegleichem Original,
 - oeffentliche Paket-API und Release-Pruefungen.
 
-Noch nicht praktisch fertig sind:
-
-- der Registrationslauf fuer bestehende Apps.
+Der verbindlich festgelegte Umfang M73 bis M79 ist praktisch fertig und abgenommen.
 
 Die Ziel-App bleibt Eigentuemerin von Registry, Element-Referenzen, HostAdapter, Layoutspeicher und Aktivierung.
 
-Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkennung oder eine Browser-/Web-Laufzeit.
+Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, ungepruefte automatische UI-Registrierung, weitere unbelegte Frameworkadapter oder eine Browser-/Web-Laufzeit.
 
 ## 5. Abgenommene Bauabschnitte
 
@@ -96,6 +98,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkenn
 | K9 / M76 | [A] | Neutrales PDF-Dokument-/Seitenmodell, Registry mit 26 Elementen, PDF-HostAdapter, getrenntes Profil, Save/Load/Discard/Reset, Rollback und lokale reale Mehrseiten-PDF | 38 .NET-Tests, npm-Gesamttest und echter `--pdf-model-diagnostic`-Nachweis gruen |
 | K10 / M77 | [A] | Gemeinsamer nativer UI-/PDF-Editor mit Seitenuebersicht, Registrybaum, echter lokaler PDF-Vorschau, Baum-/Previewauswahl, Overlay, vollstaendiger PDF-Bedienung und gemeinsamem Dirty-/Neustartfluss | 48 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-pdf-end-to-end-diagnostic` gruen |
 | K11 / M78 | [A] | Eigenstaendiger nativer Windows-Manager fuer vorbereitete neue Ziel-Apps mit LocalAppData-Bereitstellung, Desktop-Verknuepfung, Auswahl, Vertrag/Sicherheit, Vorschau, bekannten Apps, Installation, Update, Deinstallation, Prozessstart und Transaktionsrollback | 73 Manager-Tests, alle bestehenden Tests und sichtbarer `--manager-installer-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
+| K12 / M79 | [A] | Kontrollierte Registrierung bestehender SDK-C#-/WPF-Apps mit bytegleicher read-only XAML-/Roslyn-Analyse, manuellen Proposals, IDs/Parents/Actionlocks, Registry-/HostAdapter-Generator, lokaler Pipe-Anbindung an den vorhandenen M77-Editor, exakter Vorschau, Git-Schutz, Installation, Reanalyse, Update, Rollback und Deinstallation | 88 Manager-Tests, kontrollierte Bestandsfixture und sichtbarer `--existing-app-registration-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -143,13 +146,25 @@ Ergebnis:
 - Installation, Update, Deinstallation, bekannte Apps, JSONL-Protokoll und Vertragsstatus nachgewiesen,
 - Installations- und Updatefehler mit vollstaendigem Rollback sowie bytegleichen Projekt-, Fremd- und Profildateien nachgewiesen,
 - Ziel-App und gemeinsamer UI-/PDF-Editor gestartet; UI-/PDF-Neustart-/Restore-Nachweis Exitcode 0,
+- kontrollierte WPF-Bestandsfixture vor Registrierung gebaut und sichtbar gestartet,
+- vollstaendiges Hashinventar vor/nach read-only XAML-/Roslyn-Analyse bytegleich; kein Zielbuild, keine Zieldatei und keine Fachaktion waehrend Analyse,
+- Views, Container, Controls, Tabelle/Spalten, unbenannte/templatebasierte Unsicherheit sowie Click-/Command-/ICommand-Risiken mit konkreten Fundstellen erkannt,
+- jeder installierte Vorschlag einzeln geprueft; ungepruefte Vorschlaege, ID-/Parent-/Actionfehler und Git-Dirty-Konflikt blockieren,
+- deterministische Registry und kontrollierter WPF-HostAdapter aus bestaetigten Namen erzeugt; Fachaktionen bleiben gesperrt,
+- vollstaendige Vorschau mit neuen/geaenderten Dateien, Ownership, alten/neuen Hashes, Backupbedarf und exaktem `.csproj`-Diff bestaetigt,
+- echte Installation, Zielbuild, Vertragscheck, normaler Ziel-App-Start und lokaler HostAdapter-Registryabruf innerhalb der Transaktion nachgewiesen,
+- vorhandenen nativen M77-UI-/PDF-Editor aus dem Manager per lokaler Named Pipe an die Bestands-App gekoppelt, registriertes Element real geaendert, UI-Profil gespeichert/restauriert und mehrseitige PDF erzeugt,
+- Reanalyse, neues ungeprueftes Element und transaktionales Update nachgewiesen,
+- provozierter Installations-, Build-, Vertrags-, Laufzeit- und Updatefehler jeweils vollstaendig zurueckgerollt,
+- M79-Deinstallation entfernte nur eigene Dateien und stellte Projektdatei, Fremdschutzdatei und Ausgangsinventar bytegleich wieder her; UI-/PDF-Profile blieben erhalten,
+- bestehender gemeinsamer M77-UI-/PDF-End-to-End- und Restore-Nachweis innerhalb der M79-Diagnose weiter gruen,
 - keine temporaeren Speicherdateien sowie keine Node- oder WPF-Prozesse zurueckgelassen.
 
-## 7. Aktueller offener Meilenstein
+## 7. Letzter Meilenstein
 
 ### M79 - Bestehende Apps registrieren
 
-Status: `[ ] offen`
+Status: `[A] abgenommen`
 
 Ziel:
 
@@ -161,11 +176,11 @@ Nicht-Ziele:
 
 - kein Browser-, Netzwerk- oder Cloudbetrieb und keine unbestaetigte Fach-/Quellcodeaenderung.
 
-M79 ist offen, aber noch nicht begonnen oder gebaut.
+M79 ist fuer den belegten SDK-basierten C#-/WPF-Erstframeworkadapter vollstaendig gebaut, automatisch geprueft und praktisch abgenommen. Weitere Frameworks wurden nicht vorgetaeuscht.
 
 ## 8. Naechster Auftrag
 
-Der naechste Bauauftrag ist ausschliesslich M79. M73 bis M78 bleiben abgenommen.
+Es ist kein weiterer Meilenstein eingetragen. Ein neuer Bauauftrag benoetigt zuerst eine ausdrueckliche fachliche Umfangs- und Abnahmeentscheidung; M73 bis M79 bleiben abgenommen.
 
 ## 9. Statuswerte
 

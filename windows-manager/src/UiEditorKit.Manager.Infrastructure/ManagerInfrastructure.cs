@@ -106,6 +106,9 @@ public sealed class ManagerLogger(ManagerPaths paths)
 public sealed class TargetProcessLauncher
 {
     public ManagerResult Start(string root, TargetStartConfiguration configuration, bool editor)
+        => StartProcess(root, configuration, editor).Result;
+
+    public StartedTargetProcess StartProcess(string root, TargetStartConfiguration configuration, bool editor)
     {
         try
         {
@@ -125,14 +128,16 @@ public sealed class TargetProcessLauncher
                 foreach (var argument in configuration.Arguments) start.ArgumentList.Add(argument);
             }
             var process = Process.Start(start) ?? throw new InvalidOperationException("Prozess wurde nicht gestartet.");
-            return ManagerResult.Ok(editor ? "editor_started" : "target_started", $"Prozess {process.Id} wurde gestartet.");
+            return new(process, ManagerResult.Ok(editor ? "editor_started" : "target_started", $"Prozess {process.Id} wurde gestartet."));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            return ManagerResult.Fail(editor ? ManagerErrorCodes.EditorStartFailed : ManagerErrorCodes.TargetStartFailed, exception.Message);
+            return new(null, ManagerResult.Fail(editor ? ManagerErrorCodes.EditorStartFailed : ManagerErrorCodes.TargetStartFailed, exception.Message));
         }
     }
 }
+
+public sealed record StartedTargetProcess(Process? Process, ManagerResult Result);
 
 public sealed class DesktopShortcutService
 {
@@ -241,9 +246,20 @@ public sealed class TargetAppInspector(ManagerPaths managerPaths)
             if (!writable) return new(false, ManagerErrorCodes.TargetNotWritable, "Integrationsziel ist nicht beschreibbar.", root,
                 manifestPath, TargetContractStatus.NotSuitable, manifest, null, false, now);
             var installation = await LoadInstallationAsync(root, cancellationToken);
-            var status = installation is null ? TargetContractStatus.ReadyToInstall : TargetContractStatus.Installed;
-            return new(true, "target_contract_valid", "M78-Opt-in-Vertrag ist gültig.", root, manifestPath, status,
-                manifest, installation, true, now);
+            var registration = await LoadRegistrationAsync(root, cancellationToken);
+            if (manifest.IntegrationMode == "registered-existing-wpf")
+            {
+                var registrationValidation = await ValidateRegistrationAsync(root, manifest, registration, cancellationToken);
+                if (!registrationValidation.Success)
+                    return new(false, registrationValidation.Code, registrationValidation.Message, root, manifestPath,
+                        TargetContractStatus.RepairRequired, manifest, installation, true, now, registration);
+            }
+            var status = installation is null && registration is null ? TargetContractStatus.ReadyToInstall : TargetContractStatus.Installed;
+            var contractMessage = manifest.IntegrationMode == "registered-existing-wpf"
+                ? "M79-Registrierungsvertrag ist gültig."
+                : "M78-Opt-in-Vertrag ist gültig.";
+            return new(true, "target_contract_valid", contractMessage, root, manifestPath, status,
+                manifest, installation, true, now, registration);
         }
         catch (JsonException exception) { return Fail(ManagerErrorCodes.TargetManifestInvalid, "Manifest ist beschädigt: " + exception.Message, selectedPath, now); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
@@ -256,6 +272,44 @@ public sealed class TargetAppInspector(ManagerPaths managerPaths)
         if (!File.Exists(path)) return null;
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
         return await JsonSerializer.DeserializeAsync<InstallationState>(stream, ManagerJson.Options, cancellationToken);
+    }
+
+    public async Task<ExistingAppRegistrationState?> LoadRegistrationAsync(string root, CancellationToken cancellationToken = default)
+    {
+        var path = Path.Combine(root, ".ui-editor-kit", "registration-installation.json");
+        if (!File.Exists(path)) return null;
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
+        return await JsonSerializer.DeserializeAsync<ExistingAppRegistrationState>(stream, ManagerJson.Options, cancellationToken);
+    }
+
+    private static async Task<ManagerResult> ValidateRegistrationAsync(string root, TargetAppManifest manifest,
+        ExistingAppRegistrationState? registration, CancellationToken cancellationToken)
+    {
+        if (registration is not { SchemaVersion: 1, Lifecycle: RegistrationLifecycle.Installed } ||
+            registration.ApplicationId != manifest.ApplicationId)
+            return ManagerResult.Fail(ManagerErrorCodes.RegistrationContractFailed,
+                "M79-Installationsstatus fehlt, ist veraltet oder gehört zu einer anderen App.");
+        if (registration.Files.Select(item => item.RelativePath).Distinct(StringComparer.Ordinal).Count() != registration.Files.Count)
+            return ManagerResult.Fail(ManagerErrorCodes.RegistrationContractFailed, "M79-Ownershipstatus enthält doppelte Pfade.");
+        foreach (var expected in manifest.ExpectedFiles)
+            if (!File.Exists(ManagerPathRules.ResolveInside(root, expected)))
+                return ManagerResult.Fail(ManagerErrorCodes.RegistrationContractFailed, "M79-Vertragsdatei fehlt: " + expected);
+        foreach (var owned in registration.Files)
+        {
+            var path = ManagerPathRules.ResolveInside(root, owned.RelativePath);
+            if (!File.Exists(path) || !string.Equals(await Hashing.FileAsync(path, cancellationToken), owned.InstalledHash,
+                    StringComparison.OrdinalIgnoreCase))
+                return ManagerResult.Fail(ManagerErrorCodes.RegistrationForeignChangeConflict,
+                    "M79-eigene oder integrierte Datei wurde lokal verändert: " + owned.RelativePath);
+        }
+        var registryPath = ManagerPathRules.ResolveInside(root, ".ui-editor-kit/registration-registry.json");
+        await using var stream = File.OpenRead(registryPath);
+        var registry = await JsonSerializer.DeserializeAsync<GeneratedRegistrationRegistry>(stream, ManagerJson.Options, cancellationToken);
+        if (registry is not { SchemaVersion: 1 } || registry.ApplicationId != manifest.ApplicationId ||
+            registry.Fingerprint != registration.RegistryFingerprint || registry.Elements.Count == 0)
+            return ManagerResult.Fail(ManagerErrorCodes.RegistrationContractFailed,
+                "M79-Registry stimmt nicht mit Installationsstatus und Manifest überein.");
+        return ManagerResult.Ok("registration_contract_valid", "M79-Manifest, Ownershipstatus und Registry sind unverändert gültig.");
     }
 
     private static async Task<bool> ProbeWritableAsync(string root, string integrationRoot, CancellationToken cancellationToken)
