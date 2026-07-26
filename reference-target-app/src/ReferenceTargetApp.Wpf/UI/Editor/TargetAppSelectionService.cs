@@ -8,6 +8,9 @@ internal sealed class TargetAppSelectionService : IDisposable
 {
     private readonly IReadOnlyList<UiRegistryEntry> entries;
     private readonly IReadOnlyList<UIElement> protectedControls;
+    private readonly Func<CancellationToken, Task>? beginRemote;
+    private readonly Func<CancellationToken, Task>? cancelRemote;
+    private readonly Func<string, string, CancellationToken, Task>? highlightRemote;
     private bool disposed;
 
     internal TargetAppSelectionService(IEnumerable<IUiElementRegistry> registries, IEnumerable<UIElement>? protectedControls = null)
@@ -19,11 +22,41 @@ internal sealed class TargetAppSelectionService : IDisposable
             control.AddHandler(UIElement.PreviewMouseDownEvent, new MouseButtonEventHandler(OnPreviewMouseDown), true);
     }
 
+    internal TargetAppSelectionService(
+        Func<CancellationToken, Task> beginRemote,
+        Func<CancellationToken, Task> cancelRemote,
+        Func<string, string, CancellationToken, Task> highlightRemote)
+    {
+        entries = [];
+        protectedControls = [];
+        this.beginRemote = beginRemote;
+        this.cancelRemote = cancelRemote;
+        this.highlightRemote = highlightRemote;
+    }
+
     internal event EventHandler<TargetAppElementSelectedEventArgs>? ElementSelected;
     internal event EventHandler? SelectionRejected;
     internal bool IsActive { get; private set; }
     internal void Begin() { ObjectDisposedException.ThrowIf(disposed, this); IsActive = true; }
     internal void Cancel() { IsActive = false; }
+    internal async Task BeginAsync(CancellationToken cancellationToken = default)
+    {
+        Begin();
+        if (beginRemote is not null) await beginRemote(cancellationToken);
+    }
+    internal async Task CancelAsync(CancellationToken cancellationToken = default)
+    {
+        Cancel();
+        if (cancelRemote is not null) await cancelRemote(cancellationToken);
+    }
+    internal Task HighlightAsync(string scopeId, string elementId, CancellationToken cancellationToken = default) =>
+        highlightRemote is null ? Task.CompletedTask : highlightRemote(scopeId, elementId, cancellationToken);
+    internal void NotifyRemoteSelection(string scopeId, string elementId)
+    {
+        if (!IsActive) return;
+        IsActive = false;
+        ElementSelected?.Invoke(this, new(scopeId, elementId));
+    }
 
     public void Dispose()
     {

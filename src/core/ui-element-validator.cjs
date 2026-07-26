@@ -30,6 +30,10 @@ const FORBIDDEN_UI_ELEMENT_OPERATIONS = Object.freeze([
   "database",
   "execute",
   "submit",
+  "executeTargetAction",
+  "modifyDomainData",
+  "createRecord",
+  "deleteRecord",
 ]);
 
 const ALLOWED_TYPE_SET = new Set(UI_ELEMENT_TYPES);
@@ -385,6 +389,44 @@ function validateTableColumns(elements, elementsById, errors) {
   });
 }
 
+function validateFieldGroups(elements, elementsById, errors) {
+  const childrenByParent = new Map();
+  elements.forEach((element) => {
+    if (!isObjectElement(element) || isBlankParentId(element.parentId)) return;
+    const children = childrenByParent.get(element.parentId) || [];
+    children.push(element);
+    childrenByParent.set(element.parentId, children);
+  });
+
+  elements.forEach((element) => {
+    if (!isObjectElement(element)) return;
+    const elementId = getElementId(element);
+    if (element.type === "fieldGroup") {
+      const children = childrenByParent.get(elementId) || [];
+      if (!children.some((child) => child.type === "label") || !children.some((child) => child.type === "field")) {
+        errors.push(createError(
+          "invalid_field_group_children",
+          "fieldGroup braucht mindestens ein label und ein field als direkte Geschwister.",
+          "parentId",
+          elementId
+        ));
+      }
+    }
+
+    if (element.type === "field") {
+      const parent = elementsById.get(element.parentId);
+      if (parent?.type === "label") {
+        errors.push(createError(
+          "label_cannot_parent_field",
+          "label darf nicht Parent eines field-Elements sein.",
+          "parentId",
+          elementId
+        ));
+      }
+    }
+  });
+}
+
 function validateUiElementList(elements) {
   if (!Array.isArray(elements)) {
     return {
@@ -401,6 +443,7 @@ function validateUiElementList(elements) {
 
   const elementsById = validateParentStructure(elements, errors);
   validateTableColumns(elements, elementsById, errors);
+  validateFieldGroups(elements, elementsById, errors);
 
   return {
     ok: errors.length === 0,

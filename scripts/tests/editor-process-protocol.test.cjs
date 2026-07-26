@@ -238,6 +238,26 @@ function runMultiScopeEditorUiProtocolTests() {
   ] }, sessionId));
   assert.equal(result.response.payload.editorUiState.details.currentLayout.element.x, 9);
   assert.equal(protocol.getState().activeSessionId, sessionId);
+
+  const invalidProtocol = createEditorProcessProtocol({ now: () => "2026-07-25T12:00:01.000Z" });
+  const invalidSessionId = "invalid-second-scope";
+  const invalidCustomerElements = customerElements.map((element) => element.id === "ui.customer-details.company"
+    ? { ...element, allowedOps: ["dance"] }
+    : element);
+  one(invalidProtocol, message(MESSAGE_TYPES.ACTIVATE));
+  one(invalidProtocol, message(MESSAGE_TYPES.START_SESSION, {}, invalidSessionId));
+  result = one(invalidProtocol, message(MESSAGE_TYPES.REGISTRY, { elements: [...orderElements, ...invalidCustomerElements] }, invalidSessionId));
+  assert.equal(result.response.messageType, MESSAGE_TYPES.REQUEST_LAYOUT_STATE, "Erster Scope bleibt valide");
+  result = one(invalidProtocol, message(MESSAGE_TYPES.LAYOUT_STATE, {
+    activeScopeId: "ui.order-header",
+    scopeStates: [
+      { scopeId: "ui.order-header", layoutState },
+      { scopeId: "ui.customer-details", layoutState: customerState },
+    ],
+  }, invalidSessionId));
+  assert.equal(result.response.messageType, MESSAGE_TYPES.ERROR);
+  assert.equal(result.response.payload.code, "invalid_registry");
+  assert.ok(result.response.payload.errors.some((error) => error.elementId === "ui.customer-details.company"));
 }
 
 async function runEntrypointTest() {

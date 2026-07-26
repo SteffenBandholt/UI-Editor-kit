@@ -52,6 +52,7 @@ internal static class ChangeRequestValidator
             HostAdapterOperations.ResizeHeight => ValidateSingleSize(request.Payload, "height", HostAdapterOperations.ResizeHeight),
             HostAdapterOperations.TextMove => ValidateTextMove(request.Payload),
             HostAdapterOperations.TextResize => ValidateTextResize(request.Payload),
+            HostAdapterOperations.SetVisibility => ValidateVisibility(request.Payload),
             _ => ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "Operation ist nicht erlaubt.")
         };
     }
@@ -111,6 +112,13 @@ internal static class ChangeRequestValidator
         return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.TextResize, FontSize: fontSize));
     }
 
+    private static ValidationOutcome ValidateVisibility(IReadOnlyDictionary<string, object?> payload)
+    {
+        if (!HasOnlyKeys(payload, "visible") || !payload.TryGetValue("visible", out var raw) || raw is not bool visible)
+            return Invalid("setVisibility erwartet ausschliesslich einen Boolean in visible.");
+        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.SetVisibility, Visible: visible));
+    }
+
     private static UiCapability? RequiredCapability(string operation) => operation switch
     {
         HostAdapterOperations.Move => UiCapability.Position,
@@ -118,6 +126,7 @@ internal static class ChangeRequestValidator
         HostAdapterOperations.ResizeHeight => UiCapability.Height,
         HostAdapterOperations.TextMove => UiCapability.TextPosition,
         HostAdapterOperations.TextResize => UiCapability.FontSize,
+        HostAdapterOperations.SetVisibility => UiCapability.Visibility,
         _ => null
     };
 

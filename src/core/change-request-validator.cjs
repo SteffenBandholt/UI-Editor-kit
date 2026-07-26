@@ -18,7 +18,11 @@ const ALLOWED_LAYOUT_PAYLOAD_FIELDS = Object.freeze([
   "label",
 ]);
 
-const CONDITIONAL_LAYOUT_PAYLOAD_FIELDS = Object.freeze(["visibility", "visible", "label"]);
+const CONDITIONAL_LAYOUT_PAYLOAD_FIELDS = Object.freeze(["visibility", "label"]);
+
+const OPERATION_PAYLOAD_FIELDS = Object.freeze({
+  setVisibility: Object.freeze(["visible"]),
+});
 
 function isPlainRequestObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -92,16 +96,32 @@ function validatePayloadFields(changeRequest, errors) {
     }
 
     if (CONDITIONAL_LAYOUT_PAYLOAD_FIELDS.includes(fieldName)) {
-      const allowedPayloadFields = Array.isArray(changeRequest.allowedPayloadFields)
-        ? changeRequest.allowedPayloadFields
-        : [];
-      if (!allowedPayloadFields.includes(fieldName)) {
+      const explicitlyAllowed = (Array.isArray(changeRequest.allowedPayloadFields) && changeRequest.allowedPayloadFields.includes(fieldName)) ||
+        (fieldName === "visible" && changeRequest.operation === "setVisibility");
+      if (!explicitlyAllowed) {
         errors.push(createError(changeRequest, "forbidden_field", `payload.${fieldName} braucht eine ausdrueckliche Ziel-App-Freigabe.`, {
           field: `payload.${fieldName}`,
         }));
       }
     }
   });
+
+  const operationFields = OPERATION_PAYLOAD_FIELDS[changeRequest.operation];
+  if (operationFields) {
+    Object.keys(changeRequest.payload).forEach((fieldName) => {
+      if (!operationFields.includes(fieldName)) {
+        errors.push(createError(changeRequest, "invalid_payload", `payload.${fieldName} ist fuer ${changeRequest.operation} nicht erlaubt.`, {
+          field: `payload.${fieldName}`,
+        }));
+      }
+    });
+  }
+
+  if (changeRequest.operation === "setVisibility" && typeof changeRequest.payload.visible !== "boolean") {
+    errors.push(createError(changeRequest, "invalid_payload", "setVisibility erwartet payload.visible als Boolean.", {
+      field: "payload.visible",
+    }));
+  }
 
   if (hasOwn(changeRequest.payload, "text")) {
     const text = changeRequest.payload.text;
@@ -235,6 +255,7 @@ function validateChangeRequest(changeRequest, editorCore) {
 module.exports = {
   ALLOWED_LAYOUT_PAYLOAD_FIELDS,
   CONDITIONAL_LAYOUT_PAYLOAD_FIELDS,
+  OPERATION_PAYLOAD_FIELDS,
   validateChangeRequest,
   validateChangeRequestShape,
 };

@@ -29,6 +29,10 @@ const { RUNTIME_ERROR_CODES } = require("./runtime/runtime-error-codes.cjs");
 const { normalizeTargetContext, validateTargetContext } = require("./runtime/runtime-context.cjs");
 const { normalizeLayoutEntry } = require("./runtime/session-state.cjs");
 const { resolveOperationStep } = require("./runtime/operation-step-resolver.cjs");
+const electronTargetContract = require("./electron-target/electron-target-contract.cjs");
+const localTargetProtocol = require("./electron-target/local-target-protocol.cjs");
+const electronErrorCodes = require("./electron-target/electron-error-codes.cjs");
+const namedPipeClient = require("./electron-target/named-pipe-client.cjs");
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
@@ -46,6 +50,10 @@ module.exports = Object.freeze({
   validateTargetContext,
   normalizeLayoutEntry,
   resolveOperationStep,
+  ...electronTargetContract,
+  ...localTargetProtocol,
+  ...electronErrorCodes,
+  ...namedPipeClient,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

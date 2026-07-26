@@ -285,6 +285,14 @@ Status: abgenommen.
 
 Der vorhandene native Manager analysiert die kontrollierte C#-/WPF-Bestandsfixture zuerst bytegleich read-only über XDocument und Roslyn, zeigt ausschließlich ungeprüfte Vorschläge, erzwingt Einzelentscheidung, stabile IDs, valide Parents und Fachaktionssperren und erzeugt daraus deterministisch Registry und kontrollierten HostAdapter. Exakte Vorschau, Git-Schutz, Build/Vertrag, Ziel-App-/Editorstart, Reanalyse/Update, Fehlerrollback und Deinstallation mit bytegleichem Original wurden durch `--existing-app-registration-diagnostic` praktisch nachgewiesen. M73 bis M78 bleiben abgenommen.
 
+## M80 - Electron-Ziel-App-Vertrag und BBM-UI-Pilot
+
+Status: abgenommen. Der vorhandene native Editor wurde über einen frameworkneutralen, lokalen und gehärteten Electron-Vertrag an BBM angebunden. Der Restarbeiten-Pilot belegt zwei Scopes, getrennte Labels/Felder, Sichtbarkeit, Tabelle, Auswahl in beide Richtungen, Profile und Rollback. WPF bleibt vollständig unterstützt.
+
+## M81 - BBM-PDF-Anbindung
+
+Status: offen. Der nächste Meilenstein bindet BBM-PDF an den vorhandenen PDF-Arbeitsbereich an. M81 darf weder einen zweiten PDF-Core noch eine stillschweigende Änderung des BBM-Druck-/PDF-Fachwegs einführen.
+
 ## 6. Feste Abnahmereihenfolge
 
 | Reihenfolge | Meilenstein | Ergebnis |
@@ -296,6 +304,8 @@ Der vorhandene native Manager analysiert die kontrollierte C#-/WPF-Bestandsfixtu
 | 5 | M77 | UI- und PDF-Editor Ende-zu-Ende fertig |
 | 6 | M78 | Windows-Manager und Installation fertig |
 | 7 | M79 | Bestehende Apps nachruesten |
+| 8 | M80 | Electron-Ziel-App-Vertrag und BBM-UI-Pilot |
+| 9 | M81 | BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich |
 
 ## 7. Pflichtnachweise je Meilenstein
 
@@ -315,8 +325,8 @@ Jede Abnahme benoetigt:
 
 Neue Anforderungen werden hier oder in einer gesonderten Backlog-Datei gesammelt. Sie duerfen den laufenden Meilenstein nicht veraendern.
 
-M79 ist abgeschlossen. Weitere Ziel-App-Technologien, Frameworkadapter oder Komfortfunktionen sind nicht Bestandteil des belegten Umfangs und benötigen vor einer Umsetzung einen neuen ausdrücklichen Auftrag. Cloud-, Browser- oder Webbetrieb bleibt dauerhaft ausgeschlossen.
+M80 ist abgeschlossen. Electron ist ausschließlich für den belegten lokalen BBM-Adapter freigegeben; weitere Ziel-App-Technologien oder Frameworkadapter benötigen einen neuen ausdrücklichen Auftrag. Cloud-, Browser- oder Webbetrieb bleibt dauerhaft ausgeschlossen.
 
 ## 9. Naechster verbindlicher Auftrag
 
-M73 bis M79 sind abgenommen. Es ist kein weiterer Meilenstein festgelegt. Ein neuer Bauauftrag benötigt zuerst eine ausdrückliche fachliche Umfangs- und Abnahmeentscheidung.
+M73 bis M80 sind abgenommen. M81 ist der nächste verbindliche Auftrag: BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich. Der bestehende BBM-Druck-/PDF-Fachweg darf dabei nicht stillschweigend verändert werden.

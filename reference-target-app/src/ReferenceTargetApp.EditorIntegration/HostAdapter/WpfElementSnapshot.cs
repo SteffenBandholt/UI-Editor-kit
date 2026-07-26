@@ -9,4 +9,5 @@ internal sealed record WpfElementSnapshot(
     DependencyProperty? PaddingProperty,
     object? Padding,
     DependencyProperty? FontSizeProperty,
-    object? FontSize);
+    object? FontSize,
+    object Visibility);

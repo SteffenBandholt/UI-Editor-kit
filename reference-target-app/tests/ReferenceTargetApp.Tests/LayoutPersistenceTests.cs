@@ -206,6 +206,27 @@ public sealed class LayoutPersistenceTests
     }
 
     [TestMethod]
+    public void RestoreCreatesSeparatedResizeRequestsWhenCombinedResizeIsNotAllowed()
+    {
+        StaTest.Run(() =>
+        {
+            var entry = new UiRegistryEntry(
+                "pilot.field", "pilot.root", "pilot.root", UiElementKind.InputField, "Pilotfeld", 1,
+                UiCapability.Width | UiCapability.Height, new Border(), "field", "dataFieldLayout",
+                [HostAdapterOperations.ResizeWidth, HostAdapterOperations.ResizeHeight], []);
+            var desired = new PersistedElementLayout(
+                entry.ElementId, entry.ScopeId, null, null, 320, 64, null, null, null, true);
+            var sequence = 1;
+
+            var requests = LayoutRestoreCoordinator.CreateRequests(entry, desired, "test", ref sequence);
+
+            CollectionAssert.AreEqual(
+                new[] { HostAdapterOperations.ResizeWidth, HostAdapterOperations.ResizeHeight },
+                requests.Select(request => request.Operation).ToArray());
+        });
+    }
+
+    [TestMethod]
     public async Task DiagnosticUsesTwoRealAppProcessesAndCleansProfileAndProcesses()
     {
         var executable = Path.Combine(AppContext.BaseDirectory, "ReferenceTargetApp.exe");

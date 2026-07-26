@@ -40,9 +40,11 @@ Die feste Reihenfolge lautet:
 4. M76 - PDF-Grundmodell und PDF-HostAdapter,
 5. M77 - sichtbarer PDF-Editor und gemeinsamer End-to-End-Betrieb,
 6. M78 - zentraler Windows-Manager und Installer,
-7. M79 - bestehende Apps registrieren.
+7. M79 - bestehende Apps registrieren,
+8. M80 - Electron-Ziel-App-Vertrag und BBM-UI-Pilot,
+9. M81 - BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich.
 
-M73 bis M79 sind abgenommen. Es ist kein weiterer Meilenstein festgelegt.
+M73 bis M80 sind abgenommen. M81 ist der nächste offene Meilenstein.
 
 ## 4. Produktstand
 
@@ -70,9 +72,11 @@ Gebaut und geprueft sind:
 - manuell zu pruefende Registrierungsvorschlaege, stabile IDs, Parentvalidierung und Fachaktionssperren,
 - deterministische Registry-/HostAdapter-Erzeugung, exakte Hash-/Ownership-/Diffvorschau und Git-Schutz,
 - transaktionale M79-Installation, Reanalyse, Update, Rollback und Deinstallation mit bytegleichem Original,
+- frameworkneutraler Electron-Ziel-App-Vertrag, gehärtete lokale Named Pipe, Sichtbarkeit und asynchroner HostAdapter,
+- sichtbarer BBM-UI-Pilot mit getrennten Labels/Feldern, bestätigter Restarbeiten-Tabelle, Save/Load/Discard/Reset und Rollback,
 - oeffentliche Paket-API und Release-Pruefungen.
 
-Der verbindlich festgelegte Umfang M73 bis M79 ist praktisch fertig und abgenommen.
+Der verbindlich festgelegte Umfang M73 bis M80 ist praktisch fertig und abgenommen.
 
 Die Ziel-App bleibt Eigentuemerin von Registry, Element-Referenzen, HostAdapter, Layoutspeicher und Aktivierung.
 
@@ -99,6 +103,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, ungepruefte automatisc
 | K10 / M77 | [A] | Gemeinsamer nativer UI-/PDF-Editor mit Seitenuebersicht, Registrybaum, echter lokaler PDF-Vorschau, Baum-/Previewauswahl, Overlay, vollstaendiger PDF-Bedienung und gemeinsamem Dirty-/Neustartfluss | 48 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-pdf-end-to-end-diagnostic` gruen |
 | K11 / M78 | [A] | Eigenstaendiger nativer Windows-Manager fuer vorbereitete neue Ziel-Apps mit LocalAppData-Bereitstellung, Desktop-Verknuepfung, Auswahl, Vertrag/Sicherheit, Vorschau, bekannten Apps, Installation, Update, Deinstallation, Prozessstart und Transaktionsrollback | 73 Manager-Tests, alle bestehenden Tests und sichtbarer `--manager-installer-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
 | K12 / M79 | [A] | Kontrollierte Registrierung bestehender SDK-C#-/WPF-Apps mit bytegleicher read-only XAML-/Roslyn-Analyse, manuellen Proposals, IDs/Parents/Actionlocks, Registry-/HostAdapter-Generator, lokaler Pipe-Anbindung an den vorhandenen M77-Editor, exakter Vorschau, Git-Schutz, Installation, Reanalyse, Update, Rollback und Deinstallation | 88 Manager-Tests, kontrollierte Bestandsfixture und sichtbarer `--existing-app-registration-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
+| K13 / M80 | [A] | Frameworkneutraler Electron-Ziel-App-Vertrag und BBM-UI-Pilot über denselben nativen Editor/Node-Core: Sichtbarkeit, getrennte Labels/Felder, explizite Registry/Refs, sichere lokale Pipe, ein Editorprozess, Profile und Rollback | npm-Gesamttests, 88 Manager- und 50 Referenz-App-Tests sowie sichtbarer Entwicklungs- und gepackter BBM-Ende-zu-Ende-Nachweis grün |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -162,6 +167,14 @@ Ergebnis:
 
 ## 7. Letzter Meilenstein
 
+### M80 - Electron-Ziel-App-Vertrag und BBM-UI-Pilot
+
+Status: `[A] abgenommen`
+
+Electron ist als zweiter Ziel-App-Adapter neben WPF praktisch belegt. BBM startet den vorhandenen nativen Editor über eine gehärtete lokale Named Pipe, liefert zwei explizite Restarbeiten-Scopes und bleibt Eigentümerin aller Fachwerte und Fachaktionen. Auswahl, Markierung, Layoutänderung, Sichtbarkeit, Save/Load, Neustart-Restore, Discard, Reset und vollständiger Rollback wurden mit echten sichtbaren Prozessen sowie im gepackten Verzeichnisbuild nachgewiesen. Der BBM-PDF-Tab bleibt ehrlich nicht angebunden.
+
+Commit/PR: keiner; gemäß Nutzeranweisung wurde weder committet noch gepusht.
+
 ### M79 - Bestehende Apps registrieren
 
 Status: `[A] abgenommen`
@@ -180,7 +193,7 @@ M79 ist fuer den belegten SDK-basierten C#-/WPF-Erstframeworkadapter vollstaendi
 
 ## 8. Naechster Auftrag
 
-Es ist kein weiterer Meilenstein eingetragen. Ein neuer Bauauftrag benoetigt zuerst eine ausdrueckliche fachliche Umfangs- und Abnahmeentscheidung; M73 bis M79 bleiben abgenommen.
+M81 ist als nächster offener Meilenstein eingetragen: `BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich`. M73 bis M80 bleiben abgenommen.
 
 ## 9. Statuswerte
 

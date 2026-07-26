@@ -57,7 +57,11 @@ function createEditorUiSession(options) {
     const controllerState = controller.getState();
     const selectedElementId = controllerState.selectedElementId;
     const details = selectedElementId ? createEditorDetailsViewModel(editorCore, selectedElementId) : null;
-    if (details) details.currentLayout = clone(currentEntry(sessionState, selectedElementId));
+    if (details) {
+      details.currentLayout = clone(currentEntry(sessionState, selectedElementId));
+      const currentVisible = details.currentLayout?.element?.visible;
+      if (typeof currentVisible === "boolean") details.visible = currentVisible;
+    }
     const panel = createUiEditorPanelViewModel({ controllerState, lastResult });
     const m74Panel = {
       selection: panel.selection,
@@ -124,6 +128,24 @@ function createEditorUiSession(options) {
       prepared.changeRequest.scope = scopeId;
       lastResult = { ok: true, code: "CHANGE_IN_PROGRESS", message: "Aenderung wird ausgefuehrt." };
       return clone(prepared);
+    },
+    prepareVisibility(visible) {
+      const state = controller.getState();
+      if (!state.selectedElementId || !state.effectiveOps.includes("setVisibility") || typeof visible !== "boolean") {
+        lastResult = { ok: false, blocked: true, code: "OPERATION_NOT_ALLOWED", reason: "visibility is not available." };
+        return clone(lastResult);
+      }
+      const changeRequest = {
+        elementId: state.selectedElementId,
+        operation: "setVisibility",
+        payload: { visible },
+        source: "ui-editor-panel",
+        changeId: `ui-editor-panel:${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        scope: scopeId,
+      };
+      lastResult = { ok: true, code: "CHANGE_IN_PROGRESS", message: "Sichtbarkeit wird geaendert." };
+      return { ok: true, changeRequest };
     },
     acceptChangeResult(result) {
       lastResult = result && result.success === true

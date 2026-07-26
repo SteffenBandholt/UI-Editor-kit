@@ -16,11 +16,20 @@ const REQUIRED_ATTRIBUTES = [
   "data-ui-editor-label",
   "data-ui-editor-parent",
   "data-ui-editor-editable",
+  "data-ui-editor-ops",
 ];
 
-const OPTIONAL_ATTRIBUTES = ["data-ui-editor-ops"];
-const ALLOWED_KINDS = ["frame", "field", "single"];
-const ALLOWED_OPS = ["move", "resize", "hide", "layout"];
+const OPTIONAL_ATTRIBUTES = [];
+const ALLOWED_KINDS = [
+  "frame", "single", "root", "area", "group", "subgroup", "component", "componentpart",
+  "table", "tablecolumn", "list", "card", "dialog", "toolbar", "button", "field", "label",
+  "fieldgroup", "statusindicator",
+];
+const ALLOWED_OPS = [
+  "inspect", "show", "hide", "move", "resize", "resizewidth", "resizeheight", "textmove",
+  "textresize", "setvisibility", "reorder", "rename", "changewidth", "pin", "unpin", "reset",
+  "applypreset", "layout",
+];
 const ALLOWED_EDITABLE = ["true", "false"];
 
 function getContractSummary() {
@@ -120,6 +129,22 @@ function validateEditorElements(elements, fileLabel) {
       });
     } else {
       idToElement.set(id, el);
+    }
+  }
+
+  for (const el of elements) {
+    const kind = String(el.attrs["data-ui-editor-kind"] || "").trim().toLowerCase();
+    const parentId = String(el.attrs["data-ui-editor-parent"] || "").trim();
+    const parentKind = String(idToElement.get(parentId)?.attrs?.["data-ui-editor-kind"] || "").trim().toLowerCase();
+    if (kind === "field" && parentKind === "label") {
+      errors.push({ file: fileLabel, id: el.inspectorId, line: el.line, message: "Label darf nicht Parent eines Feldes sein." });
+    }
+    if (kind === "fieldgroup") {
+      const childKinds = elements.filter((candidate) => String(candidate.attrs["data-ui-editor-parent"] || "").trim() === el.inspectorId)
+        .map((candidate) => String(candidate.attrs["data-ui-editor-kind"] || "").trim().toLowerCase());
+      if (!childKinds.includes("label") || !childKinds.includes("field")) {
+        errors.push({ file: fileLabel, id: el.inspectorId, line: el.line, message: "fieldGroup braucht Label und Feld als direkte Geschwisterziele." });
+      }
     }
   }
 
@@ -263,7 +288,7 @@ Prueft nur vorhandene data-ui-* Metadaten gemaess UI-Editor-Vertrag.`);
 function runSelfTest() {
   const validSample = `
 <div data-ui-inspector-id="demo.root" data-ui-editor-kind="frame" data-ui-editor-label="Demo Root" data-ui-editor-parent="" data-ui-editor-editable="true" data-ui-editor-ops="move,resize,hide,layout"></div>
-<div data-ui-inspector-id="demo.content" data-ui-editor-kind="field" data-ui-editor-label="Demo Content" data-ui-editor-parent="demo.root" data-ui-editor-editable="false"></div>
+<div data-ui-inspector-id="demo.content" data-ui-editor-kind="field" data-ui-editor-label="Demo Content" data-ui-editor-parent="demo.root" data-ui-editor-editable="false" data-ui-editor-ops=""></div>
 `;
 
   const invalidSample = `

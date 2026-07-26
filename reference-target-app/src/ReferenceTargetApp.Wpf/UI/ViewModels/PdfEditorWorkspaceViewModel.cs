@@ -30,7 +30,7 @@ internal sealed record PdfPageViewModel(int PageNumber, BitmapSource Image)
     public string Label => $"Seite {PageNumber}";
 }
 
-internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IDisposable
+internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdfEditorWorkspace
 {
     private readonly PdfElementRegistry registry;
     private readonly IPdfHostAdapter adapter;
@@ -109,6 +109,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IDis
     public bool IsBusy { get => busy; private set { if (Set(ref busy, value)) RaiseAll(); } }
     public bool CanOperate => !busy;
     public bool IsDirty => session.GetStatus().IsDirty;
+    public bool IsAvailable => true;
+    public string UnavailableMessage => string.Empty;
     public bool CanDiscardElement => session.GetStatus().DirtyElementIds.Contains(SelectedId, StringComparer.Ordinal);
     public string DirtyStatus => IsDirty ? "Ungespeicherte PDF-Änderungen" : "PDF-Layout gespeichert";
     public bool IsPreviewStale => previewStale || previewVersion != layoutVersion;

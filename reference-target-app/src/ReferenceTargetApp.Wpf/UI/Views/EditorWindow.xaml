@@ -58,7 +58,7 @@
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <TextBlock Text="Name" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold" />
                         <TextBlock Grid.Row="1" Text="Element-ID" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap" />
@@ -71,6 +71,7 @@
                         <TextBlock Grid.Row="8" Text="Größe" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Size}" />
                         <TextBlock Grid.Row="9" Text="Textposition" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding TextPosition}" />
                         <TextBlock Grid.Row="10" Text="Schriftgröße" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding FontSize}" />
+                        <TextBlock Grid.Row="11" Text="Sichtbarkeit" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding VisibilityStatus}" />
                     </Grid>
                 </GroupBox>
 
@@ -100,6 +101,7 @@
                             <Button Grid.Row="2" Grid.Column="1" Content="↓" IsEnabled="{Binding DownEnabled}" Command="{Binding DirectionCommand}" CommandParameter="down" ToolTip="Nach unten / Höhe oder Schrift verkleinern" Margin="3" />
                         </Grid>
                         <TextBlock Text="Schriftgröße: ← kleiner, → größer. Nicht verwendete Richtungen sind deaktiviert." Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <Button Content="{Binding VisibilityActionLabel}" Command="{Binding ToggleVisibilityCommand}" IsEnabled="{Binding CanChangeVisibility}" HorizontalAlignment="Left" Margin="0,12,0,0" MinWidth="120" />
                     </StackPanel>
                 </GroupBox>
 
@@ -136,8 +138,27 @@
         </Border>
     </Grid>
       </TabItem>
-      <TabItem Header="PDF-Ausgabe" DataContext="{Binding Pdf}">
+      <TabItem Header="PDF-Ausgabe" DataContext="{Binding PdfBinding}">
+        <Grid>
+        <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="28" Margin="20">
+          <Border.Style>
+            <Style TargetType="Border">
+              <Setter Property="Visibility" Value="Collapsed"/>
+              <Style.Triggers><DataTrigger Binding="{Binding IsAvailable}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+            </Style>
+          </Border.Style>
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="PDF-Ausgabe" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding UnavailableMessage}" FontSize="16" Margin="0,16,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="620"/>
+          </StackPanel>
+        </Border>
         <Grid Margin="8">
+          <Grid.Style>
+            <Style TargetType="Grid">
+              <Setter Property="Visibility" Value="Visible"/>
+              <Style.Triggers><DataTrigger Binding="{Binding IsAvailable}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+            </Style>
+          </Grid.Style>
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
             <Grid>
@@ -197,6 +218,7 @@
             </ScrollViewer>
           </Grid>
           <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,10,0,0"><StackPanel><TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold"/><TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap"/><TextBlock Text="{Binding ErrorCodeDisplay}" Foreground="#A61B1B" FontSize="11"/></StackPanel></Border>
+        </Grid>
         </Grid>
       </TabItem>
     </TabControl>

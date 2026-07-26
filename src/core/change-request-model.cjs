@@ -14,6 +14,7 @@ const CHANGE_REQUEST_OPTIONAL_FIELDS = Object.freeze([
   "reason",
   "scope",
   "requestedBy",
+  "allowedPayloadFields",
 ]);
 
 const CHANGE_REQUEST_FIELDS = Object.freeze([

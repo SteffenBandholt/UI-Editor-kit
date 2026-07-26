@@ -13,7 +13,7 @@ public static class LayoutDocumentValidator
     private static readonly HashSet<string> LayoutStateFields = new(StringComparer.Ordinal) { "elements" };
     private static readonly HashSet<string> ElementFields = new(StringComparer.Ordinal)
     {
-        "elementId", "scopeId", "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize"
+        "elementId", "scopeId", "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize", "visible"
     };
 
     public static LayoutDocumentValidationResult ValidateJsonShape(JsonElement root)
@@ -126,6 +126,24 @@ public static class LayoutDocumentValidator
         ValidateCapabilityValue(element.Height, entry.Capabilities.HasFlag(UiCapability.Height), "height", prefix, errors, positive: true);
         ValidateCapabilityPair(element.TextOffsetX, element.TextOffsetY, entry.Capabilities.HasFlag(UiCapability.TextPosition), "textOffset", prefix, errors, nonNegative: true);
         ValidateCapabilityValue(element.FontSize, entry.Capabilities.HasFlag(UiCapability.FontSize), "fontSize", prefix, errors, positive: true, maximum: MaximumFontSize);
+        ValidateCapabilityBoolean(element.Visible, entry.Capabilities.HasFlag(UiCapability.Visibility), "visible", prefix, errors);
+    }
+
+    private static void ValidateCapabilityBoolean(
+        bool? value,
+        bool allowed,
+        string field,
+        string prefix,
+        ICollection<LayoutPersistenceError> errors)
+    {
+        if (!allowed)
+        {
+            if (value is not null)
+                errors.Add(new("operation_not_allowed", $"{field} ist fuer dieses Element nicht erlaubt.", $"{prefix}.{field}"));
+            return;
+        }
+        if (value is null)
+            errors.Add(new("invalid_layout_value", $"{field} fehlt.", $"{prefix}.{field}"));
     }
 
     private static void ValidateCapabilityPair(

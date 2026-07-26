@@ -7,5 +7,9 @@ public enum UiElementKind
     StaticText,
     InputField,
     StatusIndicator,
-    Button
+    Button,
+    Area,
+    FieldGroup,
+    Table,
+    TableColumn
 }

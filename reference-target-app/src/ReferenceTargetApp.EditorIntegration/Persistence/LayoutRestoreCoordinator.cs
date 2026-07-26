@@ -56,6 +56,42 @@ public sealed class LayoutRestoreCoordinator
             failures);
     }
 
+    public async Task<LayoutRestoreResult> RestoreAsync(
+        PersistedLayoutDocument document,
+        LayoutPersistenceOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(options);
+        var registry = hostAdapter.GetRegistry();
+        var validation = LayoutDocumentValidator.Validate(document, options, registry);
+        if (!validation.Success)
+            return LayoutRestoreResult.NotApplied(validation.Errors[0].Code, validation.Errors[0].Message);
+
+        LayoutState originalState;
+        try { originalState = hostAdapter.GetCurrentLayoutState(); }
+        catch (Exception exception)
+        {
+            return LayoutRestoreResult.NotApplied("layout_capture_failed", $"Ausgangslayout konnte nicht gesichert werden: {exception.Message}");
+        }
+
+        var desiredById = document.LayoutState.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+        var apply = await ApplyStateAsync(registry, desiredById, "layout-restore", false, cancellationToken).ConfigureAwait(false);
+        if (apply.Success)
+            return new(true, "layout_restored", "Gespeichertes Layout wurde vollständig angewandt.", apply.AppliedCount, true, []);
+
+        var originalDocument = PersistedLayoutDocumentFactory.Create(options, registry, originalState, DateTimeOffset.UtcNow);
+        var originalById = originalDocument.LayoutState.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+        var rollback = await ApplyStateAsync(registry, originalById, "layout-rollback", true, cancellationToken).ConfigureAwait(false);
+        var failures = new List<LayoutApplyFailure> { apply.Failure! };
+        failures.AddRange(rollback.Failures);
+        return new(false, rollback.Success ? apply.Failure!.Code : "rollback_failed",
+            rollback.Success
+                ? "Layoutanwendung ist fehlgeschlagen; der vollständige Ausgangszustand wurde wiederhergestellt."
+                : "Layoutanwendung und vollständige Wiederherstellung sind fehlgeschlagen.",
+            apply.AppliedCount, rollback.Success, failures);
+    }
+
     private ApplyStateResult ApplyState(
         IUiElementRegistry registry,
         IReadOnlyDictionary<string, PersistedElementLayout> desiredById,
@@ -89,6 +125,31 @@ public sealed class LayoutRestoreCoordinator
         return new(failures.Count == 0, applied, failures.FirstOrDefault(), failures);
     }
 
+    private async Task<ApplyStateResult> ApplyStateAsync(
+        IUiElementRegistry registry,
+        IReadOnlyDictionary<string, PersistedElementLayout> desiredById,
+        string source,
+        bool continueAfterFailure,
+        CancellationToken cancellationToken)
+    {
+        var applied = 0;
+        var failures = new List<LayoutApplyFailure>();
+        var sequence = 1;
+        foreach (var entry in registry.Entries.OrderBy(item => item.Order).ThenBy(item => item.ElementId, StringComparer.Ordinal))
+        {
+            if (!desiredById.TryGetValue(entry.ElementId, out var desired)) continue;
+            foreach (var request in CreateRequests(entry, desired, source, ref sequence))
+            {
+                var result = await HostAdapterDispatch.SubmitAsync(hostAdapter, request, cancellationToken).ConfigureAwait(false);
+                if (result.Success) { applied++; continue; }
+                failures.Add(new(result.ElementId, result.Operation,
+                    result.ErrorCode ?? HostAdapterErrorCodes.TargetRejectedChange, result.Message));
+                if (!continueAfterFailure) return new(false, applied, failures[0], failures);
+            }
+        }
+        return new(failures.Count == 0, applied, failures.FirstOrDefault(), failures);
+    }
+
     internal static IReadOnlyList<ChangeRequest> CreateRequests(
         UiRegistryEntry entry,
         PersistedElementLayout desired,
@@ -103,18 +164,24 @@ public sealed class LayoutRestoreCoordinator
                 ["y"] = desired.Y
             }, source, sequence++));
 
-        if (entry.Capabilities.HasFlag(UiCapability.Width) && entry.Capabilities.HasFlag(UiCapability.Height))
+        var hasExplicitOperations = entry.AllowedOperations is { Count: > 0 };
+        bool Allows(string operation) => !hasExplicitOperations || entry.AllowedOperations!.Contains(operation, StringComparer.Ordinal);
+
+        if (entry.Capabilities.HasFlag(UiCapability.Width) && entry.Capabilities.HasFlag(UiCapability.Height) && Allows(HostAdapterOperations.Resize))
             requests.Add(Request(entry, HostAdapterOperations.Resize, new Dictionary<string, object?>
             {
                 ["width"] = desired.Width,
                 ["height"] = desired.Height
             }, source, sequence++));
-        else if (entry.Capabilities.HasFlag(UiCapability.Width))
-            requests.Add(Request(entry, HostAdapterOperations.ResizeWidth,
-                new Dictionary<string, object?> { ["width"] = desired.Width }, source, sequence++));
-        else if (entry.Capabilities.HasFlag(UiCapability.Height))
-            requests.Add(Request(entry, HostAdapterOperations.ResizeHeight,
-                new Dictionary<string, object?> { ["height"] = desired.Height }, source, sequence++));
+        else
+        {
+            if (entry.Capabilities.HasFlag(UiCapability.Width) && Allows(HostAdapterOperations.ResizeWidth))
+                requests.Add(Request(entry, HostAdapterOperations.ResizeWidth,
+                    new Dictionary<string, object?> { ["width"] = desired.Width }, source, sequence++));
+            if (entry.Capabilities.HasFlag(UiCapability.Height) && Allows(HostAdapterOperations.ResizeHeight))
+                requests.Add(Request(entry, HostAdapterOperations.ResizeHeight,
+                    new Dictionary<string, object?> { ["height"] = desired.Height }, source, sequence++));
+        }
 
         if (entry.Capabilities.HasFlag(UiCapability.TextPosition))
             requests.Add(Request(entry, HostAdapterOperations.TextMove, new Dictionary<string, object?>
@@ -129,6 +196,11 @@ public sealed class LayoutRestoreCoordinator
             requests.Add(Request(entry, HostAdapterOperations.TextResize, new Dictionary<string, object?>
             {
                 ["text"] = new Dictionary<string, object?> { ["fontSize"] = desired.FontSize }
+            }, source, sequence++));
+        if (entry.Capabilities.HasFlag(UiCapability.Visibility))
+            requests.Add(Request(entry, HostAdapterOperations.SetVisibility, new Dictionary<string, object?>
+            {
+                ["visible"] = desired.Visible
             }, source, sequence++));
         return requests;
     }

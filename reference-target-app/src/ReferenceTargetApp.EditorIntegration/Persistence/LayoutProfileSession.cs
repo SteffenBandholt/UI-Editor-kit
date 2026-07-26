@@ -79,23 +79,23 @@ public sealed class LayoutProfileSession
             if (!load.Success || !load.Found || load.Document is null)
                 return Fail(load.Code, load.Message);
             var desired = StatesFromDocument(load.Document);
-            var applied = ApplyAll(desired, "m75-load");
+            var applied = await ApplyAllAsync(desired, "m75-load", cancellationToken).ConfigureAwait(false);
             if (!applied.Success) return applied;
             saved = CloneStates(desired);
             return Ok("layout_loaded", "Gespeichertes Profil wurde vom Datenträger geladen.");
         }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> DiscardElementAsync(string scopeId, string elementId, CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => Task.FromResult(ApplyElement(saved, scopeId, elementId, "m75-discard-element")), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(() => ApplyElementAsync(saved, scopeId, elementId, "m75-discard-element", cancellationToken), cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> DiscardAllAsync(CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => Task.FromResult(ApplyAll(saved, "m75-discard-all")), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(() => ApplyAllAsync(saved, "m75-discard-all", cancellationToken), cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> ResetElementAsync(string scopeId, string elementId, CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => Task.FromResult(ApplyElement(baseline, scopeId, elementId, "m75-reset-element")), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(() => ApplyElementAsync(baseline, scopeId, elementId, "m75-reset-element", cancellationToken), cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> ResetAllAsync(CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => Task.FromResult(ApplyAll(baseline, "m75-reset-all")), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(() => ApplyAllAsync(baseline, "m75-reset-all", cancellationToken), cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> SwitchProfileAsync(string profileId, CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
@@ -107,20 +107,20 @@ public sealed class LayoutProfileSession
             var load = await profileStore.LoadAsync(profileId, adapters, cancellationToken).ConfigureAwait(false);
             if (!load.Success) return Fail(load.Code, load.Message);
             var desired = load.Found && load.Document is not null ? StatesFromDocument(load.Document) : CloneStates(baseline);
-            var applied = ApplyAll(desired, "m75-profile-switch");
+            var applied = await ApplyAllAsync(desired, "m75-profile-switch", cancellationToken).ConfigureAwait(false);
             if (!applied.Success) return applied;
             bool profileSelectionSaved;
             try { profileSelectionSaved = await activeProfileStore.SaveAsync(profileId, cancellationToken).ConfigureAwait(false); }
             catch (OperationCanceledException)
             {
-                var cancelledRollback = ApplyAll(original, "m75-profile-selection-cancelled-rollback");
+                var cancelledRollback = await ApplyAllAsync(original, "m75-profile-selection-cancelled-rollback", CancellationToken.None).ConfigureAwait(false);
                 return new(false, cancelledRollback.Success ? "cancelled" : "rollback_failed",
                     cancelledRollback.Success ? "Profilwechsel wurde abgebrochen; Layout wurde zurückgerollt." : "Profilwechsel wurde abgebrochen und der Rollback ist fehlgeschlagen.",
                     cancelledRollback.Success, cancelledRollback.Failures);
             }
             if (!profileSelectionSaved)
             {
-                var rollback = ApplyAll(original, "m75-profile-selection-rollback");
+                var rollback = await ApplyAllAsync(original, "m75-profile-selection-rollback", CancellationToken.None).ConfigureAwait(false);
                 return new(false, rollback.Success ? "profile_selection_failed" : "rollback_failed",
                     rollback.Success ? "Aktive Profilwahl konnte nicht gespeichert werden; Layout wurde zurückgerollt." : "Profilwahl und Rollback sind fehlgeschlagen.",
                     rollback.Success, rollback.Failures);
@@ -146,11 +146,12 @@ public sealed class LayoutProfileSession
         finally { operationLock.Release(); }
     }
 
-    private LayoutOperationResult ApplyElement(
+    private async Task<LayoutOperationResult> ApplyElementAsync(
         IReadOnlyDictionary<string, LayoutState> source,
         string scopeId,
         string elementId,
-        string operationSource)
+        string operationSource,
+        CancellationToken cancellationToken)
     {
         if (!adapters.TryGetValue(scopeId, out var adapter) || !source.TryGetValue(scopeId, out var state))
             return Fail("unknown_scope", "Scope ist nicht registriert.");
@@ -161,20 +162,28 @@ public sealed class LayoutProfileSession
         var sequence = 1;
         foreach (var request in LayoutRestoreCoordinator.CreateRequests(registryEntry, Persisted(desired, registryEntry), operationSource, ref sequence))
         {
-            var result = adapter.SubmitChangeRequest(request);
+            var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
             if (result.Success) continue;
             var rollbackSequence = 1;
-            var rollbackFailures = LayoutRestoreCoordinator.CreateRequests(registryEntry, Persisted(original, registryEntry), $"{operationSource}-rollback", ref rollbackSequence)
-                .Select(adapter.SubmitChangeRequest).Where(item => !item.Success)
-                .Select(item => new LayoutApplyFailure(item.ElementId, item.Operation, item.ErrorCode ?? "target_rejected_change", item.Message)).ToArray();
-            return new(false, rollbackFailures.Length == 0 ? "batch_apply_failed" : "rollback_failed",
-                rollbackFailures.Length == 0 ? "Elementänderung ist fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "Elementänderung und Rollback sind fehlgeschlagen.",
-                rollbackFailures.Length == 0, rollbackFailures);
+            var rollbackFailures = new List<LayoutApplyFailure>();
+            foreach (var rollbackRequest in LayoutRestoreCoordinator.CreateRequests(registryEntry, Persisted(original, registryEntry), $"{operationSource}-rollback", ref rollbackSequence))
+            {
+                var rollbackResult = await HostAdapterDispatch.SubmitAsync(adapter, rollbackRequest, CancellationToken.None).ConfigureAwait(false);
+                if (!rollbackResult.Success)
+                    rollbackFailures.Add(new(rollbackResult.ElementId, rollbackResult.Operation,
+                        rollbackResult.ErrorCode ?? "target_rejected_change", rollbackResult.Message));
+            }
+            return new(false, rollbackFailures.Count == 0 ? "batch_apply_failed" : "rollback_failed",
+                rollbackFailures.Count == 0 ? "Elementänderung ist fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "Elementänderung und Rollback sind fehlgeschlagen.",
+                rollbackFailures.Count == 0, rollbackFailures);
         }
         return Ok("element_layout_applied", "Elementzustand wurde angewandt.");
     }
 
-    private LayoutOperationResult ApplyAll(IReadOnlyDictionary<string, LayoutState> desired, string source)
+    private async Task<LayoutOperationResult> ApplyAllAsync(
+        IReadOnlyDictionary<string, LayoutState> desired,
+        string source,
+        CancellationToken cancellationToken)
     {
         var missingScope = adapters.Keys.OrderBy(value => value, StringComparer.Ordinal).FirstOrDefault(scopeId => !desired.ContainsKey(scopeId));
         if (missingScope is not null) return Fail("missing_scope", $"Scope '{missingScope}' fehlt.");
@@ -186,11 +195,12 @@ public sealed class LayoutProfileSession
         {
             var state = desired[pair.Key];
             var document = ScopeDocument(pair.Key, state, source);
-            var restored = new LayoutRestoreCoordinator(pair.Value).Restore(document,
-                LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, pair.Key));
+            var restored = await new LayoutRestoreCoordinator(pair.Value).RestoreAsync(document,
+                LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, pair.Key),
+                cancellationToken).ConfigureAwait(false);
             if (restored.Success) continue;
             failures.AddRange(restored.Failures);
-            var rollbackFailures = RollbackAll(original, $"{source}-rollback");
+            var rollbackFailures = await RollbackAllAsync(original, $"{source}-rollback").ConfigureAwait(false);
             failures.AddRange(rollbackFailures);
             return new(false, rollbackFailures.Count == 0 ? "batch_apply_failed" : "rollback_failed",
                 rollbackFailures.Count == 0 ? "Batch-Anwendung ist fehlgeschlagen; vollständiger Ausgangszustand wurde wiederhergestellt." : "Batch-Anwendung und Rollback sind fehlgeschlagen.",
@@ -199,14 +209,15 @@ public sealed class LayoutProfileSession
         return Ok("batch_applied", "Alle Scope-Zustände wurden atomar angewandt.");
     }
 
-    private IReadOnlyList<LayoutApplyFailure> RollbackAll(IReadOnlyDictionary<string, LayoutState> original, string source)
+    private async Task<IReadOnlyList<LayoutApplyFailure>> RollbackAllAsync(IReadOnlyDictionary<string, LayoutState> original, string source)
     {
         var failures = new List<LayoutApplyFailure>();
         foreach (var pair in adapters.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             var document = ScopeDocument(pair.Key, original[pair.Key], source);
-            var result = new LayoutRestoreCoordinator(pair.Value).Restore(document,
-                LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, pair.Key));
+            var result = await new LayoutRestoreCoordinator(pair.Value).RestoreAsync(document,
+                LayoutProfileDocumentFactory.ScopeOptions(profileStore.DocumentApplicationId, ActiveProfileId, pair.Key),
+                CancellationToken.None).ConfigureAwait(false);
             failures.AddRange(result.Failures);
         }
         return failures;
@@ -231,7 +242,8 @@ public sealed class LayoutProfileSession
                 var fallback = baselineById[element.ElementId];
                 return new ElementLayoutState(element.ElementId, element.ScopeId,
                     element.X ?? fallback.X, element.Y ?? fallback.Y, element.Width ?? fallback.Width, element.Height ?? fallback.Height,
-                    element.TextOffsetX ?? fallback.TextOffsetX, element.TextOffsetY ?? fallback.TextOffsetY, element.FontSize ?? fallback.FontSize);
+                    element.TextOffsetX ?? fallback.TextOffsetX, element.TextOffsetY ?? fallback.TextOffsetY, element.FontSize ?? fallback.FontSize,
+                    element.Visible ?? fallback.Visible);
             }).ToArray();
             result[persistedScope.ScopeId] = new LayoutState(persistedScope.ScopeId, document.SavedAt, elements);
         }
@@ -256,7 +268,8 @@ public sealed class LayoutProfileSession
 
     private static bool Equivalent(ElementLayoutState left, ElementLayoutState right) =>
         Same(left.X, right.X) && Same(left.Y, right.Y) && Same(left.Width, right.Width) && Same(left.Height, right.Height) &&
-        Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize);
+        Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize) &&
+        left.Visible == right.Visible;
 
     private static bool Same(double? left, double? right) => left is null && right is null || left is not null && right is not null && Math.Abs(left.Value - right.Value) <= 0.000001;
 
@@ -268,7 +281,8 @@ public sealed class LayoutProfileSession
         entry.Capabilities.HasFlag(Registry.UiCapability.Height) ? state.Height : null,
         entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? state.TextOffsetX : null,
         entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? state.TextOffsetY : null,
-        entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? state.FontSize : null);
+        entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? state.FontSize : null,
+        entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? state.Visible : null);
 
     private static IReadOnlyDictionary<string, LayoutState> CloneStates(IReadOnlyDictionary<string, LayoutState> states) =>
         states.ToDictionary(pair => pair.Key,

@@ -142,6 +142,36 @@ public sealed class M75FullOperationTests
     }
 
     [TestMethod]
+    public void M80VisibilityUsesCapabilitiesAndProfileSaveDiscardReset()
+    {
+        StaTest.Run(() => WithEnvironment((root, adapters, baseline) =>
+        {
+            var adapter = adapters["ui.scope-a"];
+            var session = Session(root, adapters, baseline);
+            Assert.IsTrue(Visible(adapter, "ui.scope-a.field"));
+            ChangeVisibility(adapter, "ui.scope-a.field", false);
+            Assert.IsFalse(Visible(adapter, "ui.scope-a.field"));
+            Assert.IsNotNull(adapter.GetRegistry().FindById("ui.scope-a.field"), "Unsichtbare Elemente bleiben registriert.");
+            Assert.IsTrue(Await(session.SaveAsync()).Success);
+            StringAssert.Contains(File.ReadAllText(Path.Combine(root, "standard.layout-profile.json")), "\"visible\": false");
+
+            ChangeVisibility(adapter, "ui.scope-a.field", true);
+            Assert.IsTrue(Await(session.DiscardElementAsync("ui.scope-a", "ui.scope-a.field")).Success);
+            Assert.IsFalse(Visible(adapter, "ui.scope-a.field"), "Discard stellt gespeicherte Sichtbarkeit wieder her.");
+            Assert.IsTrue(Await(session.ResetElementAsync("ui.scope-a", "ui.scope-a.field")).Success);
+            Assert.IsTrue(Visible(adapter, "ui.scope-a.field"), "Reset stellt die App-Baseline wieder her.");
+
+            var deniedRegistry = new UiElementRegistry(adapter.GetRegistry().Entries.Select(entry =>
+                entry.ElementId == "ui.scope-a.field" ? entry with { Capabilities = entry.Capabilities & ~UiCapability.Visibility } : entry));
+            var denied = ChangeRequestValidator.Validate(new ChangeRequest(Guid.NewGuid().ToString("N"), "ui.scope-a.field",
+                HostAdapterOperations.SetVisibility, new Dictionary<string, object?> { ["visible"] = false },
+                DateTimeOffset.UtcNow, "m80-test", "ui.scope-a"), deniedRegistry);
+            Assert.IsFalse(denied.Success);
+            Assert.AreEqual(HostAdapterErrorCodes.OperationNotAllowed, denied.ErrorCode);
+        }));
+    }
+
+    [TestMethod]
     public void ProfilesAreIndependentLoadReadsDiskAndActiveSelectionPersists()
     {
         StaTest.Run(() => WithEnvironment((root, adapters, baseline) =>
@@ -291,7 +321,7 @@ public sealed class M75FullOperationTests
         var registry = new UiElementRegistry([
             new(scopeId, scopeId, null, UiElementKind.Scope, scopeId, 0, UiCapability.None, scope),
             new($"{scopeId}.field", scopeId, scopeId, UiElementKind.InputField, "Feld", 10,
-                UiCapability.Position | UiCapability.Width | UiCapability.Height | UiCapability.TextPosition | UiCapability.FontSize, field)
+                UiCapability.Position | UiCapability.Width | UiCapability.Height | UiCapability.TextPosition | UiCapability.FontSize | UiCapability.Visibility, field)
         ]);
         return new WpfHostAdapter(registry);
     }
@@ -306,6 +336,18 @@ public sealed class M75FullOperationTests
 
     private static double Width(IHostAdapter adapter, string elementId) =>
         adapter.GetCurrentLayoutState().Elements.Single(element => element.ElementId == elementId).Width;
+
+    private static void ChangeVisibility(IHostAdapter adapter, string elementId, bool visible)
+    {
+        var scope = adapter.GetRegistry().FindById(elementId)!.ScopeId;
+        var result = adapter.SubmitChangeRequest(new ChangeRequest(Guid.NewGuid().ToString("N"), elementId,
+            HostAdapterOperations.SetVisibility, new Dictionary<string, object?> { ["visible"] = visible },
+            DateTimeOffset.UtcNow, "m80-test", scope));
+        Assert.IsTrue(result.Success, result.Message);
+    }
+
+    private static bool Visible(IHostAdapter adapter, string elementId) =>
+        adapter.GetCurrentLayoutState().Elements.Single(element => element.ElementId == elementId).Visible;
 
     private static LayoutState ReplaceWidth(LayoutState state, string elementId, double width) =>
         new(state.ScopeId, DateTimeOffset.UtcNow, state.Elements.Select(element => element.ElementId == elementId ? element with { Width = width } : element));

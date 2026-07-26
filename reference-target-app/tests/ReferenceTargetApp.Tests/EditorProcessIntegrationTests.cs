@@ -8,6 +8,7 @@ using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.OrderHeader;
 using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Protocol;
+using ReferenceTargetApp.EditorIntegration.Registry;
 using ReferenceTargetApp.EditorIntegration.Session;
 using ReferenceTargetApp.UI.Views;
 
@@ -61,6 +62,18 @@ public sealed class EditorProcessIntegrationTests
                         EditorProtocolJson.Options);
                     Assert.IsFalse(registryJson.Contains("nativeElement", StringComparison.OrdinalIgnoreCase));
                     Assert.IsFalse(registryJson.Contains(originalBusinessValue, StringComparison.Ordinal));
+                    var metadataRegistry = new UiElementRegistry([
+                        new UiRegistryEntry("metadata.scope", "metadata.scope", null, UiElementKind.Scope, "Metadaten", 0,
+                            UiCapability.None, new Border(), "root", "scopeRoot", [], []),
+                        new UiRegistryEntry("metadata.scope.table", "metadata.scope", "metadata.scope", UiElementKind.Table, "Tabelle", 1,
+                            UiCapability.Width, new Border(), "table", "contentTable", [HostAdapterOperations.ResizeWidth], []),
+                        new UiRegistryEntry("metadata.scope.table.meta", "metadata.scope", "metadata.scope.table", UiElementKind.TableColumn, "Meta", 2,
+                            UiCapability.Width, new Border(), "tableColumn", "metaColumn", [HostAdapterOperations.ResizeWidth], [], "metaColumn"),
+                    ]);
+                    var metadataJson = JsonSerializer.Serialize(
+                        EditorProtocolPayloadFactory.CreateRegistryPayload(metadataRegistry),
+                        EditorProtocolJson.Options);
+                    StringAssert.Contains(metadataJson, "\"columnRole\":\"metaColumn\"");
                     var layoutJson = JsonSerializer.Serialize(
                         EditorProtocolPayloadFactory.CreateLayoutStatePayload(adapter.GetCurrentLayoutState()),
                         EditorProtocolJson.Options);

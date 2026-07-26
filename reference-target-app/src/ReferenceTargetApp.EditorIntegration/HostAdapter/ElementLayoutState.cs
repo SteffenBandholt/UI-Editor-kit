@@ -9,4 +9,5 @@ public sealed record ElementLayoutState(
     double Height,
     double? TextOffsetX,
     double? TextOffsetY,
-    double? FontSize);
+    double? FontSize,
+    bool Visible = true);

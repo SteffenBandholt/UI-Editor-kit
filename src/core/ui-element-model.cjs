@@ -16,6 +16,7 @@ const UI_ELEMENT_TYPES = Object.freeze([
   "button",
   "field",
   "label",
+  "fieldGroup",
   "statusIndicator",
 ]);
 
@@ -32,6 +33,18 @@ const UI_ELEMENT_ROLES = Object.freeze([
   "navigation",
   "editor-launcher",
   "system",
+  "scopeRoot",
+  "contentArea",
+  "formArea",
+  "layoutGroup",
+  "fieldCollection",
+  "formFieldGroup",
+  "fieldLabel",
+  "dataFieldLayout",
+  "contentTable",
+  "contentColumn",
+  "metaColumn",
+  "domainActionLayout",
 ]);
 
 const UI_ELEMENT_OPERATIONS = Object.freeze([
@@ -44,6 +57,7 @@ const UI_ELEMENT_OPERATIONS = Object.freeze([
   "resizeHeight",
   "textMove",
   "textResize",
+  "setVisibility",
   "reorder",
   "rename",
   "changeWidth",
@@ -54,6 +68,8 @@ const UI_ELEMENT_OPERATIONS = Object.freeze([
   "delete",
   "executeTargetAction",
   "modifyDomainData",
+  "createRecord",
+  "deleteRecord",
 ]);
 
 const UI_ELEMENT_REQUIRED_FIELDS = Object.freeze([

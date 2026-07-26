@@ -152,7 +152,7 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
                 return ChangeResult.Rejected(request, "invalid_protocol_payload", exception.Message);
             }
 
-            var result = ResolveAdapter(translated).SubmitChangeRequest(translated);
+            var result = await HostAdapterDispatch.SubmitAsync(ResolveAdapter(translated), translated, cancellationToken).ConfigureAwait(false);
             await client.SendRequestAsync(
                 EditorMessageTypes.ChangeResult,
                 new { changeResult = result },
@@ -218,7 +218,38 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
                 SessionId,
                 cancellationToken).ConfigureAwait(false);
             var request = ChangeRequestProtocolTranslator.Translate(submitMessage.Payload);
-            var result = ResolveAdapter(request).SubmitChangeRequest(request);
+            var result = await HostAdapterDispatch.SubmitAsync(ResolveAdapter(request), request, cancellationToken).ConfigureAwait(false);
+            await client.SendRequestAsync(
+                EditorMessageTypes.ChangeResult,
+                new { changeResult = result },
+                EditorMessageTypes.ChangeResultAccepted,
+                timeouts.SessionStart,
+                SessionId,
+                cancellationToken).ConfigureAwait(false);
+            var state = await RequestEditorUiStateCoreAsync(EditorMessageTypes.GetEditorUiState, new { }, cancellationToken).ConfigureAwait(false);
+            return new EditorUiChangeOutcome(state, result);
+        }
+        finally
+        {
+            transitionLock.Release();
+        }
+    }
+
+    public async Task<EditorUiChangeOutcome> SetEditorVisibilityAsync(bool visible, CancellationToken cancellationToken = default)
+    {
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureActiveSession();
+            var submitMessage = await client.SendRequestAsync(
+                EditorMessageTypes.SetEditorVisibility,
+                new { visible },
+                EditorMessageTypes.SubmitChangeRequest,
+                timeouts.SessionStart,
+                SessionId,
+                cancellationToken).ConfigureAwait(false);
+            var request = ChangeRequestProtocolTranslator.Translate(submitMessage.Payload);
+            var result = await HostAdapterDispatch.SubmitAsync(ResolveAdapter(request), request, cancellationToken).ConfigureAwait(false);
             await client.SendRequestAsync(
                 EditorMessageTypes.ChangeResult,
                 new { changeResult = result },

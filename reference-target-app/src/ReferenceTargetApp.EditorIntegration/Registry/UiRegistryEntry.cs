@@ -10,4 +10,12 @@ public sealed record UiRegistryEntry(
     string DisplayName,
     int Order,
     UiCapability Capabilities,
-    FrameworkElement NativeElement);
+    FrameworkElement NativeElement,
+    string? ProtocolType = null,
+    string? ProtocolRole = null,
+    IReadOnlyList<string>? AllowedOperations = null,
+    IReadOnlyList<string>? LockedOperations = null,
+    string? ColumnRole = null,
+    string? FieldKind = null,
+    string? ActionKind = null,
+    string? ComponentKind = null);

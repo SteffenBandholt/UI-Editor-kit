@@ -8,4 +8,5 @@ internal sealed record ValidatedLayoutChange(
     double? Height = null,
     double? TextOffsetX = null,
     double? TextOffsetY = null,
-    double? FontSize = null);
+    double? FontSize = null,
+    bool? Visible = null);
