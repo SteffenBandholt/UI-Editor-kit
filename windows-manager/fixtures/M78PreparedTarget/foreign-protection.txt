@@ -1,0 +1,1 @@
+Diese fremde Datei muss bei Installation, Update, Rollback und Deinstallation bytegleich bleiben.

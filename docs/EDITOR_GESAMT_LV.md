@@ -274,6 +274,12 @@ Status: abgenommen
 
 Zweck: Ein gemeinsames natives Editorfenster für Programmoberfläche und PDF-Ausgabe mit Seitenübersicht, Registrybaum, aus der realen Ausgabedatei gerenderter Windows-PDF-Vorschau, Bounds-Auswahl und Overlay, vollständiger capability-gesteuerter PDF-Bearbeitung, getrennten Profil-/Dirty-Zuständen und gemeinsamem Neustart-/Schließfluss. Abgenommen mit `--ui-pdf-end-to-end-diagnostic` in zwei echten WPF-Prozessen.
 
+### K11 / M78 - Zentraler nativer Windows-Manager und Installer
+
+Status: abgenommen
+
+Zweck: Eigenstaendige native WPF-Verwaltung fuer ausdruecklich vorbereitete neue Ziel-Apps mit benutzerspezifischer LocalAppData-Bereitstellung und Desktop-Start, versioniertem Opt-in-/Paketvertrag, Sicherheits- und Schreibpruefung, vollstaendiger Vorschau/Bestaetigung, bekannten Apps, transaktionaler Installation, Update, Deinstallation und Ziel-App-/Editorstart. Abgenommen mit sichtbarem `--manager-installer-diagnostic`, echten Dateien/Prozessen, provoziertem Installations-/Updaterollback und erhaltenen UI-/PDF-Profilen.
+
 ## L - Regel fuer kuenftige Auftraege
 
 Jeder Auftrag muss nennen:

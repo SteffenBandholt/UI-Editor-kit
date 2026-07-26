@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "applicationId": "m78.prepared.target",
+  "displayName": "M78 vorbereitete neue Ziel-App",
+  "projectType": "wpf-net10",
+  "projectFile": "ReferenceTargetApp.slnx",
+  "targetFramework": "net10.0-windows10.0.19041.0",
+  "integrationMode": "prepared-native-editor",
+  "integrationRoot": ".ui-editor-kit",
+  "editorIntegrationProject": "src/ReferenceTargetApp.EditorIntegration/ReferenceTargetApp.EditorIntegration.csproj",
+  "hostExecutableProject": "src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj",
+  "supportedEditorContractVersion": "1.0",
+  "installationCapabilities": {
+    "install": true,
+    "update": true,
+    "uninstall": true,
+    "startTarget": true,
+    "startEditor": true
+  },
+  "expectedFiles": [
+    ".ui-editor-kit/UiEditorKit.ManagerIntegration.props",
+    ".ui-editor-kit/README.md",
+    ".ui-editor-kit/installation.json"
+  ],
+  "targetStart": {
+    "kind": "dotnetProject",
+    "project": "src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj",
+    "executable": null,
+    "arguments": []
+  },
+  "editorStart": {
+    "kind": "dotnetProject",
+    "project": "src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj",
+    "executable": null,
+    "arguments": ["--ui-pdf-end-to-end-diagnostic"]
+  },
+  "ownershipMarker": "ui-editor-kit-manager-v1"
+}

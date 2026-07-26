@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "packageVersion": "1.0.0",
+  "contractVersion": "1.0",
+  "files": [
+    {
+      "relativePath": ".ui-editor-kit/README.md",
+      "sourcePath": "files/README.md",
+      "sha256": "e3b0e1622878016664435bb6f6a66ebf771c23167e017e656e980e616612dd87",
+      "action": "copy"
+    },
+    {
+      "relativePath": ".ui-editor-kit/UiEditorKit.ManagerIntegration.props",
+      "sourcePath": "files/UiEditorKit.ManagerIntegration.props",
+      "sha256": "7dfb4cec7a0242f9313728589638711ecbb92c3c679c2ab3cafabbe7d49e76bc",
+      "action": "copy"
+    }
+  ]
+}

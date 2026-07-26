@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/windows-manager/src/">
+    <Project Path="windows-manager/src/UiEditorKit.Manager.Domain/UiEditorKit.Manager.Domain.csproj" />
+    <Project Path="windows-manager/src/UiEditorKit.Manager.Core/UiEditorKit.Manager.Core.csproj" />
+    <Project Path="windows-manager/src/UiEditorKit.Manager.Infrastructure/UiEditorKit.Manager.Infrastructure.csproj" />
+    <Project Path="windows-manager/src/UiEditorKit.Manager.Wpf/UiEditorKit.Manager.Wpf.csproj" />
+  </Folder>
+  <Folder Name="/windows-manager/tests/">
+    <Project Path="windows-manager/tests/UiEditorKit.Manager.Tests/UiEditorKit.Manager.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,1 +1,3 @@
 docs/UI-Editor-BBM-workspace.code-workspace
+**/bin/
+**/obj/

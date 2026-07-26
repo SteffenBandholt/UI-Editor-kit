@@ -1,3 +1,9 @@
+# M78: kontrollierte Anbindung vorbereiteter neuer Ziel-Apps
+
+Der native Windows-Manager ergänzt den bisherigen Bootstrap additiv. Er akzeptiert ausschließlich Apps mit einem expliziten, versionierten `ui-editor-target.json` und dem Modus `prepared-native-editor`. Auswahl per Root oder deklarierter `.slnx`-, `.sln`- beziehungsweise `.csproj`-Datei löst nur Prüfung und Schreibprobe aus; Installation erfolgt erst nach vollständiger Vorschau und ausdrücklicher Bestätigung.
+
+Die lokale Paketquelle, Ownership-Hashes, transaktionale Installation/Update/Deinstallation und bekannten Apps sind unter [`windows-manager/`](../windows-manager/README.md) dokumentiert. Fehlt der Opt-in-Vertrag, wird die App ohne Analyse oder Änderung als M79-pflichtig abgelehnt. Automatische Registry-/HostAdapter-Erzeugung, Quellcodeheuristik und Alt-App-Migration bleiben M79 vorbehalten.
+
 # Ziel-App-Anbindung
 
 ## 1. Zweck

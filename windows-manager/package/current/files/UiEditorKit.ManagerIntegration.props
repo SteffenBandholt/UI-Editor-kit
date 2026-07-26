@@ -1,0 +1,7 @@
+<Project>
+  <!-- UI-Editor-kit M78: additive Aktivierungsmarke für ausdrücklich vorbereitete Ziel-Apps. -->
+  <PropertyGroup>
+    <UiEditorKitManagerContractVersion>1.0</UiEditorKitManagerContractVersion>
+    <UiEditorKitManagerInstalled>true</UiEditorKitManagerInstalled>
+  </PropertyGroup>
+</Project>
