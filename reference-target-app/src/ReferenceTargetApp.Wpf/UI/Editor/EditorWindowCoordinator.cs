@@ -22,7 +22,8 @@ internal sealed class EditorWindowCoordinator(
     PdfLayoutSession pdfSession,
     Order order,
     string pdfOutputPath,
-    IEditorDialogService? dialogService = null) : IAsyncDisposable
+    IEditorDialogService? dialogService = null,
+    EditorProcessOptions? editorProcessOptions = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim lifecycleLock = new(1, 1);
     private CancellationTokenSource? lifetimeCancellation;
@@ -57,7 +58,7 @@ internal sealed class EditorWindowCoordinator(
             try
             {
                 lifetimeCancellation = new CancellationTokenSource();
-                processCoordinator = new EditorProcessCoordinator(hostAdapters, EditorProcessPathResolver.ResolveDefault());
+                processCoordinator = new EditorProcessCoordinator(hostAdapters, editorProcessOptions ?? EditorProcessPathResolver.ResolveDefault());
                 var pdfWorkspace = new PdfEditorWorkspaceViewModel(pdfRegistry, pdfAdapter, pdfSession,
                     new PdfOrderDocumentRenderer(), new NativePdfPreviewRenderer(), order, pdfOutputPath, lifetimeCancellation.Token);
                 viewModel = new EditorWindowViewModel(

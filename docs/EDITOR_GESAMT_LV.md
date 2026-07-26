@@ -280,6 +280,12 @@ Status: abgenommen
 
 Zweck: Eigenstaendige native WPF-Verwaltung fuer ausdruecklich vorbereitete neue Ziel-Apps mit benutzerspezifischer LocalAppData-Bereitstellung und Desktop-Start, versioniertem Opt-in-/Paketvertrag, Sicherheits- und Schreibpruefung, vollstaendiger Vorschau/Bestaetigung, bekannten Apps, transaktionaler Installation, Update, Deinstallation und Ziel-App-/Editorstart. Abgenommen mit sichtbarem `--manager-installer-diagnostic`, echten Dateien/Prozessen, provoziertem Installations-/Updaterollback und erhaltenen UI-/PDF-Profilen.
 
+### K12 / M79 - Bestehende Apps kontrolliert registrieren
+
+Status: abgenommen
+
+Zweck: Erweiterung desselben nativen Managers um den belegten SDK-C#-/WPF-Frameworkadapter, bytegleich geprüfte read-only XAML-/Roslyn-Analyse, ungeprüfte Registrierungsvorschläge, manuelle Einzelfreigabe, stabile IDs, reale statische Parentstruktur, Fachaktionssperren, deterministische Registry-/HostAdapter-Generierung, lokale Pipe-Anbindung an den vorhandenen M77-Editor, vollständige Hash-/Ownership-/Diffvorschau, Git-Schutz sowie transaktionale Installation, Reanalyse, Update, Rollback und Deinstallation. Abgenommen mit 88 Manager-Tests, der kontrollierten Bestandsfixture und sichtbarem `--existing-app-registration-diagnostic` einschließlich realer registrierter UI-Änderung, Profil-Restore, PDF-Erzeugung und weiter grünem UI-/PDF-End-to-End-Nachweis.
+
 ## L - Regel fuer kuenftige Auftraege
 
 Jeder Auftrag muss nennen:

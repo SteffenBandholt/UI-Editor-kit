@@ -1,4 +1,5 @@
-# M78 ist ein eigenstaendiges natives .NET/WPF-Produkt und wird reproduzierbar per
-# dotnet publish bereitgestellt, nicht als Bestandteil des neutralen npm-Kernpakets.
+# M78/M79 bilden ein eigenstaendiges natives .NET/WPF-Managerprodukt einschliesslich
+# Frameworkadapter, Roslyn-Analyse, Fixture und Prozessdiagnosen. Es wird reproduzierbar
+# per dotnet publish bereitgestellt und bleibt bewusst ausserhalb des neutralen npm-Kernpakets.
 windows-manager/
 UIEditorKit.slnx

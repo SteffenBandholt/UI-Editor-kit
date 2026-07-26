@@ -41,6 +41,10 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
     public string? SessionId { get; private set; }
     public int? ProcessId => client.ProcessId;
     public string ActiveScopeId { get; private set; }
+    public IReadOnlyList<string> ScopeIds => hostAdapters.Keys.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+    public string ScopeDisplayName(string scopeId) => hostAdapters.TryGetValue(scopeId, out var adapter)
+        ? adapter.GetRegistry().FindById(scopeId)?.DisplayName ?? scopeId
+        : scopeId;
     public IReadOnlyList<EditorProcessDiagnostic> Diagnostics => client.GetDiagnostics();
 
     public async Task<EditorSessionResult> ActivateAsync(CancellationToken cancellationToken = default)

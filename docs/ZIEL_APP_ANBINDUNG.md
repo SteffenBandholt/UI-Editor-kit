@@ -1,8 +1,10 @@
-# M78: kontrollierte Anbindung vorbereiteter neuer Ziel-Apps
+# M78/M79: vorbereitete und bestehende lokale Ziel-Apps
 
 Der native Windows-Manager ergänzt den bisherigen Bootstrap additiv. Er akzeptiert ausschließlich Apps mit einem expliziten, versionierten `ui-editor-target.json` und dem Modus `prepared-native-editor`. Auswahl per Root oder deklarierter `.slnx`-, `.sln`- beziehungsweise `.csproj`-Datei löst nur Prüfung und Schreibprobe aus; Installation erfolgt erst nach vollständiger Vorschau und ausdrücklicher Bestätigung.
 
-Die lokale Paketquelle, Ownership-Hashes, transaktionale Installation/Update/Deinstallation und bekannten Apps sind unter [`windows-manager/`](../windows-manager/README.md) dokumentiert. Fehlt der Opt-in-Vertrag, wird die App ohne Analyse oder Änderung als M79-pflichtig abgelehnt. Automatische Registry-/HostAdapter-Erzeugung, Quellcodeheuristik und Alt-App-Migration bleiben M79 vorbehalten.
+Die lokale Paketquelle, Ownership-Hashes, transaktionale Installation/Update/Deinstallation und bekannten Apps sind unter [`windows-manager/`](../windows-manager/README.md) dokumentiert. Fehlt der Opt-in-Vertrag, kann der Nutzer nun ausdrücklich den getrennten M79-Ablauf starten. Dieser führt zuerst eine bytegleich geprüfte read-only Roslyn-/XAML-Analyse aus und erzeugt nur Vorschläge. Erst einzeln geprüfte Entscheidungen dürfen Registry, kontrollierten HostAdapter und additive Projektintegration erzeugen.
+
+M79 unterstützt belegt nur SDK-basiertes C#-/WPF. Die Analyse führt weder Zielcode noch Fachaktionen aus, erfindet keine Parents/IDs/Operationen und bestätigt nichts automatisch. Erst nach bestätigter Installation startet die Ziel-App für Build-/Vertrags-/Laufzeitprüfung und für den Editorbetrieb; der generierte Adapter führt dabei ausschließlich bestätigte Layoutoperationen über eine lokale Named Pipe aus. Die Ziel-App bleibt Eigentümerin ihrer fachlichen Logik; M79 besitzt ausschließlich seine generierten Dateien und den markierten Projektdateiblock. [Entwurfsentscheidung](M79_BESTANDSAPP_REGISTRIERUNG_ENTWURFSENTSCHEIDUNG.md), [Frameworkadapter](../windows-manager/docs/M79_WPF_FRAMEWORKADAPTER.md) und [Analyse-/Vorschlagsvertrag](../windows-manager/docs/M79_ANALYSE_UND_VORSCHLAEGE.md) sind verbindlich.
 
 # Ziel-App-Anbindung
 
@@ -24,11 +26,11 @@ Der UI-Editor arbeitet nur mit einer von der Ziel-App gelieferten, klassifiziert
 
 Nicht registrierte Elemente sind fuer den Editor nicht vorhanden.
 
-Die Regelpaket-Installation ist nur ein Ziel-App-Regelpaket-Bootstrap. Sie analysiert, scannt, erkennt, registriert oder migriert keine bestehende UI.
+Die M78-Regelpaket-Installation ist weiterhin nur ein Ziel-App-Regelpaket-Bootstrap. Sie analysiert, scannt, erkennt, registriert oder migriert keine bestehende UI. Ausschließlich der ausdrücklich gestartete, getrennte M79-Ablauf darf unterstützte Bestandsquellen read-only analysieren und daraus ungeprüfte Vorschläge erzeugen.
 
-Eine Ziel-App darf bestehende bekannte UI-Elemente nachtraeglich bewusst registrieren. Dazu muss ein konkretes bestehendes Element bewusst ausgewaehlt werden, eine stabile ID bekommen, einen Registry-Eintrag bekommen, im Render-Code passend markiert werden, erlaubte Operationen bekommen und durch Tests abgesichert werden.
+Eine Ziel-App darf bestehende bekannte UI-Elemente nachtraeglich bewusst registrieren. Dazu muss ein konkretes bestehendes Element als M79-Vorschlag einzeln geprüft oder manuell erfasst werden, eine bestätigte stabile ID bekommen, einen validen Registry-Eintrag erhalten, über einen kontrollierten Namen oder Marker auflösbar sein, erlaubte und gesperrte Operationen bekommen und durch Tests abgesichert werden.
 
-Das ist keine UI-Analyse, keine automatische Bestandserkennung, kein Scan, keine automatische Elementerkennung und keine Migration.
+Die Nutzerentscheidung ist keine automatische Bestandserkennung oder Migration. Der vorgelagerte M79-Syntaxlauf bleibt read-only, führt Zielcode nicht aus und darf selbst weder bestätigen noch installieren.
 
 ## 3. Voraussetzungen in der Ziel-App
 
@@ -173,15 +175,15 @@ Wenn diese Angaben fehlen, darf Codex keine editorfaehige UI bauen.
 
 ## 11. Nicht erlaubt
 
-Die Ziel-App darf dem Editor nicht erlauben:
+Die Ziel-App darf dem laufenden Editor nicht erlauben (der ausdrücklich gestartete M79-Manager darf ausschließlich die oben definierte read-only Syntaxanalyse ausführen):
 
 - Fachlogik auszufuehren
 - Fachdaten zu aendern
-- bestehende UI zu analysieren
-- bestehende UI zu scannen
+- bestehende UI zur Laufzeit oder durch Ausführung zu analysieren
+- Visual Tree, Screenshots oder Fachzustände automatisch zu scannen
 - eine automatische Bestandserkennung oder UI-Elementliste zu erzeugen
 - bestehende Legacy-UIs automatisch zu migrieren
-- nachtraegliche bewusste Registrierung als automatische Analyse, Scan, Erkennung oder Migration auszufuehren
+- M79-Vorschläge automatisch zu bestätigen oder ungeprüft zu installieren
 - Datenbankaktionen auszufuehren
 - fachliche Buttons auszufuehren
 - Speicher-, Loesch-, Upload-, Import- oder Exportaktionen als Editoroperation zu behandeln

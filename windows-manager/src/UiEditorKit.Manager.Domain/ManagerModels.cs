@@ -2,7 +2,7 @@ namespace UiEditorKit.Manager.Domain;
 
 public enum TargetContractStatus { NotChecked, NotSuitable, ReadyToInstall, Installed, UpdateAvailable, Conflict, RepairRequired, Missing }
 public enum InstallationAction { Create, Update, Unchanged, Remove, Conflict }
-public enum ManagerOperation { Check, Install, Update, Uninstall, StartTarget, StartEditor, CreateShortcut, RemoveShortcut }
+public enum ManagerOperation { Check, Analyze, Review, Preview, Install, Update, Uninstall, StartTarget, StartEditor, CreateShortcut, RemoveShortcut }
 
 public static class ManagerErrorCodes
 {
@@ -35,6 +35,35 @@ public static class ManagerErrorCodes
     public const string ShortcutRemoveFailed = "shortcut_remove_failed";
     public const string KnownAppsStoreInvalid = "known_apps_store_invalid";
     public const string ManagerLogFailed = "manager_log_failed";
+    public const string RegistrationAnalysisFailed = "registration_analysis_failed";
+    public const string RegistrationFrameworkUnsupported = "registration_framework_unsupported";
+    public const string RegistrationProjectInvalid = "registration_project_invalid";
+    public const string RegistrationSourceReadFailed = "registration_source_read_failed";
+    public const string RegistrationSourceChanged = "registration_source_changed";
+    public const string RegistrationAnalysisStale = "registration_analysis_stale";
+    public const string RegistrationProposalInvalid = "registration_proposal_invalid";
+    public const string RegistrationProposalUnreviewed = "registration_proposal_unreviewed";
+    public const string RegistrationIdMissing = "registration_id_missing";
+    public const string RegistrationIdConflict = "registration_id_conflict";
+    public const string RegistrationParentMissing = "registration_parent_missing";
+    public const string RegistrationParentCycle = "registration_parent_cycle";
+    public const string RegistrationActionRisk = "registration_action_risk";
+    public const string RegistrationRegistryInvalid = "registration_registry_invalid";
+    public const string RegistrationAdapterGenerationFailed = "registration_adapter_generation_failed";
+    public const string RegistrationProjectChangeFailed = "registration_project_change_failed";
+    public const string RegistrationPreviewStale = "registration_preview_stale";
+    public const string RegistrationForeignChangeConflict = "registration_foreign_change_conflict";
+    public const string RegistrationGitDirtyConflict = "registration_git_dirty_conflict";
+    public const string RegistrationBuildFailed = "registration_build_failed";
+    public const string RegistrationContractFailed = "registration_contract_failed";
+    public const string RegistrationInstallFailed = "registration_install_failed";
+    public const string RegistrationRollbackFailed = "registration_rollback_failed";
+    public const string RegistrationUpdateFailed = "registration_update_failed";
+    public const string RegistrationUpdateRollbackFailed = "registration_update_rollback_failed";
+    public const string RegistrationUninstallFailed = "registration_uninstall_failed";
+    public const string RegistrationUninstallRollbackFailed = "registration_uninstall_rollback_failed";
+    public const string RegistrationTargetStartFailed = "registration_target_start_failed";
+    public const string RegistrationEditorStartFailed = "registration_editor_start_failed";
 }
 
 public sealed record TargetStartConfiguration(string Kind, string Project, string? Executable, IReadOnlyList<string> Arguments);
@@ -69,7 +98,7 @@ public sealed record ManagerResult(bool Success, string Code, string Message, st
 }
 public sealed record TargetCheckResult(bool Success, string Code, string Message, string TargetRoot,
     string ManifestPath, TargetContractStatus Status, TargetAppManifest? Manifest, InstallationState? Installation,
-    bool Writable, DateTimeOffset CheckedAt);
+    bool Writable, DateTimeOffset CheckedAt, ExistingAppRegistrationState? Registration = null);
 public sealed record KnownTargetApp(string ApplicationId, string DisplayName, string RootPath, string ProjectFile,
     string ManifestPath, string ContractVersion, TargetContractStatus InstallationStatus,
     string? InstalledPackageVersion, DateTimeOffset LastCheckedAt, DateTimeOffset? LastActionAt, string? LastErrorCode);

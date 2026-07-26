@@ -160,11 +160,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             RunOnUi(() =>
             {
                 Profiles.ReplaceWith(LayoutProfileCatalog.All);
-                Scopes.ReplaceWith(new[]
-                {
-                    new EditorScopeChoice("ui.order-header", "Auftragskopf"),
-                    new EditorScopeChoice("ui.customer-details", "Kundendaten")
-                });
+                Scopes.ReplaceWith(coordinator.ScopeIds.Select(scopeId =>
+                    new EditorScopeChoice(scopeId, coordinator.ScopeDisplayName(scopeId))));
                 ApplyState(initialState);
                 RefreshLayoutStatus();
                 StatusMessage = "Editor bereit.";

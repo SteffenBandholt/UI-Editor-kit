@@ -9,6 +9,7 @@ public sealed class AtomicJsonLayoutProfileStore
 {
     public const string ApplicationId = "reference-target-app";
     private readonly string rootDirectory;
+    private readonly string documentApplicationId;
     private readonly JsonSerializerOptions jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -18,13 +19,15 @@ public sealed class AtomicJsonLayoutProfileStore
         WriteIndented = true
     };
 
-    public AtomicJsonLayoutProfileStore(string rootDirectory)
+    public AtomicJsonLayoutProfileStore(string rootDirectory, string? applicationId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
         this.rootDirectory = Path.GetFullPath(rootDirectory);
+        documentApplicationId = string.IsNullOrWhiteSpace(applicationId) ? ApplicationId : applicationId;
     }
 
     public string RootDirectory => rootDirectory;
+    public string DocumentApplicationId => documentApplicationId;
     public string GetFilePath(string profileId)
     {
         if (LayoutProfileCatalog.Find(profileId) is null)
@@ -42,13 +45,13 @@ public sealed class AtomicJsonLayoutProfileStore
         PersistedLayoutProfileDocument document;
         try
         {
-            document = LayoutProfileDocumentFactory.Create(ApplicationId, profileId, adapters, states, DateTimeOffset.UtcNow);
+            document = LayoutProfileDocumentFactory.Create(documentApplicationId, profileId, adapters, states, DateTimeOffset.UtcNow);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
             return new(false, "invalid_layout_document", exception.Message, path);
         }
-        var validation = LayoutProfileDocumentValidator.Validate(document, ApplicationId, profileId, adapters);
+        var validation = LayoutProfileDocumentValidator.Validate(document, documentApplicationId, profileId, adapters);
         if (!validation.Success)
             return new(false, validation.Errors[0].Code, validation.Errors[0].Message, path, document);
         var temporaryPath = Path.Combine(rootDirectory, $".{profileId}.{Guid.NewGuid():N}.tmp");
@@ -89,7 +92,7 @@ public sealed class AtomicJsonLayoutProfileStore
         {
             await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
             var document = await JsonSerializer.DeserializeAsync<PersistedLayoutProfileDocument>(stream, jsonOptions, cancellationToken);
-            var validation = LayoutProfileDocumentValidator.Validate(document, ApplicationId, profileId, adapters);
+            var validation = LayoutProfileDocumentValidator.Validate(document, documentApplicationId, profileId, adapters);
             if (!validation.Success)
                 return new(false, true, validation.Errors[0].Code, validation.Errors[0].Message, path, document, validation.Errors);
             return new(true, true, "layout_profile_loaded", "Layoutprofil wurde vom Datenträger geladen und validiert.", path, document);

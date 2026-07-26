@@ -3,7 +3,7 @@
   <Grid Margin="16">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <DockPanel Grid.Row="0" Margin="0,0,0,12">
-      <StackPanel DockPanel.Dock="Left"><TextBlock Text="UI-Editor Manager" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="Native Verwaltung vorbereiteter UI-/PDF-Ziel-Apps" Foreground="#555"/></StackPanel>
+      <StackPanel DockPanel.Dock="Left"><TextBlock Text="UI-Editor Manager" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="Native Verwaltung vorbereiteter und kontrolliert registrierter UI-/PDF-Ziel-Apps" Foreground="#555"/></StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
         <Button Content="Ziel-App auswählen" Click="SelectFolder_Click" Padding="15,8" Margin="5"/>
         <Button Content="Projektdatei auswählen" Click="SelectProject_Click" Padding="15,8" Margin="5"/>
@@ -38,6 +38,75 @@
         <GroupBox Header="Bestätigte Vorschau"><DataGrid x:Name="PlanGrid" AutoGenerateColumns="False" IsReadOnly="True" Height="220">
           <DataGrid.Columns><DataGridTextColumn Header="Datei" Binding="{Binding RelativePath}" Width="*"/><DataGridTextColumn Header="Aktion" Binding="{Binding Action}" Width="110"/><DataGridCheckBoxColumn Header="Manager-Eigentum" Binding="{Binding ManagerOwned}" Width="130"/><DataGridTextColumn Header="Konflikt" Binding="{Binding Conflict}" Width="220"/></DataGrid.Columns>
         </DataGrid></GroupBox>
+        <Separator Margin="0,20,0,16"/>
+        <TextBlock Text="Bestehende App kontrolliert registrieren (M79)" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Text="Read-only Analyse → Vorschlag → Nutzerentscheidung → Vorschau → Installation/Update/Deinstallation" Foreground="#555" Margin="0,2,0,8"/>
+        <WrapPanel>
+          <Button x:Name="AnalyzeExistingButton" Content="Read-only Analyse starten" Click="AnalyzeExisting_Click" Padding="12,7" Margin="3"/>
+          <Button x:Name="CancelAnalysisButton" Content="Analyse abbrechen" Click="CancelAnalysis_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+          <Button Content="Vorschlag übernehmen" Click="SaveProposal_Click" Padding="12,7" Margin="3"/>
+          <Button Content="Bestätigen" Click="ConfirmProposal_Click" Padding="12,7" Margin="3"/>
+          <Button Content="Ablehnen" Click="RejectProposal_Click" Padding="12,7" Margin="3"/>
+          <Button Content="Registry validieren" Click="ValidateRegistration_Click" Padding="12,7" Margin="3"/>
+          <Button x:Name="RegistrationPreviewButton" Content="M79-Änderungsvorschau" Click="RegistrationPreview_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+          <Button x:Name="RegistrationInstallButton" Content="Registrierung installieren / aktualisieren" Click="RegistrationInstall_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+          <Button x:Name="RegistrationUninstallPreviewButton" Content="M79-Deinstallationsvorschau" Click="RegistrationUninstallPreview_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+          <Button x:Name="RegistrationUninstallButton" Content="M79-Registrierung deinstallieren" Click="RegistrationUninstall_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+          <Button x:Name="RegistrationStartTargetButton" Content="Registrierte Ziel-App starten" Click="RegistrationStartTarget_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+          <Button x:Name="RegistrationStartEditorButton" Content="Registrierten Editor starten" Click="RegistrationStartEditor_Click" Padding="12,7" Margin="3" IsEnabled="False"/>
+        </WrapPanel>
+        <TextBlock x:Name="AnalysisSummaryText" Text="Noch keine M79-Analyse." Margin="3,6" TextWrapping="Wrap"/>
+        <Grid Margin="0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Vorschlagsfilter" VerticalAlignment="Center"/>
+          <ComboBox x:Name="RegistrationFilter" Grid.Column="1" SelectionChanged="RegistrationFilter_SelectionChanged" SelectedIndex="0">
+            <ComboBoxItem Content="Alle"/><ComboBoxItem Content="Ungeprüft"/><ComboBoxItem Content="Unsicher"/><ComboBoxItem Content="Fachaktionsrisiko"/><ComboBoxItem Content="Bestätigt"/><ComboBoxItem Content="Abgelehnt"/><ComboBoxItem Content="Blockiert"/>
+          </ComboBox>
+        </Grid>
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0">
+            <GroupBox Header="Erkannte Views"><ListBox x:Name="RegistrationViewsList" Height="90"/></GroupBox>
+            <GroupBox Header="Elementbaum" Margin="0,8,0,0"><TreeView x:Name="RegistrationTree" Height="180"/></GroupBox>
+            <GroupBox Header="Registrierungsvorschläge" Margin="0,8,0,0">
+              <DataGrid x:Name="RegistrationProposalGrid" AutoGenerateColumns="False" IsReadOnly="True" Height="310" SelectionChanged="RegistrationProposalGrid_SelectionChanged">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Status" Binding="{Binding ReviewStatus}" Width="120"/>
+                  <DataGridTextColumn Header="ID" Binding="{Binding StableElementId}" Width="190"/>
+                  <DataGridTextColumn Header="Typ" Binding="{Binding ElementType}" Width="95"/>
+                  <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="140"/>
+                  <DataGridTextColumn Header="Quelle" Binding="{Binding SourceLocation.RelativeFile}" Width="150"/>
+                  <DataGridTextColumn Header="Zeile" Binding="{Binding SourceLocation.Line}" Width="55"/>
+                  <DataGridTextColumn Header="Vertrauen" Binding="{Binding Confidence}" Width="80"/>
+                  <DataGridTextColumn Header="Fachaktion" Binding="{Binding ActionRisk}" Width="130"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </GroupBox>
+          </StackPanel>
+          <GroupBox Grid.Column="2" Header="Vorschlagsdetails und manuelle Entscheidung">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
+              <TextBlock Text="Quellfundstelle" FontWeight="SemiBold"/><TextBlock x:Name="ProposalSourceText" TextWrapping="Wrap" Margin="0,0,0,6"/>
+              <TextBlock Text="Control / Vertrauen / Warnungen" FontWeight="SemiBold"/><TextBlock x:Name="ProposalEvidenceText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+              <TextBlock Text="Stabile Element-ID"/><TextBox x:Name="ProposalIdText"/>
+              <TextBlock Text="Anzeigename"/><TextBox x:Name="ProposalNameText"/>
+              <TextBlock Text="Elementtyp"/><TextBox x:Name="ProposalTypeText"/>
+              <TextBlock Text="Rolle"/><TextBox x:Name="ProposalRoleText"/>
+              <TextBlock Text="Parent-ID"/><TextBox x:Name="ProposalParentText"/>
+              <TextBlock Text="Reihenfolge"/><TextBox x:Name="ProposalOrderText"/>
+              <TextBlock Text="Editorfähig (Yes / No / Unclear)"/><TextBox x:Name="ProposalEligibleText"/>
+              <TextBlock Text="Erlaubte Operationen (Komma)"/><TextBox x:Name="ProposalAllowedText" TextWrapping="Wrap"/>
+              <TextBlock Text="Gesperrte Operationen (Komma)"/><TextBox x:Name="ProposalLockedText" TextWrapping="Wrap"/>
+              <TextBlock Text="Feldtyp"/><TextBox x:Name="ProposalFieldKindText"/>
+              <TextBlock Text="Spaltenrolle"/><TextBox x:Name="ProposalColumnRoleText"/>
+              <TextBlock Text="ActionKind"/><TextBox x:Name="ProposalActionKindText"/>
+              <TextBlock Text="ComponentKind"/><TextBox x:Name="ProposalComponentKindText"/>
+              <TextBlock Text="Begründung / Notiz"/><TextBox x:Name="ProposalNoteText" AcceptsReturn="True" Height="60" TextWrapping="Wrap"/>
+            </StackPanel></ScrollViewer>
+          </GroupBox>
+        </Grid>
+        <GroupBox Header="M79-Dateivorschau mit Ownership, Hashes und exaktem Diff" Margin="0,10,0,0">
+          <StackPanel><DataGrid x:Name="RegistrationPlanGrid" AutoGenerateColumns="False" IsReadOnly="True" Height="180" SelectionChanged="RegistrationPlanGrid_SelectionChanged">
+            <DataGrid.Columns><DataGridTextColumn Header="Datei" Binding="{Binding RelativePath}" Width="*"/><DataGridTextColumn Header="Aktion" Binding="{Binding Action}" Width="100"/><DataGridCheckBoxColumn Header="Eigentum" Binding="{Binding ManagerOwned}" Width="80"/><DataGridTextColumn Header="Alter Hash" Binding="{Binding OldHash}" Width="150"/><DataGridTextColumn Header="Neuer Hash" Binding="{Binding NewHash}" Width="150"/><DataGridTextColumn Header="Konflikt" Binding="{Binding Conflict}" Width="190"/></DataGrid.Columns>
+          </DataGrid><TextBox x:Name="RegistrationDiffText" Height="150" IsReadOnly="True" AcceptsReturn="True" FontFamily="Consolas" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/></StackPanel>
+        </GroupBox>
       </StackPanel></ScrollViewer>
     </Grid>
     <GroupBox Grid.Row="2" Header="Protokoll und Fehler" Margin="0,12,0,8"><TextBox x:Name="LogText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/></GroupBox>

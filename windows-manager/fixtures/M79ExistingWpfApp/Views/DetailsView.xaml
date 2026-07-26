@@ -1,0 +1,10 @@
+<UserControl x:Class="M79ExistingWpfApp.Views.DetailsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border x:Name="DetailsBorder" BorderBrush="#999" BorderThickness="1" Padding="8">
+    <StackPanel x:Name="DetailsPanel">
+      <TextBlock x:Name="DetailsHeading" Text="Details" FontWeight="SemiBold" />
+      <TextBox x:Name="DetailsText" Text="Lokaler Testwert" Width="180" />
+    </StackPanel>
+  </Border>
+</UserControl>
