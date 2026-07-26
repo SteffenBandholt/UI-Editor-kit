@@ -20,7 +20,8 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             paddingProperty,
             paddingProperty is null ? null : entry.NativeElement.ReadLocalValue(paddingProperty),
             fontSizeProperty,
-            fontSizeProperty is null ? null : entry.NativeElement.ReadLocalValue(fontSizeProperty));
+            fontSizeProperty is null ? null : entry.NativeElement.ReadLocalValue(fontSizeProperty),
+            entry.NativeElement.ReadLocalValue(UIElement.VisibilityProperty));
     }
 
     public ElementLayoutState Read(UiRegistryEntry entry)
@@ -39,7 +40,8 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             ReadEffectiveSize(element.Height, element.ActualHeight),
             padding?.Left,
             padding?.Top,
-            fontSize);
+            fontSize,
+            element.Visibility == Visibility.Visible);
     }
 
     public void Apply(UiRegistryEntry entry, ValidatedLayoutChange change)
@@ -73,6 +75,9 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             case HostAdapterOperations.TextResize:
                 SetFontSize(element, change.FontSize!.Value);
                 break;
+            case HostAdapterOperations.SetVisibility:
+                element.Visibility = change.Visible == true ? Visibility.Visible : Visibility.Collapsed;
+                break;
             default:
                 throw new InvalidOperationException($"Operation '{change.Operation}' ist nicht implementiert.");
         }
@@ -89,6 +94,7 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             RestoreLocalValue(element, snapshot.PaddingProperty, snapshot.Padding);
         if (snapshot.FontSizeProperty is not null && snapshot.FontSize is not null)
             RestoreLocalValue(element, snapshot.FontSizeProperty, snapshot.FontSize);
+        RestoreLocalValue(element, UIElement.VisibilityProperty, snapshot.Visibility);
     }
 
     private static (double X, double Y) ReadPosition(FrameworkElement element)

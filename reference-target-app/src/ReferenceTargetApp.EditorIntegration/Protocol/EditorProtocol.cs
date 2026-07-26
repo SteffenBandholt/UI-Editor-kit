@@ -34,6 +34,7 @@ public static class EditorMessageTypes
     public const string SelectEditorScope = "selectEditorScope";
     public const string RefreshEditorLayoutStates = "refreshEditorLayoutStates";
     public const string ActivateEditorDirection = "activateEditorDirection";
+    public const string SetEditorVisibility = "setEditorVisibility";
     public const string Shutdown = "shutdown";
     public const string ShutdownComplete = "shutdownComplete";
     public const string Error = "error";

@@ -13,17 +13,18 @@ using ReferenceTargetApp.PdfRendering;
 namespace ReferenceTargetApp.UI.Editor;
 
 internal sealed class EditorWindowCoordinator(
-    Window owner,
+    Window? owner,
     IReadOnlyDictionary<string, IHostAdapter> hostAdapters,
     LayoutProfileSession layoutSession,
     TargetAppSelectionService selectionService,
-    PdfElementRegistry pdfRegistry,
-    IPdfHostAdapter pdfAdapter,
-    PdfLayoutSession pdfSession,
-    Order order,
-    string pdfOutputPath,
+    PdfElementRegistry? pdfRegistry,
+    IPdfHostAdapter? pdfAdapter,
+    PdfLayoutSession? pdfSession,
+    Order? order,
+    string? pdfOutputPath,
     IEditorDialogService? dialogService = null,
-    EditorProcessOptions? editorProcessOptions = null) : IAsyncDisposable
+    EditorProcessOptions? editorProcessOptions = null,
+    IPdfEditorWorkspace? pdfWorkspaceOverride = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim lifecycleLock = new(1, 1);
     private CancellationTokenSource? lifetimeCancellation;
@@ -40,6 +41,7 @@ internal sealed class EditorWindowCoordinator(
     internal bool HasOpenWindow => window is { IsVisible: true };
     internal bool HasActiveProcess => processCoordinator?.ProcessId is not null;
     internal string? SessionId => processCoordinator?.SessionId;
+    internal IReadOnlyList<EditorProcessDiagnostic> ProcessDiagnostics => processCoordinator?.Diagnostics ?? [];
 
     internal async Task<EditorWindowViewModel> OpenAsync()
     {
@@ -59,8 +61,13 @@ internal sealed class EditorWindowCoordinator(
             {
                 lifetimeCancellation = new CancellationTokenSource();
                 processCoordinator = new EditorProcessCoordinator(hostAdapters, editorProcessOptions ?? EditorProcessPathResolver.ResolveDefault());
-                var pdfWorkspace = new PdfEditorWorkspaceViewModel(pdfRegistry, pdfAdapter, pdfSession,
-                    new PdfOrderDocumentRenderer(), new NativePdfPreviewRenderer(), order, pdfOutputPath, lifetimeCancellation.Token);
+                var pdfWorkspace = pdfWorkspaceOverride ?? new PdfEditorWorkspaceViewModel(
+                    pdfRegistry ?? throw new InvalidOperationException("PDF-Registry fehlt."),
+                    pdfAdapter ?? throw new InvalidOperationException("PDF-HostAdapter fehlt."),
+                    pdfSession ?? throw new InvalidOperationException("PDF-Session fehlt."),
+                    new PdfOrderDocumentRenderer(), new NativePdfPreviewRenderer(),
+                    order ?? throw new InvalidOperationException("PDF-Auftragsmodell fehlt."),
+                    pdfOutputPath ?? throw new InvalidOperationException("PDF-Ausgabepfad fehlt."), lifetimeCancellation.Token);
                 viewModel = new EditorWindowViewModel(
                     processCoordinator,
                     layoutSession,
@@ -70,7 +77,8 @@ internal sealed class EditorWindowCoordinator(
                     CloseAsync,
                     lifetimeCancellation.Token,
                     pdfWorkspace);
-                window = new EditorWindow(viewModel, this) { Owner = owner };
+                window = new EditorWindow(viewModel, this);
+                if (owner is not null) window.Owner = owner;
                 window.Closed += Window_Closed;
                 WindowCreationCount++;
                 window.Show();
@@ -102,7 +110,8 @@ internal sealed class EditorWindowCoordinator(
             if (processCoordinator is not null)
                 await processCoordinator.DisposeAsync();
             lifetimeCancellation?.Cancel();
-            await owner.Dispatcher.InvokeAsync(() =>
+            var dispatcher = owner?.Dispatcher ?? currentWindow?.Dispatcher ?? Application.Current.Dispatcher;
+            await dispatcher.InvokeAsync(() =>
             {
                 currentViewModel?.MarkClosed();
                 if (currentWindow is not null)

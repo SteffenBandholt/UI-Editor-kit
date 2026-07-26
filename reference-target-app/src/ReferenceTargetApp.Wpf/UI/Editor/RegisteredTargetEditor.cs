@@ -152,7 +152,7 @@ public static class RegisteredTargetEditorLauncher
         }
     }
 
-    private static void EnsureEditorResources()
+    internal static void EnsureEditorResources()
     {
         if (Application.Current.Resources.Contains("WindowBackgroundBrush")) return;
         Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary

@@ -30,6 +30,7 @@ function completeValues() {
     reason: "Freigegebene Anpassung",
     scope: "element",
     requestedBy: "tester",
+    allowedPayloadFields: ["label"],
   };
 }
 
@@ -84,8 +85,8 @@ function run() {
     "source",
   ]);
 
-  assert.deepEqual(CHANGE_REQUEST_OPTIONAL_FIELDS, ["note", "reason", "scope", "requestedBy"]);
-  assert.deepEqual(getChangeRequestFields().optional, ["note", "reason", "scope", "requestedBy"]);
+  assert.deepEqual(CHANGE_REQUEST_OPTIONAL_FIELDS, ["note", "reason", "scope", "requestedBy", "allowedPayloadFields"]);
+  assert.deepEqual(getChangeRequestFields().optional, ["note", "reason", "scope", "requestedBy", "allowedPayloadFields"]);
 
   assert.deepEqual(FORBIDDEN_CHANGE_REQUEST_FIELDS, [
     "fachDaten",
@@ -123,6 +124,7 @@ function run() {
     "reason",
     "scope",
     "requestedBy",
+    "allowedPayloadFields",
   ]);
 
   const values = completeValues();

@@ -414,3 +414,12 @@ Keine Metaspalte ohne Rolle.
 Keine fachliche Aktion als Editoroperation.
 
 Nachtraegliche bewusste Registrierung ist keine UI-Analyse, keine automatische Bestandserkennung, kein Scan, keine automatische Elementerkennung und keine Migration.
+
+## 13. M80-Ergänzungen
+
+- `fieldGroup`: struktureller gemeinsamer Parent für getrennte `label`- und `field`-Geschwister.
+- `fieldLabel`: Rolle einer eigenständig auswählbaren Feldbezeichnung.
+- `dataFieldLayout`: Rolle eines Feldes, dessen Layout, niemals dessen Fachwert, bearbeitet wird.
+- `setVisibility`: ausschließlich layoutbezogenes Sichtbar-/Unsichtbar-Schalten; das Element bleibt registriert.
+- Fachbuttons dürfen die Rolle `domainActionLayout` tragen, wenn nur ihr Layout freigegeben ist. `executeTargetAction`, `modifyDomainData`, `createRecord` und `deleteRecord` bleiben gesperrt.
+- Tabellenspalten benötigen eine explizite `columnRole`; eine Metaspalte wird nicht aus Daten- oder DOM-Feldern geraten.

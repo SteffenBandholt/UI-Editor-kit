@@ -8,4 +8,5 @@ public static class HostAdapterOperations
     public const string ResizeHeight = "resizeHeight";
     public const string TextMove = "textMove";
     public const string TextResize = "textResize";
+    public const string SetVisibility = "setVisibility";
 }

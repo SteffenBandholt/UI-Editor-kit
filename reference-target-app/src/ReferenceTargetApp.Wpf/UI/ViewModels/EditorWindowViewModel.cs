@@ -25,6 +25,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private readonly Func<Task> requestClose;
     private readonly CancellationToken lifetimeToken;
     private readonly Dispatcher dispatcher;
+    private readonly IPdfEditorWorkspace pdfWorkspace;
     private EditorUiState? state;
     private LayoutProfileSessionStatus? layoutStatus;
     private string stepText = "1";
@@ -45,7 +46,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         Func<Window?> getOwner,
         Func<Task> requestClose,
         CancellationToken lifetimeToken,
-        PdfEditorWorkspaceViewModel pdfWorkspace)
+        IPdfEditorWorkspace pdfWorkspace)
     {
         this.coordinator = coordinator;
         this.layoutSession = layoutSession;
@@ -54,11 +55,12 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         this.getOwner = getOwner;
         this.requestClose = requestClose;
         this.lifetimeToken = lifetimeToken;
-        Pdf = pdfWorkspace;
+        this.pdfWorkspace = pdfWorkspace;
         dispatcher = Dispatcher.CurrentDispatcher;
         SetLayerCommand = new AsyncCommand(SetLayerAsync, parameter => CanInteract && parameter is string);
         SetModeCommand = new AsyncCommand(SetModeAsync, parameter => CanInteract && parameter is string);
         DirectionCommand = new AsyncCommand(ApplyDirectionAsync, parameter => CanUseDirection(parameter as string));
+        ToggleVisibilityCommand = new AsyncCommand(_ => ToggleVisibilityAsync(), _ => CanChangeVisibility);
         SaveCommand = new AsyncCommand(_ => SaveAsync(), _ => CanOperate && IsDirty);
         LoadCommand = new AsyncCommand(_ => RunLayoutActionAsync(() => layoutSession.LoadAsync(lifetimeToken), "Profil wurde geladen."), _ => CanOperate);
         DiscardElementCommand = new AsyncCommand(_ => DiscardElementAsync(), _ => CanOperate && CanDiscardElement);
@@ -73,7 +75,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
-    public PdfEditorWorkspaceViewModel Pdf { get; }
+    public PdfEditorWorkspaceViewModel Pdf => pdfWorkspace as PdfEditorWorkspaceViewModel
+        ?? throw new InvalidOperationException("PDF-Arbeitsbereich ist für diese Ziel-App nicht verfügbar.");
+    public IPdfEditorWorkspace PdfBinding => pdfWorkspace;
     public int ActiveWorkspaceIndex
     {
         get => activeWorkspaceIndex;
@@ -91,6 +95,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ICommand SetLayerCommand { get; }
     public ICommand SetModeCommand { get; }
     public ICommand DirectionCommand { get; }
+    public ICommand ToggleVisibilityCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand LoadCommand { get; }
     public ICommand DiscardElementCommand { get; }
@@ -126,6 +131,12 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public string Size { get; private set; } = "–";
     public string TextPosition { get; private set; } = "–";
     public string FontSize { get; private set; } = "–";
+    public string VisibilityStatus { get; private set; } = "–";
+    public bool IsSelectedVisible { get; private set; } = true;
+    public bool CanChangeVisibility => CanOperate && state?.Details?.Operations?.AvailableOps.Contains(
+        ReferenceTargetApp.EditorIntegration.HostAdapter.HostAdapterOperations.SetVisibility,
+        StringComparer.Ordinal) == true;
+    public string VisibilityActionLabel => IsSelectedVisible ? "Ausblenden" : "Einblenden";
     public bool LeftEnabled { get; private set; }
     public bool RightEnabled { get; private set; }
     public bool UpEnabled { get; private set; }
@@ -156,7 +167,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             var session = await coordinator.StartSessionAsync(lifetimeToken);
             if (!session.Success) throw new EditorProcessException(session.Code, session.Message);
             var initialState = await coordinator.GetEditorUiStateAsync(lifetimeToken);
-            await Pdf.InitializeAsync();
+            await pdfWorkspace.InitializeAsync();
             RunOnUi(() =>
             {
                 Profiles.ReplaceWith(LayoutProfileCatalog.All);
@@ -178,6 +189,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         if (!CanOperate) return;
         await RunStateActionAsync(() => coordinator.SelectEditorElementAsync(elementId, lifetimeToken), $"Element {elementId} ausgewählt.");
+        if (state?.Details is not null)
+            await selectionService.HighlightAsync(state.ScopeId, state.Details.ElementId, lifetimeToken);
     }
 
     internal async Task SelectScopeAsync(string scopeId)
@@ -209,23 +222,27 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     internal async Task DiscardAllForDiagnosticAsync() => await RunLayoutActionAsync(() => layoutSession.DiscardAllAsync(lifetimeToken), "Alle Änderungen verworfen.");
     internal async Task ResetElementForDiagnosticAsync() => await ResetElementAsync();
     internal async Task ResetAllForDiagnosticAsync() => await RunLayoutActionAsync(() => layoutSession.ResetAllAsync(lifetimeToken), "Gesamtes Layout zurückgesetzt.");
+    internal async Task SetVisibilityForDiagnosticAsync(bool visible)
+    {
+        if (IsSelectedVisible != visible) await ToggleVisibilityAsync();
+    }
 
     internal async Task<bool> ConfirmCloseAsync()
     {
-        if (!IsDirty && !Pdf.IsDirty) return true;
-        var dirtyAreas = IsDirty && Pdf.IsDirty ? "Programmoberfläche und PDF-Ausgabe" : IsDirty ? "Programmoberfläche" : "PDF-Ausgabe";
+        if (!IsDirty && !pdfWorkspace.IsDirty) return true;
+        var dirtyAreas = IsDirty && pdfWorkspace.IsDirty ? "Programmoberfläche und PDF-Ausgabe" : IsDirty ? "Programmoberfläche" : "PDF-Ausgabe";
         var decision = dialogService.AskUnsavedChanges(getOwner()!, "Der Editor wird geschlossen. Wählen Sie Speichern und schließen, Ohne Speichern schließen oder Abbrechen.");
         if (decision == UnsavedChangesDecision.Cancel) { StatusMessage = "Schließen abgebrochen."; return false; }
         if (decision != UnsavedChangesDecision.Save) return true;
         StatusMessage = "Ungespeichert: " + dirtyAreas + ". Zustände werden gespeichert …";
         if (IsDirty && !await SaveAsync()) return false;
-        return !Pdf.IsDirty || await Pdf.SaveAsync();
+        return !pdfWorkspace.IsDirty || await pdfWorkspace.SaveAsync();
     }
 
     internal void BeginClosing(bool operationWasRunning)
     {
         selectionService.Cancel();
-        Pdf.Cancel();
+        pdfWorkspace.Cancel();
         IsClosing = true;
         StatusMessage = operationWasRunning ? "Editor wird nach der laufenden Änderung geschlossen …" : "Editor wird geschlossen …";
     }
@@ -234,7 +251,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         selectionService.ElementSelected -= SelectionService_ElementSelected;
         selectionService.SelectionRejected -= SelectionService_SelectionRejected;
-        Pdf.Dispose();
+        pdfWorkspace.Dispose();
         StatusMessage = "Editor geschlossen.";
     }
 
@@ -277,6 +294,43 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
             RunOnUi(() => { ShowError(ErrorCodeFor(exception), exception.Message); StatusMessage = "Änderung fehlgeschlagen."; });
+        }
+        finally { RunOnUi(() => IsBusy = false); }
+    }
+
+    internal void ShowConnectionLost(string code, string message)
+    {
+        RunOnUi(() =>
+        {
+            ShowError(code, message);
+            StatusMessage = "Ziel-App-Verbindung getrennt. BBM kann unabhängig weiterlaufen.";
+            IsBusy = false;
+        });
+    }
+
+    private async Task ToggleVisibilityAsync()
+    {
+        if (!CanChangeVisibility) return;
+        IsBusy = true;
+        ClearError();
+        try
+        {
+            var outcome = await coordinator.SetEditorVisibilityAsync(!IsSelectedVisible, lifetimeToken);
+            RunOnUi(() =>
+            {
+                ApplyState(outcome.State);
+                RefreshLayoutStatus();
+                if (!outcome.Result.Success)
+                {
+                    ShowError(outcome.Result.RollbackSucceeded ? outcome.Result.ErrorCode ?? "target_rejected_change" : "rollback_failed", outcome.Result.Message);
+                    StatusMessage = "Sichtbarkeit wurde abgewiesen.";
+                }
+                else StatusMessage = $"{SelectedName}: Sichtbarkeit geändert.";
+            });
+        }
+        catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
+        {
+            RunOnUi(() => { ShowError(ErrorCodeFor(exception), exception.Message); StatusMessage = "Sichtbarkeitsänderung fehlgeschlagen."; });
         }
         finally { RunOnUi(() => IsBusy = false); }
     }
@@ -330,20 +384,18 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private async Task BeginAppSelectionAsync()
     {
-        selectionService.Begin();
+        await selectionService.BeginAsync(lifetimeToken);
         StatusMessage = "In App auswählen: Klicken Sie ein registriertes Element in der Ziel-App.";
         OnPropertyChanged(nameof(IsAppSelectionActive));
         RaiseCommandStates();
-        await Task.CompletedTask;
     }
 
     private async Task CancelAppSelectionAsync()
     {
-        selectionService.Cancel();
+        await selectionService.CancelAsync(lifetimeToken);
         StatusMessage = "Auswahlmodus abgebrochen.";
         OnPropertyChanged(nameof(IsAppSelectionActive));
         RaiseCommandStates();
-        await Task.CompletedTask;
     }
 
     private async void SelectionService_ElementSelected(object? sender, TargetAppElementSelectedEventArgs e)
@@ -414,6 +466,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         TextPosition = details?.CurrentLayout.Text is { } text && (text.OffsetX is not null || text.OffsetY is not null)
             ? $"X {text.OffsetX?.ToString("G", CultureInfo.CurrentCulture) ?? "–"} / Y {text.OffsetY?.ToString("G", CultureInfo.CurrentCulture) ?? "–"} DIP" : "nicht verfügbar";
         FontSize = details?.CurrentLayout.Text?.FontSize is { } fontSize ? $"{fontSize:G} DIP" : "nicht verfügbar";
+        IsSelectedVisible = details?.Visible ?? true;
+        VisibilityStatus = details is null ? "–" : IsSelectedVisible ? "sichtbar" : "unsichtbar";
         RaiseDetailsChanged();
         OnPropertyChanged(nameof(ActiveScopeId));
             RaiseCommandStates();
@@ -456,7 +510,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         var b = rightState.Elements.FirstOrDefault(item => item.ElementId == elementId);
         if (a is null || b is null) return false;
         return Math.Abs(a.X - b.X) > 0.000001 || Math.Abs(a.Y - b.Y) > 0.000001 || Math.Abs(a.Width - b.Width) > 0.000001 || Math.Abs(a.Height - b.Height) > 0.000001 ||
-               Different(a.TextOffsetX, b.TextOffsetX) || Different(a.TextOffsetY, b.TextOffsetY) || Different(a.FontSize, b.FontSize);
+               Different(a.TextOffsetX, b.TextOffsetX) || Different(a.TextOffsetY, b.TextOffsetY) || Different(a.FontSize, b.FontSize) || a.Visible != b.Visible;
     }
 
     private static bool Different(double? a, double? b) => a is null != b is null || a is not null && b is not null && Math.Abs(a.Value - b.Value) > 0.000001;
@@ -466,17 +520,18 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseDetailsChanged()
     {
-        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
+        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
             OnPropertyChanged(property);
     }
 
     private void RaiseCommandStates()
     {
-        foreach (var command in new[] { SetLayerCommand, SetModeCommand, DirectionCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { SetLayerCommand, SetModeCommand, DirectionCommand, ToggleVisibilityCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(CanOperate));
         OnPropertyChanged(nameof(ControlsEnabled));
+        OnPropertyChanged(nameof(CanChangeVisibility));
     }
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

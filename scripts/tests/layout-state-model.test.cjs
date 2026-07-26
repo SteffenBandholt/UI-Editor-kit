@@ -45,6 +45,7 @@ function run() {
   assert.equal(hasCode(contract.validateLayoutState(state({ elements: { a: { width: 10, unknownNeutral: true } } })), "invalid_layout_state"), true);
   assert.equal(hasCode(contract.validateLayoutState(state({ changes: [{ width: 10, action: "run" }] })), "invalid_layout_state"), true);
   assert.equal(hasCode(contract.validateLayoutState(state({ elements: { a: { label: "Title" } } })), "invalid_layout_state"), true);
+  assert.equal(contract.validateLayoutState(state({ elements: { a: { visible: false } } })).ok, true);
   assert.equal(contract.validateLayoutState(state({ elements: { a: { label: "Title", visible: true } } }), { allowedPayloadFields: ["label", "visible"] }).ok, true);
 
   const normalized = contract.normalizeLayoutState(state({ extra: true }));

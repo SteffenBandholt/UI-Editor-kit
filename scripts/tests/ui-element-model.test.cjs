@@ -43,6 +43,7 @@ function run() {
     "button",
     "field",
     "label",
+    "fieldGroup",
     "statusIndicator",
   ]);
 
@@ -59,6 +60,18 @@ function run() {
     "navigation",
     "editor-launcher",
     "system",
+    "scopeRoot",
+    "contentArea",
+    "formArea",
+    "layoutGroup",
+    "fieldCollection",
+    "formFieldGroup",
+    "fieldLabel",
+    "dataFieldLayout",
+    "contentTable",
+    "contentColumn",
+    "metaColumn",
+    "domainActionLayout",
   ]);
 
   assert.deepEqual(model.UI_ELEMENT_OPERATIONS, [
@@ -71,6 +84,7 @@ function run() {
     "resizeHeight",
     "textMove",
     "textResize",
+    "setVisibility",
     "reorder",
     "rename",
     "changeWidth",
@@ -81,6 +95,8 @@ function run() {
     "delete",
     "executeTargetAction",
     "modifyDomainData",
+    "createRecord",
+    "deleteRecord",
   ]);
 
   const exampleElement = {

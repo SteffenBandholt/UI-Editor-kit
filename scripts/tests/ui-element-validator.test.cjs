@@ -92,6 +92,10 @@ function run() {
     "database",
     "execute",
     "submit",
+    "executeTargetAction",
+    "modifyDomainData",
+    "createRecord",
+    "deleteRecord",
   ]);
 
   assert.deepEqual(UI_TABLE_COLUMN_ROLES, [
@@ -212,6 +216,25 @@ function run() {
   }));
   assert.equal(lockedDeleteResult.ok, true);
   assert.deepEqual(lockedDeleteResult.errors, []);
+
+  const lockedDomainActionsResult = validateUiElement(element({
+    id: "workspace.main.ops.domain-actions",
+    type: "button",
+    role: "action",
+    editable: false,
+    lockedOps: ["executeTargetAction", "modifyDomainData", "createRecord", "deleteRecord"],
+  }));
+  assert.equal(lockedDomainActionsResult.ok, true);
+  assert.deepEqual(lockedDomainActionsResult.errors, []);
+
+  const allowedDomainActionResult = validateUiElement(element({
+    id: "workspace.main.ops.create-record",
+    type: "button",
+    role: "action",
+    allowedOps: ["createRecord"],
+  }));
+  assert.equal(allowedDomainActionResult.ok, false);
+  assert.ok(findError(allowedDomainActionResult.errors, "forbidden_operation", "allowedOps"));
 
   const invalidListTypeResult = validateUiElementList("not-a-list");
   assert.equal(invalidListTypeResult.ok, false);

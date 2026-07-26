@@ -26,6 +26,25 @@ const expectedExports = [
   "validateTargetContext",
   "normalizeLayoutEntry",
   "resolveOperationStep",
+  "ELECTRON_TARGET_CONTRACT_VERSION",
+  "ELECTRON_TARGET_FRAMEWORK",
+  "ELECTRON_TARGET_OPERATIONS",
+  "createElectronTargetContract",
+  "validateElectronTargetContract",
+  "validateElectronRegistryScopes",
+  "LOCAL_TARGET_PROTOCOL_NAME",
+  "LOCAL_TARGET_PROTOCOL_VERSION",
+  "LOCAL_TARGET_MAX_MESSAGE_BYTES",
+  "LOCAL_TARGET_MESSAGE_TYPES",
+  "createEnvelope",
+  "validateEnvelope",
+  "encodeFrame",
+  "createFrameDecoder",
+  "createSessionIdentifiers",
+  "ELECTRON_EDITOR_ERROR_CODES",
+  "ElectronEditorError",
+  "NamedPipeTargetClient",
+  "windowsPipePath",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -45,8 +64,17 @@ const expectedExports = [
 assert.equal(fs.existsSync(publicApiPath), true, "src/index.cjs fehlt");
 assert.deepEqual(Object.keys(publicApi), expectedExports);
 expectedExports.forEach((name) => {
-  if (["RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS"].includes(name)) {
+  if ([
+    "RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS",
+    "ELECTRON_TARGET_OPERATIONS", "LOCAL_TARGET_MESSAGE_TYPES", "ELECTRON_EDITOR_ERROR_CODES",
+  ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
+  } else if ([
+    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION",
+  ].includes(name)) {
+    assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
+  } else if (name === "LOCAL_TARGET_MAX_MESSAGE_BYTES") {
+    assert.equal(typeof publicApi[name], "number", `${name} ist kein Zahlen-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);
   }

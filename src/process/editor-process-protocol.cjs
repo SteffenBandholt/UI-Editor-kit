@@ -36,6 +36,7 @@ const MESSAGE_TYPES = Object.freeze({
   SELECT_EDITOR_SCOPE: "selectEditorScope",
   REFRESH_EDITOR_LAYOUT_STATES: "refreshEditorLayoutStates",
   ACTIVATE_EDITOR_DIRECTION: "activateEditorDirection",
+  SET_EDITOR_VISIBILITY: "setEditorVisibility",
   SHUTDOWN: "shutdown",
   SHUTDOWN_COMPLETE: "shutdownComplete",
   ERROR: "error",
@@ -143,7 +144,17 @@ function createEditorProcessProtocol(options) {
     const validation = validateLayoutState(layoutState);
     if (!validation.ok) return { validation };
     const elements = registryElementsByScope.get(scopeId) || [];
-    const built = buildCore(elements);
+    let built;
+    try {
+      built = buildCore(elements);
+    } catch (exception) {
+      return {
+        registryError: {
+          message: exception.message,
+          details: exception.validationResult || {},
+        },
+      };
+    }
     const scopedSessionState = createSessionState();
     scopedSessionState.begin(layoutEntries(layoutState));
     return {
@@ -218,6 +229,7 @@ function createEditorProcessProtocol(options) {
               return { messages: [error(message, "invalid_layout_state", "scopeStates ist ungueltig.")], shouldExit: false };
             }
             const created = createScopeSession(scoped.scopeId, scoped.layoutState);
+            if (created.registryError) return { messages: [error(message, "invalid_registry", created.registryError.message, created.registryError.details)], shouldExit: false };
             if (created.validation) return { messages: [error(message, "invalid_layout_state", "LayoutState ist ungueltig.", { errors: created.validation.errors })], shouldExit: false };
             scopeSessions.set(scoped.scopeId, created.entry);
           }
@@ -294,6 +306,7 @@ function createEditorProcessProtocol(options) {
         for (const scoped of message.payload.scopeStates) {
           const previous = scopeSessions.get(scoped.scopeId);
           const created = createScopeSession(scoped.scopeId, scoped.layoutState);
+          if (created.registryError) return { messages: [error(message, "invalid_registry", created.registryError.message, created.registryError.details)], shouldExit: false };
           if (created.validation) return { messages: [error(message, "invalid_layout_state", "LayoutState ist ungueltig.", { errors: created.validation.errors })], shouldExit: false };
           if (previous) previous.editorUiSession.destroy();
           scopeSessions.set(scoped.scopeId, created.entry);
@@ -316,6 +329,19 @@ function createEditorProcessProtocol(options) {
         return { messages: [response(MESSAGE_TYPES.SUBMIT_CHANGE_REQUEST, { changeRequest: prepared.changeRequest }, message, activeSessionId)], shouldExit: false };
       }
 
+      case MESSAGE_TYPES.SET_EDITOR_VISIBILITY: {
+        const blocked = requireSession(message);
+        if (blocked) return { messages: [blocked], shouldExit: false };
+        if (pendingChange) return { messages: [error(message, "change_in_progress", "Ein Aenderungsauftrag wird bereits verarbeitet.")], shouldExit: false };
+        if (!editorUiSession) return { messages: [error(message, "editor_ui_unavailable", "Editor-UI ist nicht initialisiert.")], shouldExit: false };
+        const prepared = editorUiSession.prepareVisibility(message.payload.visible);
+        if (!prepared.ok) return { messages: [error(message, prepared.code || "invalid_editor_intent", prepared.reason || "Editoraktion ist ungueltig.")], shouldExit: false };
+        const validation = validateChangeRequest(prepared.changeRequest, editorCore);
+        if (!validation.ok) return { messages: [error(message, "invalid_change_request", "Aenderungsauftrag ist ungueltig.", { errors: validation.errors })], shouldExit: false };
+        pendingChange = { changeId: prepared.changeRequest.changeId };
+        return { messages: [response(MESSAGE_TYPES.SUBMIT_CHANGE_REQUEST, { changeRequest: prepared.changeRequest }, message, activeSessionId)], shouldExit: false };
+      }
+
       case MESSAGE_TYPES.CHANGE_RESULT: {
         const blocked = requireSession(message);
         if (blocked) return { messages: [blocked], shouldExit: false };
@@ -327,7 +353,7 @@ function createEditorProcessProtocol(options) {
           const state = result.newState;
           sessionState.setEntry({
             elementId: state.elementId,
-            element: { x: state.x, y: state.y, width: state.width, height: state.height },
+            element: { x: state.x, y: state.y, width: state.width, height: state.height, visible: state.visible !== false },
             ...(state.fontSize === null && state.textOffsetX === null && state.textOffsetY === null ? {} : {
               text: {
                 ...(state.textOffsetX === null ? {} : { offsetX: state.textOffsetX }),

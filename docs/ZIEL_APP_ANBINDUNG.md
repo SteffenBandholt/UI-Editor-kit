@@ -1,4 +1,6 @@
-# M78/M79: vorbereitete und bestehende lokale Ziel-Apps
+# M78–M80: vorbereitete, bestehende und lokale Electron-Ziel-Apps
+
+M80 ergänzt additiv einen frameworkneutralen Electron-Ziel-App-Vertrag. Eine Electron-App verbindet sich ausschließlich lokal über die gehärtete gemeinsame Named-Pipe-Semantik mit dem vorhandenen nativen Editor. Sie liefert eine explizite Registry, explizite Elementreferenzen und neutrale Layoutzustände; der Editor scannt kein DOM und führt keine Fachaktion aus. Electron ist für BBM praktisch belegt, React/Vite oder weitere Frameworks sind nicht behauptet. Details: [M80-Entwurfsentscheidung](M80_ELECTRON_ZIEL_APP_ENTWURFSENTSCHEIDUNG.md) und [Electron-Adapter](../src/electron-target/README.md).
 
 Der native Windows-Manager ergänzt den bisherigen Bootstrap additiv. Er akzeptiert ausschließlich Apps mit einem expliziten, versionierten `ui-editor-target.json` und dem Modus `prepared-native-editor`. Auswahl per Root oder deklarierter `.slnx`-, `.sln`- beziehungsweise `.csproj`-Datei löst nur Prüfung und Schreibprobe aus; Installation erfolgt erst nach vollständiger Vorschau und ausdrücklicher Bestätigung.
 
@@ -184,6 +186,14 @@ Die Ziel-App darf dem laufenden Editor nicht erlauben (der ausdrücklich gestart
 - eine automatische Bestandserkennung oder UI-Elementliste zu erzeugen
 - bestehende Legacy-UIs automatisch zu migrieren
 - M79-Vorschläge automatisch zu bestätigen oder ungeprüft zu installieren
+
+## Electron-Ziel-App-Vertrag M80
+
+Der Electron-Vertrag enthält mindestens `applicationId`, `displayName`, `framework = electron`, Vertrags- und Registryversion, aktive Scopes, Profilwurzel, unterstützte Operationen, Auswahl-/Sichtbarkeitsfähigkeit, Label-/Feldtrennung, Transportversion und Prozess-/Sitzungskennung. `pdfCapability` ist für BBM in M80 `unavailable`.
+
+Die Verbindung verwendet ausschließlich einen zufälligen lokalen Pipe-Namen und eine kryptografische Sitzungs-Nonce. Handshake, Current-User-only, eine Verbindung, Korrelations-IDs, Nachrichtenlimit, Timeout, strukturierter Disconnect und feste vertrauenswürdige Executable sind Pflicht. Renderer dürfen weder freie Pfade noch Shell-Strings liefern.
+
+Für asynchrone lokale Ziel-App-Transporte darf der kleine HostAdapter-Vertrag additiv als `IAsyncHostAdapter` umgesetzt werden. Registry, Validierung, neutrale Semantik und ChangeResult bleiben identisch; eine zweite Layoutlogik ist nicht zulässig.
 - Datenbankaktionen auszufuehren
 - fachliche Buttons auszufuehren
 - Speicher-, Loesch-, Upload-, Import- oder Exportaktionen als Editoroperation zu behandeln

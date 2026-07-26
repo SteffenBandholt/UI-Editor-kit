@@ -21,14 +21,18 @@ internal static class EditorProtocolPayloadFactory
         registry.Entries.Select(entry => new ProtocolRegistryElement(
             entry.ElementId,
             entry.DisplayName,
-            MapType(entry.Kind),
-            MapRole(entry.Kind),
+            entry.ProtocolType ?? MapType(entry.Kind),
+            entry.ProtocolRole ?? MapRole(entry.Kind),
             entry.ParentId,
             entry.Order,
             true,
             entry.Capabilities != UiCapability.None,
-            AllowedOperations(entry.Capabilities),
-            Array.Empty<string>(),
+            entry.AllowedOperations?.ToArray() ?? AllowedOperations(entry.Capabilities),
+            entry.LockedOperations?.ToArray() ?? Array.Empty<string>(),
+            entry.ColumnRole,
+            entry.FieldKind,
+            entry.ActionKind,
+            entry.ComponentKind,
             entry.ScopeId));
 
     public static object CreateLayoutStatePayload(LayoutState state)
@@ -36,7 +40,7 @@ internal static class EditorProtocolPayloadFactory
         var elements = state.Elements.ToDictionary(
             element => element.ElementId,
             element => new ProtocolLayoutEntry(
-                new ProtocolElementLayout(element.X, element.Y, element.Width, element.Height),
+                new ProtocolElementLayout(element.X, element.Y, element.Width, element.Height, element.Visible),
                 element.TextOffsetX is null && element.TextOffsetY is null && element.FontSize is null
                     ? null
                     : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize)),
@@ -73,7 +77,7 @@ internal static class EditorProtocolPayloadFactory
         var elements = state.Elements.ToDictionary(
             element => element.ElementId,
             element => new ProtocolLayoutEntry(
-                new ProtocolElementLayout(element.X, element.Y, element.Width, element.Height),
+                new ProtocolElementLayout(element.X, element.Y, element.Width, element.Height, element.Visible),
                 element.TextOffsetX is null && element.TextOffsetY is null && element.FontSize is null
                     ? null
                     : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize)),
@@ -100,6 +104,10 @@ internal static class EditorProtocolPayloadFactory
         UiElementKind.InputField => "field",
         UiElementKind.StatusIndicator => "statusIndicator",
         UiElementKind.Button => "button",
+        UiElementKind.Area => "area",
+        UiElementKind.FieldGroup => "fieldGroup",
+        UiElementKind.Table => "table",
+        UiElementKind.TableColumn => "tableColumn",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -120,6 +128,7 @@ internal static class EditorProtocolPayloadFactory
         if (capabilities.HasFlag(UiCapability.Height)) operations.Add(HostAdapterOperations.ResizeHeight);
         if (capabilities.HasFlag(UiCapability.TextPosition)) operations.Add(HostAdapterOperations.TextMove);
         if (capabilities.HasFlag(UiCapability.FontSize)) operations.Add(HostAdapterOperations.TextResize);
+        if (capabilities.HasFlag(UiCapability.Visibility)) operations.Add(HostAdapterOperations.SetVisibility);
         return operations.ToArray();
     }
 
@@ -134,9 +143,13 @@ internal static class EditorProtocolPayloadFactory
         bool Editable,
         string[] AllowedOps,
         string[] LockedOps,
+        string? ColumnRole,
+        string? FieldKind,
+        string? ActionKind,
+        string? ComponentKind,
         string LayoutArea);
 
-    private sealed record ProtocolElementLayout(double X, double Y, double Width, double Height);
+    private sealed record ProtocolElementLayout(double X, double Y, double Width, double Height, bool Visible);
     private sealed record ProtocolTextLayout(double? OffsetX, double? OffsetY, double? FontSize);
     private sealed record ProtocolLayoutEntry(ProtocolElementLayout Element, ProtocolTextLayout? Text);
 }

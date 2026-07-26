@@ -161,3 +161,11 @@ Der generische Vertrag verwendet fachneutrale Codes, insbesondere `unknown_scope
 Erlaubt sind nur neutrale Layoutwerte wie `x`, `y`, `width`, `height`, `spacing`, `order` sowie `visibility`/`visible` nur mit ausdruecklicher Freigabe. `label` ist nur zulaessig, wenn es fachneutral ist und separat freigegeben wurde.
 
 Verboten sind Fachwerte, Datensatz-IDs, SQL-/DB-Inhalte, fachliches Speichern/Loeschen/Upload/Import/Export, Statuswerte aus Fachmodulen, Kunden-/Projekt-/Personendaten, automatische DOM-Analyse, automatische UI-Erkennung und automatische Registry-Befuellung.
+
+## Sichtbarkeit und Feldtrennung ab M80
+
+`setVisibility` ist eine neutrale Layoutoperation. Sie ist getrennt von `disabled`, Berechtigungen und Fachzustand. Ein unsichtbares Element bleibt in Registry und Editorbaum vorhanden. Save/Load/Discard/Reset und Rollback behandeln Sichtbarkeit wie jeden anderen Layoutwert.
+
+Für Feldzeilen gilt verbindlich `fieldGroup` mit den Geschwistern `label` und `field`. Beide besitzen eigene stabile IDs, Referenzen, Capabilities und Sichtbarkeit. Ein Label darf nie Parent seines Feldes sein.
+
+Fachbuttons dürfen als reine Layoutobjekte registriert werden. Ihre fachliche Ausführung sowie `modifyDomainData`, `createRecord` und `deleteRecord` bleiben gesperrt.

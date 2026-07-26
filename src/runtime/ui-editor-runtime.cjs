@@ -201,8 +201,8 @@ function validateLayoutEntryForElement(entry, registryElement) {
   }
   if (Object.prototype.hasOwnProperty.call(elementValues, "visible")) {
     const visibilityOperation = elementValues.visible === false ? "hide" : "show";
-    if (!isOperationAllowed(registryElement, visibilityOperation)) {
-      return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires ${visibilityOperation} operation.`);
+    if (!isOperationAllowed(registryElement, "setVisibility") && !isOperationAllowed(registryElement, visibilityOperation)) {
+      return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, `layout entry requires setVisibility operation.`);
     }
   }
   return okResult(normalized);
@@ -379,7 +379,7 @@ function createUiEditorRuntime(options) {
     const requestedOperation = changeRequest.operation;
     const allowed = operationAllowed(elementResult.value, requestedOperation) ||
       ((requestedOperation === "resizeWidth" || requestedOperation === "resizeHeight") && operationAllowed(elementResult.value, "resize"));
-    if (!["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize"].includes(requestedOperation) || !allowed) {
+    if (!["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility"].includes(requestedOperation) || !allowed) {
       return blockedResult(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "operation is not allowed.");
     }
 

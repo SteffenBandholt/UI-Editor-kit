@@ -20,4 +20,5 @@ public sealed record PersistedElementLayout(
     double? Height,
     double? TextOffsetX,
     double? TextOffsetY,
-    double? FontSize);
+    double? FontSize,
+    bool? Visible = null);
