@@ -172,6 +172,36 @@ public sealed class M75FullOperationTests
     }
 
     [TestMethod]
+    public void DirtyStateComparesOnlyRegisteredLayoutCapabilities()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "ui-editor-kit-m80-1-dirty-tests", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                var scope = new Grid { Width = 600, Height = 300 };
+                var field = new TextBox { Width = 200, Height = 30 };
+                var adapter = new WpfHostAdapter(new UiElementRegistry([
+                    new("ui.scope", "ui.scope", null, UiElementKind.Scope, "Bereich", 0, UiCapability.None, scope),
+                    new("ui.scope.field", "ui.scope", "ui.scope", UiElementKind.InputField, "Feld", 10, UiCapability.Width, field)
+                ]));
+                var adapters = new Dictionary<string, IHostAdapter>(StringComparer.Ordinal) { ["ui.scope"] = adapter };
+                var baseline = adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
+                var session = Session(root, adapters, baseline);
+                Assert.IsTrue(Await(session.SaveAsync()).Success);
+
+                field.Height = 45;
+                Assert.IsFalse(session.GetStatus().IsDirty, "Nicht registrierte Laufzeitmaße dürfen kein falsches Dirty auslösen.");
+
+                ChangeWidth(adapter, "ui.scope.field", 220);
+                Assert.IsTrue(session.GetStatus().IsDirty, "Eine registrierte Breitenänderung muss weiterhin Dirty auslösen.");
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        });
+    }
+
+    [TestMethod]
     public void ProfilesAreIndependentLoadReadsDiskAndActiveSelectionPersists()
     {
         StaTest.Run(() => WithEnvironment((root, adapters, baseline) =>

@@ -25,6 +25,25 @@ public static class ElectronEditorErrorCodes
     public const string ProfileSaveFailed = "electron_profile_save_failed";
     public const string RestoreFailed = "electron_restore_failed";
     public const string PdfNotAvailable = "electron_pdf_not_available";
+    public const string RegistryRefreshFailed = "registry_refresh_failed";
+    public const string RegistryVersionMissing = "registry_version_missing";
+    public const string RegistryFingerprintMissing = "registry_fingerprint_missing";
+    public const string RegistryFingerprintMismatch = "registry_fingerprint_mismatch";
+    public const string RegistryIncomplete = "registry_incomplete";
+    public const string RegistryIncompatible = "registry_incompatible";
+    public const string RegistryChanged = "registry_changed";
+    public const string RegistryScopeIncomplete = "registry_scope_incomplete";
+    public const string RegistryScopeBlocked = "registry_scope_blocked";
+    public const string RegistryExpectedElementMissing = "registry_expected_element_missing";
+    public const string RegistryReferenceMissing = "registry_reference_missing";
+    public const string RegistryParentInvalid = "registry_parent_invalid";
+    public const string RegistryRoleMissing = "registry_role_missing";
+    public const string RegistryBaselineMissing = "registry_baseline_missing";
+    public const string RegistryProfileConflict = "registry_profile_conflict";
+    public const string RegistryProfileMigrationRequired = "registry_profile_migration_required";
+    public const string RegistrationRequired = "registration_required";
+    public const string RegistrationFailed = "registration_failed";
+    public const string RegistrationNotConfirmed = "registration_not_confirmed";
 }
 
 public sealed class ElectronEditorException(string code, string message, Exception? innerException = null)

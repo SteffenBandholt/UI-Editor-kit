@@ -33,6 +33,7 @@ const electronTargetContract = require("./electron-target/electron-target-contra
 const localTargetProtocol = require("./electron-target/local-target-protocol.cjs");
 const electronErrorCodes = require("./electron-target/electron-error-codes.cjs");
 const namedPipeClient = require("./electron-target/named-pipe-client.cjs");
+const targetRegistration = require("./electron-target/target-registration.cjs");
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
@@ -54,6 +55,7 @@ module.exports = Object.freeze({
   ...localTargetProtocol,
   ...electronErrorCodes,
   ...namedPipeClient,
+  ...targetRegistration,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

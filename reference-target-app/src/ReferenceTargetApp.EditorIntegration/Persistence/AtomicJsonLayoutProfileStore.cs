@@ -83,7 +83,8 @@ public sealed class AtomicJsonLayoutProfileStore
     public async Task<LayoutProfileLoadResult> LoadAsync(
         string profileId,
         IReadOnlyDictionary<string, IHostAdapter> adapters,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool allowCompatibleRegistryReconciliation = false)
     {
         var path = GetFilePath(profileId);
         if (!File.Exists(path))
@@ -93,6 +94,17 @@ public sealed class AtomicJsonLayoutProfileStore
             await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
             var document = await JsonSerializer.DeserializeAsync<PersistedLayoutProfileDocument>(stream, jsonOptions, cancellationToken);
             var validation = LayoutProfileDocumentValidator.Validate(document, documentApplicationId, profileId, adapters);
+            var compatibleRegistryErrors = new HashSet<string>(
+                ["incompatible_registry", "unknown_element", "missing_element", "operation_not_allowed", "missing_scope", "unknown_scope"],
+                StringComparer.Ordinal);
+            if (!validation.Success && allowCompatibleRegistryReconciliation && document is not null &&
+                validation.Errors.All(error => compatibleRegistryErrors.Contains(error.Code)))
+            {
+                var reconciled = ReconcileRegistry(document, adapters);
+                var reconciledValidation = LayoutProfileDocumentValidator.Validate(reconciled, documentApplicationId, profileId, adapters);
+                if (reconciledValidation.Success)
+                    return new(true, true, "layout_profile_registry_reconciled", "Stabile Profilwerte wurden mit der aktuellen Registry abgeglichen; neue Elemente verwenden ihre Baseline.", path, reconciled, validation.Errors);
+            }
             if (!validation.Success)
                 return new(false, true, validation.Errors[0].Code, validation.Errors[0].Message, path, document, validation.Errors);
             return new(true, true, "layout_profile_loaded", "Layoutprofil wurde vom Datenträger geladen und validiert.", path, document);
@@ -107,5 +119,38 @@ public sealed class AtomicJsonLayoutProfileStore
         {
             return new(false, true, "storage_read_failed", $"Layoutprofil konnte nicht gelesen werden: {exception.Message}", path);
         }
+    }
+
+    private PersistedLayoutProfileDocument ReconcileRegistry(
+        PersistedLayoutProfileDocument source,
+        IReadOnlyDictionary<string, IHostAdapter> adapters)
+    {
+        var sourceScopes = source.Scopes.ToDictionary(scope => scope.ScopeId, StringComparer.Ordinal);
+        var scopes = adapters.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+        {
+            var registry = pair.Value.GetRegistry();
+            var baseline = pair.Value.GetCurrentLayoutState().Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+            var saved = sourceScopes.TryGetValue(pair.Key, out var sourceScope)
+                ? sourceScope.LayoutState.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal)
+                : new Dictionary<string, PersistedElementLayout>(StringComparer.Ordinal);
+            var elements = registry.Entries.OrderBy(entry => entry.ElementId, StringComparer.Ordinal).Select(entry =>
+            {
+                var fallback = baseline[entry.ElementId];
+                saved.TryGetValue(entry.ElementId, out var previous);
+                return new PersistedElementLayout(
+                    entry.ElementId,
+                    entry.ScopeId,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Position) ? previous?.X ?? fallback.X : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Position) ? previous?.Y ?? fallback.Y : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Width) ? previous?.Width ?? fallback.Width : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Height) ? previous?.Height ?? fallback.Height : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? previous?.TextOffsetX ?? fallback.TextOffsetX : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? previous?.TextOffsetY ?? fallback.TextOffsetY : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? previous?.FontSize ?? fallback.FontSize : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? previous?.Visible ?? fallback.Visible : null);
+            }).ToArray();
+            return new PersistedLayoutScope(pair.Key, RegistryFingerprint.Create(registry), new(elements));
+        }).ToArray();
+        return new(LayoutProfileDocumentFactory.SchemaVersion, documentApplicationId, source.ProfileId, source.SavedAt, scopes);
     }
 }
