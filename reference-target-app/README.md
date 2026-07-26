@@ -237,7 +237,9 @@ Das einzelne native Editorfenster besitzt die zustandserhaltenden Arbeitsbereich
 
 Die Vorschau wird lokal über die in Windows enthaltene API `Windows.Data.Pdf` direkt aus der echten PDF-Ausgabedatei in Speicherbitmaps gerendert. Es gibt keine zusätzliche Bibliothek oder Lizenz. Der PDF-Renderer liefert neutrale Bounds aus demselben Layoutlauf; Baumwahl und Klick in der Vorschau synchronisieren Seite, Details und ein rein visuelles WPF-Overlay. Layout-Dirty und Vorschau aktuell/veraltet bleiben getrennt. Der Schließdialog nennt ungespeicherte UI-/PDF-Bereiche und der Startup-Restore stellt beide Profilarten wieder her.
 
-Der praktische Nachweis lautet `ReferenceTargetApp.exe --ui-pdf-end-to-end-diagnostic`. Er verwendet zwei echte WPF-Prozesse, den echten Node-Prozess, echte Profile und mehrseitige PDFs und entfernt anschließend sämtliche Diagnoseartefakte. M78 ist der nächste offene Meilenstein; Windows-Manager und M79-Registrationslauf wurden nicht vorgezogen.
+Der praktische Nachweis lautet `ReferenceTargetApp.exe --ui-pdf-end-to-end-diagnostic`. Er verwendet zwei echte WPF-Prozesse, den echten Node-Prozess, echte Profile und mehrseitige PDFs und entfernt anschließend sämtliche Diagnoseartefakte.
+
+M78 verwendet einen sauberen neuen Klon dieser vorbereiteten Ziel-App als Manager-Fixture. Das ergänzte `ui-editor-target.json` deklariert Projekt-, Integrations- und Startpfade ausdrücklich; der Manager errät keine Registry oder HostAdapter-Struktur. Nach der kontrollierten Installation startet die Managerdiagnose Ziel-App und gemeinsamen UI-/PDF-Editor und führt denselben Neustart-/Restore-Nachweis aus. M79-Alt-App-Analyse bleibt ausgeschlossen.
 
 ## PDF-Grundmodell und Erzeugung M76
 

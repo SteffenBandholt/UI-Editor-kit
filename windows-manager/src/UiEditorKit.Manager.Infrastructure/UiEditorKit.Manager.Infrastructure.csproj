@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0-windows</TargetFramework><RootNamespace>UiEditorKit.Manager.Infrastructure</RootNamespace><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../UiEditorKit.Manager.Domain/UiEditorKit.Manager.Domain.csproj" />
+    <ProjectReference Include="../UiEditorKit.Manager.Core/UiEditorKit.Manager.Core.csproj" />
+  </ItemGroup>
+</Project>

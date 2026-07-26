@@ -42,7 +42,7 @@ Die feste Reihenfolge lautet:
 6. M78 - zentraler Windows-Manager und Installer,
 7. M79 - bestehende Apps registrieren.
 
-M79 bleibt bis zur Abnahme von M78 gesperrt.
+M78 ist abgenommen; M79 ist der naechste offene Meilenstein.
 
 ## 4. Produktstand
 
@@ -70,8 +70,6 @@ Gebaut und geprueft sind:
 
 Noch nicht praktisch fertig sind:
 
-- die sichtbare PDF-Bearbeitung,
-- der zentrale Windows-Manager,
 - der Registrationslauf fuer bestehende Apps.
 
 Die Ziel-App bleibt Eigentuemerin von Registry, Element-Referenzen, HostAdapter, Layoutspeicher und Aktivierung.
@@ -97,6 +95,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, automatische UI-Erkenn
 | K8 / M75 | [A] | Vollstaendiger nativer UI-Betrieb mit Save, Load, Einzel-/Gesamtverwerfen, Einzel-/Gesamtreset, zwei Scopes, zwei Profilen, direkter App-Auswahl, Neustart-Restore und Batchrollback | 29 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-full-operation-diagnostic` gruen |
 | K9 / M76 | [A] | Neutrales PDF-Dokument-/Seitenmodell, Registry mit 26 Elementen, PDF-HostAdapter, getrenntes Profil, Save/Load/Discard/Reset, Rollback und lokale reale Mehrseiten-PDF | 38 .NET-Tests, npm-Gesamttest und echter `--pdf-model-diagnostic`-Nachweis gruen |
 | K10 / M77 | [A] | Gemeinsamer nativer UI-/PDF-Editor mit Seitenuebersicht, Registrybaum, echter lokaler PDF-Vorschau, Baum-/Previewauswahl, Overlay, vollstaendiger PDF-Bedienung und gemeinsamem Dirty-/Neustartfluss | 48 .NET-Tests, npm-Gesamttest und echter Zwei-Prozess-Nachweis `--ui-pdf-end-to-end-diagnostic` gruen |
+| K11 / M78 | [A] | Eigenstaendiger nativer Windows-Manager fuer vorbereitete neue Ziel-Apps mit LocalAppData-Bereitstellung, Desktop-Verknuepfung, Auswahl, Vertrag/Sicherheit, Vorschau, bekannten Apps, Installation, Update, Deinstallation, Prozessstart und Transaktionsrollback | 73 Manager-Tests, alle bestehenden Tests und sichtbarer `--manager-installer-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -137,29 +136,36 @@ Ergebnis:
 - native Vorschau ueber `Windows.Data.Pdf` direkt aus der atomar erzeugten Ausgabedatei, neutrale RenderBounds, Previewtreffer und skalierendes Overlay nachgewiesen,
 - PDF Save/Load, Einzel-/Gesamtverwerfen, Einzel-/Gesamtreset, Vorschau aktuell/veraltet sowie getrennte UI-/PDF-Profile nachgewiesen,
 - echter Zwei-Prozess-Neustart fuer UI- und PDF-Layout sowie Vorschau-/Ausgabeseitenzahl mit `--ui-pdf-end-to-end-diagnostic` und Exitcode 0 nachgewiesen,
+- native Manager-EXE nach `%LOCALAPPDATA%\UI-Editor-kit\Manager\app` veroeffentlicht und aus diesem Pfad sichtbar gestartet,
+- eigene Desktop-Verknuepfung erzeugt, geprueft und kontrolliert entfernt,
+- neuer vorbereiteter Ziel-App-Klon per Root und Projektdatei ausgewaehlt; App ohne Opt-in auf M79 verwiesen,
+- Sicherheits-/Schreibpruefung, deterministische Vorschau und ausdrueckliche Bestaetigung nachgewiesen,
+- Installation, Update, Deinstallation, bekannte Apps, JSONL-Protokoll und Vertragsstatus nachgewiesen,
+- Installations- und Updatefehler mit vollstaendigem Rollback sowie bytegleichen Projekt-, Fremd- und Profildateien nachgewiesen,
+- Ziel-App und gemeinsamer UI-/PDF-Editor gestartet; UI-/PDF-Neustart-/Restore-Nachweis Exitcode 0,
 - keine temporaeren Speicherdateien sowie keine Node- oder WPF-Prozesse zurueckgelassen.
 
 ## 7. Aktueller offener Meilenstein
 
-### M78 - Zentraler Windows-Manager und Installer
+### M79 - Bestehende Apps registrieren
 
 Status: `[ ] offen`
 
 Ziel:
 
-- zentrale lokale Verwaltung registrierter Ziel-Apps,
-- Start-, Auswahl- und Installationsfluss gemaess M78-Auftrag,
-- Wiederverwendung des in M73 bis M77 abgenommenen gemeinsamen Editors.
+- kontrollierte Nachruestung bestehender Apps ueber Frameworkadapter und bestaetigte Registrierungsvorschlaege,
+- stabile Registry- und HostAdapter-Erzeugung ohne blinde Entscheidungen,
+- Vorschau, Vertragscheck und vollstaendiges Rollback.
 
 Nicht-Ziele:
 
-- kein M79-Registrationslauf fuer bestehende Apps und keine automatische Elementerkennung.
+- kein Browser-, Netzwerk- oder Cloudbetrieb und keine unbestaetigte Fach-/Quellcodeaenderung.
 
-Abnahme nur, wenn alle Kriterien aus `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` fuer M78 erfuellt und praktisch nachgewiesen sind.
+M79 ist offen, aber noch nicht begonnen oder gebaut.
 
 ## 8. Naechster Auftrag
 
-Der naechste Bauauftrag ist ausschliesslich M78. M73 bis M77 bleiben abgenommen; der M79-Registrationslauf bleibt bis zur Abnahme von M78 gesperrt.
+Der naechste Bauauftrag ist ausschliesslich M79. M73 bis M78 bleiben abgenommen.
 
 ## 9. Statuswerte
 

@@ -1,0 +1,4 @@
+# M78 ist ein eigenstaendiges natives .NET/WPF-Produkt und wird reproduzierbar per
+# dotnet publish bereitgestellt, nicht als Bestandteil des neutralen npm-Kernpakets.
+windows-manager/
+UIEditorKit.slnx

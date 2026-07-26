@@ -233,6 +233,8 @@ UI und PDF koennen in derselben Referenz-Ziel-App vollstaendig bearbeitet werden
 
 ## M78 - Zentraler Windows-Manager und Installer
 
+Status: abgenommen. Der native WPF-Manager wurde aus LocalAppData mit Desktop-Verknuepfung praktisch nachgewiesen; Opt-in-Pruefung, Vorschau/Bestaetigung, Installation, Update, Rollback, Deinstallation, bekannte Apps sowie Ziel-App-/Editorstart sind gruen.
+
 ### Ziel
 
 Der Editor wird ueber ein Desktop-Icon gestartet und bindet eine neue Ziel-App kontrolliert an.
@@ -279,7 +281,7 @@ Erst nach Fertigstellung des Editors fuer neue Apps wird die Nachruestung besteh
 
 ### Abnahmekriterien
 
-Werden erst nach Abnahme von M78 detailliert festgeschrieben. Bis dahin ist M79 gesperrt.
+M78 ist abgenommen. M79 ist damit als naechster Meilenstein offen, aber noch nicht begonnen oder gebaut.
 
 ## 6. Feste Abnahmereihenfolge
 
@@ -322,6 +324,6 @@ Aktuell spaeter vorgesehen:
 
 Der naechste Bauauftrag ist ausschliesslich:
 
-> M78 - Zentraler Windows-Manager und Installer.
+> M79 - Bestehende Apps registrieren.
 
-M73 bis M77 sind abgenommen. Der gemeinsame native UI-/PDF-Editor verwendet weiterhin die getrennten Registry-, HostAdapter-, Prozess-, Session- und Persistenzvertraege. M78 ist der naechste offene Meilenstein; der Registrationslauf bleibt bis M79 gesperrt.
+M73 bis M78 sind abgenommen. Der gemeinsame native UI-/PDF-Editor und der kontrollierte Manager fuer ausdruecklich vorbereitete Apps verwenden weiterhin die getrennten Registry-, HostAdapter-, Prozess-, Session- und Persistenzvertraege. M79 ist der naechste offene Meilenstein.
