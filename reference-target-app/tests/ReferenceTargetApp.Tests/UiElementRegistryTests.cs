@@ -80,6 +80,13 @@ public sealed class UiElementRegistryTests
     {
         StaTest.Run(() =>
         {
+            var editableScope = new UiElementRegistry([
+                new("scope", "scope", null, UiElementKind.Scope, "Scope", 0,
+                    UiCapability.Width | UiCapability.Height | UiCapability.Visibility, new Border())
+            ]);
+            Assert.AreEqual(
+                UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
+                editableScope.FindById("scope")?.Capabilities);
             AssertInvalid(UiRegistryValidationErrorCode.InvalidCapability, [
                 new("scope", "scope", null, UiElementKind.Scope, "Scope", 0, UiCapability.Position, new Border())
             ]);

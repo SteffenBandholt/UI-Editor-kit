@@ -176,6 +176,8 @@ Die Ziel-App ist Eigentümerin und einzige Wahrheitsquelle ihrer Registry. Der E
 
 Jeder Scope liefert `scopeId`, `status`, `inventoryStatus`, `expectedElementIds` und seine Elemente. Jeder Eintrag liefert zusätzlich zu den bisherigen Pflichtfeldern einen stabilen `semanticKey`, `registrationStatus`, `refKey`, `referenceResolved`, seine Baseline und Capabilities. Vollständige Scopes brauchen genau einen Root, lückenloses erwartetes Inventar, eindeutige IDs, valide Parents ohne Zyklen, auflösbare Refs, konsistente Capabilities und gesperrte Fachaktionen. Nur vollständige Scopes dürfen aktiv sein.
 
+Ein Scope-Root darf ausdrücklich `resizeWidth`, `resizeHeight` und `setVisibility` freigeben, wenn der Ziel-App-Layoutvertrag den sichtbaren Root selbst als festen Bereich behandelt. `move` sowie Textoperationen sind am Scope-Root nicht zulässig. Fehlt die ausdrückliche Freigabe, bleibt der Root ein nicht editierbarer Strukturknoten.
+
 Registryversion und deterministischer SHA-256-Fingerprint werden gemeinsam geprüft. Der Fingerprint umfasst die sortierte Layout-/Vertragsstruktur, niemals Fachwerte, aktuelle Eingaben, Kundendaten, dynamische Zeilen oder aktuelle Fachstatuswerte.
 
 Vor jedem Öffnen und Fokussieren sowie nach `registryChanged`, `registryStatusChanged`, `scopeAdded`, `scopeChanged` oder `scopeRemoved` fordert der Editor die Registry neu an. Ungültige Refreshdaten überschreiben keinen gültigen Stand. Ungespeicherte Änderungen blockieren einen Strukturwechsel. Stabile IDs behalten kompatible Profilwerte; neue IDs starten mit Baseline; entfernte IDs werden nicht angewendet; Parent- oder Bedeutungsänderungen verlangen eine ausdrückliche Migration; entfallene Capabilities entfernen unzulässige Profilwerte.
