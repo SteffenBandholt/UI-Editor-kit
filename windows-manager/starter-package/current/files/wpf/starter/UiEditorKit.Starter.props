@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+    <Compile Include=".ui-editor-kit\starter\wpf\*.cs" Link="UiEditorKit\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

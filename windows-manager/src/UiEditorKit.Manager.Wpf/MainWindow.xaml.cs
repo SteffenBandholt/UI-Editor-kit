@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly TargetProcessLauncher launcher = new();
     private readonly TargetInstallationService installer;
     private readonly ExistingAppRegistrationService registrationService;
+    private readonly StarterPackageService starterService;
     private TargetCheckResult? check;
     private InstallationPlan? preview;
     private ExistingAppAnalysis? registrationAnalysis;
@@ -26,6 +27,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? analysisCancellation;
     private bool uninstallPreview;
     private bool registrationUninstallPreview;
+    private StarterInstallationPlan? starterPreview;
+    private bool starterUninstallPreview;
     private bool operationInProgress;
     private RegisteredTargetEditorSession? registeredEditorSession;
     private System.Diagnostics.Process? registeredEditorTargetProcess;
@@ -35,6 +38,7 @@ public partial class MainWindow : Window
         InitializeComponent(); paths.Ensure(); inspector = new(paths); store = new(paths); logger = new(paths);
         installer = new(paths, inspector, new LocalPackageCatalog(Path.Combine(AppContext.BaseDirectory, "packages", "current")));
         registrationService = new(paths);
+        starterService = new(new StarterPackageCatalog(Path.Combine(AppContext.BaseDirectory, "starter-package", "current")));
         Loaded += async (_, _) => await RefreshAsync();
         Closed += async (_, _) => await StopRegisteredEditorAsync();
     }
@@ -52,7 +56,15 @@ public partial class MainWindow : Window
         var package = await new LocalPackageCatalog(Path.Combine(AppContext.BaseDirectory, "packages", "current")).LoadAsync();
         PackageVersionText.Text = package.Package?.PackageVersion ?? "nicht verfügbar";
     }
-    private async Task SelectAsync(string path) { RootText.Text = path; await CheckAsync(path, true); }
+    private async Task SelectAsync(string path)
+    {
+        RootText.Text = path;
+        if (string.IsNullOrWhiteSpace(StarterDisplayNameText.Text)) StarterDisplayNameText.Text = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar));
+        if (string.IsNullOrWhiteSpace(StarterApplicationIdText.Text)) StarterApplicationIdText.Text = Slug(StarterDisplayNameText.Text);
+        var detected = StarterPackageService.DetectFramework(File.Exists(path) ? Path.GetDirectoryName(path)! : path);
+        if (detected is StarterFrameworks.Wpf or StarterFrameworks.Electron) SelectStarterFramework(detected);
+        await CheckAsync(path, true);
+    }
     private async void SelectFolder_Click(object sender, RoutedEventArgs e) { var dialog = new OpenFolderDialog { Title = "Vorbereitete Ziel-App auswählen", Multiselect = false }; if (dialog.ShowDialog(this) == true) await SelectAsync(dialog.FolderName); }
     private async void SelectProject_Click(object sender, RoutedEventArgs e) { var dialog = new OpenFileDialog { Title = "Deklarierte Projektdatei auswählen", Filter = ".NET-Projekte (*.slnx;*.sln;*.csproj)|*.slnx;*.sln;*.csproj", Multiselect = false }; if (dialog.ShowDialog(this) == true) await SelectAsync(dialog.FileName); }
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
@@ -96,6 +108,195 @@ public partial class MainWindow : Window
     private async void StartEditor_Click(object sender, RoutedEventArgs e) { if (check?.Manifest is null) return; var result = launcher.Start(check.TargetRoot, check.Manifest.EditorStart, true); Show(result); await LogAsync(ManagerOperation.StartEditor, result); }
     private async void Remove_Click(object sender, RoutedEventArgs e) { if (check?.Manifest is null || check.Installation is not null || check.Registration is not null) { Show(ManagerResult.Fail("remove_blocked", "Installierte oder registrierte Apps müssen zuerst deinstalliert werden.")); return; } await store.RemoveAsync(check.Manifest.ApplicationId, check.TargetRoot); await RefreshAsync(); }
     private async void AppsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (AppsList.SelectedItem is KnownTargetApp app) await SelectAsync(app.RootPath); }
+
+    private async void PrepareNewApp_Click(object sender, RoutedEventArgs e) => await PrepareStarterAsync(StarterIntegrationModes.NewApp);
+
+    private async void RetrofitExistingApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await EnsureStarterRootAsync("Bestehende App mit Quellcode auswaehlen")) return;
+        var framework = StarterPackageService.DetectFramework(RootText.Text);
+        if (framework is not (StarterFrameworks.Wpf or StarterFrameworks.Electron))
+        {
+            Show(ManagerResult.Fail(ManagerErrorCodes.StarterFrameworkUnsupported, "Nur belegte WPF- und Electron-Adapter werden angeboten."));
+            return;
+        }
+        SelectStarterFramework(framework);
+        await PrepareStarterAsync(StarterIntegrationModes.ExistingApp, false);
+    }
+
+    private async Task PrepareStarterAsync(string integrationMode, bool selectRoot = true)
+    {
+        if (selectRoot && !await EnsureStarterRootAsync(integrationMode == StarterIntegrationModes.NewApp ? "Neue oder leere App auswaehlen" : "Bestehende App auswaehlen")) return;
+        InvalidateStarterPreview();
+        var result = await starterService.PreviewAsync(StarterRequest(integrationMode));
+        starterPreview = result.Plan; starterUninstallPreview = false; StarterPlanGrid.ItemsSource = starterPreview?.Files;
+        if (starterPreview is null) { Show(result.Result); return; }
+        StarterStatusText.Text = StarterPreviewSummary(starterPreview);
+        var confirmed = MessageBox.Show(StarterPreviewMessage(starterPreview), "App-Starterpaket-Vorschau ausdruecklich bestaetigen",
+            MessageBoxButton.YesNo, starterPreview.CanExecute ? MessageBoxImage.Question : MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        StarterInstallButton.IsEnabled = confirmed && starterPreview.CanExecute;
+        Show(confirmed ? result.Result : ManagerResult.Ok("starter_preview_not_confirmed", "Vorschau blieb unbestaetigt; keine Datei wurde veraendert."));
+    }
+
+    private async void StarterInstall_Click(object sender, RoutedEventArgs e)
+    {
+        if (starterPreview is null || starterUninstallPreview) return;
+        operationInProgress = true;
+        try
+        {
+            var result = await starterService.InstallOrUpdateAsync(starterPreview, true);
+            await LogAsync(starterPreview.Files.Any(item => item.Action == InstallationAction.Update) ? ManagerOperation.Update : ManagerOperation.Install, result);
+            if (result.Success) { InvalidateStarterPreview(); await ShowStarterStatusAsync(); }
+        }
+        finally { operationInProgress = false; }
+    }
+
+    private async void CheckStarterStatus_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await EnsureStarterRootAsync("Ziel-App fuer Registrierungsstatus auswaehlen")) return;
+        await ShowStarterStatusAsync();
+    }
+
+    private async Task ShowStarterStatusAsync()
+    {
+        var status = await starterService.InspectAsync(RootText.Text);
+        SelectStarterFramework(status.Framework);
+        StarterDisplayNameText.Text = status.DisplayName;
+        if (status.Manifest is not null) StarterApplicationIdText.Text = status.Manifest.ApplicationId;
+        StarterStatusText.Text = string.Join(Environment.NewLine,
+            $"App: {status.DisplayName}  -  Pfad: {status.TargetRoot}",
+            $"Framework: {status.Framework}  -  Integration: {status.IntegrationMode}  -  Adapter: {status.AdapterStatus}",
+            $"Vertrag: {status.ContractStatus}  -  Registry: {status.RegistryStatus} v{status.RegistryVersion}  -  Fingerprint: {status.RegistryFingerprint}",
+            $"UI: {status.UiCapability}  -  PDF: {status.PdfCapability}",
+            $"Starterpaket: installiert {status.InstalledPackageVersion ?? " - "} / verfuegbar {status.AvailablePackageVersion}",
+            $"Git: {(status.GitRepository ? status.GitSafe ? "sicher" : "Konflikt" : "kein Repository")}  -  Schreiben: {(status.Writable ? "moeglich" : "blockiert")}",
+            "Scopes: " + (status.Scopes.Count == 0 ? "keine vollstaendige Registry" : string.Join(", ", status.Scopes.Select(scope => $"{scope.ScopeId}={scope.Status}"))),
+            "Naechste Aktion: " + status.NextAction);
+        Show(status.ContractStatus == "valid" ? ManagerResult.Ok("starter_status_valid", status.NextAction) :
+            ManagerResult.Fail(ManagerErrorCodes.ContractCheckFailed, status.NextAction));
+    }
+
+    private async void OpenStarterEditor_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await EnsureStarterRootAsync("Ziel-App fuer UI-/PDF-Editor auswaehlen")) return;
+        var status = await starterService.InspectAsync(RootText.Text);
+        if (status.ContractStatus != "valid" || status.Manifest?.ActiveScopes.Count == 0)
+        {
+            Show(ManagerResult.Fail(ManagerErrorCodes.RegistrationRegistryInvalid,
+                "Der Editor bleibt blockiert: Es ist noch kein vollstaendiger gueltiger Scope freigegeben. " + status.NextAction));
+            return;
+        }
+        if (status.Framework == StarterFrameworks.Wpf && status.IntegrationMode == StarterIntegrationModes.ExistingApp)
+        {
+            RegistrationStartEditor_Click(sender, e); return;
+        }
+        if (status.Framework == StarterFrameworks.Electron && StarterPackageService.HasEquivalentExistingIntegration(status.TargetRoot, status.Framework))
+        {
+            var start = new System.Diagnostics.ProcessStartInfo("npm.cmd") { WorkingDirectory = status.TargetRoot, UseShellExecute = true };
+            start.ArgumentList.Add("start"); start.ArgumentList.Add("--"); start.ArgumentList.Add("--open-ui-editor");
+            try { System.Diagnostics.Process.Start(start); Show(ManagerResult.Ok("starter_editor_target_started", "Electron-Ziel-App startet und oeffnet ihren vorhandenen lokalen UI-/PDF-Editor.")); }
+            catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+            { Show(ManagerResult.Fail(ManagerErrorCodes.EditorStartFailed, "Electron-Ziel-App konnte nicht gestartet werden: " + exception.Message)); }
+            return;
+        }
+        Show(ManagerResult.Fail(ManagerErrorCodes.EditorStartFailed, "Der Frameworkadapter ist vorhanden, aber die Ziel-App muss ihren lokalen Editorstart noch nach Definition of Done anbinden."));
+    }
+
+    private async void StarterUninstallPreview_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await EnsureStarterRootAsync("Ziel-App fuer Deinstallation auswaehlen")) return;
+        var result = await starterService.UninstallPreviewAsync(RootText.Text);
+        starterPreview = result.Plan; starterUninstallPreview = true; StarterPlanGrid.ItemsSource = starterPreview?.Files;
+        if (starterPreview is null) { Show(result.Result); return; }
+        var confirmed = MessageBox.Show(StarterPreviewMessage(starterPreview), "App-Starterpaket-Deinstallation ausdruecklich bestaetigen",
+            MessageBoxButton.YesNo, starterPreview.CanExecute ? MessageBoxImage.Question : MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        StarterUninstallButton.IsEnabled = confirmed && starterPreview.CanExecute;
+        Show(confirmed ? result.Result : ManagerResult.Ok("starter_uninstall_not_confirmed", "Deinstallation blieb unbestaetigt."));
+    }
+
+    private async void StarterUninstall_Click(object sender, RoutedEventArgs e)
+    {
+        if (starterPreview is null || !starterUninstallPreview) return;
+        operationInProgress = true;
+        try
+        {
+            var result = await starterService.UninstallAsync(starterPreview, true);
+            await LogAsync(ManagerOperation.Uninstall, result);
+            if (result.Success) { InvalidateStarterPreview(); await ShowStarterStatusAsync(); }
+        }
+        finally { operationInProgress = false; }
+    }
+
+    private void StarterPlanGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        StarterExactDiffText.Text = StarterPlanGrid.SelectedItem is StarterPlanFile item ? item.ExactDiff ?? "Keine bestehende Textdateiaenderung." : string.Empty;
+
+    private async Task<bool> EnsureStarterRootAsync(string title)
+    {
+        var root = File.Exists(RootText.Text) ? Path.GetDirectoryName(RootText.Text)! : RootText.Text;
+        if (Directory.Exists(root)) { RootText.Text = Path.GetFullPath(root); return true; }
+        var dialog = new OpenFolderDialog { Title = title, Multiselect = false };
+        if (dialog.ShowDialog(this) != true) return false;
+        await SelectAsync(dialog.FolderName); return true;
+    }
+
+    private StarterPreparationRequest StarterRequest(string integrationMode)
+    {
+        var name = StarterDisplayNameText.Text.Trim();
+        var applicationId = StarterApplicationIdText.Text.Trim();
+        if (string.IsNullOrWhiteSpace(name)) name = Path.GetFileName(RootText.Text.TrimEnd(Path.DirectorySeparatorChar));
+        if (string.IsNullOrWhiteSpace(applicationId)) applicationId = Slug(name);
+        StarterDisplayNameText.Text = name; StarterApplicationIdText.Text = applicationId;
+        return new(RootText.Text, name, applicationId, SelectedStarterFramework(), integrationMode,
+            StarterUiEnabledCheck.IsChecked == true, StarterPdfEnabledCheck.IsChecked == true, StarterProfileRootText.Text.Trim());
+    }
+
+    private string SelectedStarterFramework() => StarterFrameworkCombo.SelectedItem is ComboBoxItem item && item.Tag is string value ? value : StarterFrameworks.Wpf;
+    private void SelectStarterFramework(string framework)
+    {
+        foreach (var item in StarterFrameworkCombo.Items.OfType<ComboBoxItem>()) if (string.Equals(item.Tag?.ToString(), framework, StringComparison.Ordinal)) { StarterFrameworkCombo.SelectedItem = item; break; }
+    }
+    private static string Slug(string value)
+    {
+        var slug = new string(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+        while (slug.Contains("--", StringComparison.Ordinal)) slug = slug.Replace("--", "-", StringComparison.Ordinal);
+        slug = slug.Trim('-'); return slug.Length < 3 ? "app." + (slug.Length == 0 ? "neu" : slug) : slug;
+    }
+
+    internal void ShowM82DiagnosticState(StarterInstallationPlan? plan, StarterTargetStatus? status, string step)
+    {
+        if (plan is not null)
+        {
+            RootText.Text = plan.TargetRoot;
+            StarterDisplayNameText.Text = plan.Request.DisplayName;
+            StarterApplicationIdText.Text = plan.Request.ApplicationId;
+            SelectStarterFramework(plan.Request.Framework);
+            StarterPlanGrid.ItemsSource = plan.Files;
+            StarterStatusText.Text = step + Environment.NewLine + StarterPreviewSummary(plan);
+        }
+        else if (status is not null)
+        {
+            RootText.Text = status.TargetRoot;
+            StarterDisplayNameText.Text = status.DisplayName;
+            SelectStarterFramework(status.Framework);
+            StarterStatusText.Text = string.Join(Environment.NewLine, step,
+                $"Framework: {status.Framework} / Modus: {status.IntegrationMode}",
+                $"Vertrag: {status.ContractStatus} / Registry: {status.RegistryStatus} v{status.RegistryVersion}",
+                $"UI: {status.UiCapability} / PDF: {status.PdfCapability}",
+                "Scopes: " + (status.Scopes.Count == 0 ? "keine" : string.Join(", ", status.Scopes.Select(scope => scope.ScopeId + "=" + scope.Status))),
+                "Naechste Aktion: " + status.NextAction);
+        }
+    }
+    private static string StarterPreviewSummary(StarterInstallationPlan plan) =>
+        $"Modus: {plan.Request.IntegrationMode}  -  Framework: {plan.Request.Framework}  -  Paket: {plan.PackageVersion}  -  " +
+        $"Neu {plan.Files.Count(item => item.Action == InstallationAction.Create)}, Aendern {plan.Files.Count(item => item.Action == InstallationAction.Update)}, " +
+        $"Unveraendert {plan.Files.Count(item => item.Action == InstallationAction.Unchanged)}, Konflikte {plan.Blockers.Count}  -  Git: {plan.GitStatus}";
+    private static string StarterPreviewMessage(StarterInstallationPlan plan) => StarterPreviewSummary(plan) + Environment.NewLine + Environment.NewLine +
+        "Ownership, Hashes, exakte Diffs, Backupbedarf und Rollbackplan sind in der Vorschau sichtbar. Fortfahren?";
+    private void InvalidateStarterPreview()
+    {
+        starterPreview = null; starterUninstallPreview = false; StarterPlanGrid.ItemsSource = null; StarterExactDiffText.Clear();
+        StarterInstallButton.IsEnabled = false; StarterUninstallButton.IsEnabled = false;
+    }
 
     private async void AnalyzeExisting_Click(object sender, RoutedEventArgs e)
     {

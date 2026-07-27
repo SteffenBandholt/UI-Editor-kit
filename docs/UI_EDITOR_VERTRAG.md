@@ -183,3 +183,6 @@ Registryversion und deterministischer SHA-256-Fingerprint werden gemeinsam gepr�
 Vor jedem Öffnen und Fokussieren sowie nach `registryChanged`, `registryStatusChanged`, `scopeAdded`, `scopeChanged` oder `scopeRemoved` fordert der Editor die Registry neu an. Ungültige Refreshdaten überschreiben keinen gültigen Stand. Ungespeicherte Änderungen blockieren einen Strukturwechsel. Stabile IDs behalten kompatible Profilwerte; neue IDs starten mit Baseline; entfernte IDs werden nicht angewendet; Parent- oder Bedeutungsänderungen verlangen eine ausdrückliche Migration; entfallene Capabilities entfernen unzulässige Profilwerte.
 
 Die vollständige Entwurfsentscheidung steht in `docs/M80_1_BESTANDSAPP_REGISTRY_REFRESH_ENTWURFSENTSCHEIDUNG.md`.
+# M82 - App-Starterpaket
+
+Vor der ersten UI-Entwicklung einer neuen App wird das versionierte App-Starterpaket installiert. Eine bestehende App beginnt im nativen Manager mit **Bestehende App nachruesten**. Das Schema-2-Zielmanifest deklariert Framework, Integrationsmodus, Adapter, Registry-/Capabilitystatus und Ownership. `development`, `registrationRequired` und unvollstaendige Scopes sind nicht editorfaehig. Der Editor erkennt weiterhin keine UI; der M80.1-Refreshvertrag bleibt vor jedem Oeffnen/Fokussieren fuehrend. Details: `APP_STARTERPAKET.md` und `APP_STARTERPAKET_MANIFESTVERTRAG.md`.

@@ -64,6 +64,14 @@ public static class ManagerErrorCodes
     public const string RegistrationUninstallRollbackFailed = "registration_uninstall_rollback_failed";
     public const string RegistrationTargetStartFailed = "registration_target_start_failed";
     public const string RegistrationEditorStartFailed = "registration_editor_start_failed";
+    public const string StarterPackageInvalid = "starter_package_invalid";
+    public const string StarterFrameworkUnsupported = "starter_framework_unsupported";
+    public const string StarterSourceMissing = "starter_source_missing";
+    public const string StarterPreviewStale = "starter_preview_stale";
+    public const string StarterInstallFailed = "starter_install_failed";
+    public const string StarterRollbackFailed = "starter_rollback_failed";
+    public const string StarterUninstallConflict = "starter_uninstall_conflict";
+    public const string StarterAlreadyIntegrated = "starter_existing_integration_detected";
 }
 
 public sealed record TargetStartConfiguration(string Kind, string Project, string? Executable, IReadOnlyList<string> Arguments);

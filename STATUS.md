@@ -15,7 +15,7 @@ Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Ed
 - Inkompatible oder beschädigte Originale werden vor Baseline/Migration byte-identisch und kollisionssicher mit technischer Metadaten-Sidecar-Datei archiviert; Abbruch und Archivfehler verändern das Original nicht.
 - Nur unveränderte vollständig validierte Scopes dürfen sicher migriert werden; Parent-, Rollen-, Capability-, Element- oder Schemaänderungen werden nicht geraten.
 - Ein erfolgreicher, vom Zielsystem normalisierter Restore startet sauber, ohne falsches Dirty und ohne Autosave. Save, echter Prozessneustart, PDF-Restore, Element-/Gesamtreset und Discard wurden praktisch geprüft.
-- Keine neue Registry-, Layout-, PDF- oder Fachfunktion; M82 bleibt offen und wurde nicht begonnen.
+- Keine neue Registry-, Layout-, PDF- oder Fachfunktion; die damalige Folgeaufgabe M82 ist inzwischen getrennt abgeschlossen.
 - Entwurfsentscheidung: `docs/M81_1_PROFIL_RESTORE_ENTWURFSENTSCHEIDUNG.md`.
 
 ### M81 – BBM-PDF an den bestehenden PDF-Arbeitsbereich angebunden
@@ -25,7 +25,7 @@ Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Ed
 - Die reale BBM-Protokoll-PDF wird über den vorhandenen Druck-/Paginierungs-/`printToPDF`-Pfad erzeugt und anschließend im nativen Editor zurückgelesen; kein zweiter Core, Renderer oder Profilpfad wurde eingeführt.
 - Titel, Label/Wert, TOP-Tabelle mit drei Spalten, Kopf-/Fuß- und Wiederholungsbereiche sind capability-gesteuert bearbeitbar. Fachwerte, Fachaktionen, Dateioperationen und Druckausführung bleiben gesperrt.
 - Sichtbar geprüft: 28 Registry-Elemente, dreiseitige reale PDF, Livezustand/veraltete Vorschau, Regeneration, Save/Neustart-Restore, Reset, Discard und vollständiger Rollback bei ungültiger Spaltensumme.
-- M82 bleibt offen und wurde nicht begonnen.
+- Die damalige Folgeaufgabe M82 ist inzwischen getrennt abgeschlossen.
 - Entwurfsentscheidung: `docs/M81_BBM_PDF_ADAPTER_ENTWURFSENTSCHEIDUNG.md`.
 
 ### M80.2 – Restarbeiten-Header und Editbox direkt editierbar
@@ -36,7 +36,7 @@ Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Ed
 - Die lange Hauptliste bleibt flexibler Scrollbereich und wird nicht mehr über eine gespeicherte Split-Höhe gesteuert.
 - UI-Editor-kit-Prüfungen sind grün: 88 Manager-Tests, 51 Ziel-App-Tests, `npm test`, Pack-Dry-Run und Release-Check. Die gepackte BBM-Abnahme deckt Refresh, Markierung, Save/Restore, Reset, Discard, Rollback und Einzelinstanz ab.
 - M80.2a beseitigt die BBM-Abschlussblocker durch feste Child-Prozess-Testgruppen und einen koordinierten Node-/Electron-ABI-Wechsel mit Wiederherstellung im Fehlerpfad; das UI-Editor-kit selbst wurde dabei funktional nicht geändert.
-- M81 ist abgenommen; M82 bleibt offen.
+- M81 ist abgenommen; die damalige Folgeaufgabe M82 ist inzwischen getrennt abgeschlossen.
 - Entwurfsentscheidung: `docs/M80_2_RESTARBEITEN_HEADER_EDITBOX_ENTWURFSENTSCHEIDUNG.md`.
 
 Sie wird direkt gegen `docs/EDITOR_GESAMT_LV.md` und `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` gefuehrt.
@@ -79,7 +79,7 @@ Die feste Reihenfolge lautet:
 12. M81.1 - sicherer Profil-Restore für bestehende Ziel-Apps,
 13. M82 - App-Starterpaket.
 
-M73 bis M81.1 sind abgenommen. M82 bleibt offen und wurde nicht begonnen.
+M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 
 ## 4. Produktstand
 
@@ -237,9 +237,9 @@ Nicht-Ziele:
 
 M79 ist fuer den belegten SDK-basierten C#-/WPF-Erstframeworkadapter vollstaendig gebaut, automatisch geprueft und praktisch abgenommen. Weitere Frameworks wurden nicht vorgetaeuscht.
 
-## 8. Naechster Auftrag
+## 8. Meilensteinabschluss
 
-M81 und M81.1 sind abgenommen. M82 `App-Starterpaket` bleibt offen und wurde nicht begonnen.
+M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 
 ## 9. Statuswerte
 
@@ -248,3 +248,11 @@ M81 und M81.1 sind abgenommen. M82 `App-Starterpaket` bleibt offen und wurde nic
 - `[x]` gebaut
 - `[A]` abgenommen
 - `[S]` gesperrt
+# M82 - App-Starterpaket und zentraler Einstieg
+
+- Status: `[A]`; Implementierung, Pflichtpruefungen und sichtbare native Abnahme sind abgeschlossen.
+- Versioniertes `App-Starterpaket` mit gemeinsamem Regelkern sowie WPF-/Electron-Geruesten ist angelegt.
+- Der vorhandene native Manager bietet getrennte Ablaeufe fuer neue/bestehende Apps, Registrierungsstatus und Editorstart.
+- Schema-2-Manifest, Paket-SHA-256, Git-/Fremddateischutz, Vorschau/Bestaetigung, atomare Installation, Rollback, Update und Deinstallation sind implementiert.
+- Neue Apps beginnen ehrlich mit `development` und ohne aktive Scopes. Bestehende WPF-Apps verweisen auf M79; BBM wird als bereits angebundene Electron-App ohne Doppelinstallation erkannt.
+- Die sichtbare M82-Diagnose belegt neue WPF-/Electron-Apps, erste explizit registrierte Test-UIs, die WPF-Test-UI mit vorhandenem Editor, den vollstaendigen M79-Bestandsweg, BBM-Bestand und lokalen Electron-Editorstart, Update, Deinstallation, Profilerhalt sowie Installations-/Update-Rollback. Alle Pflichtpruefungen sind gruen; der bekannte globale BBM-Lint-Altstand bleibt getrennt dokumentiert.

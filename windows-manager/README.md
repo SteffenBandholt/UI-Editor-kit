@@ -13,6 +13,14 @@ Die Veröffentlichung liegt unter `%LOCALAPPDATA%\UI-Editor-kit\Manager\app`. Da
 
 ## Bereitstellung und Diagnose
 
+Die sichtbare M82-Abnahme fuer das versionierte App-Starterpaket lautet:
+
+```powershell
+windows-manager/scripts/run-app-starter-package-diagnostic.ps1
+```
+
+Sie verwendet denselben publizierten Manager und prueft neue WPF-/Electron-Apps, die koordinierte WPF-M79-Manifestuebergabe, BBM als bereits angebundene Electron-App sowie Transaktion, Rollback, Update, Deinstallation und Profilerhalt. Details stehen in [M82-Diagnose](../docs/M82_DIAGNOSE.md).
+
 `windows-manager/scripts/run-manager-installer-diagnostic.ps1` veröffentlicht die Manager-EXE nach LocalAppData und startet dort `UiEditorManager.exe --manager-installer-diagnostic`. Der sichtbare Nachweis erzeugt und prüft eine benutzerspezifische Verknüpfung `UI-Editor Manager.lnk`, verwendet einen sauberen neuen Ziel-App-Klon plus explizites Opt-in-Manifest und entfernt Verknüpfung, Fixture, Staging und Backups wieder.
 
 Die Diagnose deckt Auswahl per Ordner und Projektdatei, Ablehnung ohne Opt-in, Schreibprobe, Vorschau/Bestätigung, Installation, provozierten Installations- und Updatefehler, Rollback, Update, Ziel-App-/Editorstart, UI-/PDF-Restore und Deinstallation ab. Layoutprofile und fremde Schutzdateien werden per SHA-256 als bytegleich bestätigt.

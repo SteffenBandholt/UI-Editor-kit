@@ -233,8 +233,14 @@ public sealed class TargetAppInspector(ManagerPaths managerPaths)
             if (!File.Exists(manifestPath)) return new(false, ManagerErrorCodes.TargetNotM78Compatible,
                 "Kein M78-Opt-in-Manifest vorhanden; diese App benötigt M79.", root, manifestPath,
                 TargetContractStatus.NotSuitable, null, null, false, now);
-            await using var stream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
-            var manifest = await JsonSerializer.DeserializeAsync<TargetAppManifest>(stream, ManagerJson.Options, cancellationToken);
+            var manifestBytes = await File.ReadAllBytesAsync(manifestPath, cancellationToken);
+            using var manifestDocument = JsonDocument.Parse(manifestBytes);
+            if (!manifestDocument.RootElement.TryGetProperty("schemaVersion", out var schemaProperty) || !schemaProperty.TryGetInt32(out var schemaVersion))
+                return new(false, ManagerErrorCodes.TargetManifestInvalid, "schemaVersion fehlt oder ist ungueltig.", root,
+                    manifestPath, TargetContractStatus.NotSuitable, null, null, false, now);
+            var manifest = schemaVersion == StarterTargetContract.SchemaVersion
+                ? JsonSerializer.Deserialize<StarterTargetManifest>(manifestBytes, ManagerJson.Options)?.ManagerTarget
+                : JsonSerializer.Deserialize<TargetAppManifest>(manifestBytes, ManagerJson.Options);
             var errors = TargetContractValidator.Validate(manifest);
             if (errors.Count > 0) return new(false, ManagerErrorCodes.TargetManifestInvalid, string.Join(" ", errors), root,
                 manifestPath, TargetContractStatus.NotSuitable, manifest, null, false, now);
