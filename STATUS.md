@@ -8,6 +8,17 @@
 
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
 
+### M80.2 – Restarbeiten-Header und Editbox direkt editierbar
+
+- Status: `[A] abgenommen`; sichtbare native Abnahme und stabilisierter BBM-Pflichtprüfungsblock sind grün.
+- Verhältnis-/Splitpfad wird aus der produktiven Registry entfernt und als gesperrter Alt-/Technikscope geführt.
+- Der tatsächliche Filter-Header wird mit 31 Elementen vollständig registriert; `restarbeiten.edit.root` wird direkt in Breite, Höhe und Sichtbarkeit bearbeitbar.
+- Die lange Hauptliste bleibt flexibler Scrollbereich und wird nicht mehr über eine gespeicherte Split-Höhe gesteuert.
+- UI-Editor-kit-Prüfungen sind grün: 88 Manager-Tests, 51 Ziel-App-Tests, `npm test`, Pack-Dry-Run und Release-Check. Die gepackte BBM-Abnahme deckt Refresh, Markierung, Save/Restore, Reset, Discard, Rollback und Einzelinstanz ab.
+- M80.2a beseitigt die BBM-Abschlussblocker durch feste Child-Prozess-Testgruppen und einen koordinierten Node-/Electron-ABI-Wechsel mit Wiederherstellung im Fehlerpfad; das UI-Editor-kit selbst wurde dabei funktional nicht geändert.
+- M81 und M82 bleiben offen.
+- Entwurfsentscheidung: `docs/M80_2_RESTARBEITEN_HEADER_EDITBOX_ENTWURFSENTSCHEIDUNG.md`.
+
 Sie wird direkt gegen `docs/EDITOR_GESAMT_LV.md` und `docs/EDITOR_FERTIGSTELLUNGSFAHRPLAN.md` gefuehrt.
 
 Kein neuer Bauauftrag ohne Meilenstein. Kein Haken ohne Nachweis. Kein naechster Meilenstein ohne Abnahme des vorherigen.
@@ -43,10 +54,11 @@ Die feste Reihenfolge lautet:
 7. M79 - bestehende Apps registrieren,
 8. M80 - Electron-Ziel-App-Vertrag und BBM-UI-Pilot,
 9. M80.1 - Bestands-App-Registrierung, Registry-Refresh und vollständige BBM-UI-Anbindung,
-10. M81 - BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich,
-11. M82 - App-Starterpaket.
+10. M80.2 - Restarbeiten-Header und Editbox direkt editierbar,
+11. M81 - BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich,
+12. M82 - App-Starterpaket.
 
-M73 bis M80.1 sind abgenommen. M81 ist der nächste offene Meilenstein; M82 bleibt offen.
+M73 bis M80.2 sind abgenommen. M81 und M82 bleiben offen und wurden nicht begonnen.
 
 ## 4. Produktstand
 
@@ -107,6 +119,7 @@ Nicht Bestandteil des Produkts sind Fachlogik, Fachdaten, ungepruefte automatisc
 | K12 / M79 | [A] | Kontrollierte Registrierung bestehender SDK-C#-/WPF-Apps mit bytegleicher read-only XAML-/Roslyn-Analyse, manuellen Proposals, IDs/Parents/Actionlocks, Registry-/HostAdapter-Generator, lokaler Pipe-Anbindung an den vorhandenen M77-Editor, exakter Vorschau, Git-Schutz, Installation, Reanalyse, Update, Rollback und Deinstallation | 88 Manager-Tests, kontrollierte Bestandsfixture und sichtbarer `--existing-app-registration-diagnostic`-Nachweis aus der veroeffentlichten EXE gruen |
 | K13 / M80 | [A] | Frameworkneutraler Electron-Ziel-App-Vertrag und BBM-UI-Pilot über denselben nativen Editor/Node-Core: Sichtbarkeit, getrennte Labels/Felder, explizite Registry/Refs, sichere lokale Pipe, ein Editorprozess, Profile und Rollback | npm-Gesamttests, 88 Manager- und 50 Referenz-App-Tests sowie sichtbarer Entwicklungs- und gepackter BBM-Ende-zu-Ende-Nachweis grün |
 | K14 / M80.1 | [A] | Frameworkneutraler Bestands-App-Status, deterministischer Registry-Fingerprint, Refresh bei Öffnen/Fokus/Laufzeitereignissen, capability-basierter Profilabgleich sowie vollständige und gesperrte Scope-Inventare | npm-Gesamttests, 88 Manager- und 51 Referenz-App-Tests sowie sichtbarer gepackter BBM-Ende-zu-Ende-Nachweis mit Registry-Reload, Dirty-Konflikt, Restore und Rollback grün |
+| K15 / M80.2 | [A] | Restarbeiten-Header vollständig registrieren, Editbox-Root direkt bearbeiten und lange Hauptliste ohne Splitüberlagerung scrollen | automatische Prüfungen, sichtbare native Abnahme und stabilisierter BBM-Pflichtprüfungsblock grün |
 
 ## 6. Letzter Abnahmenachweis
 
@@ -196,7 +209,7 @@ M79 ist fuer den belegten SDK-basierten C#-/WPF-Erstframeworkadapter vollstaendi
 
 ## 8. Naechster Auftrag
 
-M81 ist als nächster offener Meilenstein eingetragen: `BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich`. M82 `App-Starterpaket` bleibt ebenfalls offen. M73 bis M80.1 bleiben abgenommen.
+M80.2 ist abgenommen. M81 bleibt als offener Meilenstein `BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich`; M82 `App-Starterpaket` bleibt ebenfalls offen. Beide wurden nicht begonnen.
 
 ## 9. Statuswerte
 

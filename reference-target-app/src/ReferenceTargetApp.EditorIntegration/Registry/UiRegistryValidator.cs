@@ -138,7 +138,7 @@ internal static class UiRegistryValidator
 
     private static UiCapability GetAllowedCapabilities(UiElementKind kind) => kind switch
     {
-        UiElementKind.Scope => UiCapability.None,
+        UiElementKind.Scope => UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
         UiElementKind.Group or UiElementKind.Area or UiElementKind.FieldGroup =>
             UiCapability.Position | UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
         UiElementKind.Table => AllTextCapabilities,

@@ -293,6 +293,10 @@ Status: abgenommen. Der vorhandene native Editor wurde über einen frameworkneut
 
 Status: abgenommen. Der Bestands-App-Weg besitzt ein frameworkneutrales Statusmodell, Registryversion und deterministischen Fingerprint, vollständige Scope-Inventare, Refresh vor Öffnen/Fokus und bei Laufzeitereignissen sowie sicheren capability-basierten Profilabgleich. BBM liefert drei vollständige Restarbeiten-Scopes und führt alle nicht sicher inventarisierten produktiven Bereiche ausdrücklich als gesperrt. Automatisierte Prüfungen und der sichtbare gepackte BBM-Lauf belegen Registry-Reload, Dirty-Konfliktschutz, Restore, Reset, Discard und Rollback. Details stehen in `M80_1_BESTANDSAPP_REGISTRY_REFRESH_ENTWURFSENTSCHEIDUNG.md`.
 
+## M80.2 - Restarbeiten-Header und Editbox direkt editierbar
+
+Status: abgenommen. Der unnötige Verhältnis-/Splitpfad ist gesperrt, der tatsächliche Filter-Header vollständig registriert, `restarbeiten.edit.root` direkt größenfähig und die Hauptliste als flexibler Scrollbereich stabilisiert. Registryversion/Fingerprint, Altprofilabgleich und M73–M80.1-Regressionen sind grün. Die sichtbare native Abnahme und der durch M80.2a stabilisierte BBM-Pflichtprüfungsblock sind abgeschlossen. Details stehen in `M80_2_RESTARBEITEN_HEADER_EDITBOX_ENTWURFSENTSCHEIDUNG.md`.
+
 ## M81 - BBM-PDF-Anbindung
 
 Status: offen. Der nächste Meilenstein bindet BBM-PDF an den vorhandenen PDF-Arbeitsbereich an. M81 darf weder einen zweiten PDF-Core noch eine stillschweigende Änderung des BBM-Druck-/PDF-Fachwegs einführen.
@@ -314,8 +318,9 @@ Status: offen. Das Starterpaket soll neue Apps von Beginn an auf den in M80.1 fe
 | 7 | M79 | Bestehende Apps nachruesten |
 | 8 | M80 | Electron-Ziel-App-Vertrag und BBM-UI-Pilot |
 | 9 | M80.1 | Bestands-App-Registrierung und Registry-Refresh |
-| 10 | M81 | BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich |
-| 11 | M82 | App-Starterpaket |
+| 10 | M80.2 | Restarbeiten-Header/Editbox direkt, Liste flexibel |
+| 11 | M81 | BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich |
+| 12 | M82 | App-Starterpaket |
 
 ## 7. Pflichtnachweise je Meilenstein
 
@@ -339,4 +344,4 @@ M80 ist abgeschlossen. Electron ist ausschließlich für den belegten lokalen BB
 
 ## 9. Naechster verbindlicher Auftrag
 
-M73 bis M80.1 sind abgenommen. M81 ist der nächste verbindliche Auftrag: BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich. M82 App-Starterpaket bleibt offen. Der bestehende BBM-Druck-/PDF-Fachweg darf dabei nicht stillschweigend verändert werden.
+M73 bis M80.2 sind abgenommen. M81 und M82 bleiben offen und wurden nicht begonnen. Der bestehende BBM-Druck-/PDF-Fachweg darf nicht stillschweigend verändert werden.

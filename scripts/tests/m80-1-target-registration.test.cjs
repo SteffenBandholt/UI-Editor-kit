@@ -137,6 +137,35 @@ async function run() {
   assert.deepEqual(lessProfile.removedCapabilities["app.scope.field"], ["resizeWidth"], "17 entfallene Capability erkannt");
   assert.equal(Object.hasOwn(lessProfile.active["app.scope.field"], "width"), false, "17 alte Operation nicht angewendet");
 
+  const oldLayoutScope = completeScope("restarbeiten.layout.root", [
+    element("restarbeiten.layout.split", "area", "restarbeiten.layout.root.area", "layout", {
+      allowedOps: ["resizeHeight"],
+      baseline: { height: 420, minHeight: 180, maxHeight: 1200 },
+    }),
+  ]);
+  const stableEditScope = completeScope("restarbeiten.edit.root");
+  const oldM802 = snapshot({ version: 2, scopes: [oldLayoutScope, stableEditScope], status: "incomplete" });
+  const technicalLayoutScope = {
+    scopeId: "restarbeiten.layout.root", status: "blocked", inventoryStatus: "notInventoried",
+    expectedElementIds: [], elements: [], reason: "M80_2_split_removed",
+  };
+  const headerScope = completeScope("restarbeiten.header.root", [
+    element("restarbeiten.header.root.technical", "group", "restarbeiten.header.root.area", "layoutGroup", { allowedOps: [] }),
+  ]);
+  const nextM802 = snapshot({ version: 3, scopes: [technicalLayoutScope, headerScope, stableEditScope], status: "incomplete" });
+  const oldM802Profile = {
+    "restarbeiten.layout.split": baseline({ height: 333 }),
+    "restarbeiten.edit.root.field": baseline({ width: 777 }),
+  };
+  const reconciledM802 = reconcileRegistryProfile(oldM802, nextM802, oldM802Profile);
+  assert.equal(reconciledM802.ok, true, "M80.2 entfernt den Split ohne Profilmigration");
+  assert.equal(reconciledM802.archived["restarbeiten.layout.split"].height, 333, "alter Verhältniswert wird kontrolliert archiviert");
+  assert.equal(Object.hasOwn(reconciledM802.active, "restarbeiten.layout.split"), false, "alter Verhältniswert wird nicht angewendet");
+  assert.equal(reconciledM802.active["restarbeiten.edit.root.field"].width, 777, "unveränderte Editbox-Kind-ID behält Profilwert");
+  assert.deepEqual(reconciledM802.active["restarbeiten.header.root.technical"], {}, "technischer Container ohne Capabilities besitzt keine Layoutoperation");
+  assert.notEqual(oldM802.contract.registryFingerprint, nextM802.contract.registryFingerprint, "M80.2 ändert Fingerprint kontrolliert");
+  assert.equal(validateRegistrationSnapshot(nextM802).ok, true, "Header-/Editbox-Registry bleibt valide");
+
   source = less;
   assert.equal((await coordinator.handleEvent("registryChanged")).ok, true, "18 Registryereignis löst Refresh aus");
   const dirtyCoordinator = createRegistryRefreshCoordinator({ requestSnapshot: async () => source, getDirtyElementIds: () => ["app.scope.field"] });

@@ -286,6 +286,24 @@ Status: abgenommen
 
 Zweck: Erweiterung desselben nativen Managers um den belegten SDK-C#-/WPF-Frameworkadapter, bytegleich geprüfte read-only XAML-/Roslyn-Analyse, ungeprüfte Registrierungsvorschläge, manuelle Einzelfreigabe, stabile IDs, reale statische Parentstruktur, Fachaktionssperren, deterministische Registry-/HostAdapter-Generierung, lokale Pipe-Anbindung an den vorhandenen M77-Editor, vollständige Hash-/Ownership-/Diffvorschau, Git-Schutz sowie transaktionale Installation, Reanalyse, Update, Rollback und Deinstallation. Abgenommen mit 88 Manager-Tests, der kontrollierten Bestandsfixture und sichtbarem `--existing-app-registration-diagnostic` einschließlich realer registrierter UI-Änderung, Profil-Restore, PDF-Erzeugung und weiter grünem UI-/PDF-End-to-End-Nachweis.
 
+### K13 / M80 - Electron-Ziel-App-Vertrag und BBM-UI-Pilot
+
+Status: abgenommen
+
+Zweck: Den vorhandenen nativen Editor und Node-Core über einen engen lokalen Electron-HostAdapter an die explizite BBM-Registry anbinden, ohne Browser-, Netzwerk-, Scan- oder zweiten Profilpfad.
+
+### K14 / M80.1 - Bestands-App-Registrierung und Registry-Refresh
+
+Status: abgenommen
+
+Zweck: Versionierte vollständige Scope-Inventare, deterministischen Fingerprint, kontrollierten Laufzeit-Refresh sowie capability-basierten Profilabgleich für stabile, neue und entfernte IDs bereitstellen.
+
+### K15 / M80.2 - Restarbeiten-Header und Editbox direkt editierbar
+
+Status: abgenommen
+
+Zweck: Den unnötigen Splitpfad sperren, den tatsächlichen Restarbeiten-Header vollständig registrieren, den stabilen Editbox-Root direkt und begrenzt größenfähig machen sowie die Hauptliste als flexiblen Scrollbereich absichern. Keine neue Editoroberfläche, keine Fachaktion und keine PDF-Anbindung. Automatisierte Pflichtprüfungen, sichtbare native Abnahme und der stabilisierte BBM-Pflichtprüfungsblock sind grün.
+
 ## L - Regel fuer kuenftige Auftraege
 
 Jeder Auftrag muss nennen:
