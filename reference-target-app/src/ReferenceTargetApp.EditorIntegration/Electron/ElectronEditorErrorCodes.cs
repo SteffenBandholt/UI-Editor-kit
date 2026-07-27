@@ -24,6 +24,15 @@ public static class ElectronEditorErrorCodes
     public const string ProfileLoadFailed = "electron_profile_load_failed";
     public const string ProfileSaveFailed = "electron_profile_save_failed";
     public const string RestoreFailed = "electron_restore_failed";
+    public const string ProfileIncompatible = "electron_profile_incompatible";
+    public const string ProfileCorrupt = "electron_profile_corrupt";
+    public const string ProfileMigrationAvailable = "electron_profile_migration_available";
+    public const string ProfileMigrationFailed = "electron_profile_migration_failed";
+    public const string ProfileArchiveFailed = "electron_profile_archive_failed";
+    public const string ProfileBaselineStarted = "electron_profile_baseline_started";
+    public const string UiProfileRestoreFailed = "electron_ui_profile_restore_failed";
+    public const string PdfProfileRestoreFailed = "electron_pdf_profile_restore_failed";
+    public const string ProfileUserCancelled = "electron_profile_user_cancelled";
     public const string PdfNotAvailable = "electron_pdf_not_available";
     public const string RegistryRefreshFailed = "registry_refresh_failed";
     public const string RegistryVersionMissing = "registry_version_missing";

@@ -84,7 +84,11 @@ public sealed class LayoutProfileSession
             var desired = StatesFromDocument(load.Document);
             var applied = await ApplyAllAsync(desired, "m75-load", cancellationToken).ConfigureAwait(false);
             if (!applied.Success) return applied;
-            saved = CloneStates(desired);
+            // A remote target may normalize valid persisted values while applying them
+            // (for example to the effective DOM pixel grid). The successfully applied
+            // target state is the clean session boundary; the profile file itself is
+            // deliberately not rewritten during restore.
+            saved = CloneStates(CaptureWorking());
             return Ok("layout_loaded", "Gespeichertes Profil wurde vom Datenträger geladen.");
         }, cancellationToken).ConfigureAwait(false);
 
@@ -129,7 +133,7 @@ public sealed class LayoutProfileSession
                     rollback.Success, rollback.Failures);
             }
             ActiveProfileId = profileId;
-            saved = CloneStates(desired);
+            saved = CloneStates(CaptureWorking());
             return Ok(load.Found ? "profile_loaded" : "profile_started_from_baseline",
                 load.Found ? "Profil wurde geladen." : "Profil besitzt noch keine Datei und startet von der Baseline.");
         }, cancellationToken).ConfigureAwait(false);

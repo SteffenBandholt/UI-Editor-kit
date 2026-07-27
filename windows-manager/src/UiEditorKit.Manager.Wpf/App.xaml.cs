@@ -88,9 +88,26 @@ public partial class App : Application
         catch (ElectronEditorException exception)
         {
             await WriteElectronDiagnosticAsync(profileRoot, exception);
-            MessageBox.Show($"Der UI-Editor konnte nicht verbunden werden.\n\nTechnischer Code: {exception.Code}",
+            if (exception.Code == ElectronEditorErrorCodes.ProfileUserCancelled)
+            {
+                Shutdown(0);
+                return;
+            }
+            var profileCodes = new HashSet<string>(StringComparer.Ordinal)
+            {
+                ElectronEditorErrorCodes.ProfileIncompatible,
+                ElectronEditorErrorCodes.ProfileCorrupt,
+                ElectronEditorErrorCodes.ProfileMigrationFailed,
+                ElectronEditorErrorCodes.ProfileArchiveFailed,
+                ElectronEditorErrorCodes.UiProfileRestoreFailed,
+                ElectronEditorErrorCodes.PdfProfileRestoreFailed
+            };
+            var message = profileCodes.Contains(exception.Code)
+                ? "Das gespeicherte Editorlayout konnte nicht sicher vorbereitet werden. Das vorhandene Profil wurde nicht stillschweigend überschrieben."
+                : "Der UI-Editor konnte nicht gestartet werden.";
+            MessageBox.Show($"{message}\n\nTechnischer Code: {exception.Code}",
                 "UI-Editor", MessageBoxButton.OK, MessageBoxImage.Error);
-            Shutdown(81);
+            Shutdown(profileCodes.Contains(exception.Code) ? 83 : 81);
         }
         catch (Exception exception)
         {

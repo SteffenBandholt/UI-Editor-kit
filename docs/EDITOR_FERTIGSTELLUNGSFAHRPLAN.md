@@ -301,6 +301,10 @@ Status: abgenommen. Der unnötige Verhältnis-/Splitpfad ist gesperrt, der tats�
 
 Status: abgenommen. Die reale BBM-Protokoll-PDF ist über einen optionalen lokalen Electron-PDF-Vertrag an den vorhandenen M77-PDF-Arbeitsbereich angebunden. BBM liefert eine explizite Registry mit 28 Elementen und führt neutrale Layoutzustände vor dem bestehenden Paginierungs- und `printToPDF`-Pfad zu. Vorschau, Profil, Reset, Discard, Neustart-Restore und Rollback verwenden den bestehenden Core und Profilweg. Fachwerte und Fachaktionen bleiben ausgeschlossen. Nachweis: automatisierte Pflichtprüfungen und sichtbare native Dreiseiten-PDF-Abnahme.
 
+## M81.1 - Sicherer Editorstart mit inkompatiblen Benutzerprofilen
+
+Status: `[A] abgenommen`. Profilinkompatibilität und -beschädigung sind vom lokalen Electron-Handschlag getrennt. UI und PDF werden unabhängig klassifiziert; Baseline oder streng nachgewiesene Migration erfolgen erst nach byte-identischem Archiv mit Metadaten. Abbruch verändert keine Datei. Der reale BBM-Benutzerprofilpfad belegt Dialog, Archiv, sauberen Start ohne Autosave, Save, Neustart-Restore, Reset und Discard. Es wurden keine Registry-, Layout- oder PDF-Fachfunktionen ergänzt.
+
 ## M82 - App-Starterpaket
 
 Status: offen. Das Starterpaket soll neue Apps von Beginn an auf den in M80.1 festgelegten Ziel-App-, Registry-, Vollständigkeits- und Refreshvertrag verpflichten. M80.1 baut keinen M82-App-Starter.
@@ -320,7 +324,8 @@ Status: offen. Das Starterpaket soll neue Apps von Beginn an auf den in M80.1 fe
 | 9 | M80.1 | Bestands-App-Registrierung und Registry-Refresh |
 | 10 | M80.2 | Restarbeiten-Header/Editbox direkt, Liste flexibel |
 | 11 | M81 | BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich |
-| 12 | M82 | App-Starterpaket |
+| 12 | M81.1 | Sicherer Profil-Restore für bestehende Ziel-Apps |
+| 13 | M82 | App-Starterpaket |
 
 ## 7. Pflichtnachweise je Meilenstein
 
@@ -344,4 +349,4 @@ M80 ist abgeschlossen. Electron ist ausschließlich für den belegten lokalen BB
 
 ## 9. Naechster verbindlicher Auftrag
 
-M73 bis M81 sind abgenommen. M82 bleibt offen und wurde nicht begonnen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigentum der Ziel-App.
+M73 bis M81.1 sind abgenommen. M82 bleibt offen und wurde nicht begonnen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigentum der Ziel-App.

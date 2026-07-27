@@ -33,3 +33,11 @@ Die PDF-Persistenz liegt bewusst unter `EditorIntegration/Pdf` und nicht in den 
 PDF-Save und -Load validieren die vollständige Elementmenge und alle capability-gedeckten Werte. Discard stellt den letzten Saved-/Loaded-Zustand wieder her, Reset die registrierte Baseline, ohne die Datei zu überschreiben. Batchfehler rollen den vollständigen PDF-Working-State zurück. Atomisches Schreiben und Fehlererhalt folgen denselben Sicherheitsprinzipien wie die UI-Persistenz, verwenden aber eigene Typen und Pfade.
 
 Nicht enthalten sind eine stille Migration des Altformats, Browser, Netzwerk oder Fachdatenspeicherung. Sichtbare PDF-Bedienung beginnt erst mit M77.
+
+## M81.1 – Profilklassifikation, Archiv und sicherer Neustart
+
+Vor dem Electron-Editorstart klassifizieren getrennte UI- und PDF-Prüfer den aktiven Profilstand als `compatible`, `migrationAvailable`, `incompatible`, `corrupt`, `missing` oder `blocked`. Ein nicht sicher anwendbarer Stand wird nicht mehr als Verbindungsfehler behandelt. Der native Dialog erlaubt Abbruch, einen sauberen Baselinestart oder – nur nach strengem Positivnachweis – die Migration.
+
+Baseline und Migration archivieren die Originaldatei zuvor byte-identisch unterhalb der vorhandenen Profilwurzel in `archive/<applicationId>/`. Eine atomar geschriebene Metadaten-Sidecar-Datei dokumentiert Originalname/-zeit, Archivzeit, Grund, Klassifikation, Schema-, Vertrags- und Registryversion, alte und aktuelle Fingerprints, Dokumenttyp sowie SHA-256. Kollisionen überschreiben keine Datei; schlägt Archivierung oder Migration fehl, bleibt beziehungsweise wird das Original wiederhergestellt.
+
+Eine sichere UI-Migration übernimmt ausschließlich vollständig validierte Scopes mit unverändertem Registryfingerprint und ergänzt nur neue Scopes aus der aktuellen Baseline. Änderungen an Parent, Rolle, Capability, Elementmenge oder unbekannten Schemata werden nicht geraten. PDF bleibt ein eigener Profil- und Fehlerbereich. Nach erfolgreichem Remote-Restore wird eine zulässige Normalisierung des Zielsystems als sauberer Sitzungsstand übernommen, ohne die Profildatei beim Start automatisch umzuschreiben.

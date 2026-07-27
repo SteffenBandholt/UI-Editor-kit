@@ -6,6 +6,8 @@
 
 Wiederverwendbares, fachneutrales UI-/PDF-Editor-Kit zur Einbindung in Anwendungs-Apps.
 
+M81.1 ergänzt den sicheren Start bei alten oder beschädigten Benutzerprofilen: getrennte UI-/PDF-Klassifikation, byte-identisches Archiv, kontrollierter Baselinestart beziehungsweise streng nachgewiesene Migration und kein Autosave beim Restore. Details: [M81.1-Profil-Restore](docs/M81_1_PROFIL_RESTORE_ENTWURFSENTSCHEIDUNG.md).
+
 ## Zweck
 
 Das Repository ist die zentrale Quelle fuer:
