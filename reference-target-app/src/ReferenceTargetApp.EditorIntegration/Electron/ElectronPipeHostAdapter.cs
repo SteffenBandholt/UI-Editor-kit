@@ -33,6 +33,10 @@ public sealed class ElectronTargetSession : IAsyncDisposable
 
     public ElectronTargetContract Contract { get; }
     public IReadOnlyDictionary<string, IHostAdapter> HostAdapters => adapters.ToDictionary(pair => pair.Key, pair => (IHostAdapter)pair.Value, StringComparer.Ordinal);
+    public Task<ElectronPdfPipeHostAdapter> CreatePdfHostAdapterAsync(CancellationToken cancellationToken = default) =>
+        Contract.PdfCapability == "available" && Contract.PdfContract is not null
+            ? ElectronPdfPipeHostAdapter.CreateAsync(connection, Contract.PdfContract, cancellationToken)
+            : throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Die Ziel-App stellt keinen verfuegbaren PDF-Vertrag bereit.");
     public event EventHandler<ElectronTargetElementSelectedEventArgs>? ElementSelected;
     public event EventHandler<string>? Disconnected;
     public event EventHandler? ActivationRequested;

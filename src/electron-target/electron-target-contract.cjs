@@ -2,9 +2,10 @@
 
 const { validateUiElementList } = require("../core/ui-element-validator.cjs");
 const { LOCAL_TARGET_PROTOCOL_VERSION } = require("./local-target-protocol.cjs");
+const { validatePdfTargetContract } = require("./pdf-target-contract.cjs");
 
-const ELECTRON_TARGET_CONTRACT_VERSION = "1.1";
-const ELECTRON_TARGET_ADAPTER_VERSION = "1.1";
+const ELECTRON_TARGET_CONTRACT_VERSION = "1.2";
+const ELECTRON_TARGET_ADAPTER_VERSION = "1.2";
 const ELECTRON_TARGET_FRAMEWORK = "electron";
 const ELECTRON_REGISTRY_STATUSES = Object.freeze([
   "notInstalled",
@@ -46,6 +47,7 @@ const REQUIRED_FIELDS = Object.freeze([
   "sessionId",
   "processId",
   "pdfCapability",
+  "pdfContract",
 ]);
 const FORBIDDEN_KEYS = new Set([
   "domainData", "businessData", "fachDaten", "recordId", "entity", "database", "sql",
@@ -91,7 +93,11 @@ function validateElectronTargetContract(contract) {
   if (contract.uiCapability !== "layout") errors.push({ code: "electron_contract_ui_invalid", field: "uiCapability" });
   if (contract.visibilityCapability !== true) errors.push({ code: "electron_contract_visibility_invalid", field: "visibilityCapability" });
   if (contract.labelFieldSeparation !== true) errors.push({ code: "electron_contract_label_field_invalid", field: "labelFieldSeparation" });
-  if (contract.pdfCapability !== "unavailable") errors.push({ code: "electron_contract_pdf_invalid", field: "pdfCapability" });
+  if (!new Set(["available", "unavailable"]).has(contract.pdfCapability)) errors.push({ code: "electron_contract_pdf_invalid", field: "pdfCapability" });
+  if (contract.pdfCapability === "available") {
+    const pdf = validatePdfTargetContract(contract.pdfContract);
+    errors.push(...pdf.errors.map((entry) => ({ ...entry, field: `pdfContract.${entry.field || "contract"}` })));
+  } else if (contract.pdfContract !== null) errors.push({ code: "electron_contract_pdf_invalid", field: "pdfContract" });
   if (contract.transportProtocolVersion !== LOCAL_TARGET_PROTOCOL_VERSION) errors.push({ code: "electron_contract_transport_version_invalid", field: "transportProtocolVersion" });
   if (!Number.isInteger(contract.processId) || contract.processId < 1) errors.push({ code: "electron_contract_process_invalid", field: "processId" });
   for (const field of ["applicationId", "displayName", "appVersion", "profileRoot", "transportProtocolVersion", "sessionId"]) {
@@ -144,7 +150,8 @@ function createElectronTargetContract(values) {
     transportProtocolVersion: values.transportProtocolVersion,
     sessionId: values.sessionId,
     processId: values.processId,
-    pdfCapability: "unavailable",
+    pdfCapability: values.pdfCapability || "unavailable",
+    pdfContract: values.pdfCapability === "available" ? Object.freeze({ ...values.pdfContract }) : null,
   });
   const result = validateElectronTargetContract(contract);
   if (!result.ok) {

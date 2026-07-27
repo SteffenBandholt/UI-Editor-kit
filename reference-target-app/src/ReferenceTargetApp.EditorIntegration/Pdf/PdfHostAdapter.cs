@@ -79,6 +79,11 @@ public interface IPdfHostAdapter
     PdfChangeResult SubmitChangeRequest(PdfChangeRequest request);
 }
 
+public interface IAsyncPdfHostAdapter : IPdfHostAdapter
+{
+    Task<PdfChangeResult> SubmitChangeRequestAsync(PdfChangeRequest request, CancellationToken cancellationToken = default);
+}
+
 public sealed class PdfHostAdapter : IPdfHostAdapter
 {
     private const double Epsilon = 0.000001;

@@ -304,6 +304,12 @@ Status: abgenommen
 
 Zweck: Den unnötigen Splitpfad sperren, den tatsächlichen Restarbeiten-Header vollständig registrieren, den stabilen Editbox-Root direkt und begrenzt größenfähig machen sowie die Hauptliste als flexiblen Scrollbereich absichern. Keine neue Editoroberfläche, keine Fachaktion und keine PDF-Anbindung. Automatisierte Pflichtprüfungen, sichtbare native Abnahme und der stabilisierte BBM-Pflichtprüfungsblock sind grün.
 
+### K16 / M81 - BBM-PDF an den bestehenden PDF-Arbeitsbereich anbinden
+
+Status: abgenommen
+
+Zweck: Die reale BBM-Protokoll-PDF über einen optionalen lokalen Electron-PDF-Vertrag an den vorhandenen M77-PDF-Arbeitsbereich anbinden. BBM bleibt Eigentümerin der expliziten 28-Element-Registry, des neutralen Layoutzustands und des vorhandenen Druck-/Paginierungs-/`printToPDF`-Pfads. Der native Editor verwendet denselben PDF-Core, dieselbe Session, denselben atomaren Profilweg sowie vorhandene Save-/Reset-/Discard-/Rollback-Mechanismen. Fachwerte, Fachaktionen, Dateioperationen, zweite Renderer und Netzwerkpfade bleiben ausgeschlossen. Automatisierte Prüfungen und die sichtbare native Dreiseiten-PDF-Abnahme sind grün.
+
 ## L - Regel fuer kuenftige Auftraege
 
 Jeder Auftrag muss nennen:

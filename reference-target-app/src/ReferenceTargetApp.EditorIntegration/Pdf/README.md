@@ -46,3 +46,9 @@ Save validiert vollständig und schreibt über eine eindeutige `.tmp`-Datei mit 
 ## Sichtbare Anbindung M77
 
 M77 bindet diese unveränderten Verträge im gemeinsamen WPF-Editor sichtbar an. `PdfLayoutSession` besitzt additiv elementbezogenes Discard und Reset; Gesamtsemantik, Validierung, Adapterweg und Profilformat bleiben unverändert. Die Vorschau lebt in einer eigenen technischen Schicht und erhält nur neutrale Registry-IDs, Layoutwerte und RenderBounds. Das Node-Protokoll wurde nicht erweitert.
+
+## Ziel-App-gelieferte PDF-Verträge M81
+
+M81 verallgemeinert den vorhandenen Core ohne zweiten Laufweg: Anwendungs-ID, Dokumenttyp, Scope, Ausrichtung, Registry und Profilname können von einer validierten Ziel-App geliefert werden. `IAsyncPdfHostAdapter` erlaubt demselben `PdfLayoutSession`- und Workspace-Code den lokalen WPF-Adapter oder einen entfernten Electron-Adapter zu verwenden. Zusätzlich capability-gesteuert unterstützt sind Textausrichtung, Zeilenabstand, Sichtbarkeit und Seitenränder.
+
+Der atomare Store bleibt unter `pdf-layouts`. Beim ausdrücklich aktivierten kompatiblen Registryabgleich werden nur bekannte stabile IDs und weiterhin unterstützte Werte übernommen; neue IDs starten mit Baseline und unbekannte Alt-IDs werden nicht angewendet. Die WPF-Referenz-PDF behält ihren bisherigen Scope, ihr Profilformat und ihren Renderer unverändert. Für BBM stammen Registry, Layout-Readback und kontrollierte Regeneration aus der Ziel-App; die native Vorschau liest nur die von BBM erzeugte PDF zurück.

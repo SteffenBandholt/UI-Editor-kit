@@ -22,10 +22,11 @@ public sealed record ElectronTargetContract(
     string TransportProtocolVersion,
     string SessionId,
     int ProcessId,
-    string PdfCapability)
+    string PdfCapability,
+    ElectronPdfTargetContract? PdfContract)
 {
-    public const string CurrentVersion = "1.1";
-    public const string CurrentAdapterVersion = "1.1";
+    public const string CurrentVersion = "1.2";
+    public const string CurrentAdapterVersion = "1.2";
 
     public static ElectronTargetContract FromHandshake(JsonElement handshake)
     {
@@ -54,10 +55,41 @@ public sealed record ElectronTargetContract(
             ActiveScopes.Count == 0 || ActiveScopes.Distinct(StringComparer.Ordinal).Count() != ActiveScopes.Count ||
             string.IsNullOrWhiteSpace(ProfileRoot) || SelectionCapability != "bidirectional" || UiCapability != "layout" ||
             !VisibilityCapability || !LabelFieldSeparation || TransportProtocolVersion != LocalTargetProtocol.Version ||
-            string.IsNullOrWhiteSpace(SessionId) || ProcessId < 1 || PdfCapability != "unavailable")
+            string.IsNullOrWhiteSpace(SessionId) || ProcessId < 1 || PdfCapability is not ("available" or "unavailable") ||
+            PdfCapability == "available" && PdfContract is null || PdfCapability == "unavailable" && PdfContract is not null)
             throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-Ziel-App-Vertrag verletzt M80.");
         var allowed = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility"], StringComparer.Ordinal);
         if (SupportedOperations.Count == 0 || SupportedOperations.Any(operation => !allowed.Contains(operation)))
             throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-Ziel-App-Operationen sind ungültig.");
+        PdfContract?.Validate(ApplicationId);
+    }
+}
+
+public sealed record ElectronPdfTargetContract(
+    string ApplicationId,
+    string DocumentTypeId,
+    string DisplayName,
+    string ContractVersion,
+    int RegistryVersion,
+    string RegistryFingerprint,
+    string ProfileScope,
+    IReadOnlyList<string> SupportedOperations,
+    string PageSettingsCapability,
+    string PreviewCapability,
+    string RegenerateCapability,
+    string ActiveDocumentId,
+    string PdfRegistryStatus)
+{
+    public void Validate(string expectedApplicationId)
+    {
+        var allowed = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize",
+            "setTextAlignment", "setLineSpacing", "setVisibility", "setPageMargins"], StringComparer.Ordinal);
+        if (ApplicationId != expectedApplicationId || string.IsNullOrWhiteSpace(DocumentTypeId) || string.IsNullOrWhiteSpace(DisplayName) ||
+            ContractVersion != "1.0" || RegistryVersion < 1 || !RegistryFingerprint.StartsWith("sha256:", StringComparison.Ordinal) || RegistryFingerprint.Length != 71 ||
+            string.IsNullOrWhiteSpace(ProfileScope) || !ProfileScope.StartsWith("pdf.", StringComparison.Ordinal) ||
+            SupportedOperations.Count == 0 || SupportedOperations.Any(operation => !allowed.Contains(operation)) ||
+            PageSettingsCapability is not ("margins" or "none") || PreviewCapability != "nativePdf" || RegenerateCapability != "explicit" ||
+            string.IsNullOrWhiteSpace(ActiveDocumentId) || PdfRegistryStatus is not ("available" or "unavailable" or "incomplete" or "changed" or "incompatible" or "blocked"))
+            throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-PDF-Zielvertrag ist ungueltig.");
     }
 }

@@ -167,7 +167,7 @@ async function run() {
     .map((name) => fs.readFileSync(path.join(root, "src/electron-target", name), "utf8")).join("\n");
   assert.doesNotMatch(electronSource, /\bhttps?:|WebSocket|BrowserWindow|fetch\s*\(/i, "kein Browser-/Netzwerkcode");
   const editorSource = fs.readFileSync(path.join(root, "reference-target-app/src/ReferenceTargetApp.Wpf/UI/Editor/ElectronTargetEditor.cs"), "utf8");
-  assert.match(editorSource, /BBM-PDF noch nicht angebunden/);
+  assert.match(editorSource, /CreatePdfHostAdapterAsync/, "M81 erweitert denselben nativen Editor um die Electron-PDF-Bruecke");
   assert.doesNotMatch(editorSource, /ReferenceOrderFactory/, "kein Referenz-PDF-Modell für BBM");
   console.log("TESTS OK: M80 Electron-Ziel-App, Sichtbarkeit und lokale Pipe");
 }
