@@ -199,6 +199,12 @@ Die Ziel-App liefert eine explizite PDF-Registry und bleibt Eigentümerin von Ba
 
 Transportiert und gespeichert werden nur IDs, Rollen, Baseline-/Layoutwerte, Fähigkeiten, Locks, sichere Dokumentkennung und fachwertfreie Vorschaumetadaten. Fachwerte, Tabellenzeilen, Kundendaten, freie Dateipfade und Fachaktionen sind verboten. BBM ist der erste praktisch belegte Adapter; WPF-Referenzprofile und UI-Profile bleiben getrennt und unverändert. Details: [M81-Entwurfsentscheidung](M81_BBM_PDF_ADAPTER_ENTWURFSENTSCHEIDUNG.md).
 
+## Sicherer Electron-Profilstart M81.1
+
+Ein erfolgreicher Handshake, eine gültige Registry und ein Profilfehler sind getrennte Zustände. Inkompatible oder beschädigte UI-/PDF-Profile dürfen deshalb nicht als Verbindungsfehler erscheinen und nicht teilweise angewandt werden. Die Ziel-App liefert weiterhin nur Vertrag, Registry und neutrale Layoutzustände; Klassifikation, sicherer Dialog, byte-identisches Archiv und zulässige Migration liegen im Kit.
+
+Der Baselinestart ist sauber und erzeugt keinen Autosave. Eine Ziel-App darf gültige Layoutwerte auf ihren tatsächlich anwendbaren Zustand normalisieren; nach erfolgreichem Apply wird dieser Zustand für die laufende Sitzung als gespeichert betrachtet, ohne die Profildatei still umzuschreiben. UI- und PDF-Profilpfade sowie ihre Fehlercodes bleiben unabhängig. Details: [M81.1-Entwurfsentscheidung](M81_1_PROFIL_RESTORE_ENTWURFSENTSCHEIDUNG.md).
+
 Die Verbindung verwendet ausschließlich einen zufälligen lokalen Pipe-Namen und eine kryptografische Sitzungs-Nonce. Handshake, Current-User-only, eine Verbindung, Korrelations-IDs, Nachrichtenlimit, Timeout, strukturierter Disconnect und feste vertrauenswürdige Executable sind Pflicht. Renderer dürfen weder freie Pfade noch Shell-Strings liefern.
 
 Für asynchrone lokale Ziel-App-Transporte darf der kleine HostAdapter-Vertrag additiv als `IAsyncHostAdapter` umgesetzt werden. Registry, Validierung, neutrale Semantik und ChangeResult bleiben identisch; eine zweite Layoutlogik ist nicht zulässig.

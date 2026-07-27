@@ -8,6 +8,16 @@
 
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
 
+### M81.1 – Sicherer Profil-Restore für bestehende Benutzerprofile
+
+- Status: `[A] abgenommen`; gezielte Tests und reale Abnahme im normalen BBM-Benutzerprofilpfad sind abgeschlossen.
+- UI- und PDF-Profile werden unabhängig als kompatibel, migrationsfähig, inkompatibel, beschädigt, fehlend oder blockiert klassifiziert. Profilfehler werden nicht mehr als Verbindungsfehler gemeldet.
+- Inkompatible oder beschädigte Originale werden vor Baseline/Migration byte-identisch und kollisionssicher mit technischer Metadaten-Sidecar-Datei archiviert; Abbruch und Archivfehler verändern das Original nicht.
+- Nur unveränderte vollständig validierte Scopes dürfen sicher migriert werden; Parent-, Rollen-, Capability-, Element- oder Schemaänderungen werden nicht geraten.
+- Ein erfolgreicher, vom Zielsystem normalisierter Restore startet sauber, ohne falsches Dirty und ohne Autosave. Save, echter Prozessneustart, PDF-Restore, Element-/Gesamtreset und Discard wurden praktisch geprüft.
+- Keine neue Registry-, Layout-, PDF- oder Fachfunktion; M82 bleibt offen und wurde nicht begonnen.
+- Entwurfsentscheidung: `docs/M81_1_PROFIL_RESTORE_ENTWURFSENTSCHEIDUNG.md`.
+
 ### M81 – BBM-PDF an den bestehenden PDF-Arbeitsbereich angebunden
 
 - Status: `[A] abgenommen`; automatisierte Pflichtprüfungen und sichtbare native Abnahme sind abgeschlossen.
@@ -66,9 +76,10 @@ Die feste Reihenfolge lautet:
 9. M80.1 - Bestands-App-Registrierung, Registry-Refresh und vollständige BBM-UI-Anbindung,
 10. M80.2 - Restarbeiten-Header und Editbox direkt editierbar,
 11. M81 - BBM-PDF-Anbindung an den bestehenden PDF-Arbeitsbereich,
-12. M82 - App-Starterpaket.
+12. M81.1 - sicherer Profil-Restore für bestehende Ziel-Apps,
+13. M82 - App-Starterpaket.
 
-M73 bis M81 sind abgenommen. M82 bleibt offen und wurde nicht begonnen.
+M73 bis M81.1 sind abgenommen. M82 bleibt offen und wurde nicht begonnen.
 
 ## 4. Produktstand
 
@@ -228,7 +239,7 @@ M79 ist fuer den belegten SDK-basierten C#-/WPF-Erstframeworkadapter vollstaendi
 
 ## 8. Naechster Auftrag
 
-M81 ist abgenommen. M82 `App-Starterpaket` bleibt offen und wurde nicht begonnen.
+M81 und M81.1 sind abgenommen. M82 `App-Starterpaket` bleibt offen und wurde nicht begonnen.
 
 ## 9. Statuswerte
 

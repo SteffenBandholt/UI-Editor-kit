@@ -57,11 +57,16 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
 
             var profileStore = new AtomicJsonLayoutProfileStore(expectedProfileRoot, expectedApplicationId);
             var activeProfileStore = new ActiveLayoutProfileStore(expectedProfileRoot);
-            var startup = await new LayoutProfileStartupCoordinator(target.HostAdapters, profileStore, activeProfileStore,
-                    allowCompatibleRegistryReconciliation: true)
-                .RestoreAsync(cancellationToken);
-            if (!startup.Success)
-                throw new ElectronEditorException(ElectronEditorErrorCodes.RestoreFailed, startup.Message);
+            var recoveryWorkflow = new ProfileRecoveryWorkflow(new NativeProfileRecoveryPrompt());
+            var uiRecoveryContext = new ProfileRecoveryContext(
+                expectedApplicationId,
+                "ui",
+                target.Contract.ContractVersion,
+                target.Contract.RegistryVersion.ToString(),
+                target.Contract.RegistryFingerprint);
+            var uiPreparation = await recoveryWorkflow.PrepareUiAsync(
+                target.HostAdapters, profileStore, activeProfileStore, uiRecoveryContext, cancellationToken);
+            var startup = uiPreparation.Startup;
 
             var selection = new TargetAppSelectionService(
                 target.BeginTargetSelectionAsync,
@@ -72,14 +77,17 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
             {
                 var pdfAdapter = await target.CreatePdfHostAdapterAsync(cancellationToken);
                 var pdfStore = new AtomicJsonPdfLayoutProfileStore(expectedProfileRoot, pdfContract.ApplicationId, pdfContract.DocumentTypeId,
-                    allowCompatibleRegistryReconciliation: true);
-                var pdfSession = new PdfLayoutSession(pdfAdapter, pdfStore);
-                if (File.Exists(pdfStore.FilePath))
-                {
-                    var restored = await pdfSession.LoadAsync(cancellationToken);
-                    if (!restored.Success)
-                        throw new ElectronEditorException(ElectronEditorErrorCodes.RestoreFailed, restored.Message);
-                }
+                    allowCompatibleRegistryReconciliation: false);
+                var pdfRecoveryContext = new ProfileRecoveryContext(
+                    pdfContract.ApplicationId,
+                    "pdf",
+                    pdfContract.ContractVersion,
+                    pdfContract.RegistryVersion.ToString(),
+                    pdfContract.RegistryFingerprint,
+                    pdfContract.DocumentTypeId);
+                var pdfPreparation = await recoveryWorkflow.PreparePdfAsync(
+                    pdfAdapter, pdfStore, pdfRecoveryContext, cancellationToken);
+                var pdfSession = pdfPreparation.Session;
                 pdfWorkspace = new PdfEditorWorkspaceViewModel(pdfAdapter.GetRegistry(), pdfAdapter, pdfSession,
                     new NativePdfPreviewRenderer(), cancellationToken);
             }
