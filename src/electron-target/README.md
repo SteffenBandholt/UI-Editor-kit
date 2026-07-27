@@ -13,3 +13,9 @@ Dieser Adapter verbindet eine lokale Electron-Ziel-App mit dem vorhandenen nativ
 Der Adapter kennt keine DOM-Knoten und keine BBM-Fachdaten. Eine Ziel-App liefert ausschließlich explizite Registryeinträge, neutrale Layoutzustände und validierte ChangeResults. Fachaktionen bleiben gesperrt; ein Fehler stellt den vollständigen Ausgangszustand wieder her.
 
 Der Adapter enthält keinen Browser-, HTTP-, WebSocket-, Webserver-, Netzwerk- oder Cloudpfad. Der native Editor und sein Node-Core bleiben das einzige Editorprodukt.
+
+## Additive PDF-Capability M81
+
+Der Ziel-App-Vertrag kann additiv einen validierten PDF-Vertrag liefern. `pdfCapability` bleibt für nicht angebundene Apps `unavailable`; eine angebundene Ziel-App liefert `available` zusammen mit Anwendungs-/Dokumenttyp, Vertrags- und Registryversion, deterministischem Fingerprint, Profil-Scope, aktiver opaker Dokumentkennung, unterstützten Operationen sowie Seiten-, Vorschau- und Regenerationsfähigkeiten.
+
+`pdf-target-contract.cjs` validiert die explizite Registry, Parentstruktur, Baselines, Fähigkeiten und Locks. Fachwerte, Datensätze und freie Datei-/Ausgabepfade sind im Vertrag verboten und beeinflussen den Fingerprint nicht. Die lokale Pipe transportiert ausschließlich neutrale Registry-, Layout-, ChangeRequest-, Regenerations- und Vorschaumetadaten. BBM ist der erste praktisch belegte Electron-PDF-Adapter; der vorhandene native M77-PDF-Arbeitsbereich bleibt die einzige Editoroberfläche.

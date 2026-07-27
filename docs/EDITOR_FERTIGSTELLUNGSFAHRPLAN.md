@@ -299,7 +299,7 @@ Status: abgenommen. Der unnötige Verhältnis-/Splitpfad ist gesperrt, der tats�
 
 ## M81 - BBM-PDF-Anbindung
 
-Status: offen. Der nächste Meilenstein bindet BBM-PDF an den vorhandenen PDF-Arbeitsbereich an. M81 darf weder einen zweiten PDF-Core noch eine stillschweigende Änderung des BBM-Druck-/PDF-Fachwegs einführen.
+Status: abgenommen. Die reale BBM-Protokoll-PDF ist über einen optionalen lokalen Electron-PDF-Vertrag an den vorhandenen M77-PDF-Arbeitsbereich angebunden. BBM liefert eine explizite Registry mit 28 Elementen und führt neutrale Layoutzustände vor dem bestehenden Paginierungs- und `printToPDF`-Pfad zu. Vorschau, Profil, Reset, Discard, Neustart-Restore und Rollback verwenden den bestehenden Core und Profilweg. Fachwerte und Fachaktionen bleiben ausgeschlossen. Nachweis: automatisierte Pflichtprüfungen und sichtbare native Dreiseiten-PDF-Abnahme.
 
 ## M82 - App-Starterpaket
 
@@ -344,4 +344,4 @@ M80 ist abgeschlossen. Electron ist ausschließlich für den belegten lokalen BB
 
 ## 9. Naechster verbindlicher Auftrag
 
-M73 bis M80.2 sind abgenommen. M81 und M82 bleiben offen und wurden nicht begonnen. Der bestehende BBM-Druck-/PDF-Fachweg darf nicht stillschweigend verändert werden.
+M73 bis M81 sind abgenommen. M82 bleibt offen und wurde nicht begonnen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigentum der Ziel-App.

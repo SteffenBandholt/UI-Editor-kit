@@ -191,6 +191,14 @@ Die Ziel-App darf dem laufenden Editor nicht erlauben (der ausdrücklich gestart
 
 Der Electron-Vertrag enthält mindestens `applicationId`, `displayName`, `framework = electron`, Vertrags- und Registryversion, aktive Scopes, Profilwurzel, unterstützte Operationen, Auswahl-/Sichtbarkeitsfähigkeit, Label-/Feldtrennung, Transportversion und Prozess-/Sitzungskennung. `pdfCapability` ist für BBM in M80 `unavailable`.
 
+## Electron-PDF-Ziel-App-Vertrag M81
+
+M81 erweitert denselben lokalen Vertrag optional um eine echte PDF-Capability. Bei `available` liefert die Ziel-App mindestens `applicationId`, `documentTypeId`, Anzeigename, Vertrags- und Registryversion, deterministischen Registryfingerprint, Profil-Scope, unterstützte Operationen, Seiten-, Vorschau- und Regenerationsfähigkeiten, eine opake aktive Dokumentkennung und den PDF-Registrystatus.
+
+Die Ziel-App liefert eine explizite PDF-Registry und bleibt Eigentümerin von Baseline, Referenzauflösung, Layout-Readback und realer PDF-Erzeugung. Der Editor erkennt keine PDF-Struktur selbst. Er verwendet den vorhandenen M77-PDF-Baum, dieselbe `PdfLayoutSession`, denselben atomaren `pdf-layouts`-Profilweg und die vorhandene Vorschau. Änderungen markieren die Vorschau als veraltet; erst die ausdrückliche Regeneration fordert die Ziel-App zur Neuerzeugung auf.
+
+Transportiert und gespeichert werden nur IDs, Rollen, Baseline-/Layoutwerte, Fähigkeiten, Locks, sichere Dokumentkennung und fachwertfreie Vorschaumetadaten. Fachwerte, Tabellenzeilen, Kundendaten, freie Dateipfade und Fachaktionen sind verboten. BBM ist der erste praktisch belegte Adapter; WPF-Referenzprofile und UI-Profile bleiben getrennt und unverändert. Details: [M81-Entwurfsentscheidung](M81_BBM_PDF_ADAPTER_ENTWURFSENTSCHEIDUNG.md).
+
 Die Verbindung verwendet ausschließlich einen zufälligen lokalen Pipe-Namen und eine kryptografische Sitzungs-Nonce. Handshake, Current-User-only, eine Verbindung, Korrelations-IDs, Nachrichtenlimit, Timeout, strukturierter Disconnect und feste vertrauenswürdige Executable sind Pflicht. Renderer dürfen weder freie Pfade noch Shell-Strings liefern.
 
 Für asynchrone lokale Ziel-App-Transporte darf der kleine HostAdapter-Vertrag additiv als `IAsyncHostAdapter` umgesetzt werden. Registry, Validierung, neutrale Semantik und ChangeResult bleiben identisch; eine zweite Layoutlogik ist nicht zulässig.

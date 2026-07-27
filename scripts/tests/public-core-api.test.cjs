@@ -56,6 +56,13 @@ const expectedExports = [
   "compareRegistrySnapshots",
   "reconcileRegistryProfile",
   "createRegistryRefreshCoordinator",
+  "PDF_TARGET_CONTRACT_VERSION",
+  "PDF_REGISTRY_STATUSES",
+  "PDF_TARGET_OPERATIONS",
+  "canonicalPdfRegistry",
+  "createPdfRegistryFingerprint",
+  "validatePdfRegistry",
+  "validatePdfTargetContract",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -78,11 +85,11 @@ expectedExports.forEach((name) => {
   if ([
     "RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS",
     "ELECTRON_TARGET_OPERATIONS", "ELECTRON_REGISTRY_STATUSES", "LOCAL_TARGET_MESSAGE_TYPES", "ELECTRON_EDITOR_ERROR_CODES",
-    "TARGET_REGISTRATION_STATUSES", "REGISTRY_SCOPE_STATUSES",
+    "TARGET_REGISTRATION_STATUSES", "REGISTRY_SCOPE_STATUSES", "PDF_REGISTRY_STATUSES", "PDF_TARGET_OPERATIONS",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else if ([
-    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_ADAPTER_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION",
+    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_ADAPTER_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION", "PDF_TARGET_CONTRACT_VERSION",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
   } else if (name === "LOCAL_TARGET_MAX_MESSAGE_BYTES") {

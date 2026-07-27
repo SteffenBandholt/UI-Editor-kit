@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using ReferenceTargetApp.Domain.Models;
+using ReferenceTargetApp.EditorIntegration.Electron;
 using ReferenceTargetApp.EditorIntegration.Pdf;
 using ReferenceTargetApp.PdfPreview;
 using ReferenceTargetApp.PdfRendering;
@@ -35,10 +36,11 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private readonly PdfElementRegistry registry;
     private readonly IPdfHostAdapter adapter;
     private readonly PdfLayoutSession session;
-    private readonly PdfOrderDocumentRenderer renderer;
+    private readonly PdfOrderDocumentRenderer? renderer;
     private readonly NativePdfPreviewRenderer previewRenderer;
-    private readonly Order order;
-    private readonly string outputPath;
+    private readonly Order? order;
+    private readonly ElectronPdfPipeHostAdapter? electronAdapter;
+    private string outputPath;
     private readonly CancellationToken lifetimeToken;
     private readonly SemaphoreSlim renderLock = new(1, 1);
     private CancellationTokenSource? activeRender;
@@ -87,6 +89,16 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         SetLayerCommand = new AsyncCommand(p => SetLayerAsync(p as string), p => CanOperate && p is string);
         SetModeCommand = new AsyncCommand(p => SetModeAsync(p as string), p => CanOperate && p is string);
         DirectionCommand = new AsyncCommand(p => ApplyDirectionAsync(p as string), p => CanDirection(p as string));
+        PropertyCommand = new AsyncCommand(p => ApplyPropertyAsync(p as string), p => CanProperty(p as string));
+    }
+
+    public PdfEditorWorkspaceViewModel(PdfElementRegistry registry, ElectronPdfPipeHostAdapter adapter, PdfLayoutSession session,
+        NativePdfPreviewRenderer previewRenderer, CancellationToken lifetimeToken)
+        : this(registry, adapter, session, null!, previewRenderer, null!, Path.Combine(Path.GetTempPath(), "ui-editor-pdf-preview.pdf"), lifetimeToken)
+    {
+        electronAdapter = adapter;
+        outputPath = string.Empty;
+        status = "BBM-PDF-Editor bereit. Vorschau noch nicht angefordert.";
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -103,6 +115,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public ICommand SetLayerCommand { get; }
     public ICommand SetModeCommand { get; }
     public ICommand DirectionCommand { get; }
+    public ICommand PropertyCommand { get; }
     public string ProfileId => PdfLayoutProfileDocumentValidator.ProfileId;
     public int RegistryElementCount => registry.Entries.Count;
     public string OutputPath => outputPath;
@@ -133,7 +146,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public string Size => Current is { } value ? Pair(value.Width, value.Height) + " mm" : "–";
     public string TextPosition => Current is { } value ? Pair(value.TextOffsetX, value.TextOffsetY) + " mm" : "–";
     public string FontSize => Current?.FontSize is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
-    public string TableInfo => $"Tabellenbreite {State(PdfRegistryIds.Table).Width:0.###} mm · Spaltensumme {PdfRegistryIds.Columns.Sum(id => State(id).Width ?? 0):0.###} mm · Mindestbreite 5 mm";
+    public string TableInfo => CreateTableInfo();
     public string ActiveLayer => layer;
     public string ActiveMode => mode;
     public bool ElementLayerActive => layer == "element";
@@ -148,6 +161,13 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public bool CanHeight => selected?.Capabilities.HasFlag(PdfCapability.Height) == true;
     public bool CanTextPosition => selected?.Capabilities.HasFlag(PdfCapability.TextPosition) == true;
     public bool CanFontSize => selected?.Capabilities.HasFlag(PdfCapability.FontSize) == true;
+    public bool CanTextAlignment => selected?.Capabilities.HasFlag(PdfCapability.TextAlignment) == true;
+    public bool CanLineSpacing => selected?.Capabilities.HasFlag(PdfCapability.LineSpacing) == true;
+    public bool CanVisibility => selected?.Capabilities.HasFlag(PdfCapability.Visibility) == true;
+    public bool CanPageMargins => selected?.Capabilities.HasFlag(PdfCapability.PageMargins) == true;
+    public string TextAlignment => Current?.TextAlignment ?? "–";
+    public string LineSpacing => Current?.LineSpacing is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) : "–";
+    public string Visibility => Current?.Visible is bool value ? (value ? "sichtbar" : "ausgeblendet") : "–";
     public string StepText { get => stepText; set { if (Set(ref stepText, value)) ValidateStep(); } }
     public PdfPageViewModel? SelectedPage { get => selectedPage; set { if (Set(ref selectedPage, value)) { OnPropertyChanged(nameof(SelectedPageText)); UpdateOverlay(lastViewportWidth, lastViewportHeight); } } }
     public BitmapSource? SelectedPageImage => SelectedPage?.Image;
@@ -170,6 +190,11 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
 
     public async Task InitializeAsync()
     {
+        if (electronAdapter is not null)
+        {
+            var metadata = await electronAdapter.GetPreviewMetadataAsync(lifetimeToken);
+            ApplyMetadata(metadata);
+        }
         if (File.Exists(outputPath)) await RefreshPreviewAsync();
         else RefreshState();
     }
@@ -229,7 +254,25 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         IsBusy = true; ClearError(); StatusMessage = "PDF wird erzeugt …";
         try
         {
-            var result = await renderer.RenderAsync(registry, adapter.GetCurrentLayoutState(), order, outputPath, null, activeRender.Token);
+            if (electronAdapter is not null)
+            {
+                var metadata = await electronAdapter.RegeneratePreviewAsync(activeRender.Token);
+                ApplyMetadata(metadata);
+                if (metadata.Stale || !File.Exists(outputPath))
+                {
+                    ShowError(PdfErrorCodes.RenderFailed, "BBM hat keine aktuelle kontrollierte PDF-Vorschau bereitgestellt.");
+                    StatusMessage = "PDF-Erzeugung fehlgeschlagen; letzte gueltige Vorschau bleibt erhalten.";
+                    return;
+                }
+                var remotePreview = await previewRenderer.RenderAsync(outputPath, cancellationToken: activeRender.Token);
+                if (!remotePreview.Success) { ShowError(remotePreview.Code, remotePreview.Message); return; }
+                PublishPreview(remotePreview);
+                previewVersion = layoutVersion;
+                previewStale = false;
+                StatusMessage = $"Echte BBM-PDF erfolgreich erzeugt; {Pages.Count} Seiten, Vorschau aktuell.";
+                return;
+            }
+            var result = await renderer!.RenderAsync(registry, adapter.GetCurrentLayoutState(), order!, outputPath, null, activeRender.Token);
             if (!result.Success) { ShowError(result.Code, result.Message); StatusMessage = "PDF-Erzeugung fehlgeschlagen; letzte gültige Vorschau bleibt erhalten."; return; }
             var preview = await previewRenderer.RenderAsync(result.OutputPath, cancellationToken: activeRender.Token);
             if (!preview.Success) { ShowError(preview.Code, preview.Message); StatusMessage = "PDF erzeugt, Vorschau konnte nicht aktualisiert werden."; return; }
@@ -250,6 +293,11 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         IsBusy = true; ClearError(); StatusMessage = "Vorschau wird geladen …";
         try
         {
+            if (electronAdapter is not null)
+            {
+                var metadata = await electronAdapter.GetPreviewMetadataAsync(activeRender.Token);
+                ApplyMetadata(metadata);
+            }
             var inspection = PdfTechnicalInspector.Inspect(outputPath);
             if (!inspection.Success) { ShowError(PdfPreviewErrorCodes.LoadFailed, inspection.Message); StatusMessage = "Letzte gültige Vorschau bleibt erhalten."; return; }
             var preview = await previewRenderer.RenderAsync(outputPath, cancellationToken: activeRender.Token);
@@ -283,10 +331,57 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         }
         else { operation = PdfLayoutOperations.TextResize; payload = new Dictionary<string, object?> { ["text"] = new Dictionary<string, object?> { ["fontSize"] = current.FontSize!.Value + (direction == "left" ? -step : step) } }; }
         var request = new PdfChangeRequest(Guid.NewGuid().ToString("N"), selected.ElementId, operation, payload,
-            DateTimeOffset.UtcNow, "m77-visible-editor", PdfRegistryIds.Scope);
+            DateTimeOffset.UtcNow, "native-pdf-editor", registry.Document.DocumentId);
         var result = await session.ApplyBatchAsync([request], lifetimeToken);
         ApplyResult(result, $"{selected.Name}: {operation}, Schritt {step:G} mm erfolgreich.", true);
     }
+
+    private async Task ApplyPropertyAsync(string? action)
+    {
+        if (selected is null || action is null || !CanProperty(action)) return;
+        var current = Current!;
+        string operation;
+        IReadOnlyDictionary<string, object?> payload;
+        if (action.StartsWith("align:", StringComparison.Ordinal))
+        {
+            operation = PdfLayoutOperations.SetTextAlignment;
+            payload = new Dictionary<string, object?> { ["textAlignment"] = action[6..] };
+        }
+        else if (action == "visibility")
+        {
+            operation = PdfLayoutOperations.SetVisibility;
+            payload = new Dictionary<string, object?> { ["visible"] = !(current.Visible ?? true) };
+        }
+        else if (action is "lineSpacing+" or "lineSpacing-")
+        {
+            operation = PdfLayoutOperations.SetLineSpacing;
+            payload = new Dictionary<string, object?> { ["lineSpacing"] = Math.Max(0.1, (current.LineSpacing ?? 1) + (action.EndsWith('+') ? 0.1 : -0.1)) };
+        }
+        else
+        {
+            operation = PdfLayoutOperations.SetPageMargins;
+            var delta = action.EndsWith('+') ? step : -step;
+            payload = new Dictionary<string, object?>
+            {
+                ["marginTop"] = Math.Max(0, (current.MarginTop ?? 0) + (action.StartsWith("marginTop", StringComparison.Ordinal) ? delta : 0)),
+                ["marginRight"] = Math.Max(0, (current.MarginRight ?? 0) + (action.StartsWith("marginRight", StringComparison.Ordinal) ? delta : 0)),
+                ["marginBottom"] = Math.Max(0, (current.MarginBottom ?? 0) + (action.StartsWith("marginBottom", StringComparison.Ordinal) ? delta : 0)),
+                ["marginLeft"] = Math.Max(0, (current.MarginLeft ?? 0) + (action.StartsWith("marginLeft", StringComparison.Ordinal) ? delta : 0)),
+            };
+        }
+        var request = new PdfChangeRequest(Guid.NewGuid().ToString("N"), selected.ElementId, operation, payload,
+            DateTimeOffset.UtcNow, "native-pdf-editor", registry.Document.DocumentId);
+        ApplyResult(await session.ApplyBatchAsync([request], lifetimeToken), $"{selected.Name}: {operation} erfolgreich.", true);
+    }
+
+    private bool CanProperty(string? action) => CanOperate && selected is not null && action switch
+    {
+        string value when value.StartsWith("align:", StringComparison.Ordinal) => CanTextAlignment,
+        "visibility" => CanVisibility,
+        "lineSpacing+" or "lineSpacing-" => CanLineSpacing,
+        string value when value.StartsWith("margin", StringComparison.Ordinal) => CanPageMargins && stepValid,
+        _ => false,
+    };
 
     private Task SetLayerAsync(string? value) { if (value is "element" or "text") { layer = value; NormalizeMode(); RaiseAll(); } return Task.CompletedTask; }
     private Task SetModeAsync(string? value) { if (value is not null && ModeAllowed(value)) { mode = value; RaiseAll(); } return Task.CompletedTask; }
@@ -337,6 +432,22 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private PdfElementLayoutState? Current => selected is null ? null : State(selected.ElementId);
     private PdfElementLayoutState State(string id) => adapter.GetCurrentLayoutState().Elements.Single(element => element.ElementId == id);
     private static string Pair(double? x, double? y) => x.HasValue && y.HasValue ? $"{x:0.###} / {y:0.###}" : "–";
+    private string CreateTableInfo()
+    {
+        var table = selected?.Kind == PdfElementKind.Table ? selected : selected?.Kind == PdfElementKind.TableColumn
+            ? registry.FindById(selected.ParentId ?? string.Empty) : registry.Entries.FirstOrDefault(element => element.Kind == PdfElementKind.Table);
+        if (table is null) return "Keine Tabelle registriert";
+        var columns = registry.Entries.Where(element => element.Kind == PdfElementKind.TableColumn && element.ParentId == table.ElementId).ToArray();
+        return $"Tabellenbreite {State(table.ElementId).Width:0.###} mm · Spaltensumme {columns.Sum(column => State(column.ElementId).Width ?? 0):0.###} mm · Mindestbreite 5 mm";
+    }
+    private void ApplyMetadata(ElectronPdfPreviewMetadata metadata)
+    {
+        outputPath = metadata.ControlledOutputPath is null ? string.Empty : Path.GetFullPath(metadata.ControlledOutputPath);
+        bounds = metadata.RenderBounds.Select(bound => new PdfRenderBound(bound.ElementId, bound.PageNumber, bound.Box,
+            registry.FindById(bound.ElementId)?.StableOrder ?? int.MaxValue, false)).ToArray();
+        previewStale = metadata.Stale;
+        OnPropertyChanged(nameof(OutputPath));
+    }
     private void ValidateStep()
     {
         var normalized = stepText.Trim().Replace(',', '.');
@@ -349,8 +460,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; OnPropertyChanged(nameof(ErrorCodeDisplay)); }
     private void RaiseAll()
     {
-        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(TableInfo), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(SelectedPageImage) }) OnPropertyChanged(name);
-        foreach (var command in new[] { SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, RenderCommand, RefreshPreviewCommand, SetLayerCommand, SetModeCommand, DirectionCommand }) (command as AsyncCommand)?.RaiseCanExecuteChanged();
+        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
+        foreach (var command in new[] { SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, RenderCommand, RefreshPreviewCommand, SetLayerCommand, SetModeCommand, DirectionCommand, PropertyCommand }) (command as AsyncCommand)?.RaiseCanExecuteChanged();
     }
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null) { if (EqualityComparer<T>.Default.Equals(field, value)) return false; field = value; OnPropertyChanged(name); return true; }
     private void OnPropertyChanged(string? name) => PropertyChanged?.Invoke(this, new(name));

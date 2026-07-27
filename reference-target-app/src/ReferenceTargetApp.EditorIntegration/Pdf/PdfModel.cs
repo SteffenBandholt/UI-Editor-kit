@@ -4,10 +4,10 @@ namespace ReferenceTargetApp.EditorIntegration.Pdf;
 
 public enum PdfLayoutUnit { Millimeter }
 public enum PdfPageFormat { A4 }
-public enum PdfPageOrientation { Portrait }
+public enum PdfPageOrientation { Portrait, Landscape }
 public enum PdfPageArea { Document, Header, Body, Footer }
-public enum PdfElementKind { Document, Page, Area, Group, Text, Image, Table, TableColumn, Header, Footer }
-public enum PdfElementRole { Layout, Content, Meta, Structure, Date }
+public enum PdfElementKind { Document, Page, Area, Group, Text, Label, Value, Image, Table, TableColumn, RepeatingArea, Header, Footer }
+public enum PdfElementRole { Layout, Content, Meta, Structure, Date, FieldLabel, Heading, ColumnHeader }
 
 [Flags]
 public enum PdfCapability
@@ -17,7 +17,11 @@ public enum PdfCapability
     Width = 2,
     Height = 4,
     TextPosition = 8,
-    FontSize = 16
+    FontSize = 16,
+    TextAlignment = 32,
+    LineSpacing = 64,
+    Visibility = 128,
+    PageMargins = 256
 }
 
 public static class PdfLayoutOperations
@@ -29,9 +33,13 @@ public static class PdfLayoutOperations
     public const string ResizeHeight = "resizeHeight";
     public const string TextMove = "textMove";
     public const string TextResize = "textResize";
+    public const string SetTextAlignment = "setTextAlignment";
+    public const string SetLineSpacing = "setLineSpacing";
+    public const string SetVisibility = "setVisibility";
+    public const string SetPageMargins = "setPageMargins";
 
     public static readonly IReadOnlyList<string> Mutating =
-        [Move, Resize, ResizeWidth, ResizeHeight, TextMove, TextResize];
+        [Move, Resize, ResizeWidth, ResizeHeight, TextMove, TextResize, SetTextAlignment, SetLineSpacing, SetVisibility, SetPageMargins];
 }
 
 public sealed record PdfBox(
@@ -41,7 +49,18 @@ public sealed record PdfBox(
     double Height,
     double? TextOffsetX = null,
     double? TextOffsetY = null,
-    double? FontSize = null);
+    double? FontSize = null,
+    string? TextAlignment = null,
+    double? LineSpacing = null,
+    bool? Visible = null,
+    double? MarginTop = null,
+    double? MarginRight = null,
+    double? MarginBottom = null,
+    double? MarginLeft = null);
+
+public sealed record PdfLayoutBounds(
+    double MinX, double MaxX, double MinY, double MaxY,
+    double MinWidth, double MaxWidth, double MinHeight, double MaxHeight);
 
 public sealed record PdfPageDefinition(
     string PageId,
@@ -67,7 +86,10 @@ public sealed record PdfElementDefinition(
     bool Editable,
     IReadOnlyList<string> AllowedOperations,
     IReadOnlyList<string> LockedOperations,
-    string? ColumnRole = null);
+    string? ColumnRole = null,
+    string? RefKey = null,
+    string? RendererKey = null,
+    PdfLayoutBounds? LayoutBounds = null);
 
 public sealed class PdfDocumentDefinition
 {
@@ -133,7 +155,14 @@ public sealed record PdfElementLayoutState(
     double? Height,
     double? TextOffsetX,
     double? TextOffsetY,
-    double? FontSize);
+    double? FontSize,
+    string? TextAlignment = null,
+    double? LineSpacing = null,
+    bool? Visible = null,
+    double? MarginTop = null,
+    double? MarginRight = null,
+    double? MarginBottom = null,
+    double? MarginLeft = null);
 
 public sealed class PdfLayoutState
 {
@@ -152,7 +181,7 @@ public sealed class PdfLayoutState
 public static class PdfLayoutStateFactory
 {
     public static PdfLayoutState Baseline(PdfElementRegistry registry) => new(
-        PdfRegistryIds.Scope,
+        registry.Document.DocumentId,
         DateTimeOffset.UtcNow,
         registry.Entries.OrderBy(element => element.StableOrder).Select(element => FromBox(element, element.BaselineLayout)).ToArray());
 
@@ -165,7 +194,14 @@ public static class PdfLayoutStateFactory
         element.Capabilities.HasFlag(PdfCapability.Height) ? box.Height : null,
         element.Capabilities.HasFlag(PdfCapability.TextPosition) ? box.TextOffsetX ?? 0 : null,
         element.Capabilities.HasFlag(PdfCapability.TextPosition) ? box.TextOffsetY ?? 0 : null,
-        element.Capabilities.HasFlag(PdfCapability.FontSize) ? box.FontSize : null);
+        element.Capabilities.HasFlag(PdfCapability.FontSize) ? box.FontSize : null,
+        element.Capabilities.HasFlag(PdfCapability.TextAlignment) ? box.TextAlignment ?? "left" : null,
+        element.Capabilities.HasFlag(PdfCapability.LineSpacing) ? box.LineSpacing ?? 1 : null,
+        element.Capabilities.HasFlag(PdfCapability.Visibility) ? box.Visible ?? true : null,
+        element.Capabilities.HasFlag(PdfCapability.PageMargins) ? box.MarginTop ?? 0 : null,
+        element.Capabilities.HasFlag(PdfCapability.PageMargins) ? box.MarginRight ?? 0 : null,
+        element.Capabilities.HasFlag(PdfCapability.PageMargins) ? box.MarginBottom ?? 0 : null,
+        element.Capabilities.HasFlag(PdfCapability.PageMargins) ? box.MarginLeft ?? 0 : null);
 
     public static PdfBox Resolve(PdfElementDefinition element, PdfElementLayoutState state) => new(
         state.X ?? element.BaselineLayout.X,
@@ -174,7 +210,14 @@ public static class PdfLayoutStateFactory
         state.Height ?? element.BaselineLayout.Height,
         state.TextOffsetX ?? element.BaselineLayout.TextOffsetX,
         state.TextOffsetY ?? element.BaselineLayout.TextOffsetY,
-        state.FontSize ?? element.BaselineLayout.FontSize);
+        state.FontSize ?? element.BaselineLayout.FontSize,
+        state.TextAlignment ?? element.BaselineLayout.TextAlignment,
+        state.LineSpacing ?? element.BaselineLayout.LineSpacing,
+        state.Visible ?? element.BaselineLayout.Visible,
+        state.MarginTop ?? element.BaselineLayout.MarginTop,
+        state.MarginRight ?? element.BaselineLayout.MarginRight,
+        state.MarginBottom ?? element.BaselineLayout.MarginBottom,
+        state.MarginLeft ?? element.BaselineLayout.MarginLeft);
 }
 
 public static class PdfRegistryIds
@@ -265,6 +308,10 @@ public static class PdfOrderDocumentRegistryFactory
         if (capabilities.HasFlag(PdfCapability.Width) && capabilities.HasFlag(PdfCapability.Height)) allowed.Add(PdfLayoutOperations.Resize);
         if (capabilities.HasFlag(PdfCapability.TextPosition)) allowed.Add(PdfLayoutOperations.TextMove);
         if (capabilities.HasFlag(PdfCapability.FontSize)) allowed.Add(PdfLayoutOperations.TextResize);
+        if (capabilities.HasFlag(PdfCapability.TextAlignment)) allowed.Add(PdfLayoutOperations.SetTextAlignment);
+        if (capabilities.HasFlag(PdfCapability.LineSpacing)) allowed.Add(PdfLayoutOperations.SetLineSpacing);
+        if (capabilities.HasFlag(PdfCapability.Visibility)) allowed.Add(PdfLayoutOperations.SetVisibility);
+        if (capabilities.HasFlag(PdfCapability.PageMargins)) allowed.Add(PdfLayoutOperations.SetPageMargins);
         var locked = PdfLayoutOperations.Mutating.Where(operation => !allowed.Contains(operation, StringComparer.Ordinal)).ToArray();
         return new(id, name, PdfRegistryIds.Scope, parent, kind, role, capabilities, area, baseline, order,
             true, capabilities != PdfCapability.None, allowed, locked, columnRole);

@@ -12,7 +12,9 @@ public sealed record PdfLayoutSessionStatus(bool IsDirty, PdfLayoutState Working
     private static bool ElementEquivalent(PdfElementLayoutState left, PdfElementLayoutState right) =>
         left.ElementId == right.ElementId && Same(left.X, right.X) && Same(left.Y, right.Y) &&
         Same(left.Width, right.Width) && Same(left.Height, right.Height) &&
-        Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize);
+        Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize) &&
+        left.TextAlignment == right.TextAlignment && Same(left.LineSpacing, right.LineSpacing) && left.Visible == right.Visible &&
+        Same(left.MarginTop, right.MarginTop) && Same(left.MarginRight, right.MarginRight) && Same(left.MarginBottom, right.MarginBottom) && Same(left.MarginLeft, right.MarginLeft);
 
     private static bool Same(double? left, double? right) => left is null && right is null ||
         left.HasValue && right.HasValue && Math.Abs(left.Value - right.Value) <= 0.000001;
@@ -54,17 +56,17 @@ public sealed class PdfLayoutSession
     {
         var load = await store.LoadAsync(adapter.GetRegistry(), cancellationToken).ConfigureAwait(false);
         if (!load.Success || !load.Found || load.Document is null) return Fail(load.Code, load.Message);
-        var applied = ApplyState(load.Document.LayoutState, "pdf-load");
+        var applied = await ApplyStateAsync(load.Document.LayoutState, "pdf-load", cancellationToken).ConfigureAwait(false);
         if (!applied.Success) return applied;
         saved = Clone(load.Document.LayoutState);
         return Ok("pdf_layout_loaded", "PDF-Layout vom Datenträger geladen.");
     }, cancellationToken);
 
     public Task<PdfLayoutOperationResult> DiscardAsync(CancellationToken cancellationToken = default) =>
-        Exclusive(() => Task.FromResult(ApplyState(saved, "pdf-discard")), cancellationToken);
+        Exclusive(() => ApplyStateAsync(saved, "pdf-discard", cancellationToken), cancellationToken);
 
     public Task<PdfLayoutOperationResult> ResetAsync(CancellationToken cancellationToken = default) =>
-        Exclusive(() => Task.FromResult(ApplyState(baseline, "pdf-reset")), cancellationToken);
+        Exclusive(() => ApplyStateAsync(baseline, "pdf-reset", cancellationToken), cancellationToken);
 
     public Task<PdfLayoutOperationResult> DiscardElementAsync(string elementId, CancellationToken cancellationToken = default) =>
         ApplyElementAsync(elementId, saved, "pdf-discard-element", cancellationToken);
@@ -73,7 +75,7 @@ public sealed class PdfLayoutSession
         ApplyElementAsync(elementId, baseline, "pdf-reset-element", cancellationToken);
 
     public Task<PdfLayoutOperationResult> ApplyBatchAsync(IEnumerable<PdfChangeRequest> requests, CancellationToken cancellationToken = default) =>
-        Exclusive(() => Task.FromResult(ApplyRequests(requests.ToArray(), "pdf-batch")), cancellationToken);
+        Exclusive(() => ApplyRequestsAsync(requests.ToArray(), "pdf-batch", cancellationToken), cancellationToken);
 
     private async Task<PdfLayoutOperationResult> Exclusive(Func<Task<PdfLayoutOperationResult>> operation, CancellationToken cancellationToken)
     {
@@ -86,39 +88,39 @@ public sealed class PdfLayoutSession
     private Task<PdfLayoutOperationResult> ApplyElementAsync(string elementId, PdfLayoutState desired, string source,
         CancellationToken cancellationToken)
     {
-        return Exclusive(() =>
+        return Exclusive(async () =>
         {
             if (adapter.GetRegistry().FindById(elementId) is null)
-                return Task.FromResult(Fail(PdfErrorCodes.UnknownElement, "PDF-Element ist nicht registriert: " + elementId));
+                return Fail(PdfErrorCodes.UnknownElement, "PDF-Element ist nicht registriert: " + elementId);
             var current = adapter.GetCurrentLayoutState();
             var target = desired.Elements.Single(element => element.ElementId == elementId);
-            var merged = new PdfLayoutState(PdfRegistryIds.Scope, DateTimeOffset.UtcNow,
+            var merged = new PdfLayoutState(adapter.GetRegistry().Document.DocumentId, DateTimeOffset.UtcNow,
                 current.Elements.Select(element => element.ElementId == elementId ? target with { } : element with { }).ToArray());
-            return Task.FromResult(ApplyState(merged, source));
+            return await ApplyStateAsync(merged, source, cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
     }
 
-    private PdfLayoutOperationResult ApplyState(PdfLayoutState desired, string source)
+    private async Task<PdfLayoutOperationResult> ApplyStateAsync(PdfLayoutState desired, string source, CancellationToken cancellationToken)
     {
         var validation = PdfLayoutProfileDocumentValidator.Validate(new(
             PdfLayoutProfileDocumentValidator.SchemaVersion, PdfLayoutProfileDocumentValidator.DocumentKind,
-            PdfOrderDocumentRegistryFactory.ApplicationId, PdfOrderDocumentRegistryFactory.DocumentType,
-            PdfLayoutProfileDocumentValidator.ProfileId, PdfRegistryIds.Scope, DateTimeOffset.UtcNow,
+            adapter.GetRegistry().Document.ApplicationId, adapter.GetRegistry().Document.DocumentType,
+            PdfLayoutProfileDocumentValidator.ProfileId, adapter.GetRegistry().Document.DocumentId, DateTimeOffset.UtcNow,
             PdfRegistryFingerprint.Create(adapter.GetRegistry()), desired), adapter.GetRegistry());
         if (!validation.Success) return Fail(validation.Code, validation.Message);
-        return ApplyRequests(CreateRequests(adapter.GetCurrentLayoutState(), desired, source), source);
+        return await ApplyRequestsAsync(CreateRequests(adapter.GetCurrentLayoutState(), desired, source, adapter.GetRegistry()), source, cancellationToken).ConfigureAwait(false);
     }
 
-    private PdfLayoutOperationResult ApplyRequests(IReadOnlyList<PdfChangeRequest> requests, string source)
+    private async Task<PdfLayoutOperationResult> ApplyRequestsAsync(IReadOnlyList<PdfChangeRequest> requests, string source, CancellationToken cancellationToken)
     {
         var original = Clone(adapter.GetCurrentLayoutState());
         var failures = new List<PdfLayoutFailure>();
         foreach (var request in requests)
         {
-            var result = adapter.SubmitChangeRequest(request);
+            var result = await SubmitAsync(request, cancellationToken).ConfigureAwait(false);
             if (result.Success) continue;
             failures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? PdfErrorCodes.BatchFailed, result.Message));
-            var rollbackFailures = Rollback(original, source + "-rollback");
+            var rollbackFailures = await RollbackAsync(original, source + "-rollback", cancellationToken).ConfigureAwait(false);
             failures.AddRange(rollbackFailures);
             return new(false, rollbackFailures.Count == 0 ? PdfErrorCodes.BatchFailed : PdfErrorCodes.RollbackFailed,
                 rollbackFailures.Count == 0 ? "PDF-Batch fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "PDF-Batch und Rollback sind fehlgeschlagen.",
@@ -127,18 +129,23 @@ public sealed class PdfLayoutSession
         return Ok("pdf_batch_applied", "PDF-Layoutbatch vollständig angewandt.");
     }
 
-    private IReadOnlyList<PdfLayoutFailure> Rollback(PdfLayoutState original, string source)
+    private async Task<IReadOnlyList<PdfLayoutFailure>> RollbackAsync(PdfLayoutState original, string source, CancellationToken cancellationToken)
     {
         var failures = new List<PdfLayoutFailure>();
-        foreach (var request in CreateRequests(adapter.GetCurrentLayoutState(), original, source))
+        foreach (var request in CreateRequests(adapter.GetCurrentLayoutState(), original, source, adapter.GetRegistry()))
         {
-            var result = adapter.SubmitChangeRequest(request);
+            var result = await SubmitAsync(request, cancellationToken).ConfigureAwait(false);
             if (!result.Success) failures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? PdfErrorCodes.RollbackFailed, result.Message));
         }
         return failures;
     }
 
-    internal static IReadOnlyList<PdfChangeRequest> CreateRequests(PdfLayoutState current, PdfLayoutState desired, string source)
+    private Task<PdfChangeResult> SubmitAsync(PdfChangeRequest request, CancellationToken cancellationToken) =>
+        adapter is IAsyncPdfHostAdapter asyncAdapter
+            ? asyncAdapter.SubmitChangeRequestAsync(request, cancellationToken)
+            : Task.FromResult(adapter.SubmitChangeRequest(request));
+
+    internal static IReadOnlyList<PdfChangeRequest> CreateRequests(PdfLayoutState current, PdfLayoutState desired, string source, PdfElementRegistry? registry = null)
     {
         var now = DateTimeOffset.UtcNow;
         var currentById = current.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
@@ -151,8 +158,11 @@ public sealed class PdfLayoutSession
                 Add(3, PdfLayoutOperations.Move, new Dictionary<string, object?> { ["x"] = target.X, ["y"] = target.Y });
             if (target.Width.HasValue && !Same(target.Width, existing.Width))
             {
-                var phase = target.ElementId == PdfRegistryIds.Table ? target.Width > existing.Width ? 0 : 5
-                    : PdfRegistryIds.Columns.Contains(target.ElementId) ? target.Width < existing.Width ? 1 : 4 : 3;
+                var definition = registry?.FindById(target.ElementId);
+                var isTable = definition?.Kind == PdfElementKind.Table || target.ElementId == PdfRegistryIds.Table;
+                var isColumn = definition?.Kind == PdfElementKind.TableColumn || PdfRegistryIds.Columns.Contains(target.ElementId);
+                var phase = isTable ? target.Width > existing.Width ? 0 : 5
+                    : isColumn ? target.Width < existing.Width ? 1 : 4 : 3;
                 Add(phase, PdfLayoutOperations.ResizeWidth, new Dictionary<string, object?> { ["width"] = target.Width });
             }
             if (target.Height.HasValue && !Same(target.Height, existing.Height))
@@ -161,9 +171,18 @@ public sealed class PdfLayoutSession
                 Add(3, PdfLayoutOperations.TextMove, new Dictionary<string, object?> { ["text"] = new Dictionary<string, object?> { ["offsetX"] = target.TextOffsetX, ["offsetY"] = target.TextOffsetY } });
             if (target.FontSize.HasValue && !Same(target.FontSize, existing.FontSize))
                 Add(3, PdfLayoutOperations.TextResize, new Dictionary<string, object?> { ["text"] = new Dictionary<string, object?> { ["fontSize"] = target.FontSize } });
+            if (target.TextAlignment is not null && target.TextAlignment != existing.TextAlignment)
+                Add(3, PdfLayoutOperations.SetTextAlignment, new Dictionary<string, object?> { ["textAlignment"] = target.TextAlignment });
+            if (target.LineSpacing.HasValue && !Same(target.LineSpacing, existing.LineSpacing))
+                Add(3, PdfLayoutOperations.SetLineSpacing, new Dictionary<string, object?> { ["lineSpacing"] = target.LineSpacing });
+            if (target.Visible.HasValue && target.Visible != existing.Visible)
+                Add(3, PdfLayoutOperations.SetVisibility, new Dictionary<string, object?> { ["visible"] = target.Visible });
+            if (target.MarginTop.HasValue && (!Same(target.MarginTop, existing.MarginTop) || !Same(target.MarginRight, existing.MarginRight) ||
+                                             !Same(target.MarginBottom, existing.MarginBottom) || !Same(target.MarginLeft, existing.MarginLeft)))
+                Add(3, PdfLayoutOperations.SetPageMargins, new Dictionary<string, object?> { ["marginTop"] = target.MarginTop, ["marginRight"] = target.MarginRight, ["marginBottom"] = target.MarginBottom, ["marginLeft"] = target.MarginLeft });
 
             void Add(int phase, string operation, IReadOnlyDictionary<string, object?> payload) => requests.Add((phase, order++,
-                new(Guid.NewGuid().ToString("N"), target.ElementId, operation, payload, now, source, PdfRegistryIds.Scope)));
+                new(Guid.NewGuid().ToString("N"), target.ElementId, operation, payload, now, source, current.ScopeId)));
         }
         return requests.OrderBy(item => item.Phase).ThenBy(item => item.Order).Select(item => item.Request).ToArray();
     }
@@ -173,7 +192,9 @@ public sealed class PdfLayoutSession
         var rightById = right.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
         return left.Elements.All(element => rightById.TryGetValue(element.ElementId, out var other) &&
             Same(element.X, other.X) && Same(element.Y, other.Y) && Same(element.Width, other.Width) && Same(element.Height, other.Height) &&
-            Same(element.TextOffsetX, other.TextOffsetX) && Same(element.TextOffsetY, other.TextOffsetY) && Same(element.FontSize, other.FontSize));
+            Same(element.TextOffsetX, other.TextOffsetX) && Same(element.TextOffsetY, other.TextOffsetY) && Same(element.FontSize, other.FontSize) &&
+            element.TextAlignment == other.TextAlignment && Same(element.LineSpacing, other.LineSpacing) && element.Visible == other.Visible &&
+            Same(element.MarginTop, other.MarginTop) && Same(element.MarginRight, other.MarginRight) && Same(element.MarginBottom, other.MarginBottom) && Same(element.MarginLeft, other.MarginLeft));
     }
 
     private static bool Same(double? left, double? right) => left is null && right is null || left.HasValue && right.HasValue && Math.Abs(left.Value - right.Value) <= Epsilon;

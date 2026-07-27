@@ -2,7 +2,9 @@ using System.IO;
 using System.Windows;
 using ReferenceTargetApp.EditorIntegration.Electron;
 using ReferenceTargetApp.EditorIntegration.Persistence;
+using ReferenceTargetApp.EditorIntegration.Pdf;
 using ReferenceTargetApp.EditorIntegration.Process;
+using ReferenceTargetApp.PdfPreview;
 using ReferenceTargetApp.UI.ViewModels;
 
 namespace ReferenceTargetApp.UI.Editor;
@@ -65,7 +67,26 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 target.BeginTargetSelectionAsync,
                 target.CancelTargetSelectionAsync,
                 target.HighlightAsync);
-            var unavailablePdf = new UnavailablePdfEditorWorkspaceViewModel("BBM-PDF noch nicht angebunden – folgt in M81.");
+            IPdfEditorWorkspace pdfWorkspace;
+            if (target.Contract.PdfCapability == "available" && target.Contract.PdfContract is { PdfRegistryStatus: "available" } pdfContract)
+            {
+                var pdfAdapter = await target.CreatePdfHostAdapterAsync(cancellationToken);
+                var pdfStore = new AtomicJsonPdfLayoutProfileStore(expectedProfileRoot, pdfContract.ApplicationId, pdfContract.DocumentTypeId,
+                    allowCompatibleRegistryReconciliation: true);
+                var pdfSession = new PdfLayoutSession(pdfAdapter, pdfStore);
+                if (File.Exists(pdfStore.FilePath))
+                {
+                    var restored = await pdfSession.LoadAsync(cancellationToken);
+                    if (!restored.Success)
+                        throw new ElectronEditorException(ElectronEditorErrorCodes.RestoreFailed, restored.Message);
+                }
+                pdfWorkspace = new PdfEditorWorkspaceViewModel(pdfAdapter.GetRegistry(), pdfAdapter, pdfSession,
+                    new NativePdfPreviewRenderer(), cancellationToken);
+            }
+            else
+            {
+                pdfWorkspace = new UnavailablePdfEditorWorkspaceViewModel("Die Ziel-App stellt fuer das aktive Dokument keine PDF-Registry bereit.");
+            }
             var coordinator = new EditorWindowCoordinator(
                 null,
                 target.HostAdapters,
@@ -77,7 +98,7 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 null,
                 null,
                 editorProcessOptions: EditorProcessOptions.FromRepositoryRoot(editorRuntimeRoot),
-                pdfWorkspaceOverride: unavailablePdf);
+                pdfWorkspaceOverride: pdfWorkspace);
             var session = new ElectronTargetEditorSession(target, selection, coordinator);
             target.ConfigureRegistryRefreshStatus(() =>
             {
