@@ -41,6 +41,11 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _ = RunRegistrationDiagnosticAsync(window, e.Args);
         }
+        else if (e.Args.Contains("--app-starter-package-diagnostic", StringComparer.Ordinal))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunStarterPackageDiagnosticAsync(window, e.Args);
+        }
     }
     private void StartElectronTargetEditor(string[] args)
     {
@@ -174,6 +179,29 @@ public partial class App : Application
             Shutdown(178);
         }
     }
+    private async Task RunStarterPackageDiagnosticAsync(MainWindow window, string[] args)
+    {
+        var repositoryRoot = Argument(args, "--repository-root=") ?? Environment.CurrentDirectory;
+        var bbmRoot = Argument(args, "--bbm-root=") ?? Path.GetFullPath(Path.Combine(repositoryRoot, "..", "BBM-Produktiv"));
+        var paths = ManagerPaths.ForDefault();
+        try
+        {
+            paths.Ensure();
+            var errorPath = Path.Combine(paths.Logs, "m82-diagnostic-error.txt");
+            if (File.Exists(errorPath)) File.Delete(errorPath);
+            var result = await new AppStarterPackageDiagnosticRunner().RunAsync(repositoryRoot, bbmRoot, window);
+            Shutdown(result ? 0 : 82);
+        }
+        catch (Exception exception)
+        {
+            paths.Ensure();
+            await File.WriteAllTextAsync(Path.Combine(paths.Logs, "m82-diagnostic-error.txt"), exception.ToString());
+            Shutdown(182);
+        }
+    }
+
+    private static string? Argument(IReadOnlyList<string> args, string prefix) =>
+        args.FirstOrDefault(argument => argument.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..];
     protected override void OnExit(ExitEventArgs e)
     {
         if (electronEditorSession is not null) electronEditorSession.Closed -= ElectronEditorSession_Closed;

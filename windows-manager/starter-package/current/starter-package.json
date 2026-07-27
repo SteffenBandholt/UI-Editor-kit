@@ -1,0 +1,232 @@
+{
+    "schemaVersion":  1,
+    "productName":  "App-Starterpaket",
+    "packageVersion":  "1.0.0",
+    "contractVersion":  "1.2",
+    "supportedFrameworks":  [
+                                "wpf",
+                                "electron"
+                            ],
+    "files":  [
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "ZUERST_LESEN.md",
+                      "sourcePath":  "files/common/ZUERST_LESEN.md",
+                      "sha256":  "4b7e9b3c8cefb8819402a037aa91cfda9e6112e364cb6d5ceb2c67a75cd746a2",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "AGENTS.md",
+                      "sourcePath":  "files/common/AGENTS.md",
+                      "sha256":  "4b9fe2ee330f56f330b864f50f327ffd99720d6560d697b6ad04afce84ac7ba6",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "Arbeitsanweisung.md",
+                      "sourcePath":  "files/common/Arbeitsanweisung.md",
+                      "sha256":  "b06dfb22d59b3e8c34e7b55afa75ce74ca807a480405d0d8f98daf260a7afccc",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
+                      "sourcePath":  "files/common/docs/UI_PDF_ENTWURFSENTSCHEIDUNG.md",
+                      "sha256":  "7706c63411874986454f32dd70a39e68fcc2a6991110a0802a608a89ab554952",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "docs/REGISTRY_REGELN.md",
+                      "sourcePath":  "files/common/docs/REGISTRY_REGELN.md",
+                      "sha256":  "54e194d95e24ffe29df0c4098b7a0a2f84ce5aa84cf06fdbbb24ef1f0687bb66",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "docs/DEFINITION_OF_DONE_UI.md",
+                      "sourcePath":  "files/common/docs/DEFINITION_OF_DONE_UI.md",
+                      "sha256":  "74f7575b1c83f01fd9e306634ce5b3f589d575d7ec5e7423984e18a7ece0ab88",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "docs/REGISTRIERUNGSSTATUS.md",
+                      "sourcePath":  "files/common/docs/REGISTRIERUNGSSTATUS.md",
+                      "sha256":  "d7bafc3797cc6ea17c295dd00d6eafe3b62cfc77794c3a2706815fcbc6517dc5",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "docs/REFRESH_VERTRAG.md",
+                      "sourcePath":  "files/common/docs/REFRESH_VERTRAG.md",
+                      "sha256":  "ab3b4d8963710d3b3dfcf239ed211097e5b23245b78cfc8830561b94eb5e8254",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "all",
+                      "integrationMode":  "all",
+                      "relativePath":  "tests/starter-contract.test.md",
+                      "sourcePath":  "files/common/tests/starter-contract.test.md",
+                      "sha256":  "c24399b2b0d7fff0d91b829fcd351793553584eacc128aa2a3c3a341e175a1cc",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  "Directory.Build.targets",
+                      "sourcePath":  "files/wpf/Directory.Build.targets",
+                      "sha256":  "bdb9f5dc788dd93405bf3d19ef933f7707f6f889fc98a523f04462cf2ab6a69d",
+                      "template":  false,
+                      "preserveOnUpdate":  false,
+                      "preserveOnUninstall":  false
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/wpf/Registry.cs",
+                      "sourcePath":  "files/wpf/starter/Registry.cs",
+                      "sha256":  "955cf6e1b1574948fd55537bdf945ae414d3f26ed52737b3d90c4eb425581085",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/wpf/ElementReferences.cs",
+                      "sourcePath":  "files/wpf/starter/ElementReferences.cs",
+                      "sha256":  "9e9402baa6b5ae4b782c1f4aa22334e5f2e18197121f49f88de729a0186895a1",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/wpf/HostAdapter.cs",
+                      "sourcePath":  "files/wpf/starter/HostAdapter.cs",
+                      "sha256":  "f57adfa3f4c68e194ef8ea89ecdfa803665786bc452a9748911d3447e6c3ca38",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/wpf/TargetContractCheck.cs",
+                      "sourcePath":  "files/wpf/starter/TargetContractCheck.cs",
+                      "sha256":  "a70aa8b84b55c6b32d1f691cc4271ad6d5254996336781af7ee793fb9fc27c3c",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/wpf/UiEditorKit.Starter.props",
+                      "sourcePath":  "files/wpf/starter/UiEditorKit.Starter.props",
+                      "sha256":  "99088a225c591b2bbbdd339fce86c176e2fcb4daf2a0968a44dfc0347ac322c9",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "wpf",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/wpf/ProcessPipeContract.md",
+                      "sourcePath":  "files/wpf/starter/ProcessPipeContract.md",
+                      "sha256":  "b871243e0cde78e43a6e0a8f280588ddc171859587b724004984d2cb84ed97fc",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "electron",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/electron/registry.cjs",
+                      "sourcePath":  "files/electron/starter/registry.cjs",
+                      "sha256":  "bf71517f47386aaa59b136fde99c2a931ab56f5e5a9a7254cf0643d7fc94fc7b",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "electron",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/electron/ref-resolver.cjs",
+                      "sourcePath":  "files/electron/starter/ref-resolver.cjs",
+                      "sha256":  "948113d7fae5965b9471d80ad2d1f8b7f04724b1effc4b7528aa773fa02806fe",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "electron",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/electron/renderer-host-adapter.cjs",
+                      "sourcePath":  "files/electron/starter/renderer-host-adapter.cjs",
+                      "sha256":  "910a24f3c8e1cdbc76e41f005efad61bae22f1ac216184520743b87dcd1ec6fc",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "electron",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/electron/preload-bridge.cjs",
+                      "sourcePath":  "files/electron/starter/preload-bridge.cjs",
+                      "sha256":  "057f4caca60c6193ca38a2e03ca4150efb5ad87f2c97a8fb2eddacdf82f133ff",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "electron",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/electron/main-coordinator.cjs",
+                      "sourcePath":  "files/electron/starter/main-coordinator.cjs",
+                      "sha256":  "be51797882d092669407a28f50aa6edc7fc1cdea44f8b4ce98f70bc4a34c1606",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  },
+                  {
+                      "framework":  "electron",
+                      "integrationMode":  "all",
+                      "relativePath":  ".ui-editor-kit/starter/electron/target-contract-check.cjs",
+                      "sourcePath":  "files/electron/starter/target-contract-check.cjs",
+                      "sha256":  "1270a86a2e9c152a868baa6daf89bb199b0d40cfc9abf4be25656495f0f50c0f",
+                      "template":  false,
+                      "preserveOnUpdate":  true,
+                      "preserveOnUninstall":  true
+                  }
+              ]
+}

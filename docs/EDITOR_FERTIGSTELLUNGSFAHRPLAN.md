@@ -307,7 +307,7 @@ Status: `[A] abgenommen`. Profilinkompatibilität und -beschädigung sind vom lo
 
 ## M82 - App-Starterpaket
 
-Status: offen. Das Starterpaket soll neue Apps von Beginn an auf den in M80.1 festgelegten Ziel-App-, Registry-, Vollständigkeits- und Refreshvertrag verpflichten. M80.1 baut keinen M82-App-Starter.
+Status: `[A] abgenommen`. Das versionierte App-Starterpaket verpflichtet neue Apps vor UI-Entwicklung auf Ziel-App-, Registry-, Vollstaendigkeits- und Refreshvertrag. Der native Manager trennt neue und bestehende Apps, installiert WPF-/Electron-Gerueste transaktional und uebergibt WPF kontrolliert an M79. BBM bleibt die bestehende Electron-Referenz ohne Doppelinstallation.
 
 ## 6. Feste Abnahmereihenfolge
 
@@ -347,6 +347,6 @@ Neue Anforderungen werden hier oder in einer gesonderten Backlog-Datei gesammelt
 
 M80 ist abgeschlossen. Electron ist ausschließlich für den belegten lokalen BBM-Adapter freigegeben; weitere Ziel-App-Technologien oder Frameworkadapter benötigen einen neuen ausdrücklichen Auftrag. Cloud-, Browser- oder Webbetrieb bleibt dauerhaft ausgeschlossen.
 
-## 9. Naechster verbindlicher Auftrag
+## 9. Abschlussstand
 
-M73 bis M81.1 sind abgenommen. M82 bleibt offen und wurde nicht begonnen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigentum der Ziel-App.
+M73 bis M82 sind abgenommen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigentum der Ziel-App. Ein weiterer Meilenstein ist nicht beauftragt.

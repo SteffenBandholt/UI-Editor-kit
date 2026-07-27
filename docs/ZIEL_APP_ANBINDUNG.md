@@ -259,3 +259,6 @@ M39 macht aus dem Pilotabgleich den generischen Ziel-App-Vertrag v1.0. Eine Ziel
 Der UI-Scope beschreibt die sichtbare Oberflaeche der Ziel-App. Der Layout-Scope beschreibt den Speicher-/Profilbereich fuer Layoutzustaende. Eine Abbildung von UI-Scope auf Layout-Scope ist erlaubt, muss aber von der Ziel-App explizit geliefert werden; der Editor darf sie nicht erraten.
 
 Der HostAdapter muss mindestens `getRegistry()`, `getCurrentLayoutState()` und `submitChangeRequest()` anbieten. `saveLayoutState()`, `loadLayoutState()`, `resetLayoutState()` und `getAdapterManifest()` sind optionale generische Erweiterungen fuer Ziel-Apps, die Layout-Persistenz oder Manifestpruefungen anbieten.
+# M82 - zentraler Ziel-App-Einstieg
+
+Der native Manager bietet genau zwei fachlich getrennte Integrationswege: **Neue App vorbereiten** und **Bestehende App nachruesten**. Belegt sind ausschliesslich WPF und Electron. Neue Apps erhalten Regeln und Gerueste, aber keine erfundene Registry. Bestehende WPF-Apps verwenden M79; bestehende Electron-Apps verwenden den Vertrag 1.2. Eine bereits angebundene App wie BBM wird uebernommen und nicht doppelt integriert. Installation, Update und Deinstallation verwenden Vorschau, Bestaetigung, Ownership, Git-/Fremddateischutz und Rollback.

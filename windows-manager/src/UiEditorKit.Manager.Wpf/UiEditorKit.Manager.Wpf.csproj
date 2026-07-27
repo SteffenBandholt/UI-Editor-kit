@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="../../package/current/**/*"><Link>packages/current/%(RecursiveDir)%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content>
+    <Content Include="../../starter-package/current/**/*"><Link>starter-package/current/%(RecursiveDir)%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content>
     <Content Include="../../../src/**/*.cjs"><Link>editor-runtime/src/%(RecursiveDir)%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content>
     <Content Include="../../../package.json"><Link>editor-runtime/package.json</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content>
   </ItemGroup>

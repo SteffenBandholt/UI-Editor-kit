@@ -322,3 +322,10 @@ Jeder Auftrag muss nennen:
 - Testbefehl.
 
 Ohne LV-Position kein Auftrag. Ohne Nachweis kein Haken in `STATUS.md`.
+# M82 - App-Starterpaket und zentraler Einstieg `[A]`
+
+- [A] Versionierter frameworkneutraler Kern mit WPF-/Electron-Vorlagen
+- [A] Vier native Manager-Hauptaktionen und vollstaendiger Status
+- [A] Schema-2-Zielmanifest, Ownership, Vorschau, Transaktion, Rollback, Update, Deinstallation
+- [A] WPF-/Electron-Neuapp, WPF-Bestand und BBM-Electron-Bestand
+- [ ] Vollstaendige 48-Schritte-Praxisabnahme und Abschlusspruefungen

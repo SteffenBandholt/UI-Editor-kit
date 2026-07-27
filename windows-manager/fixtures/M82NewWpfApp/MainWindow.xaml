@@ -1,0 +1,1 @@
+<Window x:Class="M82NewWpfApp.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="M82 WPF Test-App" Width="640" Height="420"><Grid><TextBlock Text="Noch keine registrierte UI" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid></Window>

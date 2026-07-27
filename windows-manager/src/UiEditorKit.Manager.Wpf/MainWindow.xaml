@@ -13,6 +13,45 @@
     <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="360"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <GroupBox Header="Bekannte Ziel-Apps" Grid.Column="0"><ListBox x:Name="AppsList" DisplayMemberPath="DisplayName" SelectionChanged="AppsList_SelectionChanged"/></GroupBox>
       <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"><StackPanel>
+        <GroupBox Header="App-Starterpaket" Margin="0,0,0,16">
+          <StackPanel Margin="8">
+            <TextBlock Text="Ein zentraler Einstieg fuer neue und bestehende WPF-/Electron-Apps" FontSize="18" FontWeight="SemiBold"/>
+            <WrapPanel Margin="0,8,0,10">
+              <Button x:Name="PrepareNewAppButton" Content="Neue App vorbereiten" Click="PrepareNewApp_Click" Padding="15,9" Margin="3"/>
+              <Button x:Name="RetrofitExistingAppButton" Content="Bestehende App nachruesten" Click="RetrofitExistingApp_Click" Padding="15,9" Margin="3"/>
+              <Button x:Name="CheckStarterStatusButton" Content="Registrierungsstatus pruefen" Click="CheckStarterStatus_Click" Padding="15,9" Margin="3"/>
+              <Button x:Name="OpenStarterEditorButton" Content="UI-/PDF-Editor oeffnen" Click="OpenStarterEditor_Click" Padding="15,9" Margin="3"/>
+            </WrapPanel>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+              <TextBlock Text="Appname" VerticalAlignment="Center"/><TextBox x:Name="StarterDisplayNameText" Grid.Column="1" Margin="3"/>
+              <TextBlock Text="applicationId" Grid.Column="2" VerticalAlignment="Center"/><TextBox x:Name="StarterApplicationIdText" Grid.Column="3" Margin="3"/>
+              <TextBlock Text="Framework" Grid.Row="1" VerticalAlignment="Center"/>
+              <ComboBox x:Name="StarterFrameworkCombo" Grid.Row="1" Grid.Column="1" SelectedIndex="0" Margin="3"><ComboBoxItem Content="WPF" Tag="wpf"/><ComboBoxItem Content="Electron" Tag="electron"/></ComboBox>
+              <TextBlock Text="Profilpfad" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/><TextBox x:Name="StarterProfileRootText" Grid.Row="1" Grid.Column="3" Text=".ui-editor-kit/profiles" Margin="3"/>
+              <CheckBox x:Name="StarterUiEnabledCheck" Grid.Row="2" Grid.Column="1" Content="UI-Editor gewuenscht" IsChecked="True" Margin="3"/>
+              <CheckBox x:Name="StarterPdfEnabledCheck" Grid.Row="2" Grid.Column="3" Content="PDF-Editor gewuenscht" Margin="3"/>
+            </Grid>
+            <TextBlock x:Name="StarterStatusText" Text="Noch kein Starterpaketstatus geprueft." Margin="3,9,3,3" TextWrapping="Wrap"/>
+            <DataGrid x:Name="StarterPlanGrid" AutoGenerateColumns="False" IsReadOnly="True" Height="180" Margin="0,6,0,0" SelectionChanged="StarterPlanGrid_SelectionChanged">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Zielpfad" Binding="{Binding RelativePath}" Width="*"/>
+                <DataGridTextColumn Header="Aktion" Binding="{Binding Action}" Width="90"/>
+                <DataGridCheckBoxColumn Header="Ownership" Binding="{Binding ManagerOwned}" Width="90"/>
+                <DataGridTextColumn Header="Alter Hash" Binding="{Binding OldHash}" Width="120"/>
+                <DataGridTextColumn Header="Neuer Hash" Binding="{Binding NewHash}" Width="120"/>
+                <DataGridTextColumn Header="Konflikt" Binding="{Binding Conflict}" Width="180"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBox x:Name="StarterExactDiffText" Height="105" IsReadOnly="True" AcceptsReturn="True" FontFamily="Consolas" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
+            <WrapPanel>
+              <Button x:Name="StarterInstallButton" Content="Bestaetigte Vorschau installieren / aktualisieren" Click="StarterInstall_Click" IsEnabled="False" Padding="12,7" Margin="3"/>
+              <Button x:Name="StarterUninstallPreviewButton" Content="Deinstallationsvorschau" Click="StarterUninstallPreview_Click" Padding="12,7" Margin="3"/>
+              <Button x:Name="StarterUninstallButton" Content="Bestaetigt deinstallieren" Click="StarterUninstall_Click" IsEnabled="False" Padding="12,7" Margin="3"/>
+            </WrapPanel>
+          </StackPanel>
+        </GroupBox>
         <TextBlock Text="Ziel-App-Details" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>

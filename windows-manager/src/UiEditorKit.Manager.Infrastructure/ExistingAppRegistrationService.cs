@@ -234,14 +234,35 @@ public sealed class ExistingAppRegistrationService
             var currentState = await LoadStateAsync(root, cancellationToken);
             var registrationId = currentState?.RegistrationId ?? "m79-" + Hashing.Bytes(Encoding.UTF8.GetBytes(analysis.ApplicationId + "|" + analysis.RootPathFingerprint))[..20];
             var artifacts = generation.Files.ToList();
+            var generatedManifestFile = generation.Files.Single(item => item.RelativePath == "ui-editor-target.json");
+            var manifest = JsonSerializer.Deserialize<TargetAppManifest>(generatedManifestFile.Content, ManagerJson.Options)!;
+            var starterManifestPath = Path.Combine(root, StarterTargetContract.ManifestFileName);
+            if (File.Exists(starterManifestPath))
+            {
+                var starter = JsonSerializer.Deserialize<StarterTargetManifest>(await File.ReadAllBytesAsync(starterManifestPath, cancellationToken), ManagerJson.Options);
+                if (starter?.SchemaVersion == StarterTargetContract.SchemaVersion)
+                {
+                    var scopeId = analysis.ApplicationId + ".ui.root";
+                    var merged = starter with
+                    {
+                        RegistryVersion = Math.Max(1, starter.RegistryVersion + 1),
+                        RegistryFingerprint = generation.Registry.Fingerprint,
+                        RegistryStatus = StarterRegistryStatuses.Complete,
+                        ActiveScopes = [scopeId],
+                        Scopes = [new(scopeId, StarterRegistryStatuses.Complete, null, generation.Registry.Elements.Count, 0)],
+                        ManagerTarget = manifest,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    artifacts[artifacts.FindIndex(item => item.RelativePath == StarterTargetContract.ManifestFileName)] =
+                        generatedManifestFile with { Content = JsonSerializer.SerializeToUtf8Bytes(merged, new JsonSerializerOptions(ManagerJson.Options) { WriteIndented = true }) };
+                }
+            }
             var projectPath = ManagerPathRules.ResolveInside(root, analysis.ProjectFile);
             var projectOriginal = await File.ReadAllBytesAsync(projectPath, cancellationToken);
             var projectUpdated = StructuredProjectRegistrationEditor.AddRegistrationCompileItem(projectOriginal);
             artifacts.Add(new(analysis.ProjectFile, projectUpdated, "ui-editor-kit-m79", "Additiver strukturierter Compile-Update-Eintrag"));
 
             var classified = await ClassifyAsync(root, analysis, artifacts, currentState, registrationId, cancellationToken);
-            var manifest = JsonSerializer.Deserialize<TargetAppManifest>(
-                generation.Files.Single(item => item.RelativePath == "ui-editor-target.json").Content, ManagerJson.Options)!;
             var isUpdate = currentState is not null;
             var state = new ExistingAppRegistrationState(1, registrationId, analysis.ApplicationId, analysis.AnalysisId,
                 analysis.SourceInventoryHash, generation.Registry.Fingerprint, analysis.AdapterVersion,
@@ -512,6 +533,7 @@ public sealed class ExistingAppRegistrationService
         var files = new List<RegistrationPreviewFile>();
         var ownedFiles = new List<RegistrationOwnedFile>();
         var blockers = new List<string>();
+        var starterState = await LoadStarterStateAsync(root, cancellationToken);
         foreach (var artifact in artifacts.OrderBy(item => item.RelativePath, StringComparer.Ordinal))
         {
             var target = ManagerPathRules.ResolveInside(root, artifact.RelativePath);
@@ -520,7 +542,9 @@ public sealed class ExistingAppRegistrationService
             var newHash = Hashing.Bytes(artifact.Content);
             var previous = state?.Files.SingleOrDefault(item => item.RelativePath == artifact.RelativePath);
             var isState = artifact.RelativePath == StatePath && state is not null;
-            var managerOwned = previous is not null && oldHash == previous.InstalledHash || isState;
+            var starterManifestHandoff = state is null && artifact.RelativePath == StarterTargetContract.ManifestFileName &&
+                starterState?.Files.Any(item => item.RelativePath == StarterTargetContract.ManifestFileName) == true;
+            var managerOwned = previous is not null && oldHash == previous.InstalledHash || isState || starterManifestHandoff;
             string? conflict = null;
             RegistrationFileAction action;
             if (oldHash is null) action = RegistrationFileAction.Create;
@@ -540,6 +564,15 @@ public sealed class ExistingAppRegistrationService
             ownedFiles.Add(new(artifact.RelativePath, newHash, artifact.Ownership, created, originalHash, backupRelative));
         }
         return new(files, ownedFiles, blockers);
+    }
+
+    private static async Task<StarterInstallationState?> LoadStarterStateAsync(string root, CancellationToken cancellationToken)
+    {
+        var path = ManagerPathRules.ResolveInside(root, StarterTargetContract.OwnershipFileName);
+        if (!File.Exists(path)) return null;
+        await using var stream = File.OpenRead(path);
+        var state = await JsonSerializer.DeserializeAsync<StarterInstallationState>(stream, ManagerJson.Options, cancellationToken);
+        return state is { SchemaVersion: 1, ProductName: StarterTargetContract.ProductName } ? state : null;
     }
 
     private static string CreatePreviewId(ExistingAppAnalysis analysis, string root, IReadOnlyList<RegistrationPreviewFile> files) =>

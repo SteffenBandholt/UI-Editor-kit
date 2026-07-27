@@ -1,0 +1,4 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory).ui-editor-kit\starter\wpf\UiEditorKit.Starter.props"
+          Condition="Exists('$(MSBuildThisFileDirectory).ui-editor-kit\starter\wpf\UiEditorKit.Starter.props')" />
+</Project>
