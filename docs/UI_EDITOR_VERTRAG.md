@@ -196,3 +196,17 @@ Eine Startquittung verhindert die Doppelanwendung beim späteren Editoröffnen. 
 Für die Direktauswahl sind nur explizite Registryketten zulässig. Optionale Vertragsfelder sind `selectionKind`, `selectionLevels`, `operationEffects`, `operationAffectedIds` und `geometry`. Zulässige Auswahlarten sind `element`, `group`, `layoutZone`, `label`, `field`, `button`, `icon`, `statusText`, `table` und `column`. Automatische Zielerkennung oder eine erzeugte Registry bleiben verboten.
 
 Jede Layoutoperation muss als `elementOnly`, `groupWithChildren`, `layoutZone`, `parentReflowRequired` oder `forbidden` klassifiziert sein. Mehrfachwirkung wird vor der Bedienung sichtbar genannt. Die Ziel-App muss nicht deklarierte Reflowwirkungen, unzulässige Überlappung, nicht endliche Werte, Grenzverletzungen und fremde Größenänderungen ablehnen und vollständig zurückrollen.
+
+## Geometrierisiken und Bearbeitungsmodus ab M82.2
+
+- Der gemeinsame, frameworkneutrale Vertrag unterscheidet `guided` und `free`; „Geführt“ ist der Standard.
+- Die bloße Auswahl und eine deklarierte Reflow-Eigenschaft sind kein Risikoereignis. Eine Warnung setzt eine konkrete Zielgeometrie voraus.
+- Sichtbare Grenzverletzungen und Überlappungen sind bestätigbare Risiken. Mathematisch ungültige Geometrie, gesperrte Operationen, Vertrags-/Readbackfehler, nicht garantierter Rollback und Fachwertänderungen bleiben Fehler.
+- Haupttexte verwenden ausschließlich Anzeigenamen. Technische IDs, Rechtecke, Fingerprint, Wirkungsmenge, Fehlercode und Rollbackstatus sind nur über „Details anzeigen“ zugänglich.
+- `clampToGroup` und `clampToArea` ändern nur die Zielposition, niemals Größe, Registry-Parent oder unbeteiligte Nachbarn.
+- `applyAnyway` bestätigt ausschließlich die aktuelle `operationId`; es deaktiviert keine späteren Warnungen.
+- Vorschauen werden vom bestehenden Ziel-App-HostAdapter nativ angezeigt und nach jeder Entscheidung, Auswahlwechsel, Escape oder Schließen entfernt.
+- Die Moduspräferenz wird getrennt von UI- und PDF-Layoutprofilen gespeichert.
+- PDF-Hinweise verwenden dieselbe Meldungsstruktur; technische PDF-Gültigkeitsregeln bleiben verbindlich.
+
+Details: `docs/M82_2_GEFUEHRT_FREI_BEARBEITEN.md`.

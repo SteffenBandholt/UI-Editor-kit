@@ -8,6 +8,8 @@ using System.Windows.Media.Imaging;
 using ReferenceTargetApp.Domain.Models;
 using ReferenceTargetApp.EditorIntegration.Electron;
 using ReferenceTargetApp.EditorIntegration.Pdf;
+using ReferenceTargetApp.EditorIntegration.Geometry;
+using System.Text.Json;
 using ReferenceTargetApp.PdfPreview;
 using ReferenceTargetApp.PdfRendering;
 
@@ -59,6 +61,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private string status = "PDF-Editor bereit. Vorschau noch nicht erzeugt.";
     private string error = string.Empty;
     private string errorCode = string.Empty;
+    private string technicalDetails = string.Empty;
     private double overlayLeft;
     private double overlayTop;
     private double overlayWidth;
@@ -133,6 +136,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public string ErrorCode { get => errorCode; private set => Set(ref errorCode, value); }
     public string ErrorCodeDisplay => string.IsNullOrEmpty(ErrorCode) ? string.Empty : "Technischer Code: " + ErrorCode;
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+    public string TechnicalDetails { get => technicalDetails; private set => Set(ref technicalDetails, value); }
+    public bool HasTechnicalDetails => !string.IsNullOrWhiteSpace(TechnicalDetails);
     public string SelectedId => selected?.ElementId ?? "–";
     public string SelectedName => selected?.Name ?? "Kein PDF-Element ausgewählt";
     public string SelectedKind => selected?.Kind.ToString() ?? "–";
@@ -283,6 +288,20 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
             previewStale = false;
             StatusMessage = $"PDF erfolgreich erzeugt; {Pages.Count} Seiten, Vorschau aktuell.";
         }
+        catch (OperationCanceledException) when (activeRender?.IsCancellationRequested == true)
+        {
+            StatusMessage = "PDF-Erzeugung abgebrochen. Sie können direkt weiterarbeiten.";
+        }
+        catch (ElectronEditorException exception)
+        {
+            ShowError(exception.Code, "PDF konnte nicht erzeugt werden. Sie können direkt weiterarbeiten.", exception.Message);
+            StatusMessage = "PDF-Erzeugung fehlgeschlagen; letzte gültige Vorschau bleibt erhalten.";
+        }
+        catch (Exception exception)
+        {
+            ShowError(PdfErrorCodes.RenderFailed, "PDF konnte nicht erzeugt werden. Sie können direkt weiterarbeiten.", exception.Message);
+            StatusMessage = "PDF-Erzeugung fehlgeschlagen; letzte gültige Vorschau bleibt erhalten.";
+        }
         finally { activeRender?.Dispose(); activeRender = null; IsBusy = false; renderLock.Release(); RaiseAll(); }
     }
 
@@ -404,7 +423,21 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
 
     private void ApplyResult(PdfLayoutOperationResult result, string success, bool stale)
     {
-        if (!result.Success) { ShowError(result.Code, result.Message); StatusMessage = "PDF-Layoutaktion fehlgeschlagen."; }
+        if (!result.Success)
+        {
+            var boundaryFailure = result.Failures?.FirstOrDefault(failure =>
+                failure.Code is PdfErrorCodes.OutOfPageBounds or PdfErrorCodes.InvalidPageZone);
+            if (result.Code is PdfErrorCodes.OutOfPageBounds or PdfErrorCodes.InvalidPageZone || boundaryFailure is not null)
+            {
+                var notice = GeometryRiskMessages.ForPdf(GeometryRiskTypes.LeavesEditableArea, selected?.Name ?? "PDF-Element", selected?.PageArea.ToString() ?? "Seitenbereich");
+                ShowError(boundaryFailure?.Code ?? result.Code, notice.Message,
+                    boundaryFailure is null ? result.Message : $"{boundaryFailure.Message}\n{result.Message}");
+            }
+            else ShowError(result.Code, result.Message);
+            StatusMessage = result.RollbackSucceeded
+                ? "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten."
+                : "PDF-Layoutaktion und Rollback sind fehlgeschlagen.";
+        }
         else { if (stale) MarkPreviewStale(); StatusMessage = success; ClearError(); }
         RefreshState();
     }
@@ -456,8 +489,13 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         RaiseAll();
     }
     private void RefreshState() => RaiseAll();
-    private void ClearError() { ErrorMessage = string.Empty; ErrorCode = string.Empty; OnPropertyChanged(nameof(ErrorCodeDisplay)); }
-    private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; OnPropertyChanged(nameof(ErrorCodeDisplay)); }
+    private void ClearError() { ErrorMessage = string.Empty; ErrorCode = string.Empty; TechnicalDetails = string.Empty; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
+    private void ShowError(string code, string message, string? hostDetails = null)
+    {
+        ErrorCode = code; ErrorMessage = message;
+        TechnicalDetails = JsonSerializer.Serialize(new { errorCode = code, hostAdapterReadback = hostDetails ?? message }, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasTechnicalDetails));
+    }
     private void RaiseAll()
     {
         foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);

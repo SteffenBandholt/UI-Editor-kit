@@ -9,6 +9,8 @@ using ReferenceTargetApp.EditorIntegration.EditorUi;
 using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Session;
+using ReferenceTargetApp.EditorIntegration.Geometry;
+using System.Text.Json;
 using ReferenceTargetApp.UI.Editor;
 
 namespace ReferenceTargetApp.UI.ViewModels;
@@ -26,6 +28,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private readonly CancellationToken lifetimeToken;
     private readonly Dispatcher dispatcher;
     private readonly IPdfEditorWorkspace pdfWorkspace;
+    private readonly EditorPreferenceStore preferenceStore;
     private EditorUiState? state;
     private LayoutProfileSessionStatus? layoutStatus;
     private string stepText = "1";
@@ -37,6 +40,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private string errorMessage = string.Empty;
     private string errorCode = string.Empty;
     private int activeWorkspaceIndex;
+    private string editMode = GeometryEditModes.Guided;
+    private string technicalDetails = string.Empty;
 
     public EditorWindowViewModel(
         EditorProcessCoordinator coordinator,
@@ -56,9 +61,11 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         this.requestClose = requestClose;
         this.lifetimeToken = lifetimeToken;
         this.pdfWorkspace = pdfWorkspace;
+        preferenceStore = new(layoutSession.ProfileRoot, layoutSession.ApplicationId);
         dispatcher = Dispatcher.CurrentDispatcher;
         SetLayerCommand = new AsyncCommand(SetLayerAsync, parameter => CanInteract && parameter is string);
         SetModeCommand = new AsyncCommand(SetModeAsync, parameter => CanInteract && parameter is string);
+        SetEditModeCommand = new AsyncCommand(SetEditModeAsync, parameter => CanOperate && parameter is string);
         DirectionCommand = new AsyncCommand(ApplyDirectionAsync, parameter => CanUseDirection(parameter as string));
         ToggleVisibilityCommand = new AsyncCommand(_ => ToggleVisibilityAsync(), _ => CanChangeVisibility);
         SaveCommand = new AsyncCommand(_ => SaveAsync(), _ => CanOperate && IsDirty);
@@ -95,6 +102,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<EditorScopeChoice> Scopes { get; } = [];
     public ICommand SetLayerCommand { get; }
     public ICommand SetModeCommand { get; }
+    public ICommand SetEditModeCommand { get; }
     public ICommand DirectionCommand { get; }
     public ICommand ToggleVisibilityCommand { get; }
     public ICommand SaveCommand { get; }
@@ -115,6 +123,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public string ErrorMessage { get => errorMessage; private set => Set(ref errorMessage, value); }
     public string ErrorCode { get => errorCode; private set => Set(ref errorCode, value); }
     public string ErrorCodeDisplay => string.IsNullOrWhiteSpace(ErrorCode) ? string.Empty : $"Technischer Code: {ErrorCode}";
+    public string TechnicalDetails { get => technicalDetails; private set => Set(ref technicalDetails, value); }
+    public bool HasTechnicalDetails => !string.IsNullOrWhiteSpace(TechnicalDetails);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public string ActiveProfileId => layoutSession.ActiveProfileId;
     public string ActiveScopeId => coordinator.ActiveScopeId;
@@ -130,6 +140,12 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public string SelectedRole { get; private set; } = "–";
     public string Operations { get; private set; } = "–";
     public string LayoutEffectInfo { get; private set; } = "Wirkung: keine Bearbeitung ausgewählt";
+    public string EditMode => editMode;
+    public bool IsGuidedEditMode => editMode == GeometryEditModes.Guided;
+    public bool IsFreeEditMode => editMode == GeometryEditModes.Free;
+    public string EditModeStatus => IsFreeEditMode
+        ? "Bearbeitungsmodus: Frei · Überlappungen und das Verlassen von Gruppen sind erlaubt."
+        : "Bearbeitungsmodus: Geführt";
     public string Position { get; private set; } = "–";
     public string Size { get; private set; } = "–";
     public string TextPosition { get; private set; } = "–";
@@ -165,6 +181,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         ClearError();
         try
         {
+            editMode = await preferenceStore.LoadEditModeAsync(lifetimeToken);
             var activation = await coordinator.ActivateAsync(lifetimeToken);
             if (!activation.Success) throw new EditorProcessException(activation.Code, activation.Message);
             var session = await coordinator.StartSessionAsync(lifetimeToken);
@@ -179,6 +196,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                 ApplyState(initialState);
                 RefreshLayoutStatus();
                 StatusMessage = "Editor bereit.";
+                RaiseEditModeChanged();
             });
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
@@ -191,6 +209,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     internal async Task SelectElementAsync(string elementId)
     {
         if (!CanOperate) return;
+        await coordinator.ClearGeometryPreviewAsync(lifetimeToken);
         await RunStateActionAsync(() => coordinator.SelectEditorElementAsync(elementId, lifetimeToken), $"Element {elementId} ausgewählt.");
         if (state?.Details is not null)
             await selectionService.HighlightAsync(state.ScopeId, state.Details.ElementId, lifetimeToken);
@@ -274,6 +293,22 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         if (parameter is string mode) await RunStateActionAsync(() => coordinator.SetEditorModeAsync(mode, lifetimeToken), $"Modus {mode} ist aktiv.");
     }
 
+    private async Task SetEditModeAsync(object? parameter)
+    {
+        if (parameter is not string value) return;
+        var normalized = GeometryEditModes.Normalize(value);
+        if (normalized == editMode) return;
+        if (!await preferenceStore.SaveEditModeAsync(normalized, lifetimeToken))
+        {
+            ShowError("editor_preference_write_failed", "Der Bearbeitungsmodus konnte nicht gespeichert werden.");
+            return;
+        }
+        editMode = normalized;
+        ClearError();
+        StatusMessage = normalized == GeometryEditModes.Free ? "Bearbeitungsmodus Frei ist aktiv." : "Bearbeitungsmodus Geführt ist aktiv.";
+        RaiseEditModeChanged();
+    }
+
     private async Task ApplyDirectionAsync(object? parameter)
     {
         if (parameter is not string direction || !CanUseDirection(direction)) return;
@@ -282,15 +317,34 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         try
         {
             await coordinator.SetEditorStepAsync(lastValidStep, lifetimeToken);
-            var outcome = await coordinator.RunEditorDirectionAsync(direction, lifetimeToken);
+            var outcome = await coordinator.RunEditorDirectionWithRiskAsync(direction, editMode, null, lifetimeToken);
+            RunOnUi(() => { ApplyState(outcome.State); RefreshLayoutStatus(); });
+            if (outcome.Result.GeometryRisk is { HasRisks: true } risk)
+            {
+                var decision = RunOnUi(() => dialogService.AskGeometryRisk(getOwner()!, risk));
+                if (decision is GeometryRiskDecision.Cancel or GeometryRiskDecision.GoBack)
+                {
+                    await coordinator.ClearGeometryPreviewAsync(lifetimeToken);
+                    RunOnUi(() =>
+                    {
+                        ClearError();
+                        StatusMessage = decision == GeometryRiskDecision.GoBack
+                            ? "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten."
+                            : "Änderung abgebrochen. Sie können direkt weiterarbeiten.";
+                    });
+                    return;
+                }
+                outcome = await coordinator.RunEditorDirectionWithRiskAsync(direction, editMode,
+                    new GeometryRiskConfirmation(risk.OperationId, decision.ToContractAction()), lifetimeToken);
+            }
             RunOnUi(() =>
             {
                 ApplyState(outcome.State);
                 RefreshLayoutStatus();
                 if (!outcome.Result.Success)
                 {
-                    ShowError(outcome.Result.RollbackSucceeded ? outcome.Result.ErrorCode ?? "target_rejected_change" : "rollback_failed", outcome.Result.Message);
-                    StatusMessage = "Änderung wurde abgewiesen.";
+                    ShowTechnicalFailure(outcome.Result);
+                    StatusMessage = "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten.";
                 }
                 else
                 {
@@ -550,8 +604,24 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     }
 
     private static bool Different(double? a, double? b) => a is null != b is null || a is not null && b is not null && Math.Abs(a.Value - b.Value) > 0.000001;
-    private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); }
-    private void ClearError() { ErrorCode = string.Empty; ErrorMessage = string.Empty; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); }
+    private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; TechnicalDetails = $"Fehlercode: {code}"; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
+    private void ShowTechnicalFailure(EditorIntegration.HostAdapter.ChangeResult result)
+    {
+        ErrorCode = result.RollbackSucceeded ? result.ErrorCode ?? "target_rejected_change" : "rollback_failed";
+        ErrorMessage = result.RollbackSucceeded
+            ? "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten."
+            : "Die Änderung und ihre Wiederherstellung sind fehlgeschlagen.";
+        TechnicalDetails = JsonSerializer.Serialize(new
+        {
+            errorCode = ErrorCode,
+            result.ElementId,
+            result.Operation,
+            hostAdapterReadback = result.Message,
+            rollbackSucceeded = result.RollbackSucceeded,
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(HasTechnicalDetails));
+    }
+    private void ClearError() { ErrorCode = string.Empty; ErrorMessage = string.Empty; TechnicalDetails = string.Empty; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
     private static string ErrorCodeFor(Exception exception) => exception switch { EditorProcessException process => process.Code, OperationCanceledException => "cancelled", _ => "editor_ui_error" };
 
     private void RaiseDetailsChanged()
@@ -590,7 +660,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         {
             "groupWithChildren" => $"Wirkung: Gruppe mit ihren Kindern.{explicitTargets} Interne Größen bleiben unverändert.",
             "layoutZone" => $"Wirkung: gewählter Layoutbereich.{explicitTargets}",
-            "parentReflowRequired" => $"Achtung: Parent-Reflow erforderlich.{explicitTargets} Nicht deklarierte Nachbaränderungen werden abgewiesen.",
+            "parentReflowRequired" => $"Bei dieser Größenänderung kann sich die zugehörige Gruppe mit anpassen.{explicitTargets}",
             "forbidden" => "Wirkung: gesperrt.",
             _ => "Wirkung: nur das gewählte Ziel.",
         };
@@ -598,13 +668,21 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseCommandStates()
     {
-        foreach (var command in new[] { SetLayerCommand, SetModeCommand, DirectionCommand, ToggleVisibilityCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(CanOperate));
         OnPropertyChanged(nameof(ControlsEnabled));
         OnPropertyChanged(nameof(CanChangeVisibility));
     }
+
+    private void RaiseEditModeChanged()
+    {
+        foreach (var property in new[] { nameof(EditMode), nameof(IsGuidedEditMode), nameof(IsFreeEditMode), nameof(EditModeStatus) }) OnPropertyChanged(property);
+        RaiseCommandStates();
+    }
+
+    private T RunOnUi<T>(Func<T> action) => dispatcher.CheckAccess() ? action() : dispatcher.Invoke(action);
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

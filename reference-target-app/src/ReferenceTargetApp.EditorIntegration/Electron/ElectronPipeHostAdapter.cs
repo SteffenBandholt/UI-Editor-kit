@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 using ReferenceTargetApp.EditorIntegration.Registry;
 
 namespace ReferenceTargetApp.EditorIntegration.Electron;
@@ -247,9 +248,10 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool Visible);
     internal sealed record RemoteChangeResult(
         bool Success, string ChangeId, string ElementId, string Operation, string? ErrorCode, string Message,
-        RemoteElementLayoutState? PreviousState, RemoteElementLayoutState? NewState, bool RollbackSucceeded);
+        RemoteElementLayoutState? PreviousState, RemoteElementLayoutState? NewState, bool RollbackSucceeded,
+        GeometryRiskAssessment? GeometryRisk = null);
 
-    internal sealed class ElectronPipeHostAdapter : IAsyncHostAdapter
+    internal sealed class ElectronPipeHostAdapter : IGeometryRiskHostAdapter
     {
         private readonly LocalTargetPipeConnection connection;
         private readonly IReadOnlyDictionary<string, RemoteRegistrationEntry> entries;
@@ -281,6 +283,23 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             changeRequest, "async_transport_required", "Electron-Ziel-App-Änderungen werden ausschließlich asynchron übertragen.");
 
         public async Task<ChangeResult> SubmitChangeRequestAsync(ChangeRequest changeRequest, CancellationToken cancellationToken = default)
+            => await SubmitRemoteAsync(changeRequest, null, null, cancellationToken).ConfigureAwait(false);
+
+        public async Task<ChangeResult> SubmitGeometryChangeRequestAsync(
+            ChangeRequest changeRequest,
+            string editMode,
+            GeometryRiskConfirmation? confirmation = null,
+            CancellationToken cancellationToken = default)
+            => await SubmitRemoteAsync(changeRequest, GeometryEditModes.Normalize(editMode), confirmation, cancellationToken).ConfigureAwait(false);
+
+        public Task ClearGeometryPreviewAsync(CancellationToken cancellationToken = default) =>
+            connection.SendEventAsync("clearGeometryPreview", cancellationToken: cancellationToken);
+
+        private async Task<ChangeResult> SubmitRemoteAsync(
+            ChangeRequest changeRequest,
+            string? editMode,
+            GeometryRiskConfirmation? confirmation,
+            CancellationToken cancellationToken)
         {
             if (!entries.TryGetValue(changeRequest.ElementId, out var entry))
                 return Rejected(changeRequest, ElectronEditorErrorCodes.ElementNotFound, "Element ist nicht registriert.");
@@ -290,7 +309,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 return Rejected(changeRequest, ElectronEditorErrorCodes.OperationNotAllowed, "Operation ist nicht erlaubt.");
             try
             {
-                var response = await connection.RequestAsync("submitChange", new { scopeId, changeRequest },
+                var response = await connection.RequestAsync("submitChange", new { scopeId, changeRequest, editMode, riskConfirmation = confirmation },
                     TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 if (!response.TryGetProperty("changeResult", out var resultElement))
                     throw new ElectronEditorException(ElectronEditorErrorCodes.MessageInvalid, "ChangeResult fehlt.");
@@ -298,7 +317,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                              ?? throw new ElectronEditorException(ElectronEditorErrorCodes.MessageInvalid, "ChangeResult ist ungültig.");
                 var result = new ChangeResult(remote.Success, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
                     remote.ErrorCode, remote.Message, remote.PreviousState is null ? null : ToLocal(remote.PreviousState, registry.Entries[0].ScopeId),
-                    remote.NewState is null ? null : ToLocal(remote.NewState, registry.Entries[0].ScopeId), remote.RollbackSucceeded);
+                    remote.NewState is null ? null : ToLocal(remote.NewState, registry.Entries[0].ScopeId), remote.RollbackSucceeded,
+                    remote.GeometryRisk);
                 if (remote.Success && result.NewState is not null) UpdateState(result.NewState);
                 return result;
             }
