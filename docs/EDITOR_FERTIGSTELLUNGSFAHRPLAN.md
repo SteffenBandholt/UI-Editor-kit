@@ -350,3 +350,7 @@ M80 ist abgeschlossen. Electron ist ausschließlich für den belegten lokalen BB
 ## 9. Abschlussstand
 
 M73 bis M82 sind abgenommen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigentum der Ziel-App. Ein weiterer Meilenstein ist nicht beauftragt.
+
+## 10. M82.1 – Bedienbares Feintuning für bestehende Ziel-Apps
+
+M82.1 stabilisiert nach M82 ausschließlich den vorhandenen Ziel-App-Weg: kompatible UI-Profile gelten bereits beim normalen App-Start, die Direktauswahl synchronisiert ein registriertes Ziel mit dem bestehenden Baum, und deklarierte Wirkungsgrenzen verhindern unkontrollierte Layoutfolgen. Es entsteht kein zweiter Editor-, Manager-, Registry- oder Profilweg. Der Meilenstein wird erst nach vollständiger sichtbarer BBM-Abnahme als `[A]` geführt.

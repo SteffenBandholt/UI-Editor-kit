@@ -262,3 +262,11 @@ Der HostAdapter muss mindestens `getRegistry()`, `getCurrentLayoutState()` und `
 # M82 - zentraler Ziel-App-Einstieg
 
 Der native Manager bietet genau zwei fachlich getrennte Integrationswege: **Neue App vorbereiten** und **Bestehende App nachruesten**. Belegt sind ausschliesslich WPF und Electron. Neue Apps erhalten Regeln und Gerueste, aber keine erfundene Registry. Bestehende WPF-Apps verwenden M79; bestehende Electron-Apps verwenden den Vertrag 1.2. Eine bereits angebundene App wie BBM wird uebernommen und nicht doppelt integriert. Installation, Update und Deinstallation verwenden Vorschau, Bestaetigung, Ownership, Git-/Fremddateischutz und Rollback.
+
+## Ziel-App-Start und Direktauswahl M82.1
+
+Eine Ziel-App kann den vom Kit exportierten Startprofildienst vor oder während ihres normalen UI-Aufbaus aufrufen. Sie übergibt ihre vorhandene Profilwurzel, App-ID, aktiven Scopes und dieselbe Registry, die später im lokalen Editorhandshake verwendet wird. Das Ergebnis ist ein validierter Plan. Anwenden, Readback, Geometrieprüfung und Rollback bleiben Aufgabe desselben Ziel-App-HostAdapters. Nach Erfolg bestätigt die Ziel-App den Profilhash und reicht die Quittung beim späteren Editorstart im bestehenden Vertrag weiter.
+
+Für eine direkte Auswahl sendet der Manager weiterhin `beginTargetSelection`, `cancelTargetSelection` und `highlightElement` über die vorhandene lokale Sitzung. Die Ziel-App darf nur ihre explizit registrierten Referenzen treffen. Sie meldet `targetSelectionChanged` mit Scope, Element-ID, Anzeigename, Typ, Parent, Auswahlart, Auswahlstufe, Kinderzahl und Bounding Rectangle. Der Manager wählt daraufhin dasselbe Element im bestehenden Baum aus.
+
+Position, Größe, Textposition, Textgröße und Sichtbarkeit bleiben getrennte Operationen. Die Registry deklariert die Wirkungsmenge und ausdrücklich abhängige IDs. Eine Ziel-App darf eine Änderung nur bestätigen, wenn die tatsächliche Geometriewirkung innerhalb dieser Menge und ihrer Baselinegrenzen liegt.

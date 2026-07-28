@@ -8,6 +8,16 @@
 
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
 
+### M82.1 – Direktauswahl und sicheres Ziel-App-Feintuning
+
+- Status: `[A] abgenommen`; alle Pflichtprüfungen und die vollständige sichtbare 56-Schritt-BBM-Abnahme im normalen Benutzerprofil sind abgeschlossen.
+- Kompatible UI-Profile werden beim normalen Ziel-App-Start über einen gemeinsamen, manifest- und fingerprintgeprüften Dienst geladen; beschädigte oder inkompatible Profile fallen auf Baseline zurück und werden für M81.1 vorgemerkt.
+- Eine Startquittung verhindert die Doppelanwendung beim späteren Editoröffnen und erhält die deklarierte Ziel-App-Baseline für Reset.
+- Direktauswahl arbeitet ausschließlich auf expliziten Registry-Parents und unterscheidet Element, Gruppe und Bereich mit Linienart, Stärke und verständlichem Badge; Tab/Shift+Tab, Enter/Klick und Esc sind definiert.
+- `elementOnly`, `groupWithChildren`, `layoutZone`, `parentReflowRequired` und `forbidden` sind deklarierte Wirkungsgrenzen. Der Manager zeigt die aktuelle Wirkung, die Ziel-App prüft tatsächliche Geometrie und rollt unerwartete Folgen zurück.
+- Automatisiert grün: 36 neue Kit-Einzelfälle, bestehende Kit-Suite und nativer Doppelanwendungs-/Resettest. Sichtbarer BBM-Gesamtnachweis steht noch aus.
+- Detaildokument: `docs/M82_1_DIREKTAUSWAHL_UND_LAYOUTSTABILISIERUNG.md`.
+
 ### M81.1 – Sicherer Profil-Restore für bestehende Benutzerprofile
 
 - Status: `[A] abgenommen`; gezielte Tests und reale Abnahme im normalen BBM-Benutzerprofilpfad sind abgeschlossen.

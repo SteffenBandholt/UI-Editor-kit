@@ -36,7 +36,11 @@ public sealed record EditorUiDetails(
     bool Visible,
     bool Editable,
     EditorUiOperations? Operations,
-    EditorUiLayoutEntry CurrentLayout);
+    EditorUiLayoutEntry CurrentLayout,
+    string? SelectionKind = null,
+    IReadOnlyList<string>? SelectionLevels = null,
+    IReadOnlyDictionary<string, string>? OperationEffects = null,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null);
 
 public sealed record EditorUiOperations(
     IReadOnlyList<string> AllowedOps,

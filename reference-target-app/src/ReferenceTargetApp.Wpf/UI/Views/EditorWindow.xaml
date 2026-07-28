@@ -80,13 +80,16 @@
                         <TextBlock Text="Ebene" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
                         <ItemsControl ItemsSource="{Binding Layers}" Margin="0,0,0,12">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetLayerCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,0"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
+                            <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetLayerCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,0"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Enabled}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Text="Modus" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,5" />
                         <ItemsControl ItemsSource="{Binding Modes}" Margin="0,0,0,12">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetModeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,8"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
+                            <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetModeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,8"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Enabled}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <Border Background="#FFF7D6" BorderBrush="#C58B00" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,12">
+                            <TextBlock Text="{Binding LayoutEffectInfo}" TextWrapping="Wrap" />
+                        </Border>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                             <TextBlock Text="Schrittweite (DIP)" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="110" />
@@ -117,9 +120,12 @@
                 </GroupBox>
 
                 <GroupBox Header="Auswahl in der Ziel-App">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="In App auswählen" Command="{Binding BeginAppSelectionCommand}" Margin="0,0,8,0" />
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal">
+                        <Button Content="Element in App auswählen" Command="{Binding BeginAppSelectionCommand}" Margin="0,0,8,0" />
                         <Button Content="Auswahl abbrechen" Command="{Binding CancelAppSelectionCommand}" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding DirectSelectionInfo}" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" />
                     </StackPanel>
                 </GroupBox>
             </StackPanel>

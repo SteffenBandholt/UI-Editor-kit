@@ -28,7 +28,9 @@ public sealed class StarterPackageCatalog(string packageRoot)
                 if (!ManagerPathRules.IsSafeRelativePath(file.RelativePath) || !ManagerPathRules.IsSafeRelativePath(file.SourcePath))
                     return (null, ManagerResult.Fail(ManagerErrorCodes.StarterPackageInvalid, "App-Starterpaket enthaelt einen unsicheren Pfad."));
                 var source = ManagerPathRules.ResolveInside(root, file.SourcePath);
-                if (!File.Exists(source) || !string.Equals(await Hashing.FileAsync(source, cancellationToken), file.Sha256, StringComparison.OrdinalIgnoreCase))
+                // Git may materialize the text-only starter payload with CRLF on
+                // Windows although the versioned package hash uses canonical LF.
+                if (!File.Exists(source) || !string.Equals(await Hashing.NormalizedTextFileAsync(source, cancellationToken), file.Sha256, StringComparison.OrdinalIgnoreCase))
                     return (null, ManagerResult.Fail(ManagerErrorCodes.PackageIntegrityFailed, "App-Starterpaket wurde veraendert: " + file.SourcePath));
             }
             return (package, ManagerResult.Ok("starter_package_valid", $"App-Starterpaket {package.PackageVersion} ist vollstaendig."));

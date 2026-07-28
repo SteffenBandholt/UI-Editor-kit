@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using UiEditorKit.Manager.Core;
@@ -213,6 +214,12 @@ public static class Hashing
         return Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken)).ToLowerInvariant();
     }
     public static string Bytes(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+    public static async Task<string> NormalizedTextFileAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var text = await File.ReadAllTextAsync(path, Encoding.UTF8, cancellationToken);
+        return Bytes(Encoding.UTF8.GetBytes(text.Replace("\r\n", "\n", StringComparison.Ordinal)));
+    }
 }
 
 public sealed class TargetAppInspector(ManagerPaths managerPaths)

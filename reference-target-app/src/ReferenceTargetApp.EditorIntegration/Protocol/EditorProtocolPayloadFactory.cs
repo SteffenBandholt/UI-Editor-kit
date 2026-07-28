@@ -33,7 +33,11 @@ internal static class EditorProtocolPayloadFactory
             entry.FieldKind,
             entry.ActionKind,
             entry.ComponentKind,
-            entry.ScopeId));
+            entry.ScopeId,
+            entry.SelectionKind,
+            entry.SelectionLevels?.ToArray(),
+            entry.OperationEffects,
+            entry.OperationAffectedIds));
 
     public static object CreateLayoutStatePayload(LayoutState state)
     {
@@ -147,7 +151,11 @@ internal static class EditorProtocolPayloadFactory
         string? FieldKind,
         string? ActionKind,
         string? ComponentKind,
-        string LayoutArea);
+        string LayoutArea,
+        string? SelectionKind,
+        string[]? SelectionLevels,
+        IReadOnlyDictionary<string, string>? OperationEffects,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds);
 
     private sealed record ProtocolElementLayout(double X, double Y, double Width, double Height, bool Visible);
     private sealed record ProtocolTextLayout(double? OffsetX, double? OffsetY, double? FontSize);

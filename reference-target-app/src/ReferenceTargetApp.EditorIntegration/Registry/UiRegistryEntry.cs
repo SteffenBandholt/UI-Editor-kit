@@ -18,4 +18,8 @@ public sealed record UiRegistryEntry(
     string? ColumnRole = null,
     string? FieldKind = null,
     string? ActionKind = null,
-    string? ComponentKind = null);
+    string? ComponentKind = null,
+    string? SelectionKind = null,
+    IReadOnlyList<string>? SelectionLevels = null,
+    IReadOnlyDictionary<string, string>? OperationEffects = null,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null);

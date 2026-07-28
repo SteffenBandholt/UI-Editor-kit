@@ -16,13 +16,25 @@ internal sealed class ProfileRecoveryWorkflow(IProfileRecoveryPrompt prompt)
         AtomicJsonLayoutProfileStore store,
         ActiveLayoutProfileStore activeStore,
         ProfileRecoveryContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, LayoutState>? declaredBaseline = null,
+        bool startupLayoutApplied = false)
     {
         var profileId = await activeStore.LoadAsync(cancellationToken);
         var recovery = new LayoutProfileRecoveryService(adapters, store);
         var inspection = await recovery.InspectAsync(profileId, cancellationToken);
         if (inspection.State is ProfileCompatibilityState.Compatible or ProfileCompatibilityState.Missing)
         {
+            if (inspection.State == ProfileCompatibilityState.Compatible && startupLayoutApplied)
+            {
+                var baseline = declaredBaseline ?? adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
+                var saved = adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
+                var session = new LayoutProfileSession(adapters, baseline, store, activeStore, profileId, saved,
+                    savedDocument: inspection.UiDocument);
+                var preappliedStartup = new LayoutProfileStartupResult(true, true, "startup_layout_already_applied",
+                    "Das kompatible UI-Profil ist bereits durch die Ziel-App aktiv.", profileId, true, session);
+                return new(preappliedStartup, inspection, null);
+            }
             var startup = await RestoreUiAsync(adapters, store, activeStore, cancellationToken);
             if (startup.Success) return new(startup, inspection, null);
             if (!startup.RollbackSucceeded)

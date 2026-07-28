@@ -39,13 +39,14 @@ public sealed class AtomicJsonLayoutProfileStore
         string profileId,
         IReadOnlyDictionary<string, IHostAdapter> adapters,
         IReadOnlyDictionary<string, LayoutState> states,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyList<string>>>? explicitOperations = null)
     {
         var path = GetFilePath(profileId);
         PersistedLayoutProfileDocument document;
         try
         {
-            document = LayoutProfileDocumentFactory.Create(documentApplicationId, profileId, adapters, states, DateTimeOffset.UtcNow);
+            document = LayoutProfileDocumentFactory.Create(documentApplicationId, profileId, adapters, states, DateTimeOffset.UtcNow, explicitOperations);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
@@ -149,7 +150,10 @@ public sealed class AtomicJsonLayoutProfileStore
                     entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? previous?.FontSize ?? fallback.FontSize : null,
                     entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? previous?.Visible ?? fallback.Visible : null);
             }).ToArray();
-            return new PersistedLayoutScope(pair.Key, RegistryFingerprint.Create(registry), new(elements));
+            var reconciledOperations = sourceScope?.ExplicitOperations?
+                .Where(operation => baseline.ContainsKey(operation.Key))
+                .ToDictionary(operation => operation.Key, operation => operation.Value, StringComparer.Ordinal);
+            return new PersistedLayoutScope(pair.Key, RegistryFingerprint.Create(registry), new(elements), reconciledOperations);
         }).ToArray();
         return new(LayoutProfileDocumentFactory.SchemaVersion, documentApplicationId, source.ProfileId, source.SavedAt, scopes);
     }

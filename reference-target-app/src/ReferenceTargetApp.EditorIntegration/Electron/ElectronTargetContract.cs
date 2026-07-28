@@ -23,7 +23,8 @@ public sealed record ElectronTargetContract(
     string SessionId,
     int ProcessId,
     string PdfCapability,
-    ElectronPdfTargetContract? PdfContract)
+    ElectronPdfTargetContract? PdfContract,
+    ElectronStartupLayoutReceipt? StartupLayout = null)
 {
     public const string CurrentVersion = "1.2";
     public const string CurrentAdapterVersion = "1.2";
@@ -62,6 +63,25 @@ public sealed record ElectronTargetContract(
         if (SupportedOperations.Count == 0 || SupportedOperations.Any(operation => !allowed.Contains(operation)))
             throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-Ziel-App-Operationen sind ungültig.");
         PdfContract?.Validate(ApplicationId);
+        StartupLayout?.Validate();
+    }
+}
+
+public sealed record ElectronStartupLayoutReceipt(
+    bool Applied,
+    string State,
+    string Code,
+    string? ProfileId = null,
+    DateTimeOffset? SavedAt = null,
+    string? ProfileSha256 = null,
+    bool EditorProcessRequired = false)
+{
+    public void Validate()
+    {
+        if (EditorProcessRequired || string.IsNullOrWhiteSpace(State) || string.IsNullOrWhiteSpace(Code) ||
+            Applied && (State != "compatible" || string.IsNullOrWhiteSpace(ProfileId) || SavedAt is null ||
+                        string.IsNullOrWhiteSpace(ProfileSha256) || ProfileSha256.Length != 64))
+            throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Startlayout-Nachweis ist ungültig.");
     }
 }
 

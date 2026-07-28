@@ -94,9 +94,14 @@ const UI_ELEMENT_OPTIONAL_FIELDS = Object.freeze([
   "minWidth",
   "maxWidth",
   "layoutArea",
+  "selectionKind",
+  "selectionLevels",
+  "operationEffects",
+  "operationAffectedIds",
+  "geometry",
 ]);
 
-const UI_ELEMENT_ARRAY_FIELDS = Object.freeze(["allowedOps", "lockedOps"]);
+const UI_ELEMENT_ARRAY_FIELDS = Object.freeze(["allowedOps", "lockedOps", "selectionLevels"]);
 const UI_ELEMENT_BOOLEAN_FIELDS = Object.freeze(["visible", "editable"]);
 const UI_ELEMENT_NUMERIC_FIELDS = Object.freeze(["order", "width", "minWidth", "maxWidth"]);
 const UI_ELEMENT_FIELDS = Object.freeze([...UI_ELEMENT_REQUIRED_FIELDS, ...UI_ELEMENT_OPTIONAL_FIELDS]);
