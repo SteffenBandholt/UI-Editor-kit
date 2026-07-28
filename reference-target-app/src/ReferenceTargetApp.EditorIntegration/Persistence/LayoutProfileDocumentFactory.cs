@@ -12,7 +12,8 @@ public static class LayoutProfileDocumentFactory
         string profileId,
         IReadOnlyDictionary<string, IHostAdapter> adapters,
         IReadOnlyDictionary<string, LayoutState> states,
-        DateTimeOffset savedAt)
+        DateTimeOffset savedAt,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyList<string>>>? explicitOperations = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(applicationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
@@ -25,7 +26,9 @@ public static class LayoutProfileDocumentFactory
                 throw new InvalidOperationException($"LayoutState für Scope '{pair.Key}' fehlt.");
             var options = ScopeOptions(applicationId, profileId, pair.Key);
             var legacy = PersistedLayoutDocumentFactory.Create(options, pair.Value.GetRegistry(), state, savedAt);
-            return new PersistedLayoutScope(pair.Key, legacy.RegistryFingerprint, legacy.LayoutState);
+            IReadOnlyDictionary<string, IReadOnlyList<string>>? scopeOperations = null;
+            explicitOperations?.TryGetValue(pair.Key, out scopeOperations);
+            return new PersistedLayoutScope(pair.Key, legacy.RegistryFingerprint, legacy.LayoutState, scopeOperations);
         }).ToArray();
 
         return new(SchemaVersion, applicationId, profileId, savedAt, scopes);

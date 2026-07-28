@@ -7,7 +7,15 @@ using ReferenceTargetApp.EditorIntegration.Registry;
 
 namespace ReferenceTargetApp.EditorIntegration.Electron;
 
-public sealed record ElectronTargetElementSelectedEventArgs(string ScopeId, string ElementId);
+public sealed record ElectronTargetElementSelectedEventArgs(
+    string ScopeId,
+    string ElementId,
+    string? DisplayName = null,
+    string? ElementType = null,
+    string? SelectionKind = null,
+    string? SelectionLevel = null,
+    string? ParentId = null,
+    int ChildCount = 0);
 public sealed record ElectronRegistryRefreshStatus(bool IsDirty, IReadOnlyList<string> DirtyElementIds);
 
 public sealed class ElectronTargetSession : IAsyncDisposable
@@ -33,11 +41,13 @@ public sealed class ElectronTargetSession : IAsyncDisposable
 
     public ElectronTargetContract Contract { get; }
     public IReadOnlyDictionary<string, IHostAdapter> HostAdapters => adapters.ToDictionary(pair => pair.Key, pair => (IHostAdapter)pair.Value, StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, LayoutState> DeclaredBaselineStates => adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetDeclaredBaselineLayoutState(), StringComparer.Ordinal);
     public Task<ElectronPdfPipeHostAdapter> CreatePdfHostAdapterAsync(CancellationToken cancellationToken = default) =>
         Contract.PdfCapability == "available" && Contract.PdfContract is not null
             ? ElectronPdfPipeHostAdapter.CreateAsync(connection, Contract.PdfContract, cancellationToken)
             : throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Die Ziel-App stellt keinen verfuegbaren PDF-Vertrag bereit.");
     public event EventHandler<ElectronTargetElementSelectedEventArgs>? ElementSelected;
+    public event EventHandler? TargetSelectionCancelled;
     public event EventHandler<string>? Disconnected;
     public event EventHandler? ActivationRequested;
     public event EventHandler? ShutdownRequested;
@@ -124,10 +134,18 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         if (request.Action == "activateEditor") { ActivationRequested?.Invoke(this, EventArgs.Empty); return; }
         if (request.Action == "shutdownEditor") { ShutdownRequested?.Invoke(this, EventArgs.Empty); return; }
         if (request.Action != "targetSelectionChanged") return;
+        if (request.Payload.TryGetProperty("cancelled", out var cancelled) && cancelled.ValueKind == JsonValueKind.True)
+        {
+            TargetSelectionCancelled?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         var scopeId = Text(request.Payload, "scopeId");
         var elementId = Text(request.Payload, "elementId");
         if (scopeId is null || elementId is null || !adapters.TryGetValue(scopeId, out var adapter) || adapter.GetRegistry().FindById(elementId) is null) return;
-        ElementSelected?.Invoke(this, new(scopeId, elementId));
+        ElementSelected?.Invoke(this, new(scopeId, elementId,
+            Text(request.Payload, "displayName"), Text(request.Payload, "elementType"),
+            Text(request.Payload, "selectionKind"), Text(request.Payload, "selectionLevel"),
+            Text(request.Payload, "parentId"), Int(request.Payload, "childCount") ?? 0));
     }
 
     private static void ValidateScopes(ElectronTargetContract contract, IReadOnlyList<RemoteRegistryScope> scopes)
@@ -215,7 +233,10 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         IReadOnlyList<string> AllowedOps, IReadOnlyList<string> LockedOps, string? ColumnRole = null,
         string? FieldKind = null, string? ActionKind = null, string? ComponentKind = null,
         string? RefKey = null, bool ReferenceResolved = false, RemoteRegistryBaseline? Baseline = null,
-        string? SemanticKey = null, string? RegistrationStatus = null);
+        string? SemanticKey = null, string? RegistrationStatus = null,
+        string? SelectionKind = null, IReadOnlyList<string>? SelectionLevels = null,
+        IReadOnlyDictionary<string, string>? OperationEffects = null,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null);
     internal sealed record RemoteRegistryBaseline(
         double? X, double? Y, double? Width, double? Height,
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool? Visible,
@@ -236,6 +257,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         private readonly string scopeId;
         private readonly object stateLock = new();
         private LayoutState state;
+        private readonly LayoutState declaredBaseline;
 
         internal ElectronPipeHostAdapter(LocalTargetPipeConnection connection, RemoteRegistryScope scope, RemoteScopeLayoutState remoteState)
         {
@@ -246,12 +268,15 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                  item.Id, scope.ScopeId, item.ParentId, Kind(item.Type), item.Name, item.Order,
                  Capabilities(item), new Border { Name = SafeName(item.Id) }, item.Type, item.Role,
                  item.AllowedOps.ToArray(), item.LockedOps.ToArray(), item.ColumnRole, item.FieldKind,
-                 item.ActionKind, item.ComponentKind)));
+                 item.ActionKind, item.ComponentKind, item.SelectionKind, item.SelectionLevels,
+                 item.OperationEffects, item.OperationAffectedIds)));
             state = ToLocal(remoteState);
+            declaredBaseline = CreateDeclaredBaseline(scope, state);
         }
 
         public IUiElementRegistry GetRegistry() => registry;
         public LayoutState GetCurrentLayoutState() { lock (stateLock) return Clone(state); }
+        internal LayoutState GetDeclaredBaselineLayoutState() => Clone(declaredBaseline);
         public ChangeResult SubmitChangeRequest(ChangeRequest changeRequest) => ChangeResult.Rejected(
             changeRequest, "async_transport_required", "Electron-Ziel-App-Änderungen werden ausschließlich asynchron übertragen.");
 
@@ -292,6 +317,20 @@ public sealed class ElectronTargetSession : IAsyncDisposable
 
         private static LayoutState ToLocal(RemoteScopeLayoutState remote) => new(remote.ScopeId, remote.CapturedAt,
             remote.Elements.Select(element => ToLocal(element, remote.ScopeId)).ToArray());
+        private static LayoutState CreateDeclaredBaseline(RemoteRegistryScope scope, LayoutState current)
+        {
+            var currentById = current.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+            return new LayoutState(scope.ScopeId, DateTimeOffset.UtcNow, scope.Elements.Select(entry =>
+            {
+                var fallback = currentById[entry.Id];
+                var baseline = entry.Baseline!;
+                return new ElementLayoutState(entry.Id, scope.ScopeId,
+                    baseline.X ?? fallback.X, baseline.Y ?? fallback.Y,
+                    baseline.Width ?? fallback.Width, baseline.Height ?? fallback.Height,
+                    baseline.TextOffsetX ?? fallback.TextOffsetX, baseline.TextOffsetY ?? fallback.TextOffsetY,
+                    baseline.FontSize ?? fallback.FontSize, baseline.Visible ?? fallback.Visible);
+            }).ToArray());
+        }
         private static ElementLayoutState ToLocal(RemoteElementLayoutState state, string scopeId) => new(
             state.ElementId, scopeId, state.X, state.Y, state.Width, state.Height,
             state.TextOffsetX, state.TextOffsetY, state.FontSize, state.Visible);
@@ -302,7 +341,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             "root" => UiElementKind.Scope, "area" => UiElementKind.Area, "group" => UiElementKind.Group,
             "fieldGroup" => UiElementKind.FieldGroup, "label" => UiElementKind.StaticText, "field" => UiElementKind.InputField,
             "button" => UiElementKind.Button, "table" => UiElementKind.Table, "tableColumn" => UiElementKind.TableColumn,
-            "statusIndicator" => UiElementKind.StatusIndicator,
+            "statusIndicator" => UiElementKind.StatusIndicator, "componentPart" => UiElementKind.Group,
             _ => throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Elementtyp '{type}' ist nicht erlaubt.")
         };
 

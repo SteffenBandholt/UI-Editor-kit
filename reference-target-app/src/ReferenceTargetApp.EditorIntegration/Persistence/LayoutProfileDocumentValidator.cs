@@ -57,6 +57,20 @@ public static class LayoutProfileDocumentValidator
                 legacy,
                 LayoutProfileDocumentFactory.ScopeOptions(applicationId, profileId, scope.ScopeId),
                 pair.Value.GetRegistry()).Errors);
+            if (scope.ExplicitOperations is null) continue;
+            foreach (var operationEntry in scope.ExplicitOperations)
+            {
+                var registryEntry = pair.Value.GetRegistry().FindById(operationEntry.Key);
+                if (registryEntry is null)
+                {
+                    errors.Add(new("unknown_element", $"Element '{operationEntry.Key}' ist nicht registriert.", "explicitOperations"));
+                    continue;
+                }
+                var allowedOperations = registryEntry.AllowedOperations ?? Array.Empty<string>();
+                if (operationEntry.Value is null || operationEntry.Value.Count == 0 ||
+                    allowedOperations.Count > 0 && operationEntry.Value.Any(operation => !allowedOperations.Contains(operation, StringComparer.Ordinal)))
+                    errors.Add(new("operation_not_allowed", $"Explizite Operation für '{operationEntry.Key}' ist nicht erlaubt.", "explicitOperations"));
+            }
         }
         return new(errors);
     }

@@ -63,6 +63,10 @@ const expectedExports = [
   "createPdfRegistryFingerprint",
   "validatePdfRegistry",
   "validatePdfTargetContract",
+  "PROFILE_SCHEMA_VERSION",
+  "createUiScopeFingerprint",
+  "validateTargetStartupLayoutProfile",
+  "loadTargetStartupLayout",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -92,7 +96,7 @@ expectedExports.forEach((name) => {
     "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_ADAPTER_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION", "PDF_TARGET_CONTRACT_VERSION",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (name === "LOCAL_TARGET_MAX_MESSAGE_BYTES") {
+  } else if (["LOCAL_TARGET_MAX_MESSAGE_BYTES", "PROFILE_SCHEMA_VERSION"].includes(name)) {
     assert.equal(typeof publicApi[name], "number", `${name} ist kein Zahlen-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);

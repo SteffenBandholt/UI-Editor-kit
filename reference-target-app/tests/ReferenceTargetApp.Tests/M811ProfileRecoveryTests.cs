@@ -65,6 +65,32 @@ public sealed class M811ProfileRecoveryTests
     }
 
     [TestMethod]
+    public void TargetStartupAppliedProfileIsNotAppliedTwiceAndKeepsDeclaredResetBaseline()
+    {
+        StaTest.Run(() => WithRoot(root =>
+        {
+            var savedSource = Adapters(("ui.a", 240d));
+            var store = new AtomicJsonLayoutProfileStore(root, "bbm-produktiv");
+            Assert.IsTrue(Await(store.SaveAsync("standard", savedSource, States(savedSource))).Success);
+            var alreadyApplied = Adapters(("ui.a", 240d));
+            var declaredBaseline = States(Adapters(("ui.a", 200d)));
+
+            var prepared = Await(new ProfileRecoveryWorkflow(new FixedPrompt(ProfileRecoveryDecision.Cancel)).PrepareUiAsync(
+                alreadyApplied, store, new ActiveLayoutProfileStore(root), Context("ui", "current"), CancellationToken.None,
+                declaredBaseline, startupLayoutApplied: true));
+
+            Assert.IsTrue(prepared.Startup.Success);
+            Assert.AreEqual("startup_layout_already_applied", prepared.Startup.Code);
+            Assert.AreEqual(240d, alreadyApplied["ui.a"].GetCurrentLayoutState().Elements.Single(item => item.ElementId == "ui.a.field").Width,
+                "Editoröffnung darf das bereits aktive Ziel-App-Layout nicht ein zweites Mal anwenden.");
+            Assert.IsFalse(prepared.Startup.Session.GetStatus().IsDirty);
+            Assert.IsTrue(Await(prepared.Startup.Session.ResetElementAsync("ui.a", "ui.a.field")).Success);
+            Assert.AreEqual(200d, alreadyApplied["ui.a"].GetCurrentLayoutState().Elements.Single(item => item.ElementId == "ui.a.field").Width,
+                "Elementreset muss trotz vorab angewandtem Profil zur deklarierten App-Baseline führen.");
+        }));
+    }
+
+    [TestMethod]
     public void IncompatibleUiProfileIsArchivedByteIdenticallyAndNewSaveIsValid()
     {
         StaTest.Run(() => WithRoot(root =>

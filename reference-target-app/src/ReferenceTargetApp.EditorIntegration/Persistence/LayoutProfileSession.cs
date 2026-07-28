@@ -19,12 +19,19 @@ public sealed record LayoutProfileSessionStatus(
 
 public sealed class LayoutProfileSession
 {
+    // Browser/WPF round-trips can quantize CSS/DIP geometry by a few hundredths
+    // without a user-visible layout change. Keep this far below the minimum
+    // supported editor step (1 DIP), so real edits still become dirty.
+    private const double LayoutComparisonTolerance = 0.05;
     private readonly IReadOnlyDictionary<string, IHostAdapter> adapters;
     private readonly AtomicJsonLayoutProfileStore profileStore;
     private readonly ActiveLayoutProfileStore activeProfileStore;
     private readonly SemaphoreSlim operationLock = new(1, 1);
     private readonly IReadOnlyDictionary<string, LayoutState> baseline;
     private IReadOnlyDictionary<string, LayoutState> saved;
+    private Dictionary<string, HashSet<string>> workingExplicitOperations;
+    private Dictionary<string, HashSet<string>> savedExplicitOperations;
+    private bool savedHasExplicitOperationMetadata;
     private readonly bool allowCompatibleRegistryReconciliation;
 
     public LayoutProfileSession(
@@ -34,7 +41,8 @@ public sealed class LayoutProfileSession
         ActiveLayoutProfileStore activeProfileStore,
         string activeProfileId,
         IReadOnlyDictionary<string, LayoutState>? saved = null,
-        bool allowCompatibleRegistryReconciliation = false)
+        bool allowCompatibleRegistryReconciliation = false,
+        PersistedLayoutProfileDocument? savedDocument = null)
     {
         this.adapters = adapters ?? throw new ArgumentNullException(nameof(adapters));
         this.baseline = CloneStates(baseline ?? throw new ArgumentNullException(nameof(baseline)));
@@ -45,10 +53,23 @@ public sealed class LayoutProfileSession
         ActiveProfileId = activeProfileId;
         this.allowCompatibleRegistryReconciliation = allowCompatibleRegistryReconciliation;
         this.saved = CloneStates(saved ?? baseline);
+        workingExplicitOperations = OperationsFromDocument(savedDocument);
+        savedExplicitOperations = CloneOperations(workingExplicitOperations);
+        savedHasExplicitOperationMetadata = HasExplicitOperationMetadata(savedDocument);
     }
 
     public string ActiveProfileId { get; private set; }
     public bool IsOperationRunning => operationLock.CurrentCount == 0;
+
+    public void RecordExplicitOperation(string scopeId, string elementId, string operation)
+    {
+        if (!adapters.TryGetValue(scopeId, out var adapter)) return;
+        var entry = adapter.GetRegistry().FindById(elementId);
+        if (entry?.AllowedOperations?.Contains(operation, StringComparer.Ordinal) != true) return;
+        if (!workingExplicitOperations.TryGetValue(scopeId, out var scopeOperations))
+            workingExplicitOperations[scopeId] = scopeOperations = new(StringComparer.Ordinal);
+        scopeOperations.Add($"{elementId}\u001f{operation}");
+    }
 
     public async Task InitializeSavedStateAsync(CancellationToken cancellationToken = default)
     {
@@ -56,6 +77,9 @@ public sealed class LayoutProfileSession
         saved = load.Success && load.Found && load.Document is not null
             ? StatesFromDocument(load.Document)
             : CloneStates(baseline);
+        workingExplicitOperations = OperationsFromDocument(load.Document);
+        savedExplicitOperations = CloneOperations(workingExplicitOperations);
+        savedHasExplicitOperationMetadata = HasExplicitOperationMetadata(load.Document);
     }
 
     public LayoutProfileSessionStatus GetStatus()
@@ -65,13 +89,21 @@ public sealed class LayoutProfileSession
         return new(ActiveProfileId, dirtyIds.Count > 0, dirtyIds, CloneStates(working), CloneStates(saved), CloneStates(baseline));
     }
 
+    public void AcceptCurrentTargetAsSaved() => saved = CloneStates(CaptureWorking());
+
+    public void AcceptCurrentTargetElementAsSaved(string scopeId, string elementId) => NormalizeSavedElement(scopeId, elementId);
+
     public async Task<LayoutOperationResult> SaveAsync(CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
         {
             var working = CaptureWorking();
-            var result = await profileStore.SaveAsync(ActiveProfileId, adapters, working, cancellationToken).ConfigureAwait(false);
+            if (workingExplicitOperations.Values.Sum(values => values.Count) == 0)
+                workingExplicitOperations = InferOperations(saved, working);
+            var result = await profileStore.SaveAsync(ActiveProfileId, adapters, working, cancellationToken, OperationsForDocument(workingExplicitOperations, adapters.Keys)).ConfigureAwait(false);
             if (!result.Success) return Fail(result.Code, result.Message);
             saved = CloneStates(working);
+            savedExplicitOperations = CloneOperations(workingExplicitOperations);
+            savedHasExplicitOperationMetadata = true;
             return Ok("layout_saved", "Änderungen gespeichert.");
         }, cancellationToken).ConfigureAwait(false);
 
@@ -82,27 +114,75 @@ public sealed class LayoutProfileSession
             if (!load.Success || !load.Found || load.Document is null)
                 return Fail(load.Code, load.Message);
             var desired = StatesFromDocument(load.Document);
-            var applied = await ApplyAllAsync(desired, "m75-load", cancellationToken).ConfigureAwait(false);
+            var loadedOperations = OperationsFromDocument(load.Document);
+            var hasExplicitOperations = HasExplicitOperationMetadata(load.Document);
+            var restoreOperations = MergeOperations(workingExplicitOperations, loadedOperations, InferOperations(CaptureWorking(), desired));
+            var applied = hasExplicitOperations
+                ? await ApplyTrackedOperationsAsync(desired, restoreOperations, "m75-load", cancellationToken).ConfigureAwait(false)
+                : await ApplyAllAsync(desired, "m75-load", cancellationToken).ConfigureAwait(false);
             if (!applied.Success) return applied;
             // A remote target may normalize valid persisted values while applying them
             // (for example to the effective DOM pixel grid). The successfully applied
             // target state is the clean session boundary; the profile file itself is
             // deliberately not rewritten during restore.
             saved = CloneStates(CaptureWorking());
+            workingExplicitOperations = loadedOperations;
+            savedExplicitOperations = CloneOperations(workingExplicitOperations);
+            savedHasExplicitOperationMetadata = hasExplicitOperations;
             return Ok("layout_loaded", "Gespeichertes Profil wurde vom Datenträger geladen.");
         }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> DiscardElementAsync(string scopeId, string elementId, CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => ApplyElementAsync(saved, scopeId, elementId, "m75-discard-element", cancellationToken), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(async () =>
+        {
+            var discardOperations = MergeOperations(workingExplicitOperations, savedExplicitOperations, InferOperations(CaptureWorking(), saved));
+            var result = savedHasExplicitOperationMetadata
+                ? await ApplyTrackedOperationsAsync(saved, OperationsForElement(discardOperations, scopeId, elementId), "m75-discard-element", cancellationToken).ConfigureAwait(false)
+                : await ApplyElementAsync(saved, scopeId, elementId, "m75-discard-element", cancellationToken).ConfigureAwait(false);
+            if (result.Success)
+            {
+                NormalizeSavedElement(scopeId, elementId);
+                RestoreElementOperations(scopeId, elementId, savedExplicitOperations);
+            }
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> DiscardAllAsync(CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => ApplyAllAsync(saved, "m75-discard-all", cancellationToken), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(async () =>
+        {
+            var discardOperations = MergeOperations(workingExplicitOperations, savedExplicitOperations, InferOperations(CaptureWorking(), saved));
+            var result = savedHasExplicitOperationMetadata
+                ? await ApplyTrackedOperationsAsync(saved, discardOperations, "m75-discard-all", cancellationToken).ConfigureAwait(false)
+                : await ApplyAllAsync(saved, "m75-discard-all", cancellationToken).ConfigureAwait(false);
+            if (result.Success)
+            {
+                saved = CloneStates(CaptureWorking());
+                workingExplicitOperations = CloneOperations(savedExplicitOperations);
+            }
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> ResetElementAsync(string scopeId, string elementId, CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => ApplyElementAsync(baseline, scopeId, elementId, "m75-reset-element", cancellationToken), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(async () =>
+        {
+            var resetOperations = MergeOperations(workingExplicitOperations, savedExplicitOperations, InferOperations(CaptureWorking(), baseline));
+            var result = savedHasExplicitOperationMetadata
+                ? await ApplyTrackedOperationsAsync(baseline, OperationsForElement(resetOperations, scopeId, elementId), "m75-reset-element", cancellationToken).ConfigureAwait(false)
+                : await ApplyElementAsync(baseline, scopeId, elementId, "m75-reset-element", cancellationToken).ConfigureAwait(false);
+            if (result.Success) RemoveElementOperations(scopeId, elementId);
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> ResetAllAsync(CancellationToken cancellationToken = default) =>
-        await ExclusiveAsync(() => ApplyAllAsync(baseline, "m75-reset-all", cancellationToken), cancellationToken).ConfigureAwait(false);
+        await ExclusiveAsync(async () =>
+        {
+            var resetOperations = MergeOperations(workingExplicitOperations, savedExplicitOperations, InferOperations(CaptureWorking(), baseline));
+            var result = savedHasExplicitOperationMetadata
+                ? await ApplyTrackedOperationsAsync(baseline, resetOperations, "m75-reset-all", cancellationToken).ConfigureAwait(false)
+                : await ApplyAllAsync(baseline, "m75-reset-all", cancellationToken).ConfigureAwait(false);
+            if (result.Success) workingExplicitOperations.Clear();
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> SwitchProfileAsync(string profileId, CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
@@ -114,7 +194,12 @@ public sealed class LayoutProfileSession
             var load = await profileStore.LoadAsync(profileId, adapters, cancellationToken, allowCompatibleRegistryReconciliation).ConfigureAwait(false);
             if (!load.Success) return Fail(load.Code, load.Message);
             var desired = load.Found && load.Document is not null ? StatesFromDocument(load.Document) : CloneStates(baseline);
-            var applied = await ApplyAllAsync(desired, "m75-profile-switch", cancellationToken).ConfigureAwait(false);
+            var loadedOperations = OperationsFromDocument(load.Document);
+            var hasExplicitOperations = HasExplicitOperationMetadata(load.Document);
+            var switchOperations = MergeOperations(workingExplicitOperations, loadedOperations, InferOperations(CaptureWorking(), desired));
+            var applied = hasExplicitOperations
+                ? await ApplyTrackedOperationsAsync(desired, switchOperations, "m75-profile-switch", cancellationToken).ConfigureAwait(false)
+                : await ApplyAllAsync(desired, "m75-profile-switch", cancellationToken).ConfigureAwait(false);
             if (!applied.Success) return applied;
             bool profileSelectionSaved;
             try { profileSelectionSaved = await activeProfileStore.SaveAsync(profileId, cancellationToken).ConfigureAwait(false); }
@@ -134,6 +219,9 @@ public sealed class LayoutProfileSession
             }
             ActiveProfileId = profileId;
             saved = CloneStates(CaptureWorking());
+            workingExplicitOperations = loadedOperations;
+            savedExplicitOperations = CloneOperations(workingExplicitOperations);
+            savedHasExplicitOperationMetadata = hasExplicitOperations;
             return Ok(load.Found ? "profile_loaded" : "profile_started_from_baseline",
                 load.Found ? "Profil wurde geladen." : "Profil besitzt noch keine Datei und startet von der Baseline.");
         }, cancellationToken).ConfigureAwait(false);
@@ -216,6 +304,66 @@ public sealed class LayoutProfileSession
         return Ok("batch_applied", "Alle Scope-Zustände wurden atomar angewandt.");
     }
 
+    private async Task<LayoutOperationResult> ApplyTrackedOperationsAsync(
+        IReadOnlyDictionary<string, LayoutState> desired,
+        Dictionary<string, HashSet<string>> operations,
+        string source,
+        CancellationToken cancellationToken)
+    {
+        var original = CaptureWorking();
+        var applied = new List<(string ScopeId, string ElementId, string Operation)>();
+        var failures = new List<LayoutApplyFailure>();
+        var sequence = 1;
+        foreach (var scopePair in operations.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            if (!adapters.TryGetValue(scopePair.Key, out var adapter) || !desired.TryGetValue(scopePair.Key, out var desiredScope))
+                return Fail("unknown_scope", $"Scope '{scopePair.Key}' ist nicht registriert.");
+            var desiredById = desiredScope.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+            foreach (var token in scopePair.Value.OrderBy(value => value, StringComparer.Ordinal))
+            {
+                var parts = token.Split('\u001f', 2);
+                var elementId = parts[0];
+                var operation = parts.Length == 2 ? parts[1] : string.Empty;
+                var entry = adapter.GetRegistry().FindById(elementId);
+                if (entry is null || !desiredById.TryGetValue(elementId, out var desiredElement))
+                    return Fail("unknown_element", $"Element '{elementId}' ist nicht registriert.");
+                var request = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(desiredElement, entry), source, ref sequence)
+                    .FirstOrDefault(candidate => string.Equals(candidate.Operation, operation, StringComparison.Ordinal));
+                if (request is null)
+                    return Fail("operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden.");
+                var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
+                if (result.Success)
+                {
+                    applied.Add((scopePair.Key, elementId, operation));
+                    continue;
+                }
+                failures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? "target_rejected_change", result.Message));
+                break;
+            }
+            if (failures.Count > 0) break;
+        }
+        if (failures.Count == 0)
+            return Ok("tracked_layout_applied", "Explizite Layoutoperationen wurden atomar angewandt.");
+
+        var rollbackSequence = 1;
+        var rollbackFailures = new List<LayoutApplyFailure>();
+        foreach (var item in applied.AsEnumerable().Reverse())
+        {
+            var adapter = adapters[item.ScopeId];
+            var entry = adapter.GetRegistry().FindById(item.ElementId)!;
+            var originalElement = original[item.ScopeId].Elements.Single(element => element.ElementId == item.ElementId);
+            var request = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(originalElement, entry), $"{source}-rollback", ref rollbackSequence)
+                .First(candidate => string.Equals(candidate.Operation, item.Operation, StringComparison.Ordinal));
+            var result = await HostAdapterDispatch.SubmitAsync(adapter, request, CancellationToken.None).ConfigureAwait(false);
+            if (!result.Success)
+                rollbackFailures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? "target_rejected_change", result.Message));
+        }
+        failures.AddRange(rollbackFailures);
+        return new(false, rollbackFailures.Count == 0 ? "batch_apply_failed" : "rollback_failed",
+            rollbackFailures.Count == 0 ? "Explizite Layoutoperation ist fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "Explizite Layoutoperation und Rollback sind fehlgeschlagen.",
+            rollbackFailures.Count == 0, failures);
+    }
+
     private async Task<IReadOnlyList<LayoutApplyFailure>> RollbackAllAsync(IReadOnlyDictionary<string, LayoutState> original, string source)
     {
         var failures = new List<LayoutApplyFailure>();
@@ -286,7 +434,7 @@ public sealed class LayoutProfileSession
         (!capabilities.HasFlag(Registry.UiCapability.FontSize) || Same(left.FontSize, right.FontSize)) &&
         (!capabilities.HasFlag(Registry.UiCapability.Visibility) || left.Visible == right.Visible);
 
-    private static bool Same(double? left, double? right) => left is null && right is null || left is not null && right is not null && Math.Abs(left.Value - right.Value) <= 0.000001;
+    private static bool Same(double? left, double? right) => left is null && right is null || left is not null && right is not null && Math.Abs(left.Value - right.Value) <= LayoutComparisonTolerance;
 
     private static PersistedElementLayout Persisted(ElementLayoutState state, Registry.UiRegistryEntry entry) => new(
         state.ElementId, state.ScopeId,
@@ -303,6 +451,138 @@ public sealed class LayoutProfileSession
         states.ToDictionary(pair => pair.Key,
             pair => new LayoutState(pair.Value.ScopeId, pair.Value.CapturedAt, pair.Value.Elements.Select(element => element with { })),
             StringComparer.Ordinal);
+
+    private static Dictionary<string, HashSet<string>> OperationsFromDocument(PersistedLayoutProfileDocument? document)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        if (document?.Scopes is null) return result;
+        foreach (var scope in document.Scopes)
+        {
+            if (scope.ExplicitOperations is null) continue;
+            result[scope.ScopeId] = new(scope.ExplicitOperations.SelectMany(pair => pair.Value.Select(operation => $"{pair.Key}\u001f{operation}")), StringComparer.Ordinal);
+        }
+        return result;
+    }
+
+    private static Dictionary<string, HashSet<string>> CloneOperations(Dictionary<string, HashSet<string>> source) =>
+        source.ToDictionary(pair => pair.Key, pair => new HashSet<string>(pair.Value, StringComparer.Ordinal), StringComparer.Ordinal);
+
+    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyList<string>>> OperationsForDocument(
+        Dictionary<string, HashSet<string>> source,
+        IEnumerable<string> scopeIds) => scopeIds.ToDictionary(scopeId => scopeId,
+            scopeId => (IReadOnlyDictionary<string, IReadOnlyList<string>>)(source.TryGetValue(scopeId, out var values) ? values : [])
+                .Select(value => value.Split('\u001f', 2))
+                .GroupBy(parts => parts[0], StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.Select(parts => parts[1]).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray(), StringComparer.Ordinal),
+            StringComparer.Ordinal);
+
+    private static bool HasExplicitOperationMetadata(PersistedLayoutProfileDocument? document) =>
+        document?.Scopes.Any(scope => scope.ExplicitOperations is not null) == true;
+
+    private static Dictionary<string, HashSet<string>> MergeOperations(params Dictionary<string, HashSet<string>>[] sources)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var source in sources)
+            foreach (var pair in source)
+            {
+                if (!result.TryGetValue(pair.Key, out var target)) result[pair.Key] = target = new(StringComparer.Ordinal);
+                target.UnionWith(pair.Value);
+            }
+        return result;
+    }
+
+    private static Dictionary<string, HashSet<string>> OperationsForElement(
+        Dictionary<string, HashSet<string>> source,
+        string scopeId,
+        string elementId)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        if (!source.TryGetValue(scopeId, out var values)) return result;
+        var matches = values.Where(value => value.StartsWith(elementId + "\u001f", StringComparison.Ordinal)).ToHashSet(StringComparer.Ordinal);
+        if (matches.Count > 0) result[scopeId] = matches;
+        return result;
+    }
+
+    private Dictionary<string, HashSet<string>> InferOperations(
+        IReadOnlyDictionary<string, LayoutState> current,
+        IReadOnlyDictionary<string, LayoutState> desired)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var scopePair in adapters)
+        {
+            if (!current.TryGetValue(scopePair.Key, out var currentScope) || !desired.TryGetValue(scopePair.Key, out var desiredScope)) continue;
+            var desiredById = desiredScope.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+            foreach (var element in currentScope.Elements)
+            {
+                if (!desiredById.TryGetValue(element.ElementId, out var target)) continue;
+                var entry = scopePair.Value.GetRegistry().FindById(element.ElementId);
+                if (entry is null) continue;
+                var allowed = entry.AllowedOperations ?? [];
+                // Compatibility inference is only for legacy registries that did
+                // not declare operations. Modern targets must use the explicit
+                // operation ledger so responsive neighbour geometry stays derived.
+                if (allowed.Count > 0) continue;
+                var operations = new List<string>();
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.Position) && (!Same(element.X, target.X) || !Same(element.Y, target.Y)))
+                    operations.Add(HostAdapterOperations.Move);
+                var widthChanged = entry.Capabilities.HasFlag(Registry.UiCapability.Width) && !Same(element.Width, target.Width);
+                var heightChanged = entry.Capabilities.HasFlag(Registry.UiCapability.Height) && !Same(element.Height, target.Height);
+                if ((widthChanged || heightChanged) &&
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Width | Registry.UiCapability.Height) &&
+                    (allowed.Count == 0 || allowed.Contains(HostAdapterOperations.Resize, StringComparer.Ordinal)))
+                    operations.Add(HostAdapterOperations.Resize);
+                else
+                {
+                    if (widthChanged) operations.Add(HostAdapterOperations.ResizeWidth);
+                    if (heightChanged) operations.Add(HostAdapterOperations.ResizeHeight);
+                }
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) &&
+                    (!Same(element.TextOffsetX, target.TextOffsetX) || !Same(element.TextOffsetY, target.TextOffsetY)))
+                    operations.Add(HostAdapterOperations.TextMove);
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) && !Same(element.FontSize, target.FontSize))
+                    operations.Add(HostAdapterOperations.TextResize);
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) && element.Visible != target.Visible)
+                    operations.Add(HostAdapterOperations.SetVisibility);
+                foreach (var operation in operations.Where(operation => allowed.Count == 0 || allowed.Contains(operation, StringComparer.Ordinal)))
+                {
+                    if (!result.TryGetValue(scopePair.Key, out var values)) result[scopePair.Key] = values = new(StringComparer.Ordinal);
+                    values.Add($"{element.ElementId}\u001f{operation}");
+                }
+            }
+        }
+        return result;
+    }
+
+    private void RemoveElementOperations(string scopeId, string elementId)
+    {
+        if (!workingExplicitOperations.TryGetValue(scopeId, out var values)) return;
+        values.RemoveWhere(value => value.StartsWith(elementId + "\u001f", StringComparison.Ordinal));
+        if (values.Count == 0) workingExplicitOperations.Remove(scopeId);
+    }
+
+    private void RestoreElementOperations(string scopeId, string elementId, Dictionary<string, HashSet<string>> source)
+    {
+        RemoveElementOperations(scopeId, elementId);
+        if (!source.TryGetValue(scopeId, out var values)) return;
+        foreach (var value in values.Where(value => value.StartsWith(elementId + "\u001f", StringComparison.Ordinal)))
+        {
+            if (!workingExplicitOperations.TryGetValue(scopeId, out var target))
+                workingExplicitOperations[scopeId] = target = new(StringComparer.Ordinal);
+            target.Add(value);
+        }
+    }
+
+    private void NormalizeSavedElement(string scopeId, string elementId)
+    {
+        if (!saved.TryGetValue(scopeId, out var savedScope) || !adapters.TryGetValue(scopeId, out var adapter)) return;
+        var actual = adapter.GetCurrentLayoutState().Elements.FirstOrDefault(element => element.ElementId == elementId);
+        if (actual is null) return;
+        saved = saved.ToDictionary(pair => pair.Key, pair => pair.Key == scopeId
+            ? new LayoutState(pair.Value.ScopeId, pair.Value.CapturedAt,
+                savedScope.Elements.Select(element => element.ElementId == elementId ? actual with { } : element with { }))
+            : new LayoutState(pair.Value.ScopeId, pair.Value.CapturedAt, pair.Value.Elements.Select(element => element with { })),
+            StringComparer.Ordinal);
+    }
 
     private static LayoutOperationResult Ok(string code, string message) => new(true, code, message);
     private static LayoutOperationResult Fail(string code, string message) => new(false, code, message);

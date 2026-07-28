@@ -186,3 +186,13 @@ Die vollständige Entwurfsentscheidung steht in `docs/M80_1_BESTANDSAPP_REGISTRY
 # M82 - App-Starterpaket
 
 Vor der ersten UI-Entwicklung einer neuen App wird das versionierte App-Starterpaket installiert. Eine bestehende App beginnt im nativen Manager mit **Bestehende App nachruesten**. Das Schema-2-Zielmanifest deklariert Framework, Integrationsmodus, Adapter, Registry-/Capabilitystatus und Ownership. `development`, `registrationRequired` und unvollstaendige Scopes sind nicht editorfaehig. Der Editor erkennt weiterhin keine UI; der M80.1-Refreshvertrag bleibt vor jedem Oeffnen/Fokussieren fuehrend. Details: `APP_STARTERPAKET.md` und `APP_STARTERPAKET_MANIFESTVERTRAG.md`.
+
+## Direktauswahl, Start-Restore und Wirkungsgrenzen ab M82.1
+
+Ein vorhandenes kompatibles Schema-2-UI-Profil darf durch einen gemeinsamen Ziel-App-Startdienst bereits beim normalen Start validiert und über denselben HostAdapter angewandt werden. Dafür sind Manifest, Registryversion, aktiver Scope, pro-Scope-Fingerprint, vollständiges Elementinventar und Capabilityfelder zu prüfen. Der Dienst startet keinen Editorprozess. Beschädigte oder inkompatible Profile führen zur gültigen Baseline und zu einem atomaren Recovery-Marker für den bestehenden M81.1-Ablauf.
+
+Eine Startquittung verhindert die Doppelanwendung beim späteren Editoröffnen. Der bereits aktive Zustand gilt in der neuen Sitzung als gespeichert; die ausdrücklich deklarierte Ziel-App-Baseline bleibt Resetquelle.
+
+Für die Direktauswahl sind nur explizite Registryketten zulässig. Optionale Vertragsfelder sind `selectionKind`, `selectionLevels`, `operationEffects`, `operationAffectedIds` und `geometry`. Zulässige Auswahlarten sind `element`, `group`, `layoutZone`, `label`, `field`, `button`, `icon`, `statusText`, `table` und `column`. Automatische Zielerkennung oder eine erzeugte Registry bleiben verboten.
+
+Jede Layoutoperation muss als `elementOnly`, `groupWithChildren`, `layoutZone`, `parentReflowRequired` oder `forbidden` klassifiziert sein. Mehrfachwirkung wird vor der Bedienung sichtbar genannt. Die Ziel-App muss nicht deklarierte Reflowwirkungen, unzulässige Überlappung, nicht endliche Werte, Grenzverletzungen und fremde Größenänderungen ablehnen und vollständig zurückrollen.

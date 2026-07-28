@@ -29,6 +29,7 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
         this.selectionService = selectionService;
         this.coordinator = coordinator;
         targetSession.ElementSelected += TargetSession_ElementSelected;
+        targetSession.TargetSelectionCancelled += TargetSession_TargetSelectionCancelled;
         targetSession.ActivationRequested += TargetSession_ActivationRequested;
         targetSession.ShutdownRequested += TargetSession_ShutdownRequested;
         targetSession.Disconnected += TargetSession_Disconnected;
@@ -65,7 +66,8 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 target.Contract.RegistryVersion.ToString(),
                 target.Contract.RegistryFingerprint);
             var uiPreparation = await recoveryWorkflow.PrepareUiAsync(
-                target.HostAdapters, profileStore, activeProfileStore, uiRecoveryContext, cancellationToken);
+                target.HostAdapters, profileStore, activeProfileStore, uiRecoveryContext, cancellationToken,
+                target.DeclaredBaselineStates, target.Contract.StartupLayout?.Applied == true);
             var startup = uiPreparation.Startup;
 
             var selection = new TargetAppSelectionService(
@@ -149,7 +151,11 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
     }
 
     private void TargetSession_ElementSelected(object? sender, ElectronTargetElementSelectedEventArgs e) =>
-        Application.Current.Dispatcher.Invoke(() => selectionService.NotifyRemoteSelection(e.ScopeId, e.ElementId));
+        Application.Current.Dispatcher.Invoke(() => selectionService.NotifyRemoteSelection(e.ScopeId, e.ElementId,
+            e.DisplayName, e.ElementType, e.SelectionKind, e.SelectionLevel, e.ParentId, e.ChildCount));
+
+    private void TargetSession_TargetSelectionCancelled(object? sender, EventArgs e) =>
+        Application.Current.Dispatcher.Invoke(selectionService.NotifyRemoteCancellation);
 
     private void TargetSession_ActivationRequested(object? sender, EventArgs e) =>
         Application.Current.Dispatcher.Invoke(Activate);
@@ -172,6 +178,7 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
         if (disposed) return;
         disposed = true;
         targetSession.ElementSelected -= TargetSession_ElementSelected;
+        targetSession.TargetSelectionCancelled -= TargetSession_TargetSelectionCancelled;
         targetSession.ActivationRequested -= TargetSession_ActivationRequested;
         targetSession.ShutdownRequested -= TargetSession_ShutdownRequested;
         targetSession.Disconnected -= TargetSession_Disconnected;

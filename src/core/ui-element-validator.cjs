@@ -35,6 +35,8 @@ const FORBIDDEN_UI_ELEMENT_OPERATIONS = Object.freeze([
   "createRecord",
   "deleteRecord",
 ]);
+const UI_SELECTION_KINDS = Object.freeze(["element", "group", "layoutZone", "label", "field", "button", "icon", "statusText", "table", "column"]);
+const UI_LAYOUT_EFFECT_SCOPES = Object.freeze(["elementOnly", "groupWithChildren", "layoutZone", "parentReflowRequired", "forbidden"]);
 
 const ALLOWED_TYPE_SET = new Set(UI_ELEMENT_TYPES);
 const ALLOWED_ROLE_SET = new Set(UI_ELEMENT_ROLES);
@@ -164,6 +166,22 @@ function validateOperationConflicts(element, errors, elementId) {
   });
 }
 
+function validateSelectionAndEffects(element, errors, elementId) {
+  if (hasOwn(element, "selectionKind") && !UI_SELECTION_KINDS.includes(element.selectionKind))
+    errors.push(createError("invalid_selection_kind", `Ungueltige Auswahlsicht: ${String(element.selectionKind)}.`, "selectionKind", elementId));
+  if (hasOwn(element, "selectionLevels") && (!Array.isArray(element.selectionLevels) || element.selectionLevels.some((value) => !UI_SELECTION_KINDS.includes(value))))
+    errors.push(createError("invalid_selection_levels", "selectionLevels enthaelt ungueltige Werte.", "selectionLevels", elementId));
+  if (hasOwn(element, "operationEffects")) {
+    if (!isObjectElement(element.operationEffects)) errors.push(createError("invalid_operation_effects", "operationEffects muss ein Objekt sein.", "operationEffects", elementId));
+    else for (const [operation, effect] of Object.entries(element.operationEffects)) {
+      if (!Array.isArray(element.allowedOps) || !element.allowedOps.includes(operation))
+        errors.push(createError("undeclared_operation_effect", `Wirkungsmenge fuer nicht erlaubte Operation: ${operation}.`, "operationEffects", elementId));
+      if (!UI_LAYOUT_EFFECT_SCOPES.includes(effect))
+        errors.push(createError("invalid_operation_effect", `Ungueltige Wirkungsmenge: ${String(effect)}.`, "operationEffects", elementId));
+    }
+  }
+}
+
 function validateUiElement(element) {
   const errors = [];
 
@@ -188,6 +206,7 @@ function validateUiElement(element) {
   validateOperationsField("allowedOps", element, errors, elementId);
   validateOperationsField("lockedOps", element, errors, elementId);
   validateOperationConflicts(element, errors, elementId);
+  validateSelectionAndEffects(element, errors, elementId);
 
   return {
     ok: errors.length === 0,
@@ -454,6 +473,8 @@ function validateUiElementList(elements) {
 module.exports = {
   FORBIDDEN_UI_ELEMENT_OPERATIONS,
   UI_TABLE_COLUMN_ROLES,
+  UI_SELECTION_KINDS,
+  UI_LAYOUT_EFFECT_SCOPES,
   validateUiElement,
   validateUiElementList,
 };

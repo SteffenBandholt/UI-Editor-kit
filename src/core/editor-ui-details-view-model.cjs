@@ -145,6 +145,10 @@ function createEditorDetailsViewModel(editorCore, elementId, options) {
     operations: createOperationsViewModel(editorCore, elementId),
   };
 
+  for (const field of ["selectionKind", "selectionLevels", "operationEffects", "operationAffectedIds"]) {
+    if (hasOwn(element, field)) viewModel[field] = cloneNeutralValue(element[field]);
+  }
+
   if (normalizedOptions.includeElementRaw) {
     viewModel.element = cloneNeutralValue(element);
   }

@@ -10,7 +10,8 @@ public sealed record PersistedLayoutProfileDocument(
 public sealed record PersistedLayoutScope(
     string ScopeId,
     string RegistryFingerprint,
-    PersistedLayoutState LayoutState);
+    PersistedLayoutState LayoutState,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? ExplicitOperations = null);
 
 public sealed record LayoutProfileLoadResult(
     bool Success,

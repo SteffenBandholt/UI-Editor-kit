@@ -47,6 +47,10 @@ function canonicalBaseline(value) {
 }
 
 function canonicalElement(scopeId, element) {
+  const operationEffects = {};
+  for (const key of Object.keys(isObject(element?.operationEffects) ? element.operationEffects : {}).sort()) operationEffects[key] = text(element.operationEffects[key]);
+  const operationAffectedIds = {};
+  for (const key of Object.keys(isObject(element?.operationAffectedIds) ? element.operationAffectedIds : {}).sort()) operationAffectedIds[key] = sortedText(element.operationAffectedIds[key]);
   return {
     id: text(element?.id),
     parentId: element?.parentId == null ? null : text(element.parentId),
@@ -58,6 +62,11 @@ function canonicalElement(scopeId, element) {
     lockedOps: sortedText(element?.lockedOps),
     baseline: canonicalBaseline(element?.baseline),
     refKey: text(element?.refKey),
+    selectionKind: text(element?.selectionKind),
+    selectionLevels: sortedText(element?.selectionLevels),
+    operationEffects,
+    operationAffectedIds,
+    geometry: isObject(element?.geometry) ? Object.fromEntries(Object.keys(element.geometry).sort().map((key) => [key, Number(element.geometry[key])])) : {},
   };
 }
 

@@ -62,9 +62,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         DirectionCommand = new AsyncCommand(ApplyDirectionAsync, parameter => CanUseDirection(parameter as string));
         ToggleVisibilityCommand = new AsyncCommand(_ => ToggleVisibilityAsync(), _ => CanChangeVisibility);
         SaveCommand = new AsyncCommand(_ => SaveAsync(), _ => CanOperate && IsDirty);
-        LoadCommand = new AsyncCommand(_ => RunLayoutActionAsync(() => layoutSession.LoadAsync(lifetimeToken), "Profil wurde geladen."), _ => CanOperate);
+        LoadCommand = new AsyncCommand(_ => RunLayoutActionAsync(() => layoutSession.LoadAsync(lifetimeToken), "Profil wurde geladen.", acceptRefreshedTargetAsSaved: layoutSession.AcceptCurrentTargetAsSaved), _ => CanOperate);
         DiscardElementCommand = new AsyncCommand(_ => DiscardElementAsync(), _ => CanOperate && CanDiscardElement);
-        DiscardAllCommand = new AsyncCommand(_ => ConfirmAndRunAsync("Alle Änderungen verwerfen", "Alle ungespeicherten Änderungen werden auf die letzte gespeicherte Profilversion zurückgesetzt.", () => layoutSession.DiscardAllAsync(lifetimeToken)), _ => CanOperate && IsDirty);
+        DiscardAllCommand = new AsyncCommand(_ => ConfirmAndRunAsync("Alle Änderungen verwerfen", "Alle ungespeicherten Änderungen werden auf die letzte gespeicherte Profilversion zurückgesetzt.", () => layoutSession.DiscardAllAsync(lifetimeToken), layoutSession.AcceptCurrentTargetAsSaved), _ => CanOperate && IsDirty);
         ResetElementCommand = new AsyncCommand(_ => ResetElementAsync(), _ => CanOperate && CanResetElement);
         ResetAllCommand = new AsyncCommand(_ => ConfirmAndRunAsync("Gesamtes Layout zurücksetzen", "Alle registrierten Elemente werden auf die ursprüngliche Ziel-App-Baseline zurückgesetzt. Die gespeicherte Datei bleibt unverändert.", () => layoutSession.ResetAllAsync(lifetimeToken)), _ => CanOperate && CanResetAll);
         BeginAppSelectionCommand = new AsyncCommand(_ => BeginAppSelectionAsync(), _ => CanOperate && !IsAppSelectionActive);
@@ -72,6 +72,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         CloseCommand = new AsyncCommand(_ => RequestCloseAsync(), _ => !closing);
         selectionService.ElementSelected += SelectionService_ElementSelected;
         selectionService.SelectionRejected += SelectionService_SelectionRejected;
+        selectionService.SelectionCancelled += SelectionService_SelectionCancelled;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -120,6 +121,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public bool IsDirty => layoutStatus?.IsDirty == true;
     public string DirtyStatus => IsDirty ? "Ungespeicherte Änderungen vorhanden" : "Änderungen gespeichert";
     public bool IsAppSelectionActive => selectionService.IsActive;
+    public string DirectSelectionInfo { get; private set; } = "Direktauswahl inaktiv";
     public string SelectedName { get; private set; } = "Kein Element ausgewählt";
     public string SelectedId { get; private set; } = "–";
     public string SelectedType { get; private set; } = "–";
@@ -127,6 +129,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public string SelectedParent { get; private set; } = "–";
     public string SelectedRole { get; private set; } = "–";
     public string Operations { get; private set; } = "–";
+    public string LayoutEffectInfo { get; private set; } = "Wirkung: keine Bearbeitung ausgewählt";
     public string Position { get; private set; } = "–";
     public string Size { get; private set; } = "–";
     public string TextPosition { get; private set; } = "–";
@@ -209,7 +212,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             if (decision == UnsavedChangesDecision.Cancel) { StatusMessage = "Profilwechsel abgebrochen."; return; }
             if (decision == UnsavedChangesDecision.Save && !await SaveAsync()) return;
         }
-        await RunLayoutActionAsync(() => layoutSession.SwitchProfileAsync(profileId, lifetimeToken), "Profil wurde gewechselt.");
+        await RunLayoutActionAsync(() => layoutSession.SwitchProfileAsync(profileId, lifetimeToken), "Profil wurde gewechselt.", acceptRefreshedTargetAsSaved: layoutSession.AcceptCurrentTargetAsSaved);
         OnPropertyChanged(nameof(ActiveProfileId));
     }
 
@@ -219,7 +222,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     internal async Task<bool> SaveForDiagnosticAsync() => await SaveAsync();
     internal async Task BeginAppSelectionForDiagnosticAsync() => await BeginAppSelectionAsync();
     internal async Task DiscardElementForDiagnosticAsync() => await DiscardElementAsync();
-    internal async Task DiscardAllForDiagnosticAsync() => await RunLayoutActionAsync(() => layoutSession.DiscardAllAsync(lifetimeToken), "Alle Änderungen verworfen.");
+    internal async Task DiscardAllForDiagnosticAsync() => await RunLayoutActionAsync(() => layoutSession.DiscardAllAsync(lifetimeToken), "Alle Änderungen verworfen.", acceptRefreshedTargetAsSaved: layoutSession.AcceptCurrentTargetAsSaved);
     internal async Task ResetElementForDiagnosticAsync() => await ResetElementAsync();
     internal async Task ResetAllForDiagnosticAsync() => await RunLayoutActionAsync(() => layoutSession.ResetAllAsync(lifetimeToken), "Gesamtes Layout zurückgesetzt.");
     internal async Task SetVisibilityForDiagnosticAsync(bool visible)
@@ -251,6 +254,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         selectionService.ElementSelected -= SelectionService_ElementSelected;
         selectionService.SelectionRejected -= SelectionService_SelectionRejected;
+        selectionService.SelectionCancelled -= SelectionService_SelectionCancelled;
         pdfWorkspace.Dispose();
         StatusMessage = "Editor geschlossen.";
     }
@@ -288,7 +292,11 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     ShowError(outcome.Result.RollbackSucceeded ? outcome.Result.ErrorCode ?? "target_rejected_change" : "rollback_failed", outcome.Result.Message);
                     StatusMessage = "Änderung wurde abgewiesen.";
                 }
-                else StatusMessage = $"{SelectedName}: {outcome.Result.Operation}, Schritt {lastValidStep:G} DIP erfolgreich.";
+                else
+                {
+                    layoutSession.RecordExplicitOperation(SelectedScope, SelectedId, outcome.Result.Operation);
+                    StatusMessage = $"{SelectedName}: {outcome.Result.Operation}, Schritt {lastValidStep:G} DIP erfolgreich.";
+                }
             });
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
@@ -325,7 +333,11 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     ShowError(outcome.Result.RollbackSucceeded ? outcome.Result.ErrorCode ?? "target_rejected_change" : "rollback_failed", outcome.Result.Message);
                     StatusMessage = "Sichtbarkeit wurde abgewiesen.";
                 }
-                else StatusMessage = $"{SelectedName}: Sichtbarkeit geändert.";
+                else
+                {
+                    layoutSession.RecordExplicitOperation(SelectedScope, SelectedId, outcome.Result.Operation);
+                    StatusMessage = $"{SelectedName}: Sichtbarkeit geändert.";
+                }
             });
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
@@ -341,21 +353,34 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         return result.Success;
     }
 
-    private Task DiscardElementAsync() => RunLayoutActionAsync(
-        () => layoutSession.DiscardElementAsync(SelectedScope, SelectedId, lifetimeToken), "Änderung des Elements wurde verworfen.");
+    private Task DiscardElementAsync()
+    {
+        var scopeId = SelectedScope;
+        var elementId = SelectedId;
+        return RunLayoutActionAsync(
+            () => layoutSession.DiscardElementAsync(scopeId, elementId, lifetimeToken),
+            "Änderung des Elements wurde verworfen.",
+            acceptRefreshedTargetAsSaved: () => layoutSession.AcceptCurrentTargetElementAsSaved(scopeId, elementId));
+    }
 
     private Task ResetElementAsync() => RunLayoutActionAsync(
         () => layoutSession.ResetElementAsync(SelectedScope, SelectedId, lifetimeToken), "Element wurde auf die App-Baseline zurückgesetzt.");
 
-    private async Task ConfirmAndRunAsync(string title, string message, Func<Task<LayoutOperationResult>> action)
+    private async Task ConfirmAndRunAsync(
+        string title,
+        string message,
+        Func<Task<LayoutOperationResult>> action,
+        Action? acceptRefreshedTargetAsSaved = null)
     {
-        if (dialogService.Confirm(getOwner()!, title, message)) await RunLayoutActionAsync(action, title + " abgeschlossen.");
+        if (dialogService.Confirm(getOwner()!, title, message))
+            await RunLayoutActionAsync(action, title + " abgeschlossen.", acceptRefreshedTargetAsSaved: acceptRefreshedTargetAsSaved);
     }
 
     private async Task<LayoutOperationResult> RunLayoutActionAsync(
         Func<Task<LayoutOperationResult>> action,
         string successMessage,
-        bool refreshProcess = true)
+        bool refreshProcess = true,
+        Action? acceptRefreshedTargetAsSaved = null)
     {
         IsBusy = true;
         ClearError();
@@ -363,7 +388,10 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         {
             var result = await action();
             if (result.Success && refreshProcess)
+            {
                 ApplyState(await coordinator.RefreshEditorLayoutStatesAsync(lifetimeToken));
+                acceptRefreshedTargetAsSaved?.Invoke();
+            }
             RefreshLayoutStatus();
             if (result.Success) StatusMessage = successMessage;
             else
@@ -385,7 +413,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private async Task BeginAppSelectionAsync()
     {
         await selectionService.BeginAsync(lifetimeToken);
-        StatusMessage = "In App auswählen: Klicken Sie ein registriertes Element in der Ziel-App.";
+        DirectSelectionInfo = "Hover zeigt Element, Gruppe und Bereich. Tab wechselt die Ebene, Enter oder Klick wählt, Esc bricht ab.";
+        StatusMessage = "Element in App auswählen: Bewegen Sie die Maus über ein registriertes Ziel.";
+        OnPropertyChanged(nameof(DirectSelectionInfo));
         OnPropertyChanged(nameof(IsAppSelectionActive));
         RaiseCommandStates();
     }
@@ -394,6 +424,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         await selectionService.CancelAsync(lifetimeToken);
         StatusMessage = "Auswahlmodus abgebrochen.";
+        DirectSelectionInfo = "Direktauswahl inaktiv";
+        OnPropertyChanged(nameof(DirectSelectionInfo));
         OnPropertyChanged(nameof(IsAppSelectionActive));
         RaiseCommandStates();
     }
@@ -404,7 +436,10 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         {
             if (!string.Equals(e.ScopeId, ActiveScopeId, StringComparison.Ordinal)) await SelectScopeAsync(e.ScopeId);
             await SelectElementAsync(e.ElementId);
-            StatusMessage = $"Element {e.ElementId} wurde direkt in der Ziel-App ausgewählt.";
+            var count = e.ChildCount > 0 ? $" · {e.ChildCount} direkte Kinder" : string.Empty;
+            DirectSelectionInfo = $"{e.SelectionLevel ?? "Element"}: {e.DisplayName ?? SelectedName} · {e.SelectionKind ?? e.ElementType ?? SelectedType}{count}";
+            StatusMessage = $"{e.DisplayName ?? SelectedName} wurde direkt in der Ziel-App ausgewählt; der Baum ist synchronisiert.";
+            OnPropertyChanged(nameof(DirectSelectionInfo));
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
@@ -461,6 +496,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         SelectedParent = details?.ParentId ?? "–";
         SelectedRole = details?.Role ?? "–";
         Operations = details?.Operations is null ? "–" : string.Join(", ", details.Operations.AvailableOps);
+        LayoutEffectInfo = DescribeLayoutEffect(details);
         Position = details?.CurrentLayout.Element is { } element ? $"X {element.X:G} / Y {element.Y:G} DIP" : "–";
         Size = details?.CurrentLayout.Element is { } size ? $"{size.Width:G} × {size.Height:G} DIP" : "–";
         TextPosition = details?.CurrentLayout.Text is { } text && (text.OffsetX is not null || text.OffsetY is not null)
@@ -520,8 +556,44 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseDetailsChanged()
     {
-        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
+        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
             OnPropertyChanged(property);
+    }
+
+    private void SelectionService_SelectionCancelled(object? sender, EventArgs e)
+    {
+        DirectSelectionInfo = "Direktauswahl inaktiv";
+        StatusMessage = "Auswahlmodus in der Ziel-App abgebrochen.";
+        OnPropertyChanged(nameof(DirectSelectionInfo));
+        OnPropertyChanged(nameof(IsAppSelectionActive));
+        RaiseCommandStates();
+    }
+
+    private string DescribeLayoutEffect(EditorUiDetails? details)
+    {
+        if (details?.OperationEffects is null) return "Wirkung: nur das gewählte Ziel.";
+        var mode = state?.Panel.Modes.FirstOrDefault(choice => choice.Active)?.Id;
+        var operation = mode switch
+        {
+            "move" => "move",
+            "width" => details.Operations?.AvailableOps.Contains("resizeWidth", StringComparer.Ordinal) == true ? "resizeWidth" : "resize",
+            "height" => details.Operations?.AvailableOps.Contains("resizeHeight", StringComparer.Ordinal) == true ? "resizeHeight" : "resize",
+            "text-position" => "textMove",
+            "text-size" => "textResize",
+            _ => null,
+        };
+        if (operation is null || !details.OperationEffects.TryGetValue(operation, out var effect)) return "Wirkung: nur das gewählte Ziel.";
+        var explicitTargets = details.OperationAffectedIds?.TryGetValue(operation, out var ids) == true && ids.Count > 0
+            ? $" Zusätzlich betroffen: {ids.Count} ausdrücklich abhängige Ziele."
+            : string.Empty;
+        return effect switch
+        {
+            "groupWithChildren" => $"Wirkung: Gruppe mit ihren Kindern.{explicitTargets} Interne Größen bleiben unverändert.",
+            "layoutZone" => $"Wirkung: gewählter Layoutbereich.{explicitTargets}",
+            "parentReflowRequired" => $"Achtung: Parent-Reflow erforderlich.{explicitTargets} Nicht deklarierte Nachbaränderungen werden abgewiesen.",
+            "forbidden" => "Wirkung: gesperrt.",
+            _ => "Wirkung: nur das gewählte Ziel.",
+        };
     }
 
     private void RaiseCommandStates()

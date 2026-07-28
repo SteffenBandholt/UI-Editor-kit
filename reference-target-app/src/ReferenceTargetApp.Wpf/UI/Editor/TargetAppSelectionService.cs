@@ -36,6 +36,7 @@ internal sealed class TargetAppSelectionService : IDisposable
 
     internal event EventHandler<TargetAppElementSelectedEventArgs>? ElementSelected;
     internal event EventHandler? SelectionRejected;
+    internal event EventHandler? SelectionCancelled;
     internal bool IsActive { get; private set; }
     internal void Begin() { ObjectDisposedException.ThrowIf(disposed, this); IsActive = true; }
     internal void Cancel() { IsActive = false; }
@@ -51,11 +52,19 @@ internal sealed class TargetAppSelectionService : IDisposable
     }
     internal Task HighlightAsync(string scopeId, string elementId, CancellationToken cancellationToken = default) =>
         highlightRemote is null ? Task.CompletedTask : highlightRemote(scopeId, elementId, cancellationToken);
-    internal void NotifyRemoteSelection(string scopeId, string elementId)
+    internal void NotifyRemoteSelection(string scopeId, string elementId, string? displayName = null,
+        string? elementType = null, string? selectionKind = null, string? selectionLevel = null,
+        string? parentId = null, int childCount = 0)
     {
         if (!IsActive) return;
         IsActive = false;
-        ElementSelected?.Invoke(this, new(scopeId, elementId));
+        ElementSelected?.Invoke(this, new(scopeId, elementId, displayName, elementType, selectionKind, selectionLevel, parentId, childCount));
+    }
+    internal void NotifyRemoteCancellation()
+    {
+        if (!IsActive) return;
+        IsActive = false;
+        SelectionCancelled?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose()
@@ -103,8 +112,16 @@ internal sealed class TargetAppSelectionService : IDisposable
     }
 }
 
-internal sealed class TargetAppElementSelectedEventArgs(string scopeId, string elementId) : EventArgs
+internal sealed class TargetAppElementSelectedEventArgs(string scopeId, string elementId, string? displayName = null,
+    string? elementType = null, string? selectionKind = null, string? selectionLevel = null,
+    string? parentId = null, int childCount = 0) : EventArgs
 {
     internal string ScopeId { get; } = scopeId;
     internal string ElementId { get; } = elementId;
+    internal string? DisplayName { get; } = displayName;
+    internal string? ElementType { get; } = elementType;
+    internal string? SelectionKind { get; } = selectionKind;
+    internal string? SelectionLevel { get; } = selectionLevel;
+    internal string? ParentId { get; } = parentId;
+    internal int ChildCount { get; } = childCount;
 }
