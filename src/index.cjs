@@ -36,6 +36,7 @@ const namedPipeClient = require("./electron-target/named-pipe-client.cjs");
 const targetRegistration = require("./electron-target/target-registration.cjs");
 const pdfTargetContract = require("./electron-target/pdf-target-contract.cjs");
 const layoutProfileStartup = require("./electron-target/layout-profile-startup.cjs");
+const geometryRiskContract = require("./core/geometry-risk-contract.cjs");
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
@@ -60,6 +61,7 @@ module.exports = Object.freeze({
   ...targetRegistration,
   ...pdfTargetContract,
   ...layoutProfileStartup,
+  ...geometryRiskContract,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

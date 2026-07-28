@@ -67,6 +67,14 @@ const expectedExports = [
   "createUiScopeFingerprint",
   "validateTargetStartupLayoutProfile",
   "loadTargetStartupLayout",
+  "EDIT_MODES",
+  "RISK_TYPES",
+  "RISK_ACTIONS",
+  "evaluateGeometryRisk",
+  "createPdfGeometryNotice",
+  "clampBounds",
+  "intersection",
+  "contains",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -90,6 +98,7 @@ expectedExports.forEach((name) => {
     "RUNTIME_ERROR_CODES", "PANEL_INTENTS", "PANEL_LAYERS", "PANEL_MODES", "PANEL_DIRECTIONS",
     "ELECTRON_TARGET_OPERATIONS", "ELECTRON_REGISTRY_STATUSES", "LOCAL_TARGET_MESSAGE_TYPES", "ELECTRON_EDITOR_ERROR_CODES",
     "TARGET_REGISTRATION_STATUSES", "REGISTRY_SCOPE_STATUSES", "PDF_REGISTRY_STATUSES", "PDF_TARGET_OPERATIONS",
+    "EDIT_MODES", "RISK_TYPES", "RISK_ACTIONS",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else if ([

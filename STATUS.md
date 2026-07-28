@@ -8,6 +8,17 @@
 
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
 
+### M82.2 – Geführter und freier Bearbeitungsmodus
+
+- Status: `[A] abgenommen`; die vollständige sichtbare UI-/PDF-Abnahme in der paketierten BBM-Diagnostic-Variante ist abgeschlossen.
+- Die echte vierseitige BBM-PDF mit 28 Registryelementen wurde im normalen Benutzerprofil erzeugt. Geführt/Frei, Anzeigenamen und technische Details, Save/Neustart-Restore, Rollback mit direkter Weiterarbeit, Element-/Gesamtreset, Discard und Profil-Recovery sind sichtbar beziehungsweise automatisiert nachgewiesen.
+- Ein gemeinsamer frameworkneutraler Risikovertrag trennt bestätigbare Grenz-/Überlappungsrisiken von weiterhin blockierten technischen Fehlern.
+- „Geführt“ bietet Begrenzen, bewusstes Anwenden und Abbrechen; „Frei“ lässt bestätigte freie Positionen zu, ohne Registry-Parents oder Fachwerte zu verändern.
+- Haupttexte verwenden Anzeigenamen, technische Daten stehen nur in „Details anzeigen“. Auswahl allein erzeugt keine Warnung.
+- WPF und Electron verwenden ihre vorhandenen HostAdapter, denselben Apply-/Readback-/Rollbackweg und native Geometrievorschauen.
+- Der Modus liegt als eigene atomare Benutzerpräferenz neben, aber nicht in UI-/PDF-Layoutprofilen.
+- Detaildokument: `docs/M82_2_GEFUEHRT_FREI_BEARBEITEN.md`.
+
 ### M82.1 – Direktauswahl und sicheres Ziel-App-Feintuning
 
 - Status: `[A] abgenommen`; alle Pflichtprüfungen und die vollständige sichtbare 56-Schritt-BBM-Abnahme im normalen Benutzerprofil sind abgeschlossen.

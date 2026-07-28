@@ -270,3 +270,13 @@ Eine Ziel-App kann den vom Kit exportierten Startprofildienst vor oder während 
 Für eine direkte Auswahl sendet der Manager weiterhin `beginTargetSelection`, `cancelTargetSelection` und `highlightElement` über die vorhandene lokale Sitzung. Die Ziel-App darf nur ihre explizit registrierten Referenzen treffen. Sie meldet `targetSelectionChanged` mit Scope, Element-ID, Anzeigename, Typ, Parent, Auswahlart, Auswahlstufe, Kinderzahl und Bounding Rectangle. Der Manager wählt daraufhin dasselbe Element im bestehenden Baum aus.
 
 Position, Größe, Textposition, Textgröße und Sichtbarkeit bleiben getrennte Operationen. Die Registry deklariert die Wirkungsmenge und ausdrücklich abhängige IDs. Eine Ziel-App darf eine Änderung nur bestätigen, wenn die tatsächliche Geometriewirkung innerhalb dieser Menge und ihrer Baselinegrenzen liegt.
+
+## HostAdapter-Anbindung für M82.2
+
+Eine geometrisch bearbeitbare Ziel-App erweitert ihren vorhandenen HostAdapter um den gemeinsamen Risikoweg. Sie liefert stabile Registry-IDs, Anzeigenamen, Parent-/Gruppen-/Bereichsbeziehungen sowie Bounding Rectangles des Ziels und sinnvoller sichtbarer Nachbarn. Der Editor-Core bewertet diese Daten generisch; die Ziel-App trifft keine eigene Text- oder Modusentscheidung.
+
+Vor einer riskanten endgültigen Änderung muss der Adapter den bisherigen Zustand transaktional sichern, den Zielzustand lesen, bei einer noch unbestätigten Operation zurückrollen und die native Vorschau anzeigen. Eine Wiederholung mit passender `operationId` und zulässiger Aktion darf final anwenden. Danach sind Readback, Dirty-Erfassung und der bestehende Save-/Discard-/Resetweg maßgeblich. Jede Abbruch-, Fehler- oder Auswahlroute entfernt die Vorschau.
+
+WPF verwendet `IGeometryRiskHostAdapter` und einen nativen Adorner. Electron verwendet unverändert die lokale Pipe und ergänzt deren ChangeRequest um Modus und operationsgebundene Bestätigung. Browser-, HTTP-, WebSocket- oder Netzwerktransporte sind nicht zulässig.
+
+Die Benutzerpräferenz liegt als eigene atomare Datei im vorhandenen Profilroot. Sie darf weder Ziel-App-Fachwert noch Bestandteil des Layout- oder PDF-Profils sein.

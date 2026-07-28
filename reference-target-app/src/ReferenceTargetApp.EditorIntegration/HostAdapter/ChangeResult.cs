@@ -1,3 +1,5 @@
+using ReferenceTargetApp.EditorIntegration.Geometry;
+
 namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 
 public sealed record ChangeResult(
@@ -9,7 +11,8 @@ public sealed record ChangeResult(
     string Message,
     ElementLayoutState? PreviousState,
     ElementLayoutState? NewState,
-    bool RollbackSucceeded)
+    bool RollbackSucceeded,
+    GeometryRiskAssessment? GeometryRisk = null)
 {
     internal static ChangeResult Rejected(ChangeRequest? request, string errorCode, string message) => new(
         false,

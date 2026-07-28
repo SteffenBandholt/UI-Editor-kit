@@ -3,6 +3,7 @@ using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.EditorUi;
 using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Protocol;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 
 namespace ReferenceTargetApp.EditorIntegration.Session;
 
@@ -204,6 +205,13 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             cancellationToken);
 
     public async Task<EditorUiChangeOutcome> RunEditorDirectionAsync(string direction, CancellationToken cancellationToken = default)
+        => await RunEditorDirectionWithRiskAsync(direction, GeometryEditModes.Guided, null, cancellationToken).ConfigureAwait(false);
+
+    public async Task<EditorUiChangeOutcome> RunEditorDirectionWithRiskAsync(
+        string direction,
+        string editMode,
+        GeometryRiskConfirmation? confirmation = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(direction);
         await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -218,7 +226,10 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
                 SessionId,
                 cancellationToken).ConfigureAwait(false);
             var request = ChangeRequestProtocolTranslator.Translate(submitMessage.Payload);
-            var result = await HostAdapterDispatch.SubmitAsync(ResolveAdapter(request), request, cancellationToken).ConfigureAwait(false);
+            var adapter = ResolveAdapter(request);
+            var result = adapter is IGeometryRiskHostAdapter geometryAdapter
+                ? await geometryAdapter.SubmitGeometryChangeRequestAsync(request, editMode, confirmation, cancellationToken).ConfigureAwait(false)
+                : await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
             await client.SendRequestAsync(
                 EditorMessageTypes.ChangeResult,
                 new { changeResult = result },
@@ -233,6 +244,12 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
         {
             transitionLock.Release();
         }
+    }
+
+    public async Task ClearGeometryPreviewAsync(CancellationToken cancellationToken = default)
+    {
+        if (hostAdapters.TryGetValue(ActiveScopeId, out var adapter) && adapter is IGeometryRiskHostAdapter geometryAdapter)
+            await geometryAdapter.ClearGeometryPreviewAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<EditorUiChangeOutcome> SetEditorVisibilityAsync(bool visible, CancellationToken cancellationToken = default)

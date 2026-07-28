@@ -59,6 +59,8 @@ public sealed class LayoutProfileSession
     }
 
     public string ActiveProfileId { get; private set; }
+    public string ProfileRoot => profileStore.RootDirectory;
+    public string ApplicationId => profileStore.DocumentApplicationId;
     public bool IsOperationRunning => operationLock.CurrentCount == 0;
 
     public void RecordExplicitOperation(string scopeId, string elementId, string operation)

@@ -354,3 +354,7 @@ M73 bis M82 sind abgenommen. Der bestehende BBM-Druck-/PDF-Fachweg bleibt Eigent
 ## 10. M82.1 – Bedienbares Feintuning für bestehende Ziel-Apps
 
 M82.1 stabilisiert nach M82 ausschließlich den vorhandenen Ziel-App-Weg: kompatible UI-Profile gelten bereits beim normalen App-Start, die Direktauswahl synchronisiert ein registriertes Ziel mit dem bestehenden Baum, und deklarierte Wirkungsgrenzen verhindern unkontrollierte Layoutfolgen. Es entsteht kein zweiter Editor-, Manager-, Registry- oder Profilweg. Der Meilenstein wird erst nach vollständiger sichtbarer BBM-Abnahme als `[A]` geführt.
+
+## 11. M82.2 – Geführter und freier Bearbeitungsmodus
+
+M82.2 ersetzt technische Pauschalwarnungen durch einen appübergreifenden Geometrierisikovertrag. Geführt begrenzt auf Wunsch an Gruppe oder Bereich; Frei erlaubt bestätigte sichtbare Grenzverletzungen und Überlappungen. Mathematisch oder vertraglich ungültige Zustände bleiben blockiert. WPF und Electron verwenden denselben Core, ihren vorhandenen HostAdapter, denselben transaktionalen Profilweg und native Vorschauen. BBM ist ausschließlich Referenz- und Abnahme-App. `[A]` setzt alle automatisierten Pflichtläufe und die vollständige sichtbare 58-Schritt-Abnahme voraus.

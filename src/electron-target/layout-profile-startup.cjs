@@ -98,7 +98,7 @@ function validateElement(saved, entry, scopeId, errors) {
     if (value <= 0 || finite(minimum) && value < minimum - 0.01 || finite(maximum) && value > maximum + 0.01)
       errors.push(error("invalid_layout_geometry", `${field} liegt außerhalb der sicheren Grenzen.`, `${prefix}.${field}`));
   }
-  const maximumOffset = Number(entry?.geometry?.maximumOffset ?? 240);
+  const maximumOffset = Number(entry?.geometry?.maximumStoredOffset ?? entry?.geometry?.maximumOffset ?? 240);
   if (saved?.x != null && Math.abs(saved.x) > maximumOffset || saved?.y != null && Math.abs(saved.y) > maximumOffset)
     errors.push(error("invalid_layout_geometry", "Position liegt außerhalb der sicheren Grenzen.", prefix));
   if (saved?.textOffsetX != null && saved.textOffsetX < 0 || saved?.textOffsetY != null && saved.textOffsetY < 0)

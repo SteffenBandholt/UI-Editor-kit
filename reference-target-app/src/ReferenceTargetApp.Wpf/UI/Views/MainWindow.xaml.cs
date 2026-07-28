@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Input;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 using ReferenceTargetApp.EditorIntegration.CustomerDetails;
 using ReferenceTargetApp.EditorIntegration.OrderHeader;
 using ReferenceTargetApp.EditorIntegration.Persistence;
@@ -124,14 +125,20 @@ public partial class MainWindow : Window
         targetAppSelectionService = new TargetAppSelectionService(
             HostAdapters.Values.Select(adapter => adapter.GetRegistry()),
             [NewOrderButton, AddPositionButton, CheckOrderButton, SaveOrderButton]);
-        var diagnosticDialogs = fullOperationPhase == "m75-verify"
-            ? new NativeEditorDialogService([
+        var diagnosticUnsavedDecisions = fullOperationPhase == "m75-verify"
+            ? new[] {
                 UnsavedChangesDecision.Cancel,
                 UnsavedChangesDecision.Discard,
                 UnsavedChangesDecision.Cancel,
                 UnsavedChangesDecision.Discard,
-                UnsavedChangesDecision.Save])
-            : uiPdfPhase is not null ? new NativeEditorDialogService([UnsavedChangesDecision.Cancel, UnsavedChangesDecision.Save]) : null;
+                UnsavedChangesDecision.Save }
+            : uiPdfPhase is not null
+                ? [UnsavedChangesDecision.Cancel, UnsavedChangesDecision.Save]
+                : [];
+        var diagnosticDialogs = fullOperationPhase is not null || uiPdfPhase is not null
+            ? new NativeEditorDialogService(diagnosticUnsavedDecisions,
+                Enumerable.Repeat(GeometryRiskDecision.ApplyAnyway, 64))
+            : null;
         var pdfOutputPath = Path.Combine(layoutStore.Options.RootDirectory, "pdf-output", "order-preview.pdf");
         var pdfOrder = uiPdfPhase is null ? viewModel.CurrentOrder : new ReferenceOrderFactory().CreatePdfDiagnosticOrder();
         editorWindowCoordinator = new EditorWindowCoordinator(this, HostAdapters, LayoutProfileStartupResult.Session, targetAppSelectionService,

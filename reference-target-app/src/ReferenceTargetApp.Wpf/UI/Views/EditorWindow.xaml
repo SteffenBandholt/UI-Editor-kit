@@ -40,7 +40,7 @@
                 </TreeView.ItemContainerStyle>
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Id}" />
+                        <TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis" />
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
@@ -48,31 +48,40 @@
 
         <ScrollViewer Grid.Row="1" Grid.Column="2" VerticalScrollBarVisibility="Auto">
             <StackPanel>
+                <GroupBox Header="Bearbeitungsmodus">
+                    <StackPanel>
+                        <WrapPanel>
+                            <RadioButton Content="Geführt" GroupName="EditMode" IsChecked="{Binding IsGuidedEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="guided" Margin="0,0,18,0" />
+                            <RadioButton Content="Frei" GroupName="EditMode" IsChecked="{Binding IsFreeEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="free" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding EditModeStatus}" Margin="0,8,0,0" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </GroupBox>
                 <GroupBox Header="Elementdetails">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="Name" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="1" Text="Element-ID" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap" />
-                        <TextBlock Grid.Row="2" Text="Art" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedType}" />
-                        <TextBlock Grid.Row="3" Text="Scope" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedScope}" />
-                        <TextBlock Grid.Row="4" Text="Parent" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedParent}" TextWrapping="Wrap" />
-                        <TextBlock Grid.Row="5" Text="Rolle" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedRole}" />
-                        <TextBlock Grid.Row="6" Text="Operationen" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Operations}" TextWrapping="Wrap" />
-                        <TextBlock Grid.Row="7" Text="Position" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Position}" />
-                        <TextBlock Grid.Row="8" Text="Größe" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Size}" />
-                        <TextBlock Grid.Row="9" Text="Textposition" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding TextPosition}" />
-                        <TextBlock Grid.Row="10" Text="Schriftgröße" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding FontSize}" />
-                        <TextBlock Grid.Row="11" Text="Sichtbarkeit" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding VisibilityStatus}" />
-                    </Grid>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <TextBlock Text="Name" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold" />
+                            <TextBlock Grid.Row="1" Text="Position" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Position}" />
+                            <TextBlock Grid.Row="2" Text="Größe" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Size}" />
+                            <TextBlock Grid.Row="3" Text="Textposition" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding TextPosition}" />
+                            <TextBlock Grid.Row="4" Text="Schriftgröße" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding FontSize}" />
+                            <TextBlock Grid.Row="5" Text="Sichtbarkeit" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding VisibilityStatus}" />
+                        </Grid>
+                        <Expander Header="Details anzeigen" Margin="0,8,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Element-ID" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="1" Text="Art" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedType}" />
+                                <TextBlock Grid.Row="2" Text="Scope-ID" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedScope}" />
+                                <TextBlock Grid.Row="3" Text="Parent-ID" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedParent}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="4" Text="Rolle" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRole}" />
+                                <TextBlock Grid.Row="5" Text="Operationen" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Operations}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Expander>
+                    </StackPanel>
                 </GroupBox>
 
                 <GroupBox Header="Bearbeitung">
@@ -87,7 +96,7 @@
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetModeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" Margin="0,0,8,8"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding Enabled}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Active}" Value="True"><Setter Property="Background" Value="{StaticResource PrimaryBrush}" /><Setter Property="Foreground" Value="White" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Border Background="#FFF7D6" BorderBrush="#C58B00" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,12">
+                        <Border Background="#F1F5F9" BorderBrush="#94A3B8" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,12">
                             <TextBlock Text="{Binding LayoutEffectInfo}" TextWrapping="Wrap" />
                         </Border>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -137,7 +146,10 @@
                 <StackPanel>
                     <TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding ErrorCodeDisplay}" Foreground="#A61B1B" FontSize="11" />
+                    <Expander Header="Details anzeigen" Margin="0,6,0,0">
+                        <Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasTechnicalDetails}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Expander.Style>
+                        <TextBlock Text="{Binding TechnicalDetails}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" />
+                    </Expander>
                 </StackPanel>
                 <Button Grid.Column="1" Content="Schließen" Command="{Binding CloseCommand}" MinWidth="110" Margin="18,0,0,0" />
             </Grid>
@@ -190,7 +202,7 @@
                 </GroupBox.Header>
                 <TreeView x:Name="PdfElementTree" ItemsSource="{Binding TreeRoots}" SelectedItemChanged="PdfElementTree_SelectedItemChanged">
                   <TreeView.ItemContainerStyle><Style TargetType="TreeViewItem"><Setter Property="IsExpanded" Value="True"/></Style></TreeView.ItemContainerStyle>
-                  <TreeView.ItemTemplate><HierarchicalDataTemplate ItemsSource="{Binding Children}"><TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Id}"/></HierarchicalDataTemplate></TreeView.ItemTemplate>
+                  <TreeView.ItemTemplate><HierarchicalDataTemplate ItemsSource="{Binding Children}"><TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"/></HierarchicalDataTemplate></TreeView.ItemTemplate>
                 </TreeView>
               </GroupBox>
             </Grid>
@@ -202,22 +214,40 @@
             </GroupBox>
             <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
               <StackPanel>
-                <GroupBox Header="PDF-Elementdetails"><Grid>
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-                  <TextBlock Text="Name"/><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold"/>
-                  <TextBlock Grid.Row="1" Text="Element-ID"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap"/>
-                  <TextBlock Grid.Row="2" Text="Art / Rolle"/><TextBlock Grid.Row="2" Grid.Column="1"><Run Text="{Binding SelectedKind, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SelectedRole, Mode=OneWay}"/></TextBlock>
-                  <TextBlock Grid.Row="3" Text="Parent"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedParent}" TextWrapping="Wrap"/>
-                  <TextBlock Grid.Row="4" Text="Scope / Zone"/><TextBlock Grid.Row="4" Grid.Column="1"><Run Text="{Binding SelectedScope, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SelectedArea, Mode=OneWay}"/></TextBlock>
-                  <TextBlock Grid.Row="5" Text="Capabilities"/><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedCapabilities}" TextWrapping="Wrap"/>
-                  <TextBlock Grid.Row="6" Text="Position"/><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Position}"/>
-                  <TextBlock Grid.Row="7" Text="Größe"/><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Size}"/>
-                  <TextBlock Grid.Row="8" Text="Textposition"/><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding TextPosition}"/>
-                  <TextBlock Grid.Row="9" Text="Schriftgröße"/><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding FontSize}"/>
-                  <TextBlock Grid.Row="10" Text="Seite"/><TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding SelectedPageText}"/>
-                  <TextBlock Grid.Row="11" Text="Tabelle"/><TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding TableInfo}" TextWrapping="Wrap"/>
-                </Grid></GroupBox>
+                <GroupBox Header="Bearbeitungsmodus">
+                  <StackPanel>
+                    <WrapPanel>
+                      <RadioButton Content="Geführt" GroupName="PdfEditMode" IsChecked="{Binding DataContext.IsGuidedEditMode, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Command="{Binding DataContext.SetEditModeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="guided" Margin="0,0,18,0"/>
+                      <RadioButton Content="Frei" GroupName="PdfEditMode" IsChecked="{Binding DataContext.IsFreeEditMode, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Command="{Binding DataContext.SetEditModeCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="free"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding DataContext.EditModeStatus, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,8,0,0" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"/>
+                    <TextBlock Text="PDF-Seitengrenzen, Pagination und Druckbarkeit bleiben in beiden Modi verbindlich." Margin="0,4,0,0" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </GroupBox>
+                <GroupBox Header="PDF-Elementdetails"><StackPanel>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <TextBlock Text="Name"/><TextBlock Grid.Column="1" Text="{Binding SelectedName}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="1" Text="Position"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Position}"/>
+                    <TextBlock Grid.Row="2" Text="Größe"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Size}"/>
+                    <TextBlock Grid.Row="3" Text="Textposition"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding TextPosition}"/>
+                    <TextBlock Grid.Row="4" Text="Schriftgröße"/><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding FontSize}"/>
+                    <TextBlock Grid.Row="5" Text="Seite"/><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedPageText}"/>
+                    <TextBlock Grid.Row="6" Text="Tabelle"/><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding TableInfo}" TextWrapping="Wrap"/>
+                  </Grid>
+                  <Expander Header="Details anzeigen" Margin="0,8,0,0">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                      <TextBlock Text="Element-ID"/><TextBlock Grid.Column="1" Text="{Binding SelectedId}" TextWrapping="Wrap"/>
+                      <TextBlock Grid.Row="1" Text="Art / Rolle"/><TextBlock Grid.Row="1" Grid.Column="1"><Run Text="{Binding SelectedKind, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SelectedRole, Mode=OneWay}"/></TextBlock>
+                      <TextBlock Grid.Row="2" Text="Parent-ID"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedParent}" TextWrapping="Wrap"/>
+                      <TextBlock Grid.Row="3" Text="Scope-ID / Zone"/><TextBlock Grid.Row="3" Grid.Column="1"><Run Text="{Binding SelectedScope, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SelectedArea, Mode=OneWay}"/></TextBlock>
+                      <TextBlock Grid.Row="4" Text="Capabilities"/><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedCapabilities}" TextWrapping="Wrap"/>
+                    </Grid>
+                  </Expander>
+                </StackPanel></GroupBox>
                 <GroupBox Header="Bearbeitung in Millimetern"><StackPanel IsEnabled="{Binding CanOperate}">
                   <TextBlock Text="Ebene"/><WrapPanel><Button Content="Element" Command="{Binding SetLayerCommand}" CommandParameter="element"/><Button Content="Text" Command="{Binding SetLayerCommand}" CommandParameter="text" IsEnabled="{Binding CanTextPosition}" Margin="6,0,0,0"/></WrapPanel>
                   <TextBlock Text="Modus" Margin="0,10,0,3"/><WrapPanel><Button Content="Position" Command="{Binding SetModeCommand}" CommandParameter="position" IsEnabled="{Binding CanPosition}"/><Button Content="Breite" Command="{Binding SetModeCommand}" CommandParameter="width" IsEnabled="{Binding CanWidth}"/><Button Content="Höhe" Command="{Binding SetModeCommand}" CommandParameter="height" IsEnabled="{Binding CanHeight}"/><Button Content="Textposition" Command="{Binding SetModeCommand}" CommandParameter="textPosition" IsEnabled="{Binding CanTextPosition}"/><Button Content="Schriftgröße" Command="{Binding SetModeCommand}" CommandParameter="fontSize" IsEnabled="{Binding CanFontSize}"/></WrapPanel>
@@ -235,7 +265,7 @@
               </StackPanel>
             </ScrollViewer>
           </Grid>
-          <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,10,0,0"><StackPanel><TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold"/><TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap"/><TextBlock Text="{Binding ErrorCodeDisplay}" Foreground="#A61B1B" FontSize="11"/></StackPanel></Border>
+          <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,10,0,0"><StackPanel><TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold"/><TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap"/><Expander Header="Details anzeigen"><Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasTechnicalDetails}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Expander.Style><TextBlock Text="{Binding TechnicalDetails}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/></Expander></StackPanel></Border>
         </Grid>
         </Grid>
       </TabItem>
