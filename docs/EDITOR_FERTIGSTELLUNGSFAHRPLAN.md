@@ -362,3 +362,7 @@ M82.2 ersetzt technische Pauschalwarnungen durch einen appübergreifenden Geomet
 ## 12. M82.3 - Lokale Breitenwirkung und kompakte Editoroberflaeche
 
 M82.3 trennt Elementbreite, reservierten Platz, bewusstes Nachruecken, Gruppenbreite und explizite Abstaende. Der gemeinsame Vertrag wird von WPF und Electron ueber die vorhandenen HostAdapter umgesetzt. Der native UI-/PDF-Editor verwendet bei kleiner, normaler und grosser Inhaltsbreite eine, zwei beziehungsweise drei Spalten, eine feste Aktionsleiste und intern scrollende Auswahlbereiche. Status: `[A] abgenommen`; die vollstaendigen Pflichtlaeufe und die sichtbare gepackte BBM-/PDF-Abnahme sind gruen.
+
+## 13. M82.4 – Tabellen- und Spaltenbearbeitung
+
+M82.4 ergänzt echte Inhaltstabellen, ihre strukturellen Auswahlziele und genau eine Breitenquelle je Spalte. Viewport-/Überlaufmessung, Vorschau, Mindestbreiten, feste und flexible Spalten, Textumbruch/Ellipsis, bewusster horizontaler Scrollmodus sowie Spalten-/Tabellenreset werden appübergreifend durch denselben Core und die vorhandenen WPF-/Electron-HostAdapter geführt. Status: `[A]`; Implementierung, Pflichtläufe und sichtbare gepackte BBM-Abnahme sind abgeschlossen.

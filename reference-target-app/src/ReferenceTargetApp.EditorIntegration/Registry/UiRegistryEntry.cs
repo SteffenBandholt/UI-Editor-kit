@@ -1,4 +1,5 @@
 using System.Windows;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.Registry;
 
@@ -23,4 +24,10 @@ public sealed record UiRegistryEntry(
     IReadOnlyList<string>? SelectionLevels = null,
     IReadOnlyDictionary<string, string>? OperationEffects = null,
     IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null,
-    IReadOnlyList<string>? SpacingTargets = null);
+    IReadOnlyList<string>? SpacingTargets = null,
+    TableLayoutDefinition? TableLayout = null,
+    TableColumnLayoutDefinition? TableColumnLayout = null,
+    IReadOnlyDictionary<string, string>? TableBinding = null,
+    IReadOnlyDictionary<string, object?>? RowLayout = null,
+    WpfTableColumnBinding? WpfTableColumnBinding = null,
+    WpfTableBinding? WpfTableBinding = null);

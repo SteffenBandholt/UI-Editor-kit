@@ -1,3 +1,5 @@
+using ReferenceTargetApp.EditorIntegration.Tables;
+
 namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 
 public sealed record ElementLayoutState(
@@ -11,13 +13,14 @@ public sealed record ElementLayoutState(
     double? TextOffsetY,
     double? FontSize,
     bool Visible = true,
-    IReadOnlyDictionary<string, double>? Spacing = null)
+    IReadOnlyDictionary<string, double>? Spacing = null,
+    TableElementLayoutState? Table = null)
 {
     public bool Equals(ElementLayoutState? other) => other is not null &&
         ElementId == other.ElementId && ScopeId == other.ScopeId && X.Equals(other.X) && Y.Equals(other.Y) &&
         Width.Equals(other.Width) && Height.Equals(other.Height) && Nullable.Equals(TextOffsetX, other.TextOffsetX) &&
         Nullable.Equals(TextOffsetY, other.TextOffsetY) && Nullable.Equals(FontSize, other.FontSize) && Visible == other.Visible &&
-        SameSpacing(Spacing, other.Spacing);
+        SameSpacing(Spacing, other.Spacing) && Equals(Table, other.Table);
 
     public override int GetHashCode()
     {
@@ -26,6 +29,7 @@ public sealed record ElementLayoutState(
         hash.Add(Width); hash.Add(Height); hash.Add(TextOffsetX); hash.Add(TextOffsetY); hash.Add(FontSize); hash.Add(Visible);
         foreach (var pair in (Spacing ?? new Dictionary<string, double>()).OrderBy(pair => pair.Key, StringComparer.Ordinal))
         { hash.Add(pair.Key, StringComparer.Ordinal); hash.Add(pair.Value); }
+        hash.Add(Table);
         return hash.ToHashCode();
     }
 

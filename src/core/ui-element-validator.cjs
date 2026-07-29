@@ -7,6 +7,7 @@ const {
   UI_ELEMENT_REQUIRED_FIELDS,
 } = require("./ui-element-model.cjs");
 const { SPACING_OPERATIONS, SPACING_TARGETS } = require("./spacing-contract.cjs");
+const { validateTableLayout, validateTableElementBindings } = require("./table-layout-contract.cjs");
 
 const UI_TABLE_COLUMN_ROLES = Object.freeze([
   "contentColumn",
@@ -36,7 +37,7 @@ const FORBIDDEN_UI_ELEMENT_OPERATIONS = Object.freeze([
   "createRecord",
   "deleteRecord",
 ]);
-const UI_SELECTION_KINDS = Object.freeze(["element", "group", "layoutZone", "label", "field", "button", "icon", "statusText", "table", "column"]);
+const UI_SELECTION_KINDS = Object.freeze(["element", "group", "layoutZone", "label", "field", "button", "icon", "statusText", "table", "tableHeader", "tableBody", "tableRow", "column", "tableHeaderCell", "tableDataCell", "tableFooter", "tableViewport", "horizontalScrollArea"]);
 const UI_LAYOUT_EFFECT_SCOPES = Object.freeze(["elementOnly", "groupWithChildren", "layoutZone", "parentReflowRequired", "forbidden"]);
 
 const ALLOWED_TYPE_SET = new Set(UI_ELEMENT_TYPES);
@@ -415,6 +416,48 @@ function validateTableColumns(elements, elementsById, errors) {
   });
 }
 
+function validateTableStructures(elements, elementsById, errors) {
+  const expectedParents = {
+    tableHeader: ["table"],
+    tableBody: ["table"],
+    tableFooter: ["table"],
+    tableRow: ["tableBody"],
+    tableHeaderCell: ["tableColumn"],
+    tableDataCell: ["tableColumn"],
+    horizontalScrollArea: ["tableViewport"],
+  };
+  for (const element of elements) {
+    if (!isObjectElement(element)) continue;
+    const allowedParents = expectedParents[element.type];
+    if (allowedParents) {
+      const parent = elementsById.get(element.parentId);
+      if (parent && !allowedParents.includes(parent.type)) errors.push(createError("invalid_table_structure_parent", `${element.type} besitzt keinen zulässigen Tabellen-Parent.`, "parentId", getElementId(element)));
+    }
+    if (element.type === "table" && hasOwn(element, "tableLayout")) {
+      const result = validateTableLayout(element.tableLayout);
+      errors.push(...result.errors.map((entry) => createError(entry.code, entry.message, `tableLayout.${entry.field}`, getElementId(element))));
+      const columnIds = result.model?.columnIds || [];
+      const registeredColumns = elements.filter((candidate) => candidate?.type === "tableColumn" && candidate.parentId === element.id).map((candidate) => candidate.id);
+      if (columnIds.length !== registeredColumns.length || columnIds.some((id, index) => id !== registeredColumns[index]))
+        errors.push(createError("table_registered_columns_mismatch", "Tabellenvertrag und registrierte Spaltenreihenfolge stimmen nicht überein.", "tableLayout.columnIds", getElementId(element)));
+    }
+    if (element.type === "tableColumn" && hasOwn(element, "tableColumnLayout")) {
+      const parent = elementsById.get(element.parentId);
+      if (parent?.tableLayout) {
+        const declared = parent.tableLayout.columns?.find((column) => column.columnId === element.id);
+        if (!declared || JSON.stringify(declared) !== JSON.stringify(element.tableColumnLayout))
+          errors.push(createError("table_column_contract_mismatch", "Spaltenvertrag stimmt nicht mit dem Tabellenvertrag überein.", "tableColumnLayout", getElementId(element)));
+      }
+    }
+    if (["tableHeaderCell", "tableDataCell"].includes(element.type) && Array.isArray(element.allowedOps) && element.allowedOps.some((operation) => ["resize", "resizeWidth", "changeWidth"].includes(operation)))
+      errors.push(createError("table_cell_width_operation_forbidden", "Header- und Datenzellen dürfen keine unabhängige Breitenoperation anbieten.", "allowedOps", getElementId(element)));
+  }
+  if (elements.some((element) => element?.tableLayout || element?.tableColumnLayout || element?.tableBinding)) {
+    const bindingResult = validateTableElementBindings(elements);
+    errors.push(...bindingResult.errors.map((entry) => createError(entry.code, entry.message, entry.field)));
+  }
+}
+
 function validateFieldGroups(elements, elementsById, errors) {
   const childrenByParent = new Map();
   elements.forEach((element) => {
@@ -469,6 +512,7 @@ function validateUiElementList(elements) {
 
   const elementsById = validateParentStructure(elements, errors);
   validateTableColumns(elements, elementsById, errors);
+  validateTableStructures(elements, elementsById, errors);
   validateFieldGroups(elements, elementsById, errors);
 
   return {

@@ -38,6 +38,7 @@ const pdfTargetContract = require("./electron-target/pdf-target-contract.cjs");
 const layoutProfileStartup = require("./electron-target/layout-profile-startup.cjs");
 const geometryRiskContract = require("./core/geometry-risk-contract.cjs");
 const spacingContract = require("./core/spacing-contract.cjs");
+const tableLayoutContract = require("./core/table-layout-contract.cjs");
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
@@ -64,6 +65,7 @@ module.exports = Object.freeze({
   ...layoutProfileStartup,
   ...geometryRiskContract,
   ...spacingContract,
+  ...tableLayoutContract,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

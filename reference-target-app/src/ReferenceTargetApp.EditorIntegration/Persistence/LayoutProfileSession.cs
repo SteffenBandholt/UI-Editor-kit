@@ -1,4 +1,5 @@
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.Persistence;
 
@@ -72,6 +73,8 @@ public sealed class LayoutProfileSession
             workingExplicitOperations[scopeId] = scopeOperations = new(StringComparer.Ordinal);
         scopeOperations.Add($"{elementId}\u001f{operation}");
     }
+
+    public void ClearExplicitOperations(string scopeId, string elementId) => RemoveElementOperations(scopeId, elementId);
 
     public async Task InitializeSavedStateAsync(CancellationToken cancellationToken = default)
     {
@@ -413,7 +416,7 @@ public sealed class LayoutProfileSession
                 return new ElementLayoutState(element.ElementId, element.ScopeId,
                     element.X ?? fallback.X, element.Y ?? fallback.Y, element.Width ?? fallback.Width, element.Height ?? fallback.Height,
                     element.TextOffsetX ?? fallback.TextOffsetX, element.TextOffsetY ?? fallback.TextOffsetY, element.FontSize ?? fallback.FontSize,
-                    element.Visible ?? fallback.Visible, element.Spacing ?? fallback.Spacing);
+                    element.Visible ?? fallback.Visible, element.Spacing ?? fallback.Spacing, element.Table ?? fallback.Table);
             }).ToArray();
             result[persistedScope.ScopeId] = new LayoutState(persistedScope.ScopeId, document.SavedAt, elements);
         }
@@ -448,7 +451,13 @@ public sealed class LayoutProfileSession
         (!capabilities.HasFlag(Registry.UiCapability.TextPosition) || Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY)) &&
         (!capabilities.HasFlag(Registry.UiCapability.FontSize) || Same(left.FontSize, right.FontSize)) &&
         (!capabilities.HasFlag(Registry.UiCapability.Visibility) || left.Visible == right.Visible) &&
-        (!capabilities.HasFlag(Registry.UiCapability.Spacing) || SameSpacing(left.Spacing, right.Spacing));
+        (!capabilities.HasFlag(Registry.UiCapability.Spacing) || SameSpacing(left.Spacing, right.Spacing)) && SameTable(left.Table, right.Table);
+
+    private static bool SameTable(TableElementLayoutState? left, TableElementLayoutState? right) =>
+        left is null && right is null || left is not null && right is not null &&
+        left.TableId == right.TableId && left.ColumnId == right.ColumnId && left.WidthMode == right.WidthMode &&
+        left.WrapMode == right.WrapMode && left.OverflowMode == right.OverflowMode &&
+        left.HorizontalOverflowMode == right.HorizontalOverflowMode && left.RowHeightMode == right.RowHeightMode;
 
     private static bool SameSpacing(IReadOnlyDictionary<string, double>? left, IReadOnlyDictionary<string, double>? right)
     {
@@ -469,7 +478,8 @@ public sealed class LayoutProfileSession
         entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? state.TextOffsetY : null,
         entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? state.FontSize : null,
         entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? state.Visible : null,
-        entry.Capabilities.HasFlag(Registry.UiCapability.Spacing) ? state.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null);
+        entry.Capabilities.HasFlag(Registry.UiCapability.Spacing) ? state.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null,
+        PersistedLayoutDocumentFactory.PersistentTableState(entry, state.Table));
 
     private static IReadOnlyDictionary<string, LayoutState> CloneStates(IReadOnlyDictionary<string, LayoutState> states) =>
         states.ToDictionary(pair => pair.Key,

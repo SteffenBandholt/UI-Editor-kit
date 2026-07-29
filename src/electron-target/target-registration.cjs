@@ -4,6 +4,7 @@ const crypto = require("node:crypto");
 const { ELECTRON_EDITOR_ERROR_CODES } = require("./electron-error-codes.cjs");
 const { validateUiElementList } = require("../core/ui-element-validator.cjs");
 const { SPACING_OPERATIONS, SPACING_TARGETS, normalizeSpacingValues } = require("../core/spacing-contract.cjs");
+const { TABLE_LAYOUT_OPERATIONS, normalizeTableLayout, normalizeTableColumn } = require("../core/table-layout-contract.cjs");
 
 const TARGET_REGISTRATION_STATUSES = Object.freeze([
   "notInstalled",
@@ -70,6 +71,10 @@ function canonicalElement(scopeId, element) {
     operationAffectedIds,
     spacingTargets: sortedText(element?.spacingTargets),
     geometry: isObject(element?.geometry) ? Object.fromEntries(Object.keys(element.geometry).sort().map((key) => [key, Number(element.geometry[key])])) : {},
+    tableLayout: isObject(element?.tableLayout) ? normalizeTableLayout(element.tableLayout) : null,
+    tableColumnLayout: isObject(element?.tableColumnLayout) ? normalizeTableColumn(element.tableColumnLayout) : null,
+    tableBinding: isObject(element?.tableBinding) ? Object.fromEntries(Object.keys(element.tableBinding).sort().map((key) => [key, element.tableBinding[key]])) : null,
+    rowLayout: isObject(element?.rowLayout) ? Object.fromEntries(Object.keys(element.rowLayout).sort().map((key) => [key, element.rowLayout[key]])) : null,
   };
 }
 
@@ -321,6 +326,9 @@ function valueForCapabilities(layout, capabilities) {
   if (capabilities.includes("textResize")) result.fontSize = layout.fontSize;
   if (capabilities.includes("setVisibility")) result.visible = layout.visible;
   if (capabilities.some((operation) => SPACING_OPERATIONS.includes(operation))) result.spacing = normalizeSpacingValues(layout.spacing || {});
+  if (capabilities.some((operation) => TABLE_LAYOUT_OPERATIONS.includes(operation)) && isObject(layout.table)) {
+    result.table = Object.fromEntries(Object.keys(layout.table).sort().map((key) => [key, layout.table[key]]));
+  }
   return result;
 }
 

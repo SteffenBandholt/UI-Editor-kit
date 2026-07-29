@@ -11,4 +11,5 @@ internal sealed record ValidatedLayoutChange(
     double? FontSize = null,
     bool? Visible = null,
     string? SpacingTarget = null,
-    double? SpacingValue = null);
+    double? SpacingValue = null,
+    IReadOnlyDictionary<string, object?>? TableIntent = null);

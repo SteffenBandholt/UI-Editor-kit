@@ -350,8 +350,7 @@ function createEditorProcessProtocol(options) {
           return { messages: [error(message, "unexpected_change_result", "ChangeResult passt zu keinem offenen Auftrag.")], shouldExit: false };
         }
         if (result.success === true && isObject(result.newState) && sessionState) {
-          const state = result.newState;
-          sessionState.setEntry({
+          const setRemoteState = (state) => sessionState.setEntry({
             elementId: state.elementId,
             element: { x: state.x, y: state.y, width: state.width, height: state.height, visible: state.visible !== false },
             ...(state.fontSize === null && state.textOffsetX === null && state.textOffsetY === null ? {} : {
@@ -362,7 +361,10 @@ function createEditorProcessProtocol(options) {
               },
             }),
             ...(state.spacing && typeof state.spacing === "object" ? { spacing: state.spacing } : {}),
+            ...(state.table && typeof state.table === "object" ? { table: state.table } : {}),
           });
+          setRemoteState(result.newState);
+          if (Array.isArray(result.affectedStates)) result.affectedStates.filter(isObject).forEach(setRemoteState);
         }
         if (editorUiSession) editorUiSession.acceptChangeResult(result);
         pendingChange = null;

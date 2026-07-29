@@ -1,3 +1,5 @@
+using ReferenceTargetApp.EditorIntegration.Tables;
+
 namespace ReferenceTargetApp.EditorIntegration.Persistence;
 
 public sealed record PersistedLayoutDocument(
@@ -22,4 +24,5 @@ public sealed record PersistedElementLayout(
     double? TextOffsetY,
     double? FontSize,
     bool? Visible = null,
-    IReadOnlyDictionary<string, double>? Spacing = null);
+    IReadOnlyDictionary<string, double>? Spacing = null,
+    TableElementLayoutState? Table = null);

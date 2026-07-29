@@ -1,5 +1,6 @@
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.Persistence;
 
@@ -46,5 +47,16 @@ public static class PersistedLayoutDocumentFactory
         entry.Capabilities.HasFlag(UiCapability.TextPosition) ? state.TextOffsetY : null,
         entry.Capabilities.HasFlag(UiCapability.FontSize) ? state.FontSize : null,
         entry.Capabilities.HasFlag(UiCapability.Visibility) ? state.Visible : null,
-        entry.Capabilities.HasFlag(UiCapability.Spacing) ? state.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null);
+        entry.Capabilities.HasFlag(UiCapability.Spacing) ? state.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null,
+        PersistentTableState(entry, state.Table));
+
+    internal static TableElementLayoutState? PersistentTableState(UiRegistryEntry entry, TableElementLayoutState? state)
+    {
+        if (state is null) return null;
+        if (entry.TableColumnLayout is not null)
+            return new(state.TableId, state.ColumnId, state.WidthMode, state.WrapMode, state.OverflowMode);
+        if (entry.TableLayout is not null)
+            return new(state.TableId, HorizontalOverflowMode: state.HorizontalOverflowMode, RowHeightMode: state.RowHeightMode);
+        return null;
+    }
 }

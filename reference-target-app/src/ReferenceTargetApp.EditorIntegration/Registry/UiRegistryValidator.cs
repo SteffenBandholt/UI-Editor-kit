@@ -151,7 +151,10 @@ internal static class UiRegistryValidator
         UiElementKind.Group or UiElementKind.Area or UiElementKind.FieldGroup =>
             UiCapability.Position | UiCapability.Width | UiCapability.Height | UiCapability.Visibility | UiCapability.Spacing,
         UiElementKind.Table => AllTextCapabilities,
+        UiElementKind.TableHeader or UiElementKind.TableBody or UiElementKind.TableRow or UiElementKind.TableFooter or
+        UiElementKind.TableViewport or UiElementKind.HorizontalScrollArea => UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
         UiElementKind.TableColumn => UiCapability.Width | UiCapability.TextPosition | UiCapability.FontSize | UiCapability.Visibility | UiCapability.Spacing,
+        UiElementKind.TableHeaderCell or UiElementKind.TableDataCell => UiCapability.TextPosition | UiCapability.FontSize | UiCapability.Visibility,
         UiElementKind.StaticText => AllTextCapabilities,
         UiElementKind.InputField => AllTextCapabilities,
         UiElementKind.StatusIndicator => AllTextCapabilities,

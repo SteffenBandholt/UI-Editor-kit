@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ReferenceTargetApp.EditorIntegration.Protocol;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.EditorUi;
 
@@ -41,7 +42,11 @@ public sealed record EditorUiDetails(
     IReadOnlyList<string>? SelectionLevels = null,
     IReadOnlyDictionary<string, string>? OperationEffects = null,
     IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null,
-    IReadOnlyList<string>? SpacingTargets = null);
+    IReadOnlyList<string>? SpacingTargets = null,
+    TableLayoutDefinition? TableLayout = null,
+    TableColumnLayoutDefinition? TableColumnLayout = null,
+    IReadOnlyDictionary<string, string>? TableBinding = null,
+    IReadOnlyDictionary<string, JsonElement>? RowLayout = null);
 
 public sealed record EditorUiOperations(
     IReadOnlyList<string> AllowedOps,
@@ -52,7 +57,8 @@ public sealed record EditorUiLayoutEntry(
     string ElementId,
     EditorUiElementLayout? Element,
     EditorUiTextLayout? Text,
-    IReadOnlyDictionary<string, double>? Spacing = null);
+    IReadOnlyDictionary<string, double>? Spacing = null,
+    TableElementLayoutState? Table = null);
 
 public sealed record EditorUiElementLayout(double X, double Y, double Width, double Height);
 public sealed record EditorUiTextLayout(double? OffsetX, double? OffsetY, double? FontSize);

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.Protocol;
 
@@ -38,7 +39,11 @@ internal static class EditorProtocolPayloadFactory
             entry.SelectionLevels?.ToArray(),
             entry.OperationEffects,
             entry.OperationAffectedIds,
-            entry.SpacingTargets));
+            entry.SpacingTargets,
+            entry.TableLayout,
+            entry.TableColumnLayout,
+            entry.TableBinding,
+            entry.RowLayout));
 
     public static object CreateLayoutStatePayload(LayoutState state)
     {
@@ -49,7 +54,8 @@ internal static class EditorProtocolPayloadFactory
                 element.TextOffsetX is null && element.TextOffsetY is null && element.FontSize is null
                     ? null
                     : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize),
-                element.Spacing),
+                element.Spacing,
+                element.Table),
             StringComparer.Ordinal);
 
         return new
@@ -87,7 +93,8 @@ internal static class EditorProtocolPayloadFactory
                 element.TextOffsetX is null && element.TextOffsetY is null && element.FontSize is null
                     ? null
                     : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize),
-                element.Spacing),
+                element.Spacing,
+                element.Table),
             StringComparer.Ordinal);
         return new
         {
@@ -114,7 +121,15 @@ internal static class EditorProtocolPayloadFactory
         UiElementKind.Area => "area",
         UiElementKind.FieldGroup => "fieldGroup",
         UiElementKind.Table => "table",
+        UiElementKind.TableHeader => "tableHeader",
+        UiElementKind.TableBody => "tableBody",
+        UiElementKind.TableRow => "tableRow",
         UiElementKind.TableColumn => "tableColumn",
+        UiElementKind.TableHeaderCell => "tableHeaderCell",
+        UiElementKind.TableDataCell => "tableDataCell",
+        UiElementKind.TableFooter => "tableFooter",
+        UiElementKind.TableViewport => "tableViewport",
+        UiElementKind.HorizontalScrollArea => "horizontalScrollArea",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -123,6 +138,14 @@ internal static class EditorProtocolPayloadFactory
         UiElementKind.Scope or UiElementKind.Group => "layout",
         UiElementKind.StatusIndicator => "status",
         UiElementKind.Button => "action",
+        UiElementKind.TableHeader => "tableHeader",
+        UiElementKind.TableBody => "tableBody",
+        UiElementKind.TableRow => "tableRow",
+        UiElementKind.TableHeaderCell => "tableHeaderCell",
+        UiElementKind.TableDataCell => "tableDataCell",
+        UiElementKind.TableFooter => "tableFooter",
+        UiElementKind.TableViewport => "tableViewport",
+        UiElementKind.HorizontalScrollArea => "horizontalScrollArea",
         _ => "content"
     };
 
@@ -166,9 +189,13 @@ internal static class EditorProtocolPayloadFactory
         string[]? SelectionLevels,
         IReadOnlyDictionary<string, string>? OperationEffects,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds,
-        IReadOnlyList<string>? SpacingTargets);
+        IReadOnlyList<string>? SpacingTargets,
+        TableLayoutDefinition? TableLayout,
+        TableColumnLayoutDefinition? TableColumnLayout,
+        IReadOnlyDictionary<string, string>? TableBinding,
+        IReadOnlyDictionary<string, object?>? RowLayout);
 
     private sealed record ProtocolElementLayout(double X, double Y, double Width, double Height, bool Visible);
     private sealed record ProtocolTextLayout(double? OffsetX, double? OffsetY, double? FontSize);
-    private sealed record ProtocolLayoutEntry(ProtocolElementLayout Element, ProtocolTextLayout? Text, IReadOnlyDictionary<string, double>? Spacing);
+    private sealed record ProtocolLayoutEntry(ProtocolElementLayout Element, ProtocolTextLayout? Text, IReadOnlyDictionary<string, double>? Spacing, TableElementLayoutState? Table);
 }

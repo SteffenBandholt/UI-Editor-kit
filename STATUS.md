@@ -286,3 +286,13 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Der native UI-/PDF-Workspace reagiert mit einer, zwei oder drei Spalten; feste Aktionen und interner Baumscrollbereich reduzieren den Scrollbedarf.
 - BBM belegt Kurztext/Gegenstand, stabile Nachbarn, Gruppe/Spacer, Reset/Discard/Restore sowie 28 PDF-Registryelemente und eine reale zweitseitige A4-Vorschau.
 - Commit/PR: keiner; gemaess Nutzeranweisung wurde weder committet noch gepusht.
+
+# M82.4 – Tabellen- und Spaltenbearbeitung
+
+- Status: `[A]`; gemeinsamer Vertrag, WPF-/Electron-Abbildung, BBM-Referenzintegration, Pflichtprüfungen und praktische Abnahme sind abgeschlossen.
+- Echte Tabellenstrukturen sind direkt und im Baum als Tabelle, Kopf, Datenbereich, Zeile, Spalte, Header-/Datenzelle, Viewport und Scrollbereich unterscheidbar.
+- Eine Spalte ist die einzige Breitenquelle für Header, Daten, Auswahl und Profilzustand. Viewport-/Überlaufmessung, Fit-Vorschau, Mindest-/Maximalbreiten, Umbruch, Ellipsis und begrenzte Zeilenhöhe sind neutral modelliert.
+- Der vorhandene kompakte Editor, HostAdapter, Profil-, Start-Restore-, Reset-, Discard- und Rollbackweg werden weiterverwendet; es gibt keinen zweiten Editor oder Profilstore.
+- Tabellenmetriken und betroffene Spaltenzustände bleiben über den Electron-Prozessvertrag erhalten. JavaScript und WPF bilden dieselben Tabellenrollen in demselben Scope-Fingerprint ab; Reset-Operationen werden nicht als wiederherzustellende Benutzeränderungen persistiert.
+- Die gepackte BBM-Development-Abnahme belegte gemeinsame Header-/Datenbreiten, echten sichtbaren Text-Ellipsis, begrenzten inneren Überlauf bei 900/1400/maximierter Fensterbreite, Speichern und Neustart-Restore sowie Spaltenreset mit anschließendem Discard.
+- Commit/PR: keiner; gemäß Nutzeranweisung wird weder committet noch gepusht.

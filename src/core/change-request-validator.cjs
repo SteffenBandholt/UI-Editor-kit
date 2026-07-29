@@ -5,6 +5,7 @@ const {
   getForbiddenChangeRequestFields,
 } = require("./change-request-model.cjs");
 const { SPACING_OPERATIONS, SPACING_TARGETS, validateSpacingIntent } = require("./spacing-contract.cjs");
+const { TABLE_LAYOUT_OPERATIONS, validateTableLayoutIntent } = require("./table-layout-contract.cjs");
 
 const ALLOWED_LAYOUT_PAYLOAD_FIELDS = Object.freeze([
   "x",
@@ -13,6 +14,7 @@ const ALLOWED_LAYOUT_PAYLOAD_FIELDS = Object.freeze([
   "height",
   "text",
   "spacing",
+  "table",
   "order",
   "visibility",
   "visible",
@@ -27,6 +29,15 @@ const OPERATION_PAYLOAD_FIELDS = Object.freeze({
   spacingDecrease: Object.freeze(["spacing"]),
   spacingSet: Object.freeze(["spacing"]),
   spacingReset: Object.freeze(["spacing"]),
+  fitTableToViewport: Object.freeze(["table"]),
+  resizeColumnsProportionally: Object.freeze(["table"]),
+  setHorizontalOverflowMode: Object.freeze(["table"]),
+  setColumnWidthMode: Object.freeze(["table"]),
+  setColumnWrapMode: Object.freeze(["table"]),
+  setColumnOverflowMode: Object.freeze(["table"]),
+  setRowHeightMode: Object.freeze(["table"]),
+  resetTableColumn: Object.freeze(["table"]),
+  resetTable: Object.freeze(["table"]),
 });
 
 function isPlainRequestObject(value) {
@@ -131,6 +142,11 @@ function validatePayloadFields(changeRequest, errors) {
   if (SPACING_OPERATIONS.includes(changeRequest.operation)) {
     const spacingResult = validateSpacingIntent(changeRequest.operation, changeRequest.payload, SPACING_TARGETS);
     spacingResult.errors.forEach((error) => errors.push(createError(changeRequest, error.code, "Layoutabstand ist ungueltig oder nicht freigegeben.", { field: error.field })));
+  }
+
+  if (TABLE_LAYOUT_OPERATIONS.includes(changeRequest.operation)) {
+    const tableResult = validateTableLayoutIntent(changeRequest.operation, changeRequest.payload);
+    tableResult.errors.forEach((entry) => errors.push(createError(changeRequest, entry.code, entry.message, { field: entry.field })));
   }
 
   if (hasOwn(changeRequest.payload, "text")) {

@@ -3,6 +3,7 @@
 const { validateUiElementList } = require("../core/ui-element-validator.cjs");
 const { LOCAL_TARGET_PROTOCOL_VERSION } = require("./local-target-protocol.cjs");
 const { validatePdfTargetContract } = require("./pdf-target-contract.cjs");
+const { TABLE_LAYOUT_OPERATIONS } = require("../core/table-layout-contract.cjs");
 
 const ELECTRON_TARGET_CONTRACT_VERSION = "1.2";
 const ELECTRON_TARGET_ADAPTER_VERSION = "1.2";
@@ -29,6 +30,7 @@ const ELECTRON_TARGET_OPERATIONS = Object.freeze([
   "spacingDecrease",
   "spacingSet",
   "spacingReset",
+  ...TABLE_LAYOUT_OPERATIONS,
 ]);
 const REQUIRED_FIELDS = Object.freeze([
   "applicationId",
