@@ -33,6 +33,16 @@ public static class GeometryRiskActions
     public const string ShrinkGroup = "shrinkGroup";
 }
 
+public static class SimpleModeRiskPolicy
+{
+    public static string SelectAction(string? riskType, bool isTableColumn) => riskType switch
+    {
+        GeometryRiskTypes.FreedSpace when isTableColumn => GeometryRiskActions.ReflowNeighbors,
+        GeometryRiskTypes.FreedSpace => GeometryRiskActions.PreserveSpace,
+        _ => GeometryRiskActions.ApplyAnyway,
+    };
+}
+
 public sealed record GeometryBounds(double Left, double Top, double Width, double Height)
 {
     public double Right => Left + Width;

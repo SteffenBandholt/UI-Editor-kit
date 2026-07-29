@@ -70,6 +70,7 @@ function createEditorUiSession(options) {
       modes: panel.modes,
       dpad: { up: panel.dpad.up, down: panel.dpad.down, left: panel.dpad.left, right: panel.dpad.right },
       stepSize: panel.stepSize,
+      simple: panel.simple,
       session: panel.session,
       status: panel.status,
       busy: panel.busy,

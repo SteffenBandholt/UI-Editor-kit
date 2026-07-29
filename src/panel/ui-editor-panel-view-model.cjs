@@ -46,6 +46,14 @@ function createUiEditorPanelViewModel(options) {
     ],
     modes: allModes.filter((mode) => layer === PANEL_LAYERS.TEXT ? mode.id.startsWith("text-") : !mode.id.startsWith("text-")).map((mode) => ({ ...mode, enabled: enabledBase && availableModes.includes(mode.id), active: state.mode === mode.id })),
     dpad, stepSize: state.stepSize || 5,
+    simple: {
+      defaultMode: true,
+      advancedExpanded: false,
+      stepPresets: [1, 5, 10],
+      directInputUnit: "DIP",
+      technicalDetailsLocation: "advanced",
+      availableActions: Array.from(new Set(state.effectiveOps || [])),
+    },
     actions: {
       save: button("Speichern", PANEL_INTENTS.SAVE, !busy && persistence.available && persistence.persistent, !persistence.available ? "STORAGE_UNAVAILABLE" : !persistence.persistent ? "STORAGE_NOT_PERSISTENT" : undefined),
       load: button("Laden", PANEL_INTENTS.LOAD, !busy && persistence.available, !persistence.available ? "STORAGE_UNAVAILABLE" : undefined),

@@ -366,3 +366,7 @@ M82.3 trennt Elementbreite, reservierten Platz, bewusstes Nachruecken, Gruppenbr
 ## 13. M82.4 – Tabellen- und Spaltenbearbeitung
 
 M82.4 ergänzt echte Inhaltstabellen, ihre strukturellen Auswahlziele und genau eine Breitenquelle je Spalte. Viewport-/Überlaufmessung, Vorschau, Mindestbreiten, feste und flexible Spalten, Textumbruch/Ellipsis, bewusster horizontaler Scrollmodus sowie Spalten-/Tabellenreset werden appübergreifend durch denselben Core und die vorhandenen WPF-/Electron-HostAdapter geführt. Status: `[A]`; Implementierung, Pflichtläufe und sichtbare gepackte BBM-Abnahme sind abgeschlossen.
+
+## 14. M82.5 – Radikal vereinfachter Einfachmodus
+
+M82.5 macht den capability-gesteuerten Einfachmodus zur Standardansicht des vorhandenen nativen Editors. Auswahl, Text/Element, Steuerkreuz, Schrittweite, direkte Werte, Undo und Save bilden den normalen Weg; technische Details sowie M82.2-/M82.3-/M82.4-Funktionen bleiben geschlossen unter **Erweitert**. WPF und Electron verwenden weiterhin denselben Core, HostAdapter, Profil- und Rollbackweg. Status: `[A]`; vollständige Pflichtläufe sowie die sichtbare paketierte BBM-Abnahme mit Save/Neustart-Restore, mehrstufigem Undo, Tabellen-Fit und echter zweiseitiger PDF mit 28 Registryelementen sind abgeschlossen.
