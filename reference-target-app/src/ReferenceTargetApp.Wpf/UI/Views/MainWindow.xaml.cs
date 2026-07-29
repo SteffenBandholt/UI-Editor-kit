@@ -116,7 +116,8 @@ public partial class MainWindow : Window
             .RestoreAsync(lifetimeCancellation.Token);
         var fullOperationPhase = App.UiFullOperationPhase(Environment.GetCommandLineArgs());
         var uiPdfPhase = App.UiPdfEndToEndPhase(Environment.GetCommandLineArgs());
-        var compactUiDiagnostic = Environment.GetCommandLineArgs().Contains("--m82-3-visible-diagnostic", StringComparer.Ordinal);
+        var compactUiDiagnostic = Environment.GetCommandLineArgs().Any(argument =>
+            argument is "--m82-3-visible-diagnostic" or "--m82-5-visible-diagnostic");
         var pdfRegistry = PdfOrderDocumentRegistryFactory.Create();
         var pdfAdapter = new PdfHostAdapter(pdfRegistry);
         var pdfStore = new AtomicJsonPdfLayoutProfileStore(layoutStore.Options.RootDirectory);
@@ -164,7 +165,7 @@ public partial class MainWindow : Window
             _ = Dispatcher.BeginInvoke(
                 new Action(() => RunLayoutPersistenceDiagnosticPhase(persistencePhase)),
                 DispatcherPriority.ApplicationIdle);
-        if (Environment.GetCommandLineArgs().Any(argument => argument is "--editor-ui-diagnostic" or "--m82-3-visible-diagnostic"))
+        if (Environment.GetCommandLineArgs().Any(argument => argument is "--editor-ui-diagnostic" or "--m82-3-visible-diagnostic" or "--m82-5-visible-diagnostic"))
             _ = Dispatcher.BeginInvoke(
                 new Action(async () => await RunEditorUiDiagnosticAsync()),
                 DispatcherPriority.ApplicationIdle);
@@ -491,7 +492,8 @@ public partial class MainWindow : Window
         var exitCode = 80;
         void Stage(string value)
         {
-            if (Environment.GetCommandLineArgs().Contains("--m82-3-visible-diagnostic", StringComparer.Ordinal)) Title = $"M82.3 Diagnose · {value}";
+            if (Environment.GetCommandLineArgs().Contains("--m82-5-visible-diagnostic", StringComparer.Ordinal)) Title = $"M82.5 Einfachmodus · {value}";
+            else if (Environment.GetCommandLineArgs().Contains("--m82-3-visible-diagnostic", StringComparer.Ordinal)) Title = $"M82.3 Diagnose · {value}";
         }
         try
         {
@@ -505,6 +507,9 @@ public partial class MainWindow : Window
             if (!editorWindowCoordinator.HasOpenWindow || !editorWindowCoordinator.HasActiveProcess || editorWindowCoordinator.SessionId is null ||
                 editor.CurrentState?.Tree.Nodes.Count != 8 || editor.CurrentState.Details?.ElementId != OrderHeaderRegistryIds.OrderNumber)
                 throw new InvalidOperationException("Editorfenster, Prozess, Session, Baum oder Details fehlen.");
+            if (editor.CurrentState.Panel.Simple is not { DefaultMode: true, AdvancedExpanded: false } ||
+                editor.CurrentState.Panel.Simple.DirectInputUnit != "DIP")
+                throw new InvalidOperationException("Einfachmodus, geschlossener Erweitert-Bereich oder DIP-Einheit fehlen.");
 
             var editorWindow = editorWindowCoordinator.Window ?? throw new InvalidOperationException("Editorfenster fehlt.");
             editorWindow.Width = 760;
@@ -539,6 +544,13 @@ public partial class MainWindow : Window
             Stage("Geometrie geprüft");
             var moved = State(OrderHeaderRegistryIds.OrderNumber);
             if (Math.Abs(moved.X - before.X - 1) > 0.001) throw new InvalidOperationException("Positionsänderung ist nicht sichtbar.");
+            if (!editor.IsDirty || !editor.CanUndo) throw new InvalidOperationException("Dirty, Speichern oder Rückgängig wurden nicht sofort aktiviert.");
+            await editor.UndoForDiagnosticAsync();
+            var undone = State(OrderHeaderRegistryIds.OrderNumber);
+            if (Math.Abs(undone.X - before.X) > 0.001 || editor.CanUndo)
+                throw new InvalidOperationException("Einfachmodus-Rückgängig hat die letzte Änderung nicht exakt wiederhergestellt.");
+            await editor.ApplyDirectionForDiagnosticAsync("right");
+            moved = State(OrderHeaderRegistryIds.OrderNumber);
 
             await editor.SetModeForDiagnosticAsync("width");
             await editor.ApplyDirectionForDiagnosticAsync("right");

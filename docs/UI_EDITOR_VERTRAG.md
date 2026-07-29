@@ -233,3 +233,14 @@ Details: `docs/M82_3_SPACER_UND_KOMPAKTE_EDITOR_UI.md`.
 - Tabellen- und Spaltenzustände verwenden den bestehenden Profil-, Start-Restore-, Discard-, Reset- und Rollbackweg.
 
 Details: `docs/M82_4_TABELLEN_UND_SPALTENBEARBEITUNG.md`.
+
+## Einfachmodus ab M82.5
+
+- Der Einfachmodus ist die Standardansicht des vorhandenen nativen Editors; **Erweitert** ist anfangs geschlossen.
+- Im Hauptbereich erscheinen ausschließlich Anzeigename, verständliche Auswahlart, Text/Element, Steuerkreuz, passende Größe, Schrittweite, Rückgängig und Speichern. Technische IDs, Rollen, Parents, Risikodetails, Spacing-, Viewport- und Überlaufparameter liegen unter **Erweitert**.
+- Sichtbare Aktionen werden ausschließlich aus den freigegebenen Operationen des gewählten Registryelements abgeleitet. Der Einfachmodus erweitert keine Capability und führt keine Fachaktion aus.
+- Normale Layoutänderungen dürfen bestätigbare Geometrierisiken ohne modale Rückfrage operationsgebunden anwenden. Ungültige Werte, nicht freigegebene Operationen, mathematisch ungültige Tabellenzustände und unerwartete Nachbaränderungen bleiben gesperrt.
+- Session-Undo speichert Layoutzustände und explizite Operationsmetadaten vor jeder erfolgreichen Einzelaktion. Die Wiederherstellung läuft transaktional über denselben HostAdapter; Save, Restore, Discard, Reset und Rollback bleiben unverändert.
+- Tabellen verwenden weiterhin die M82.4-Spalte als einzige Breitenquelle. Direktwerte und `-10/-1/+1/+10`, Wrap, Ellipsis, Original und Viewport-Fit dürfen keine Nachbarspalten oder Fachwerte implizit verändern.
+
+Details: `docs/M82_5_EINFACHMODUS.md`.

@@ -167,6 +167,16 @@ function createEditorProcessProtocol(options) {
     };
   }
 
+  function restoreEditorUiState(entry, previousState) {
+    const panel = previousState && previousState.panel;
+    if (!panel) return;
+    if (panel.selection && panel.selection.elementId) entry.editorUiSession.selectElement(panel.selection.elementId);
+    if (typeof panel.layer === "string") entry.editorUiSession.setLayer(panel.layer);
+    const activeMode = Array.isArray(panel.modes) && panel.modes.find((mode) => mode.active);
+    if (activeMode && typeof activeMode.id === "string") entry.editorUiSession.setMode(activeMode.id);
+    if (Number.isFinite(panel.stepSize) && panel.stepSize > 0) entry.editorUiSession.setStepSize(panel.stepSize);
+  }
+
   function handle(message) {
     const envelopeError = validateEnvelope(message);
     if (envelopeError) return { messages: [error(message, envelopeError.code, envelopeError.message)], shouldExit: false };
@@ -305,9 +315,11 @@ function createEditorProcessProtocol(options) {
         const previousScope = activeScopeId;
         for (const scoped of message.payload.scopeStates) {
           const previous = scopeSessions.get(scoped.scopeId);
+          const previousState = previous && previous.editorUiSession.snapshot();
           const created = createScopeSession(scoped.scopeId, scoped.layoutState);
           if (created.registryError) return { messages: [error(message, "invalid_registry", created.registryError.message, created.registryError.details)], shouldExit: false };
           if (created.validation) return { messages: [error(message, "invalid_layout_state", "LayoutState ist ungueltig.", { errors: created.validation.errors })], shouldExit: false };
+          restoreEditorUiState(created.entry, previousState);
           if (previous) previous.editorUiSession.destroy();
           scopeSessions.set(scoped.scopeId, created.entry);
         }

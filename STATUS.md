@@ -8,6 +8,15 @@
 
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
 
+### M82.5 – Radikal vereinfachter Einfachmodus
+
+- Status: `[A] abgenommen`; Implementierung, vollständige Pflichtläufe und sichtbare native UI-/PDF-Abnahme sind abgeschlossen.
+- Der vorhandene native Editor startet mit Auswahl, Text/Element, Steuerkreuz, Größensteuerung, Schrittweite, Session-Undo und Save; **Erweitert** ist geschlossen.
+- Anzeigenamen stehen im Haupttext, technische IDs und M82.2-/M82.3-/M82.4-Funktionen nur unter **Erweitert**.
+- Direkte Werte und Tabellenaktionen verwenden denselben appneutralen Vertrag, HostAdapter und Profil-/Rollbackweg; es gibt keinen zweiten Editor oder zielappspezifischen Core.
+- Sichtbar belegt sind Direktauswahl, Text-/Element-/Gruppenänderung, Save und Neustart-Restore, exaktes mehrstufiges Undo, Tabellen-Fit, bedienbare Fensterbreiten von 760/1180/1550 Pixel sowie eine echte zweiseitige BBM-PDF mit 28 Registryelementen.
+- Detaildokument: `docs/M82_5_EINFACHMODUS.md`.
+
 ### M82.2 – Geführter und freier Bearbeitungsmodus
 
 - Status: `[A] abgenommen`; die vollständige sichtbare UI-/PDF-Abnahme in der paketierten BBM-Diagnostic-Variante ist abgeschlossen.

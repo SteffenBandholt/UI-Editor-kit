@@ -4,195 +4,174 @@
              MinWidth="520" SizeChanged="Workspace_SizeChanged">
   <UserControl.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-    <Style x:Key="CompactGroup" TargetType="GroupBox" BasedOn="{StaticResource {x:Type GroupBox}}">
-      <Setter Property="Margin" Value="0,0,0,8"/>
-      <Setter Property="Padding" Value="8"/>
+    <Style x:Key="SimpleButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="MinHeight" Value="34"/><Setter Property="MinWidth" Value="42"/>
+      <Setter Property="Padding" Value="10,5"/><Setter Property="Margin" Value="0,0,7,7"/>
     </Style>
-    <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="MinHeight" Value="28"/>
-      <Setter Property="Padding" Value="9,3"/>
-      <Setter Property="Margin" Value="0,0,6,6"/>
+    <Style x:Key="PadButton" TargetType="Button" BasedOn="{StaticResource SimpleButton}">
+      <Setter Property="Width" Value="52"/><Setter Property="Height" Value="42"/><Setter Property="FontSize" Value="20"/>
+    </Style>
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Padding" Value="12"/>
     </Style>
   </UserControl.Resources>
 
-  <Grid Margin="8">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
+  <Grid Margin="10">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
-    <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8" Margin="0,0,0,8">
-      <DockPanel LastChildFill="True">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="{Binding DirtyStatus}" FontWeight="SemiBold" Foreground="#8A4B08" VerticalAlignment="Center" Margin="8,0,10,0"/>
-          <TextBlock Text="{Binding EditModeStatus}" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+    <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,9">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="Einfachmodus" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding LastChangeSummary}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"/>
         </StackPanel>
-        <WrapPanel>
-          <Button Style="{StaticResource CompactButton}" Content="Speichern" Command="{Binding SaveCommand}"/>
-          <Button Style="{StaticResource CompactButton}" Content="Verwerfen" Command="{Binding DiscardElementCommand}"/>
-          <Button Style="{StaticResource CompactButton}" Content="Element zurücksetzen" Command="{Binding ResetElementCommand}"/>
-          <Button Style="{StaticResource CompactButton}" Content="Nächstes Element auswählen" Command="{Binding BeginAppSelectionCommand}"/>
-          <Button Style="{StaticResource CompactButton}" Content="Element in App auswählen" Command="{Binding BeginAppSelectionCommand}"/>
+        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+          <Button Style="{StaticResource SimpleButton}" Content="Ziel in App auswählen" Command="{Binding BeginAppSelectionCommand}"/>
+          <Button Style="{StaticResource SimpleButton}" Content="{Binding UndoLabel}" Command="{Binding UndoCommand}"/>
+          <Button Style="{StaticResource SimpleButton}" Content="Speichern" Command="{Binding SaveCommand}"/>
         </WrapPanel>
-      </DockPanel>
+      </Grid>
     </Border>
 
     <Grid x:Name="AdaptiveColumns" Grid.Row="1" ClipToBounds="True">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="8"/>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="8"/>
-        <ColumnDefinition Width="*"/>
-      </Grid.ColumnDefinitions>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="*"/>
-      </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="*"/></Grid.RowDefinitions>
 
-      <Border x:Name="SelectionColumn" Grid.Column="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8">
-        <Grid>
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <TextBlock Text="Profil" VerticalAlignment="Center" Margin="0,0,6,4"/>
-            <ComboBox x:Name="CompactProfileSelector" Grid.Column="1" ItemsSource="{Binding Profiles}" DisplayMemberPath="DisplayName" SelectedValuePath="ProfileId" SelectedValue="{Binding ActiveProfileId, Mode=OneWay}" SelectionChanged="ProfileSelector_SelectionChanged" Margin="0,0,0,4"/>
-            <TextBlock Grid.Row="1" Text="Bereich" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox x:Name="CompactScopeSelector" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Scopes}" DisplayMemberPath="DisplayName" SelectedValuePath="ScopeId" SelectedValue="{Binding ActiveScopeId, Mode=OneWay}" SelectionChanged="ScopeSelector_SelectionChanged"/>
-          </Grid>
-          <WrapPanel Grid.Row="1" Margin="0,8,0,6">
-            <RadioButton Content="Geführt" GroupName="CompactEditMode" IsChecked="{Binding IsGuidedEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="guided" Margin="0,0,14,0"/>
-            <RadioButton Content="Frei" GroupName="CompactEditMode" IsChecked="{Binding IsFreeEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="free"/>
-          </WrapPanel>
-          <GroupBox Grid.Row="2" Header="Elementbaum" Style="{StaticResource CompactGroup}" MinHeight="180">
-            <TreeView x:Name="CompactElementTree" ItemsSource="{Binding TreeRoots}" SelectedItemChanged="ElementTree_SelectedItemChanged" ScrollViewer.VerticalScrollBarVisibility="Auto">
-              <TreeView.ItemContainerStyle><Style TargetType="TreeViewItem"><Setter Property="IsExpanded" Value="True"/><Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneTime}"/></Style></TreeView.ItemContainerStyle>
-              <TreeView.ItemTemplate><HierarchicalDataTemplate ItemsSource="{Binding Children}"><TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"/></HierarchicalDataTemplate></TreeView.ItemTemplate>
-            </TreeView>
-          </GroupBox>
-          <StackPanel Grid.Row="3">
-            <TextBlock Text="{Binding SelectedName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-            <TextBlock Text="{Binding SelectedType}" Foreground="{StaticResource MutedTextBrush}"/>
-            <TextBlock Text="{Binding DirectSelectionInfo}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"/>
-            <Expander Header="Technische Details" Margin="0,5,0,0">
-              <TextBlock Text="{Binding SelectedId, StringFormat=ID: {0}}" FontFamily="Consolas" TextWrapping="Wrap"/>
-            </Expander>
-          </StackPanel>
-        </Grid>
-      </Border>
-
-      <Border x:Name="GeometryColumn" Grid.Column="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8">
+      <Border x:Name="SelectionColumn" Grid.Column="0" Style="{StaticResource Card}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel IsEnabled="{Binding ControlsEnabled}">
-            <TextBlock Text="Geometrie und Text" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,7"/>
-            <Grid Margin="0,0,0,7">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="92"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <TextBlock Text="Position" Foreground="{StaticResource MutedTextBrush}"/><TextBlock Grid.Column="1" Text="{Binding Position}"/>
-              <TextBlock Grid.Row="1" Text="Größe" Foreground="{StaticResource MutedTextBrush}"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Size}"/>
-              <TextBlock Grid.Row="2" Text="Textposition" Foreground="{StaticResource MutedTextBrush}"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TextPosition}"/>
-              <TextBlock Grid.Row="3" Text="Textgröße" Foreground="{StaticResource MutedTextBrush}"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FontSize}"/>
-            </Grid>
-            <WrapPanel Margin="0,0,0,6">
-              <TextBlock Text="Schrittweite (DIP)" VerticalAlignment="Center" Margin="0,0,6,6"/>
-              <TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="80" Margin="0,0,0,6"/>
-            </WrapPanel>
-            <ItemsControl ItemsSource="{Binding Modes}" Margin="0,0,0,6">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate><DataTemplate><Button Style="{StaticResource CompactButton}" Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Id}"/></DataTemplate></ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Grid HorizontalAlignment="Left" Margin="0,0,0,6">
+          <StackPanel>
+            <TextBlock Text="Auswahl" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="{Binding SelectedName}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SelectionKindLabel}" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,3,0,10"/>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
               <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="48"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
-              <Button Grid.Row="0" Grid.Column="1" Content="↑" IsEnabled="{Binding UpEnabled}" Command="{Binding DirectionCommand}" CommandParameter="up" Margin="2"/>
-              <Button Grid.Row="1" Grid.Column="0" Content="←" IsEnabled="{Binding LeftEnabled}" Command="{Binding DirectionCommand}" CommandParameter="left" Margin="2"/>
-              <Button Grid.Row="1" Grid.Column="2" Content="→" IsEnabled="{Binding RightEnabled}" Command="{Binding DirectionCommand}" CommandParameter="right" Margin="2"/>
-              <Button Grid.Row="2" Grid.Column="1" Content="↓" IsEnabled="{Binding DownEnabled}" Command="{Binding DirectionCommand}" CommandParameter="down" Margin="2"/>
+              <TextBlock Text="{Binding SelectionContextLabel}" Foreground="{StaticResource MutedTextBrush}"/>
+              <TextBlock Grid.Column="1" Text="{Binding SelectionContextValue}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="1" Text="Tabelle" Foreground="{StaticResource MutedTextBrush}" Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}"/>
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TableName}" Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}"/>
+              <TextBlock Grid.Row="2" Text="Spalte" Foreground="{StaticResource MutedTextBrush}" Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}"/>
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ColumnName}" TextWrapping="Wrap" Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}"/>
             </Grid>
-            <Border Background="#F1F5F9" BorderBrush="#94A3B8" BorderThickness="1" CornerRadius="4" Padding="7">
-              <TextBlock Text="{Binding LayoutEffectInfo}" TextWrapping="Wrap"/>
-            </Border>
-            <Expander Header="Geometriedetails" Margin="0,7,0,0">
-              <TextBlock Text="{Binding Operations}" TextWrapping="Wrap" FontFamily="Consolas"/>
+            <TextBlock Text="{Binding DirectSelectionInfo}" Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"/>
+
+            <Expander Header="Erweitert" IsExpanded="False" Margin="0,18,0,0">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock Text="Profil"/><ComboBox x:Name="CompactProfileSelector" ItemsSource="{Binding Profiles}" DisplayMemberPath="DisplayName" SelectedValuePath="ProfileId" SelectedValue="{Binding ActiveProfileId, Mode=OneWay}" SelectionChanged="ProfileSelector_SelectionChanged" Margin="0,3,0,8"/>
+                <TextBlock Text="Bereich"/><ComboBox x:Name="CompactScopeSelector" ItemsSource="{Binding Scopes}" DisplayMemberPath="DisplayName" SelectedValuePath="ScopeId" SelectedValue="{Binding ActiveScopeId, Mode=OneWay}" SelectionChanged="ScopeSelector_SelectionChanged" Margin="0,3,0,8"/>
+                <WrapPanel Margin="0,0,0,8"><RadioButton Content="Geführt" GroupName="AdvancedEditMode" IsChecked="{Binding IsGuidedEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="guided" Margin="0,0,14,0"/><RadioButton Content="Frei" GroupName="AdvancedEditMode" IsChecked="{Binding IsFreeEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="free"/></WrapPanel>
+                <GroupBox Header="Elementbaum" MinHeight="190">
+                  <TreeView x:Name="CompactElementTree" ItemsSource="{Binding TreeRoots}" SelectedItemChanged="ElementTree_SelectedItemChanged" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <TreeView.ItemContainerStyle><Style TargetType="TreeViewItem"><Setter Property="IsExpanded" Value="True"/><Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneTime}"/></Style></TreeView.ItemContainerStyle>
+                    <TreeView.ItemTemplate><HierarchicalDataTemplate ItemsSource="{Binding Children}"><TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"/></HierarchicalDataTemplate></TreeView.ItemTemplate>
+                  </TreeView>
+                </GroupBox>
+                <Expander Header="Technische Details" Margin="0,8,0,0">
+                  <Expander Header="Details anzeigen">
+                    <StackPanel><TextBlock Text="{Binding SelectedId, StringFormat=ID: {0}}" FontFamily="Consolas" TextWrapping="Wrap"/><TextBlock Text="{Binding SelectedType, StringFormat=Typ: {0}}"/><TextBlock Text="{Binding SelectedRole, StringFormat=Rolle: {0}}"/><TextBlock Text="{Binding SelectedParent, StringFormat=Parent: {0}}" FontFamily="Consolas" TextWrapping="Wrap"/><TextBlock Text="{Binding Operations, StringFormat=Operationen: {0}}" FontFamily="Consolas" TextWrapping="Wrap"/></StackPanel>
+                  </Expander>
+                </Expander>
+              </StackPanel>
             </Expander>
           </StackPanel>
         </ScrollViewer>
       </Border>
 
-      <Border x:Name="GroupColumn" Grid.Column="4" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8">
+      <Border x:Name="GeometryColumn" Grid.Column="1" Style="{StaticResource Card}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel IsEnabled="{Binding ControlsEnabled}">
+            <TextBlock Text="Bearbeiten" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10"/>
+            <WrapPanel Margin="0,0,0,9">
+              <RadioButton Content="Element" GroupName="SimpleLayer" IsChecked="{Binding IsElementLayer, Mode=OneWay}" Command="{Binding SimpleActionCommand}" CommandParameter="layer:element" Margin="0,0,18,0"/>
+              <RadioButton Content="Text" GroupName="SimpleLayer" IsChecked="{Binding IsTextLayer, Mode=OneWay}" Command="{Binding SimpleActionCommand}" CommandParameter="layer:text" IsEnabled="{Binding CanSimpleText}"/>
+            </WrapPanel>
+
+            <StackPanel Visibility="{Binding IsElementLayer, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="Element verschieben" FontWeight="SemiBold"/>
+              <Grid HorizontalAlignment="Left" Margin="0,5,0,9">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="56"/><ColumnDefinition Width="56"/><ColumnDefinition Width="56"/></Grid.ColumnDefinitions>
+                <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource PadButton}" Content="↑" Command="{Binding SimpleActionCommand}" CommandParameter="elementMove:up" IsEnabled="{Binding CanSimpleMove}"/>
+                <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource PadButton}" Content="←" Command="{Binding SimpleActionCommand}" CommandParameter="elementMove:left" IsEnabled="{Binding CanSimpleMove}"/>
+                <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource PadButton}" Content="→" Command="{Binding SimpleActionCommand}" CommandParameter="elementMove:right" IsEnabled="{Binding CanSimpleMove}"/>
+                <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource PadButton}" Content="↓" Command="{Binding SimpleActionCommand}" CommandParameter="elementMove:down" IsEnabled="{Binding CanSimpleMove}"/>
+              </Grid>
+              <TextBlock Text="Größe" FontWeight="SemiBold"/>
+              <WrapPanel Margin="0,5,0,6"><TextBlock Text="Breite" Width="56" VerticalAlignment="Center"/><Button Style="{StaticResource SimpleButton}" Content="−" Command="{Binding SimpleActionCommand}" CommandParameter="elementWidth:left" IsEnabled="{Binding CanSimpleWidth}"/><Button Style="{StaticResource SimpleButton}" Content="+" Command="{Binding SimpleActionCommand}" CommandParameter="elementWidth:right" IsEnabled="{Binding CanSimpleWidth}"/><TextBlock Text="Höhe" Margin="10,0,6,7" VerticalAlignment="Center"/><Button Style="{StaticResource SimpleButton}" Content="−" Command="{Binding SimpleActionCommand}" CommandParameter="elementHeight:up" IsEnabled="{Binding CanSimpleHeight}"/><Button Style="{StaticResource SimpleButton}" Content="+" Command="{Binding SimpleActionCommand}" CommandParameter="elementHeight:down" IsEnabled="{Binding CanSimpleHeight}"/></WrapPanel>
+            </StackPanel>
+
+            <StackPanel Visibility="{Binding IsTextLayer, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="Text verschieben" FontWeight="SemiBold"/>
+              <Grid HorizontalAlignment="Left" Margin="0,5,0,8"><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="56"/><ColumnDefinition Width="56"/><ColumnDefinition Width="56"/></Grid.ColumnDefinitions>
+                <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource PadButton}" Content="↑" Command="{Binding SimpleActionCommand}" CommandParameter="textMove:up" IsEnabled="{Binding CanSimpleTextMove}"/><Button Grid.Row="1" Grid.Column="0" Style="{StaticResource PadButton}" Content="←" Command="{Binding SimpleActionCommand}" CommandParameter="textMove:left" IsEnabled="{Binding CanSimpleTextMove}"/><Button Grid.Row="1" Grid.Column="2" Style="{StaticResource PadButton}" Content="→" Command="{Binding SimpleActionCommand}" CommandParameter="textMove:right" IsEnabled="{Binding CanSimpleTextMove}"/><Button Grid.Row="2" Grid.Column="1" Style="{StaticResource PadButton}" Content="↓" Command="{Binding SimpleActionCommand}" CommandParameter="textMove:down" IsEnabled="{Binding CanSimpleTextMove}"/>
+              </Grid>
+              <WrapPanel><TextBlock Text="Schriftgröße" Width="90" VerticalAlignment="Center"/><Button Style="{StaticResource SimpleButton}" Content="Kleiner" Command="{Binding SimpleActionCommand}" CommandParameter="fontSize:left" IsEnabled="{Binding CanSimpleFontSize}"/><Button Style="{StaticResource SimpleButton}" Content="Größer" Command="{Binding SimpleActionCommand}" CommandParameter="fontSize:right" IsEnabled="{Binding CanSimpleFontSize}"/></WrapPanel>
+            </StackPanel>
+
+            <TextBlock Text="Schritt" FontWeight="SemiBold" Margin="0,5,0,5"/>
+            <WrapPanel><Button Style="{StaticResource SimpleButton}" Content="1" Command="{Binding SetStepPresetCommand}" CommandParameter="1"/><Button Style="{StaticResource SimpleButton}" Content="5" Command="{Binding SetStepPresetCommand}" CommandParameter="5"/><Button Style="{StaticResource SimpleButton}" Content="10" Command="{Binding SetStepPresetCommand}" CommandParameter="10"/><TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="76" Height="31" VerticalContentAlignment="Center" ToolTip="Freie Schrittweite in DIP"/></WrapPanel>
+
+            <Expander Header="Werte direkt eingeben (DIP)" Margin="0,7,0,0">
+              <StackPanel Margin="0,7,0,0">
+                <WrapPanel><TextBlock Text="X" Width="22" VerticalAlignment="Center"/><TextBox Text="{Binding DirectXText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="x" IsEnabled="{Binding CanSimpleMove}"/><TextBlock Text="Y" Width="22" VerticalAlignment="Center"/><TextBox Text="{Binding DirectYText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="y" IsEnabled="{Binding CanSimpleMove}"/></WrapPanel>
+                <WrapPanel><TextBlock Text="B" Width="22" VerticalAlignment="Center"/><TextBox Text="{Binding DirectWidthText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="width" IsEnabled="{Binding CanSimpleWidth}"/><TextBlock Text="H" Width="22" VerticalAlignment="Center"/><TextBox Text="{Binding DirectHeightText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="height" IsEnabled="{Binding CanSimpleHeight}"/></WrapPanel>
+                <WrapPanel Visibility="{Binding IsTextLayer, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Text X" Width="48" VerticalAlignment="Center"/><TextBox Text="{Binding DirectTextXText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="textX" IsEnabled="{Binding CanSimpleTextMove}"/><TextBlock Text="Text Y" Width="48" VerticalAlignment="Center"/><TextBox Text="{Binding DirectTextYText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="textY" IsEnabled="{Binding CanSimpleTextMove}"/></WrapPanel>
+                <WrapPanel Visibility="{Binding IsTextLayer, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Schrift" Width="48" VerticalAlignment="Center"/><TextBox Text="{Binding DirectFontSizeText}" Width="68" Margin="0,0,4,6"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="fontSize" IsEnabled="{Binding CanSimpleFontSize}"/></WrapPanel>
+              </StackPanel>
+            </Expander>
+            <WrapPanel Margin="0,12,0,0"><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="original" IsEnabled="{Binding CanResetElement}"/><Button Style="{StaticResource SimpleButton}" Content="{Binding VisibilityActionLabel}" Command="{Binding SimpleActionCommand}" CommandParameter="visibility" IsEnabled="{Binding CanChangeVisibility}"/></WrapPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border x:Name="GroupColumn" Grid.Column="2" Style="{StaticResource Card}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
-            <TextBlock Text="Gruppe und Abstände" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,7"/>
-            <Border Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}" Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="4" Padding="7" Margin="0,0,0,8">
+            <TextBlock Text="Tabelle und Abschluss" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10"/>
+            <Border Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}" Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="5" Padding="9">
               <StackPanel>
-                <TextBlock Text="Tabelle und Spalten" FontWeight="SemiBold" FontSize="14"/>
-                <TextBlock Text="{Binding TableGeometryStatus}" TextWrapping="Wrap" Margin="0,3,0,2"/>
-                <TextBlock Text="{Binding ColumnModeStatus}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                <Button Style="{StaticResource CompactButton}" Content="Ganze Spalte auswählen" Command="{Binding SelectWholeColumnCommand}" Visibility="{Binding CanSelectWholeColumn, Converter={StaticResource BoolToVisibility}}"/>
-                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}">
-                  <TextBlock Text="Breite (DIP)" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                  <TextBox Text="{Binding ColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="72" Margin="0,0,6,6"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Übernehmen" Command="{Binding ApplyColumnWidthCommand}"/>
-                </WrapPanel>
-                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}">
-                  <Button Style="{StaticResource CompactButton}" Content="Schmaler" Command="{Binding TableCommand}" CommandParameter="columnWidth:decrease"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Breiter" Command="{Binding TableCommand}" CommandParameter="columnWidth:increase"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Mindestbreite" Command="{Binding TableCommand}" CommandParameter="columnWidth:minimum"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Maximalbreite" Command="{Binding TableCommand}" CommandParameter="columnWidth:maximum"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Nur ausgewählte Spalte verkleinern" Command="{Binding TableCommand}" CommandParameter="fitSelectedColumn"/>
-                </WrapPanel>
-                <WrapPanel Visibility="{Binding IsTableLayout, Converter={StaticResource BoolToVisibility}}">
-                  <Button Style="{StaticResource CompactButton}" Content="An sichtbaren Bereich anpassen" Command="{Binding TableCommand}" CommandParameter="fitTableToViewport"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Spalten proportional verkleinern" Command="{Binding TableCommand}" CommandParameter="resizeColumnsProportionally"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Scrollen beibehalten" Command="{Binding TableCommand}" CommandParameter="setHorizontalOverflowMode:scroll"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Auf Viewport begrenzen" Command="{Binding TableCommand}" CommandParameter="setHorizontalOverflowMode:fitViewport"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Zeilen automatisch" Command="{Binding TableCommand}" CommandParameter="setRowHeightMode:auto"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Zeilen begrenzen" Command="{Binding TableCommand}" CommandParameter="setRowHeightMode:bounded"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Tabelle Original" Command="{Binding TableCommand}" CommandParameter="resetTable"/>
-                </WrapPanel>
-                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}">
-                  <Button Style="{StaticResource CompactButton}" Content="Fest" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:fixed"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Automatisch" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:auto"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Proportional" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:proportional"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Text umbrechen" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:wordWrap"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Zeichenumbruch" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:characterWrap"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Ellipsis" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:ellipsis"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Kein Umbruch" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:noWrap"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Überlauf Ellipsis" Command="{Binding TableCommand}" CommandParameter="setColumnOverflowMode:ellipsis"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Überlauf abschneiden" Command="{Binding TableCommand}" CommandParameter="setColumnOverflowMode:clip"/>
-                  <Button Style="{StaticResource CompactButton}" Content="Spalte Original" Command="{Binding TableCommand}" CommandParameter="resetTableColumn"/>
-                </WrapPanel>
+                <TextBlock Text="{Binding ColumnName}" FontWeight="SemiBold" FontSize="15"/>
+                <TextBlock Text="{Binding TableGeometryStatus}" TextWrapping="Wrap" Margin="0,4,0,8"/>
+                <Button Style="{StaticResource SimpleButton}" Content="Ganze Spalte auswählen" Command="{Binding SelectWholeColumnCommand}" Visibility="{Binding CanSelectWholeColumn, Converter={StaticResource BoolToVisibility}}"/>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="−10" Command="{Binding SimpleActionCommand}" CommandParameter="column:-10"/><Button Style="{StaticResource SimpleButton}" Content="−1" Command="{Binding SimpleActionCommand}" CommandParameter="column:-1"/><Button Style="{StaticResource SimpleButton}" Content="+1" Command="{Binding SimpleActionCommand}" CommandParameter="column:1"/><Button Style="{StaticResource SimpleButton}" Content="+10" Command="{Binding SimpleActionCommand}" CommandParameter="column:10"/></WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Breite" VerticalAlignment="Center" Margin="0,0,6,7"/><TextBox Text="{Binding ColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="78" Height="31" Margin="0,0,6,7"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyColumnWidthCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Umbruch" Command="{Binding SimpleActionCommand}" CommandParameter="columnWrap"/><Button Style="{StaticResource SimpleButton}" Content="Ellipsis" Command="{Binding SimpleActionCommand}" CommandParameter="columnEllipsis"/><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="columnOriginal"/></WrapPanel>
+                <Button Style="{StaticResource SimpleButton}" Content="Tabelle in sichtbaren Bereich einpassen" Command="{Binding SimpleActionCommand}" CommandParameter="tableFit"/>
               </StackPanel>
             </Border>
-            <TextBlock Text="{Binding SpacingStatus}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,7"/>
-            <WrapPanel Visibility="{Binding CanBeforeElement, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Spacer davor −" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:decrease"/><Button Style="{StaticResource CompactButton}" Content="Spacer davor +" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:increase"/><Button Style="{StaticResource CompactButton}" Content="Original" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:reset"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanAfterElement, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Spacer danach −" Command="{Binding SpacingCommand}" CommandParameter="afterElement:decrease"/><Button Style="{StaticResource CompactButton}" Content="Spacer danach +" Command="{Binding SpacingCommand}" CommandParameter="afterElement:increase"/><Button Style="{StaticResource CompactButton}" Content="Original" Command="{Binding SpacingCommand}" CommandParameter="afterElement:reset"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanGroupPaddingLeft, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Innen links −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingLeft:decrease"/><Button Style="{StaticResource CompactButton}" Content="Innen links +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingLeft:increase"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanGroupPaddingRight, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Innen rechts −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingRight:decrease"/><Button Style="{StaticResource CompactButton}" Content="Innen rechts +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingRight:increase"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanGroupPaddingTop, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Innen oben −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingTop:decrease"/><Button Style="{StaticResource CompactButton}" Content="Innen oben +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingTop:increase"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanGroupPaddingBottom, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Innen unten −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingBottom:decrease"/><Button Style="{StaticResource CompactButton}" Content="Innen unten +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingBottom:increase"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanChildGapHorizontal, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Kindabstand horizontal −" Command="{Binding SpacingCommand}" CommandParameter="childGapHorizontal:decrease"/><Button Style="{StaticResource CompactButton}" Content="Kindabstand horizontal +" Command="{Binding SpacingCommand}" CommandParameter="childGapHorizontal:increase"/></WrapPanel>
-            <WrapPanel Visibility="{Binding CanChildGapVertical, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Kindabstand vertikal −" Command="{Binding SpacingCommand}" CommandParameter="childGapVertical:decrease"/><Button Style="{StaticResource CompactButton}" Content="Kindabstand vertikal +" Command="{Binding SpacingCommand}" CommandParameter="childGapVertical:increase"/></WrapPanel>
-            <Separator Margin="0,4"/>
-            <WrapPanel>
-              <Button Style="{StaticResource CompactButton}" Content="{Binding VisibilityActionLabel}" Command="{Binding ToggleVisibilityCommand}" IsEnabled="{Binding CanChangeVisibility}"/>
-              <Button Style="{StaticResource CompactButton}" Content="Alle Änderungen verwerfen" Command="{Binding DiscardAllCommand}"/>
-              <Button Style="{StaticResource CompactButton}" Content="Gesamtes Layout zurücksetzen" Command="{Binding ResetAllCommand}"/>
-            </WrapPanel>
-            <Expander Header="Profil- und Registryinformationen" Margin="0,6,0,0">
-              <TextBlock Text="{Binding SelectedParent, StringFormat=Parent: {0}}" FontFamily="Consolas" TextWrapping="Wrap"/>
+            <TextBlock Text="Wählen Sie eine registrierte Tabellenspalte, um ihre Breite zu bearbeiten." Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+
+            <Expander Header="Erweiterte Layoutfunktionen" IsExpanded="False" Margin="0,15,0,0">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock Text="{Binding EditModeStatus}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding LayoutEffectInfo}" TextWrapping="Wrap" Margin="0,5,0,8"/>
+                <ItemsControl ItemsSource="{Binding Modes}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Button Style="{StaticResource SimpleButton}" Content="{Binding Label}" IsEnabled="{Binding Enabled}" Command="{Binding DataContext.SetModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Id}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                <TextBlock Text="{Binding SpacingStatus}" TextWrapping="Wrap" Margin="0,6,0,5"/>
+                <WrapPanel Visibility="{Binding CanBeforeElement, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Spacer davor −" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Spacer davor +" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:increase"/><Button Style="{StaticResource SimpleButton}" Content="Spacer Original" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:reset"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanAfterElement, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Spacer danach −" Command="{Binding SpacingCommand}" CommandParameter="afterElement:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Spacer danach +" Command="{Binding SpacingCommand}" CommandParameter="afterElement:increase"/><Button Style="{StaticResource SimpleButton}" Content="Spacer Original" Command="{Binding SpacingCommand}" CommandParameter="afterElement:reset"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanGroupPaddingLeft, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Innen links −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingLeft:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Innen links +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingLeft:increase"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanGroupPaddingRight, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Innen rechts −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingRight:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Innen rechts +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingRight:increase"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanGroupPaddingTop, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Innen oben −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingTop:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Innen oben +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingTop:increase"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanGroupPaddingBottom, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Innen unten −" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingBottom:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Innen unten +" Command="{Binding SpacingCommand}" CommandParameter="groupPaddingBottom:increase"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanChildGapHorizontal, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Kindabstand horizontal −" Command="{Binding SpacingCommand}" CommandParameter="childGapHorizontal:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Kindabstand horizontal +" Command="{Binding SpacingCommand}" CommandParameter="childGapHorizontal:increase"/></WrapPanel>
+                <WrapPanel Visibility="{Binding CanChildGapVertical, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Kindabstand vertikal −" Command="{Binding SpacingCommand}" CommandParameter="childGapVertical:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Kindabstand vertikal +" Command="{Binding SpacingCommand}" CommandParameter="childGapVertical:increase"/></WrapPanel>
+                <WrapPanel><Button Style="{StaticResource SimpleButton}" Content="Verwerfen" Command="{Binding DiscardElementCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Laden" Command="{Binding LoadCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Alle verwerfen" Command="{Binding DiscardAllCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Gesamtreset" Command="{Binding ResetAllCommand}"/></WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableLayout, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Fit mit Vorschau" Command="{Binding TableCommand}" CommandParameter="fitTableToViewport"/><Button Style="{StaticResource SimpleButton}" Content="Horizontal scrollen" Command="{Binding TableCommand}" CommandParameter="setHorizontalOverflowMode:scroll"/><Button Style="{StaticResource SimpleButton}" Content="Viewport begrenzen" Command="{Binding TableCommand}" CommandParameter="setHorizontalOverflowMode:fitViewport"/><Button Style="{StaticResource SimpleButton}" Content="Tabelle Original" Command="{Binding TableCommand}" CommandParameter="resetTable"/></WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="Schmaler" Command="{Binding TableCommand}" CommandParameter="columnWidth:decrease"/><Button Style="{StaticResource SimpleButton}" Content="Breiter" Command="{Binding TableCommand}" CommandParameter="columnWidth:increase"/><Button Style="{StaticResource SimpleButton}" Content="Mindestbreite" Command="{Binding TableCommand}" CommandParameter="columnWidth:minimum"/><Button Style="{StaticResource SimpleButton}" Content="Maximalbreite" Command="{Binding TableCommand}" CommandParameter="columnWidth:maximum"/><Button Style="{StaticResource SimpleButton}" Content="Nur gewählte Spalte einpassen" Command="{Binding TableCommand}" CommandParameter="fitSelectedColumn"/><Button Style="{StaticResource SimpleButton}" Content="Breite fest" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:fixed"/><Button Style="{StaticResource SimpleButton}" Content="Breite automatisch" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:auto"/><Button Style="{StaticResource SimpleButton}" Content="Breite proportional" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:proportional"/><Button Style="{StaticResource SimpleButton}" Content="Zeichenumbruch" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:characterWrap"/><Button Style="{StaticResource SimpleButton}" Content="Kein Umbruch" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:noWrap"/><Button Style="{StaticResource SimpleButton}" Content="Überlauf Ellipsis" Command="{Binding TableCommand}" CommandParameter="setColumnOverflowMode:ellipsis"/><Button Style="{StaticResource SimpleButton}" Content="Überlauf abschneiden" Command="{Binding TableCommand}" CommandParameter="setColumnOverflowMode:clip"/></WrapPanel>
+              </StackPanel>
             </Expander>
+            <Separator Margin="0,14,0,10"/>
+            <TextBlock Text="{Binding DirtyStatus}" FontWeight="SemiBold" Foreground="#8A4B08"/>
           </StackPanel>
         </ScrollViewer>
       </Border>
     </Grid>
 
-    <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="7" Margin="0,8,0,0">
-      <Grid>
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,9,0,0" Padding="9">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel><TextBlock Text="{Binding StatusMessage}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding ErrorMessage}" Foreground="#A61B1B" TextWrapping="Wrap"/><Expander Header="Details anzeigen" Visibility="{Binding HasTechnicalDetails, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding TechnicalDetails}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/></Expander></StackPanel>
-        <Button Grid.Column="1" Content="Schließen" Command="{Binding CloseCommand}" MinWidth="90" Margin="8,0,0,0"/>
+        <Button Grid.Column="1" Content="Schließen" Command="{Binding CloseCommand}" MinWidth="90" Margin="9,0,0,0"/>
       </Grid>
     </Border>
   </Grid>

@@ -4,6 +4,7 @@ using ReferenceTargetApp.EditorIntegration.EditorUi;
 using ReferenceTargetApp.EditorIntegration.Process;
 using ReferenceTargetApp.EditorIntegration.Protocol;
 using ReferenceTargetApp.EditorIntegration.Geometry;
+using ReferenceTargetApp.EditorIntegration.Registry;
 
 namespace ReferenceTargetApp.EditorIntegration.Session;
 
@@ -263,6 +264,46 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation, payload,
                 DateTimeOffset.UtcNow, "ui-editor-panel", ActiveScopeId);
             var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
+            var state = await RequestEditorUiStateCoreAsync(
+                EditorMessageTypes.RefreshEditorLayoutStates,
+                EditorProtocolPayloadFactory.CreateLayoutStatePayload(
+                    hostAdapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal),
+                    ActiveScopeId), cancellationToken).ConfigureAwait(false);
+            return new(state, result);
+        }
+        finally { transitionLock.Release(); }
+    }
+
+    public async Task<EditorUiChangeOutcome> SubmitSimpleLayoutChangeAsync(
+        string elementId,
+        string operation,
+        IReadOnlyDictionary<string, object?> payload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(elementId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureActiveSession();
+            if (!hostAdapters.TryGetValue(ActiveScopeId, out var adapter))
+                throw new EditorProcessException("unknown_scope", "Scope ist nicht registriert.");
+            var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation, payload,
+                DateTimeOffset.UtcNow, "ui-editor-panel", ActiveScopeId);
+            ChangeResult result;
+            if (adapter is IGeometryRiskHostAdapter geometryAdapter)
+            {
+                result = await geometryAdapter.SubmitGeometryChangeRequestAsync(request, GeometryEditModes.Free, null, cancellationToken).ConfigureAwait(false);
+                if (result.GeometryRisk is { HasRisks: true } risk)
+                {
+                    var isTableColumn = adapter.GetRegistry().Entries.Any(entry =>
+                        entry.ElementId == elementId && entry.Kind == UiElementKind.TableColumn);
+                    var action = SimpleModeRiskPolicy.SelectAction(risk.RiskType, isTableColumn);
+                    result = await geometryAdapter.SubmitGeometryChangeRequestAsync(request, GeometryEditModes.Free,
+                        new GeometryRiskConfirmation(risk.OperationId, action), cancellationToken).ConfigureAwait(false);
+                }
+            }
+            else result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
             var state = await RequestEditorUiStateCoreAsync(
                 EditorMessageTypes.RefreshEditorLayoutStates,
                 EditorProtocolPayloadFactory.CreateLayoutStatePayload(

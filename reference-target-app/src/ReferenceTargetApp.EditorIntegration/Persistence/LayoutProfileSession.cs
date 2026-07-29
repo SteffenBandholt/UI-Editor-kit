@@ -18,6 +18,8 @@ public sealed record LayoutProfileSessionStatus(
     IReadOnlyDictionary<string, LayoutState> Saved,
     IReadOnlyDictionary<string, LayoutState> Baseline);
 
+public sealed record LayoutUndoStatus(bool CanUndo, int Depth, string? LastDescription);
+
 public sealed class LayoutProfileSession
 {
     // Browser/WPF round-trips can quantize CSS/DIP geometry by a few hundredths
@@ -32,6 +34,8 @@ public sealed class LayoutProfileSession
     private IReadOnlyDictionary<string, LayoutState> saved;
     private Dictionary<string, HashSet<string>> workingExplicitOperations;
     private Dictionary<string, HashSet<string>> savedExplicitOperations;
+    private readonly List<LayoutUndoFrame> undoFrames = [];
+    private LayoutUndoFrame? pendingUndoFrame;
     private bool savedHasExplicitOperationMetadata;
     private readonly bool allowCompatibleRegistryReconciliation;
 
@@ -63,6 +67,44 @@ public sealed class LayoutProfileSession
     public string ProfileRoot => profileStore.RootDirectory;
     public string ApplicationId => profileStore.DocumentApplicationId;
     public bool IsOperationRunning => operationLock.CurrentCount == 0;
+    public LayoutUndoStatus GetUndoStatus() => new(undoFrames.Count > 0, undoFrames.Count, undoFrames.LastOrDefault()?.Description);
+
+    public void BeginUndoFrame(string description)
+    {
+        if (pendingUndoFrame is not null) throw new InvalidOperationException("Eine Undo-Aufzeichnung ist bereits aktiv.");
+        pendingUndoFrame = new(description, CloneStates(CaptureWorking()), CloneOperations(workingExplicitOperations));
+    }
+
+    public void CommitUndoFrame()
+    {
+        if (pendingUndoFrame is null) return;
+        undoFrames.Add(pendingUndoFrame);
+        if (undoFrames.Count > 100) undoFrames.RemoveAt(0);
+        pendingUndoFrame = null;
+    }
+
+    public void CancelUndoFrame() => pendingUndoFrame = null;
+
+    public void ClearUndoHistory()
+    {
+        pendingUndoFrame = null;
+        undoFrames.Clear();
+    }
+
+    public async Task<LayoutOperationResult> UndoAsync(CancellationToken cancellationToken = default) =>
+        await ExclusiveAsync(async () =>
+        {
+            pendingUndoFrame = null;
+            if (undoFrames.Count == 0) return Fail("undo_unavailable", "Es ist keine Änderung zum Rückgängigmachen vorhanden.");
+            var frame = undoFrames[^1];
+            var operations = MergeOperations(workingExplicitOperations, frame.ExplicitOperations,
+                InferOperations(CaptureWorking(), frame.Working));
+            var result = await ApplyTrackedOperationsAsync(frame.Working, operations, "m82-5-undo", cancellationToken).ConfigureAwait(false);
+            if (!result.Success) return result;
+            workingExplicitOperations = CloneOperations(frame.ExplicitOperations);
+            undoFrames.RemoveAt(undoFrames.Count - 1);
+            return Ok("layout_change_undone", $"Rückgängig: {frame.Description}");
+        }, cancellationToken).ConfigureAwait(false);
 
     public void RecordExplicitOperation(string scopeId, string elementId, string operation)
     {
@@ -636,4 +678,9 @@ public sealed class LayoutProfileSession
 
     private static LayoutOperationResult Ok(string code, string message) => new(true, code, message);
     private static LayoutOperationResult Fail(string code, string message) => new(false, code, message);
+
+    private sealed record LayoutUndoFrame(
+        string Description,
+        IReadOnlyDictionary<string, LayoutState> Working,
+        Dictionary<string, HashSet<string>> ExplicitOperations);
 }

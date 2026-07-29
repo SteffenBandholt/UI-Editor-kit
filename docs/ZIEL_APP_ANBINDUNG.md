@@ -298,3 +298,13 @@ Eine Ziel-App registriert echte Inhaltstabellen ausdrücklich mit vollständiger
 Der Adapter bildet Breite, Breitenmodus, Umbruch, Ellipsis, Zeilenhöhe und horizontalen Überlauf mit den nativen Frameworkmitteln ab. Er misst Viewport, Tabelleninhalt, reservierte Flächen und Scrollbar getrennt, zeigt Überlauf vor einer Anpassung und liest Header-/Datenausrichtung nach der Änderung zurück. WPF verwendet eine gemeinsame `DataGridColumn`; Electron kann einen gemeinsamen CSS-Grid-Track verwenden. Persistenz, Reset, Discard und Rollback bleiben im bestehenden Layoutprofilweg.
 
 Details: `docs/M82_4_TABELLEN_UND_SPALTENBEARBEITUNG.md`.
+
+## HostAdapter-Anbindung für M82.5
+
+Eine Ziel-App stellt für den Einfachmodus keine eigene Editoroberfläche bereit. Sie liefert weiterhin ihre explizite Registry, verständliche Anzeigenamen, aktuelle Layoutwerte, Grenzen und Capabilities über denselben WPF- oder Electron-HostAdapter. Der gemeinsame Editor leitet daraus Text-, Element-, Gruppen- und Tabellenaktionen ab; Ziel-App-IDs werden nicht in den Core eingebaut.
+
+Direkte Werte und Schrittaktionen verwenden dieselben Operationen wie der erweiterte Weg. Der Adapter wendet sie sofort sichtbar und transaktional an, liest den Ergebniszustand zurück und meldet technische Fehler. Bestätigbare visuelle Risiken dürfen im Einfachmodus ohne modale Rückfrage über die vorhandene operationsgebundene Bestätigung abgeschlossen werden; technisch ungültige Zustände und unerwartete Seiteneffekte müssen weiterhin abgewiesen beziehungsweise zurückgerollt werden.
+
+Eine M82.4-Inhaltstabelle behält genau eine Breitenquelle pro Spalte. Header, Datenbereich und optionaler Footer müssen dieselbe Spalten-ID referenzieren. Ein Zieladapter darf bei einer einfachen Spaltenänderung weder Nachbarspalten noch Fachdaten ungefragt verändern. Save, Session-Undo, Restore, Discard und Reset verwenden den vorhandenen Profil- und HostAdapterweg.
+
+Details: `docs/M82_5_EINFACHMODUS.md`.

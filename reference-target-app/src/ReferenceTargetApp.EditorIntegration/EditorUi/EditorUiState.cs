@@ -71,7 +71,16 @@ public sealed record EditorUiPanel(
     EditorUiDirectionPad Dpad,
     double StepSize,
     EditorUiStatus Status,
-    bool Busy);
+    bool Busy,
+    EditorUiSimpleMode Simple);
+
+public sealed record EditorUiSimpleMode(
+    bool DefaultMode,
+    bool AdvancedExpanded,
+    IReadOnlyList<double> StepPresets,
+    string DirectInputUnit,
+    string TechnicalDetailsLocation,
+    IReadOnlyList<string> AvailableActions);
 
 public sealed record EditorUiSelection(
     bool Selected,
