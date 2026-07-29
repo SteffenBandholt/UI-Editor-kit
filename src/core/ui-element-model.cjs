@@ -58,6 +58,10 @@ const UI_ELEMENT_OPERATIONS = Object.freeze([
   "textMove",
   "textResize",
   "setVisibility",
+  "spacingIncrease",
+  "spacingDecrease",
+  "spacingSet",
+  "spacingReset",
   "reorder",
   "rename",
   "changeWidth",
@@ -99,9 +103,10 @@ const UI_ELEMENT_OPTIONAL_FIELDS = Object.freeze([
   "operationEffects",
   "operationAffectedIds",
   "geometry",
+  "spacingTargets",
 ]);
 
-const UI_ELEMENT_ARRAY_FIELDS = Object.freeze(["allowedOps", "lockedOps", "selectionLevels"]);
+const UI_ELEMENT_ARRAY_FIELDS = Object.freeze(["allowedOps", "lockedOps", "selectionLevels", "spacingTargets"]);
 const UI_ELEMENT_BOOLEAN_FIELDS = Object.freeze(["visible", "editable"]);
 const UI_ELEMENT_NUMERIC_FIELDS = Object.freeze(["order", "width", "minWidth", "maxWidth"]);
 const UI_ELEMENT_FIELDS = Object.freeze([...UI_ELEMENT_REQUIRED_FIELDS, ...UI_ELEMENT_OPTIONAL_FIELDS]);

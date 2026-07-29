@@ -322,7 +322,8 @@ public sealed class LayoutProfileRecoveryService(
                 return new ElementLayoutState(element.ElementId, element.ScopeId,
                     element.X ?? fallback.X, element.Y ?? fallback.Y, element.Width ?? fallback.Width, element.Height ?? fallback.Height,
                     element.TextOffsetX ?? fallback.TextOffsetX, element.TextOffsetY ?? fallback.TextOffsetY,
-                    element.FontSize ?? fallback.FontSize, element.Visible ?? fallback.Visible);
+                    element.FontSize ?? fallback.FontSize, element.Visible ?? fallback.Visible,
+                    element.Spacing ?? fallback.Spacing);
             }).ToArray());
         }
         states = result;

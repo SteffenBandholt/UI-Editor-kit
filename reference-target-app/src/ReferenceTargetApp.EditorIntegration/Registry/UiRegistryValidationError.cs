@@ -9,6 +9,7 @@ public enum UiRegistryValidationErrorCode
     MissingNativeReference,
     InvalidElementKind,
     InvalidCapability,
+    InvalidSpacingTarget,
     ScopeHasParent,
     ScopeIdMismatch,
     ParentRequired,

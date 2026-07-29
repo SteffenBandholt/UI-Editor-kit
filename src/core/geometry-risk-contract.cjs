@@ -1,5 +1,7 @@
 "use strict";
 
+const { WIDTH_FLOW_ACTIONS } = require("./spacing-contract.cjs");
+
 const EDIT_MODES = Object.freeze({ GUIDED: "guided", FREE: "free" });
 const RISK_TYPES = Object.freeze({
   LEAVES_GROUP: "leavesGroup",
@@ -9,6 +11,7 @@ const RISK_TYPES = Object.freeze({
   LEAVES_EDITABLE_AREA: "leavesEditableArea",
   GROUP_OVERLAP: "groupOverlap",
   UNUSUAL_SPACING: "unusualSpacing",
+  FREED_SPACE: "freedSpace",
 });
 const RISK_ACTIONS = Object.freeze({
   CLAMP_TO_GROUP: "clampToGroup",
@@ -16,6 +19,9 @@ const RISK_ACTIONS = Object.freeze({
   APPLY_ANYWAY: "applyAnyway",
   GO_BACK: "goBack",
   CANCEL: "cancel",
+  PRESERVE_SPACE: WIDTH_FLOW_ACTIONS.PRESERVE_SPACE,
+  REFLOW_NEIGHBORS: WIDTH_FLOW_ACTIONS.REFLOW_NEIGHBORS,
+  SHRINK_GROUP: WIDTH_FLOW_ACTIONS.SHRINK_GROUP,
 });
 
 function finite(value) { return typeof value === "number" && Number.isFinite(value); }
@@ -60,13 +66,21 @@ function related(value, fallbackLabel) {
 }
 function neighbor(value) {
   const normalized = target(value);
-  return Object.freeze({ ...normalized, overlapBounds: value.overlapBounds ? copyBounds(value.overlapBounds, "neighbor.overlapBounds") : null });
+  return Object.freeze({ ...normalized,
+    previousBounds: value.previousBounds ? copyBounds(value.previousBounds, "neighbor.previousBounds") : null,
+    overlapBounds: value.overlapBounds ? copyBounds(value.overlapBounds, "neighbor.overlapBounds") : null });
 }
 function addRisk(risks, riskType, subject) {
   if (!risks.some((risk) => risk.riskType === riskType && risk.subject?.elementId === subject?.elementId)) risks.push(Object.freeze({ riskType, subject: subject || null }));
 }
-function actions(editMode, risks) {
+function actions(editMode, risks, groupWidthEditable = false) {
   const result = [];
+  if (risks.some((risk) => risk.riskType === RISK_TYPES.FREED_SPACE)) {
+    result.push(RISK_ACTIONS.PRESERVE_SPACE, RISK_ACTIONS.REFLOW_NEIGHBORS);
+    if (groupWidthEditable) result.push(RISK_ACTIONS.SHRINK_GROUP);
+    result.push(RISK_ACTIONS.CANCEL);
+    return Object.freeze(result);
+  }
   if (editMode === EDIT_MODES.GUIDED && risks.some((risk) => risk.riskType === RISK_TYPES.LEAVES_GROUP)) result.push(RISK_ACTIONS.CLAMP_TO_GROUP);
   if (editMode === EDIT_MODES.GUIDED && risks.some((risk) => [RISK_TYPES.LEAVES_PARENT, RISK_TYPES.LEAVES_EDITABLE_AREA].includes(risk.riskType))) result.push(RISK_ACTIONS.CLAMP_TO_AREA);
   result.push(RISK_ACTIONS.APPLY_ANYWAY);
@@ -78,6 +92,7 @@ function notice(risk, context) {
   const name = context.target.displayName;
   const subject = risk.subject?.displayName;
   switch (risk.riskType) {
+    case RISK_TYPES.FREED_SPACE: return { title: "Platz innerhalb der Gruppe", message: `Das Feld „${name}“ wird schmaler. Was soll mit dem frei werdenden Platz geschehen?` };
     case RISK_TYPES.LEAVES_GROUP: return { title: "Element verlässt seine Gruppe", message: `Das Element „${name}“ wird außerhalb der Gruppe „${context.group?.displayName || "zugehörige Gruppe"}“ verschoben.` };
     case RISK_TYPES.LEAVES_PARENT: return { title: "Element verlässt seinen Bereich", message: `Ein Teil des Elements „${name}“ liegt künftig außerhalb von „${context.parent?.displayName || "seinem Bereich"}“.` };
     case RISK_TYPES.ENTERS_NEIGHBOR_AREA: return { title: "Element wird in einen Nachbarbereich verschoben", message: `Das Element „${name}“ wird in den Bereich „${subject || "eines Nachbarelements"}“ verschoben.` };
@@ -107,6 +122,9 @@ function evaluateGeometryRisk(input) {
     return Object.freeze({ ...neighbor({ ...item, overlapBounds }), geometryChanged: item.geometryChanged === true });
   });
   const risks = [];
+  const freedWidth = currentBounds.width - targetBounds.width;
+  const hasNeighborReflow = affectedNeighbors.some((item) => item.geometryChanged);
+  if (input.operation === "resizeWidth" && freedWidth > 0.01 && hasNeighborReflow) addRisk(risks, RISK_TYPES.FREED_SPACE, null);
   if (group && !contains(group.bounds, targetBounds)) addRisk(risks, RISK_TYPES.LEAVES_GROUP, group);
   if (parent && !contains(parent.bounds, targetBounds)) addRisk(risks, RISK_TYPES.LEAVES_PARENT, parent);
   if (editableArea && !contains(editableArea.bounds, targetBounds)) addRisk(risks, RISK_TYPES.LEAVES_EDITABLE_AREA, editableArea);
@@ -120,7 +138,7 @@ function evaluateGeometryRisk(input) {
     continue;
   }
   for (const item of affectedNeighbors) {
-    if (item.geometryChanged && !risks.some((risk) => risk.subject?.elementId === item.elementId))
+    if (freedWidth > 0.01 && item.geometryChanged && !risks.some((risk) => risk.subject?.elementId === item.elementId))
       addRisk(risks, RISK_TYPES.ENTERS_NEIGHBOR_AREA, item);
   }
   const distance = Math.hypot(targetBounds.left - currentBounds.left, targetBounds.top - currentBounds.top);
@@ -145,6 +163,8 @@ function evaluateGeometryRisk(input) {
     errorCode: text(input.errorCode) || null,
     hostAdapterReadback: input.hostAdapterReadback ?? null,
     rollbackStatus: text(input.rollbackStatus, "guaranteed"),
+    freedWidth: freedWidth > 0 ? freedWidth : 0,
+    spacingTarget: freedWidth > 0 ? "reservedWidth" : null,
   });
   return Object.freeze({
     hasRisks: risks.length > 0,
@@ -158,7 +178,7 @@ function evaluateGeometryRisk(input) {
     parent,
     editableArea,
     affectedNeighbors: Object.freeze(affectedNeighbors),
-    suggestedActions: actions(editMode, risks),
+    suggestedActions: actions(editMode, risks, input.groupWidthEditable === true),
     technicalDetails,
     operationId,
     rollbackToken: text(input.rollbackToken) || null,

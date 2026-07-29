@@ -246,6 +246,33 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
         }
     }
 
+    public async Task<EditorUiChangeOutcome> SubmitExplicitLayoutChangeAsync(
+        string elementId,
+        string operation,
+        IReadOnlyDictionary<string, object?> payload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(elementId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        await transitionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureActiveSession();
+            if (!hostAdapters.TryGetValue(ActiveScopeId, out var adapter))
+                throw new EditorProcessException("unknown_scope", "Scope ist nicht registriert.");
+            var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation, payload,
+                DateTimeOffset.UtcNow, "ui-editor-panel", ActiveScopeId);
+            var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
+            var state = await RequestEditorUiStateCoreAsync(
+                EditorMessageTypes.RefreshEditorLayoutStates,
+                EditorProtocolPayloadFactory.CreateLayoutStatePayload(
+                    hostAdapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal),
+                    ActiveScopeId), cancellationToken).ConfigureAwait(false);
+            return new(state, result);
+        }
+        finally { transitionLock.Release(); }
+    }
+
     public async Task ClearGeometryPreviewAsync(CancellationToken cancellationToken = default)
     {
         if (hostAdapters.TryGetValue(ActiveScopeId, out var adapter) && adapter is IGeometryRiskHostAdapter geometryAdapter)

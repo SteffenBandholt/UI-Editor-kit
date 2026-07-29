@@ -277,3 +277,12 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Schema-2-Manifest, Paket-SHA-256, Git-/Fremddateischutz, Vorschau/Bestaetigung, atomare Installation, Rollback, Update und Deinstallation sind implementiert.
 - Neue Apps beginnen ehrlich mit `development` und ohne aktive Scopes. Bestehende WPF-Apps verweisen auf M79; BBM wird als bereits angebundene Electron-App ohne Doppelinstallation erkannt.
 - Die sichtbare M82-Diagnose belegt neue WPF-/Electron-Apps, erste explizit registrierte Test-UIs, die WPF-Test-UI mit vorhandenem Editor, den vollstaendigen M79-Bestandsweg, BBM-Bestand und lokalen Electron-Editorstart, Update, Deinstallation, Profilerhalt sowie Installations-/Update-Rollback. Alle Pflichtpruefungen sind gruen; der bekannte globale BBM-Lint-Altstand bleibt getrennt dokumentiert.
+
+# M82.3 - Spacer und kompakte Editoroberflaeche
+
+- Status: `[A]`; Implementierung, Pflichtpruefungen und sichtbare native UI-/PDF-Abnahme sind abgeschlossen.
+- Elementbreite, reservierter Platz, bewusstes Nachruecken, Gruppenbreite und Spacing sind appuebergreifend getrennt.
+- WPF und Electron verwenden denselben neutralen Vertrag, die vorhandenen HostAdapter und denselben Profil-/Rollbackweg.
+- Der native UI-/PDF-Workspace reagiert mit einer, zwei oder drei Spalten; feste Aktionen und interner Baumscrollbereich reduzieren den Scrollbedarf.
+- BBM belegt Kurztext/Gegenstand, stabile Nachbarn, Gruppe/Spacer, Reset/Discard/Restore sowie 28 PDF-Registryelemente und eine reale zweitseitige A4-Vorschau.
+- Commit/PR: keiner; gemaess Nutzeranweisung wurde weder committet noch gepusht.

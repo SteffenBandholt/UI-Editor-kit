@@ -134,9 +134,52 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
         }
         var beforeGeometry = CaptureGeometry();
         var targetSnapshot = layoutAccess.Capture(entry);
+        var groupEntry = Ancestor(entry, candidate => candidate.ProtocolType is "group" or "fieldGroup");
+        var groupSnapshot = groupEntry is null ? null : layoutAccess.Capture(groupEntry);
         var applied = ExecuteOnUiThread(request, entry, change);
         if (!applied.Success) { ClearPreview(); return applied; }
+        RefreshLayout(entry);
+        if (pending is not null && confirmation?.Action == GeometryRiskActions.PreserveSpace)
+        {
+            var current = layoutAccess.Read(entry);
+            var spacing = current.Spacing?.GetValueOrDefault(SpacingTargets.ReservedWidth) ?? 0;
+            layoutAccess.Apply(entry, new(HostAdapterOperations.SpacingSet, SpacingTarget: SpacingTargets.ReservedWidth,
+                SpacingValue: spacing + pending.Value.Risk.TechnicalDetails.FreedWidth));
+            var spaced = layoutAccess.Read(entry);
+            applied = applied with { NewState = spaced, Message = "Elementbreite geändert; frei gewordener Platz bleibt reserviert." };
+            RefreshLayout(entry);
+        }
+        if (pending is not null && confirmation?.Action == GeometryRiskActions.ShrinkGroup && groupEntry is not null)
+        {
+            var currentGroup = layoutAccess.Read(groupEntry);
+            var targetWidth = currentGroup.Width - pending.Value.Risk.TechnicalDetails.FreedWidth;
+            if (targetWidth <= 0)
+            {
+                layoutAccess.Restore(entry, targetSnapshot);
+                if (groupSnapshot is not null) layoutAccess.Restore(groupEntry, groupSnapshot);
+                RefreshLayout(entry);
+                return ChangeResult.Rejected(request, "invalid_group_width", "Die Breite dieser Gruppe kann nicht direkt verändert werden.");
+            }
+            layoutAccess.Apply(groupEntry, new(HostAdapterOperations.ResizeWidth, Width: targetWidth));
+            RefreshLayout(entry);
+            applied = applied with
+            {
+                Message = "Element- und Gruppenbreite wurden getrennt um den bestätigten Betrag verkleinert.",
+                AffectedStates = [layoutAccess.Read(groupEntry)]
+            };
+        }
         var afterGeometry = CaptureGeometry();
+        if (pending is not null && confirmation?.Action == GeometryRiskActions.PreserveSpace &&
+            beforeGeometry.Any(pair => pair.Key != entry.ElementId && Different(pair.Value, afterGeometry[pair.Key])))
+        {
+            layoutAccess.Restore(entry, targetSnapshot);
+            if (groupEntry is not null && groupSnapshot is not null) layoutAccess.Restore(groupEntry, groupSnapshot);
+            RefreshLayout(entry);
+            var restored = layoutAccess.Read(entry);
+            ClearPreview();
+            return new(false, request.ChangeId, request.ElementId, request.Operation, "unexpected_neighbor_change",
+                "Die Position weiterer Elemente würde sich unerwartet verändern.", restored, restored, true);
+        }
         var risk = BuildRisk(entry, request, editMode, beforeGeometry, afterGeometry);
         if (risk.HasRisks && pending is null)
         {
@@ -150,6 +193,12 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
         if (confirmation is not null) pendingRisks.Remove(confirmation.OperationId);
         ClearPreview();
         return applied;
+    }
+
+    private static void RefreshLayout(UiRegistryEntry entry)
+    {
+        entry.NativeElement.UpdateLayout();
+        Window.GetWindow(entry.NativeElement)?.UpdateLayout();
     }
 
     private GeometryRiskAssessment BuildRisk(
@@ -166,13 +215,14 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
         var neighbors = registry.Entries.Where(candidate => candidate.ElementId != entry.ElementId &&
                 !IsAncestor(candidate.ElementId, entry.ElementId) && !IsAncestor(entry.ElementId, candidate.ElementId) && candidate.NativeElement.IsVisible)
             .Select(candidate => new GeometryNeighbor(candidate.ElementId, candidate.DisplayName, candidate.ProtocolType ?? candidate.Kind.ToString(), after[candidate.ElementId],
-                GeometryChanged: Different(before[candidate.ElementId], after[candidate.ElementId])))
+                GeometryChanged: Different(before[candidate.ElementId], after[candidate.ElementId]), PreviousBounds: before[candidate.ElementId]))
             .ToArray();
         return GeometryRiskEvaluator.Evaluate(editMode, request.ChangeId, entry.ScopeId,
             ToTarget(entry, before[entry.ElementId]), after[entry.ElementId],
             group is null ? null : ToTarget(group, after[group.ElementId]),
             parent is null ? null : ToTarget(parent, after[parent.ElementId]),
-            ToTarget(root, after[root.ElementId]), neighbors, $"wpf:{request.ChangeId}");
+            ToTarget(root, after[root.ElementId]), neighbors, $"wpf:{request.ChangeId}", request.Operation,
+            group?.Capabilities.HasFlag(UiCapability.Width) == true);
     }
 
     private IReadOnlyDictionary<string, GeometryBounds> CaptureGeometry()

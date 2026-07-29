@@ -37,7 +37,8 @@ internal static class EditorProtocolPayloadFactory
             entry.SelectionKind,
             entry.SelectionLevels?.ToArray(),
             entry.OperationEffects,
-            entry.OperationAffectedIds));
+            entry.OperationAffectedIds,
+            entry.SpacingTargets));
 
     public static object CreateLayoutStatePayload(LayoutState state)
     {
@@ -47,7 +48,8 @@ internal static class EditorProtocolPayloadFactory
                 new ProtocolElementLayout(element.X, element.Y, element.Width, element.Height, element.Visible),
                 element.TextOffsetX is null && element.TextOffsetY is null && element.FontSize is null
                     ? null
-                    : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize)),
+                    : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize),
+                element.Spacing),
             StringComparer.Ordinal);
 
         return new
@@ -84,7 +86,8 @@ internal static class EditorProtocolPayloadFactory
                 new ProtocolElementLayout(element.X, element.Y, element.Width, element.Height, element.Visible),
                 element.TextOffsetX is null && element.TextOffsetY is null && element.FontSize is null
                     ? null
-                    : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize)),
+                    : new ProtocolTextLayout(element.TextOffsetX, element.TextOffsetY, element.FontSize),
+                element.Spacing),
             StringComparer.Ordinal);
         return new
         {
@@ -133,6 +136,13 @@ internal static class EditorProtocolPayloadFactory
         if (capabilities.HasFlag(UiCapability.TextPosition)) operations.Add(HostAdapterOperations.TextMove);
         if (capabilities.HasFlag(UiCapability.FontSize)) operations.Add(HostAdapterOperations.TextResize);
         if (capabilities.HasFlag(UiCapability.Visibility)) operations.Add(HostAdapterOperations.SetVisibility);
+        if (capabilities.HasFlag(UiCapability.Spacing))
+        {
+            operations.Add(HostAdapterOperations.SpacingIncrease);
+            operations.Add(HostAdapterOperations.SpacingDecrease);
+            operations.Add(HostAdapterOperations.SpacingSet);
+            operations.Add(HostAdapterOperations.SpacingReset);
+        }
         return operations.ToArray();
     }
 
@@ -155,9 +165,10 @@ internal static class EditorProtocolPayloadFactory
         string? SelectionKind,
         string[]? SelectionLevels,
         IReadOnlyDictionary<string, string>? OperationEffects,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds);
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds,
+        IReadOnlyList<string>? SpacingTargets);
 
     private sealed record ProtocolElementLayout(double X, double Y, double Width, double Height, bool Visible);
     private sealed record ProtocolTextLayout(double? OffsetX, double? OffsetY, double? FontSize);
-    private sealed record ProtocolLayoutEntry(ProtocolElementLayout Element, ProtocolTextLayout? Text);
+    private sealed record ProtocolLayoutEntry(ProtocolElementLayout Element, ProtocolTextLayout? Text, IReadOnlyDictionary<string, double>? Spacing);
 }

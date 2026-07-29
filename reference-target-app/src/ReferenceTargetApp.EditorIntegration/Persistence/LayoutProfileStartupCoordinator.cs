@@ -15,11 +15,12 @@ public sealed class LayoutProfileStartupCoordinator(
     IReadOnlyDictionary<string, IHostAdapter> adapters,
     AtomicJsonLayoutProfileStore profileStore,
     ActiveLayoutProfileStore activeProfileStore,
-    bool allowCompatibleRegistryReconciliation = false)
+    bool allowCompatibleRegistryReconciliation = false,
+    IReadOnlyDictionary<string, LayoutState>? declaredBaseline = null)
 {
     public async Task<LayoutProfileStartupResult> RestoreAsync(CancellationToken cancellationToken = default)
     {
-        var baseline = adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
+        var baseline = declaredBaseline ?? adapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
         var profileId = await activeProfileStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         var session = new LayoutProfileSession(adapters, baseline, profileStore, activeProfileStore, profileId,
             allowCompatibleRegistryReconciliation: allowCompatibleRegistryReconciliation);

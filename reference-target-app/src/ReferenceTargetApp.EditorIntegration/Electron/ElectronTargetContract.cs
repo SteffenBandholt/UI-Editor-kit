@@ -59,7 +59,8 @@ public sealed record ElectronTargetContract(
             string.IsNullOrWhiteSpace(SessionId) || ProcessId < 1 || PdfCapability is not ("available" or "unavailable") ||
             PdfCapability == "available" && PdfContract is null || PdfCapability == "unavailable" && PdfContract is not null)
             throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-Ziel-App-Vertrag verletzt M80.");
-        var allowed = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility"], StringComparer.Ordinal);
+        var allowed = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility",
+            "spacingIncrease", "spacingDecrease", "spacingSet", "spacingReset"], StringComparer.Ordinal);
         if (SupportedOperations.Count == 0 || SupportedOperations.Any(operation => !allowed.Contains(operation)))
             throw new ElectronEditorException(ElectronEditorErrorCodes.HandshakeFailed, "Electron-Ziel-App-Operationen sind ungültig.");
         PdfContract?.Validate(ApplicationId);

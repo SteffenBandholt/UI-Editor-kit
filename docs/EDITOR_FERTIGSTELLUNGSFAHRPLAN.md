@@ -358,3 +358,7 @@ M82.1 stabilisiert nach M82 ausschließlich den vorhandenen Ziel-App-Weg: kompat
 ## 11. M82.2 – Geführter und freier Bearbeitungsmodus
 
 M82.2 ersetzt technische Pauschalwarnungen durch einen appübergreifenden Geometrierisikovertrag. Geführt begrenzt auf Wunsch an Gruppe oder Bereich; Frei erlaubt bestätigte sichtbare Grenzverletzungen und Überlappungen. Mathematisch oder vertraglich ungültige Zustände bleiben blockiert. WPF und Electron verwenden denselben Core, ihren vorhandenen HostAdapter, denselben transaktionalen Profilweg und native Vorschauen. BBM ist ausschließlich Referenz- und Abnahme-App. `[A]` setzt alle automatisierten Pflichtläufe und die vollständige sichtbare 58-Schritt-Abnahme voraus.
+
+## 12. M82.3 - Lokale Breitenwirkung und kompakte Editoroberflaeche
+
+M82.3 trennt Elementbreite, reservierten Platz, bewusstes Nachruecken, Gruppenbreite und explizite Abstaende. Der gemeinsame Vertrag wird von WPF und Electron ueber die vorhandenen HostAdapter umgesetzt. Der native UI-/PDF-Editor verwendet bei kleiner, normaler und grosser Inhaltsbreite eine, zwei beziehungsweise drei Spalten, eine feste Aktionsleiste und intern scrollende Auswahlbereiche. Status: `[A] abgenommen`; die vollstaendigen Pflichtlaeufe und die sichtbare gepackte BBM-/PDF-Abnahme sind gruen.

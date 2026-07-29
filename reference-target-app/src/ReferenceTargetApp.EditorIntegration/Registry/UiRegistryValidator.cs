@@ -1,5 +1,7 @@
 namespace ReferenceTargetApp.EditorIntegration.Registry;
 
+using ReferenceTargetApp.EditorIntegration.Geometry;
+
 internal static class UiRegistryValidator
 {
     private const UiCapability AllTextCapabilities =
@@ -8,7 +10,8 @@ internal static class UiRegistryValidator
         UiCapability.Height |
         UiCapability.TextPosition |
         UiCapability.FontSize |
-        UiCapability.Visibility;
+        UiCapability.Visibility |
+        UiCapability.Spacing;
 
     public static IReadOnlyList<UiRegistryValidationError> Validate(IReadOnlyList<UiRegistryEntry> entries)
     {
@@ -35,6 +38,12 @@ internal static class UiRegistryValidator
                 if ((entry.Capabilities & ~allowedCapabilities) != UiCapability.None)
                     Add(errors, UiRegistryValidationErrorCode.InvalidCapability, entry, $"Capabilities are invalid for element kind {entry.Kind}.");
             }
+            var hasSpacing = entry.Capabilities.HasFlag(UiCapability.Spacing);
+            if (hasSpacing && (entry.SpacingTargets is null || entry.SpacingTargets.Count == 0) ||
+                !hasSpacing && entry.SpacingTargets is { Count: > 0 } ||
+                entry.SpacingTargets?.Any(target => !SpacingTargets.All.Contains(target)) == true ||
+                entry.SpacingTargets?.Distinct(StringComparer.Ordinal).Count() != entry.SpacingTargets?.Count)
+                Add(errors, UiRegistryValidationErrorCode.InvalidSpacingTarget, entry, "Spacing capability requires unique, known spacing targets; targets without capability are invalid.");
         }
 
         foreach (var duplicate in entries
@@ -138,11 +147,11 @@ internal static class UiRegistryValidator
 
     private static UiCapability GetAllowedCapabilities(UiElementKind kind) => kind switch
     {
-        UiElementKind.Scope => UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
+        UiElementKind.Scope => UiCapability.Width | UiCapability.Height | UiCapability.Visibility | UiCapability.Spacing,
         UiElementKind.Group or UiElementKind.Area or UiElementKind.FieldGroup =>
-            UiCapability.Position | UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
+            UiCapability.Position | UiCapability.Width | UiCapability.Height | UiCapability.Visibility | UiCapability.Spacing,
         UiElementKind.Table => AllTextCapabilities,
-        UiElementKind.TableColumn => UiCapability.Width | UiCapability.TextPosition | UiCapability.FontSize | UiCapability.Visibility,
+        UiElementKind.TableColumn => UiCapability.Width | UiCapability.TextPosition | UiCapability.FontSize | UiCapability.Visibility | UiCapability.Spacing,
         UiElementKind.StaticText => AllTextCapabilities,
         UiElementKind.InputField => AllTextCapabilities,
         UiElementKind.StatusIndicator => AllTextCapabilities,

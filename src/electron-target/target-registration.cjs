@@ -3,6 +3,7 @@
 const crypto = require("node:crypto");
 const { ELECTRON_EDITOR_ERROR_CODES } = require("./electron-error-codes.cjs");
 const { validateUiElementList } = require("../core/ui-element-validator.cjs");
+const { SPACING_OPERATIONS, SPACING_TARGETS, normalizeSpacingValues } = require("../core/spacing-contract.cjs");
 
 const TARGET_REGISTRATION_STATUSES = Object.freeze([
   "notInstalled",
@@ -43,6 +44,7 @@ function canonicalBaseline(value) {
     else if (current === null) result[key] = null;
     else if (Number.isFinite(Number(current))) result[key] = Number(current);
   }
+  if (Object.prototype.hasOwnProperty.call(value, "spacing")) result.spacing = normalizeSpacingValues(value.spacing);
   return result;
 }
 
@@ -66,6 +68,7 @@ function canonicalElement(scopeId, element) {
     selectionLevels: sortedText(element?.selectionLevels),
     operationEffects,
     operationAffectedIds,
+    spacingTargets: sortedText(element?.spacingTargets),
     geometry: isObject(element?.geometry) ? Object.fromEntries(Object.keys(element.geometry).sort().map((key) => [key, Number(element.geometry[key])])) : {},
   };
 }
@@ -179,13 +182,17 @@ function validateRegistrationSnapshot(snapshot) {
       if (allowed.some((operation) => locked.includes(operation)))
         errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.capabilities`));
       const baseline = element.baseline || {};
+      const capturedBaseline = element.capturedBaseline || {};
+      const baselineDimensionAvailable = (value, captured) =>
+        value === null ? Number.isFinite(Number(captured)) && Number(captured) > 0 : Number.isFinite(Number(value)) && Number(value) > 0;
       const baselineMissing = [
         allowed.includes("move") && (!Number.isFinite(Number(baseline.x)) || !Number.isFinite(Number(baseline.y))),
-        (allowed.includes("resize") || allowed.includes("resizeWidth")) && !Number.isFinite(Number(baseline.width)),
-        (allowed.includes("resize") || allowed.includes("resizeHeight")) && !Number.isFinite(Number(baseline.height)),
+        (allowed.includes("resize") || allowed.includes("resizeWidth")) && !baselineDimensionAvailable(baseline.width, capturedBaseline.width),
+        (allowed.includes("resize") || allowed.includes("resizeHeight")) && !baselineDimensionAvailable(baseline.height, capturedBaseline.height),
         allowed.includes("textMove") && (!Number.isFinite(Number(baseline.textOffsetX)) || !Number.isFinite(Number(baseline.textOffsetY))),
         allowed.includes("textResize") && !Number.isFinite(Number(baseline.fontSize)),
         allowed.includes("setVisibility") && typeof baseline.visible !== "boolean",
+        allowed.some((operation) => SPACING_OPERATIONS.includes(operation)) && (!isObject(baseline.spacing) || sortedText(element.spacingTargets).some((target) => !SPACING_TARGETS.includes(target))),
       ].some(Boolean);
       if (baselineMissing) {
         errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_BASELINE_MISSING, `${elementPrefix}.baseline`));
@@ -313,6 +320,7 @@ function valueForCapabilities(layout, capabilities) {
   if (capabilities.includes("textMove")) { result.textOffsetX = layout.textOffsetX; result.textOffsetY = layout.textOffsetY; }
   if (capabilities.includes("textResize")) result.fontSize = layout.fontSize;
   if (capabilities.includes("setVisibility")) result.visible = layout.visible;
+  if (capabilities.some((operation) => SPACING_OPERATIONS.includes(operation))) result.spacing = normalizeSpacingValues(layout.spacing || {});
   return result;
 }
 

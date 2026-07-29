@@ -18,6 +18,7 @@ public static class GeometryRiskTypes
     public const string LeavesEditableArea = "leavesEditableArea";
     public const string GroupOverlap = "groupOverlap";
     public const string UnusualSpacing = "unusualSpacing";
+    public const string FreedSpace = "freedSpace";
 }
 
 public static class GeometryRiskActions
@@ -27,6 +28,9 @@ public static class GeometryRiskActions
     public const string ApplyAnyway = "applyAnyway";
     public const string GoBack = "goBack";
     public const string Cancel = "cancel";
+    public const string PreserveSpace = "preserveSpace";
+    public const string ReflowNeighbors = "reflowNeighbors";
+    public const string ShrinkGroup = "shrinkGroup";
 }
 
 public sealed record GeometryBounds(double Left, double Top, double Width, double Height)
@@ -37,7 +41,7 @@ public sealed record GeometryBounds(double Left, double Top, double Width, doubl
 }
 
 public sealed record GeometryTarget(string ElementId, string DisplayName, string ElementType, GeometryBounds Bounds);
-public sealed record GeometryNeighbor(string ElementId, string DisplayName, string ElementType, GeometryBounds Bounds, GeometryBounds? OverlapBounds = null, bool GeometryChanged = false);
+public sealed record GeometryNeighbor(string ElementId, string DisplayName, string ElementType, GeometryBounds Bounds, GeometryBounds? OverlapBounds = null, bool GeometryChanged = false, GeometryBounds? PreviousBounds = null);
 public sealed record GeometryRisk(string RiskType, GeometryTarget? Subject = null);
 public sealed record GeometryPreview(GeometryBounds CurrentBounds, GeometryBounds TargetBounds, GeometryBounds? GroupBounds, GeometryBounds? AreaBounds);
 public sealed record GeometryTechnicalDetails(
@@ -54,7 +58,9 @@ public sealed record GeometryTechnicalDetails(
     GeometryBounds? TargetBounds = null,
     string? ErrorCode = null,
     JsonElement? HostAdapterReadback = null,
-    string? RollbackStatus = null);
+    string? RollbackStatus = null,
+    double FreedWidth = 0,
+    string? SpacingTarget = null);
 
 public sealed record GeometryRiskAssessment(
     bool HasRisks,
@@ -83,6 +89,9 @@ public enum GeometryRiskDecision
     ClampToGroup,
     ClampToArea,
     ApplyAnyway,
+    PreserveSpace,
+    ReflowNeighbors,
+    ShrinkGroup,
     GoBack,
     Cancel
 }
@@ -94,6 +103,9 @@ public static class GeometryRiskDecisionExtensions
         GeometryRiskDecision.ClampToGroup => GeometryRiskActions.ClampToGroup,
         GeometryRiskDecision.ClampToArea => GeometryRiskActions.ClampToArea,
         GeometryRiskDecision.ApplyAnyway => GeometryRiskActions.ApplyAnyway,
+        GeometryRiskDecision.PreserveSpace => GeometryRiskActions.PreserveSpace,
+        GeometryRiskDecision.ReflowNeighbors => GeometryRiskActions.ReflowNeighbors,
+        GeometryRiskDecision.ShrinkGroup => GeometryRiskActions.ShrinkGroup,
         GeometryRiskDecision.GoBack => GeometryRiskActions.GoBack,
         _ => GeometryRiskActions.Cancel,
     };
@@ -119,7 +131,9 @@ public static class GeometryRiskEvaluator
         GeometryTarget? parent,
         GeometryTarget? editableArea,
         IReadOnlyList<GeometryNeighbor> neighbors,
-        string? rollbackToken = null)
+        string? rollbackToken = null,
+        string? operation = null,
+        bool groupWidthEditable = false)
     {
         if (string.IsNullOrWhiteSpace(operationId)) throw new ArgumentException("operationId fehlt.", nameof(operationId));
         if (!target.Bounds.IsValid || !targetBounds.IsValid) throw new ArgumentException("Zielgeometrie ist ungültig.", nameof(targetBounds));
@@ -128,6 +142,9 @@ public static class GeometryRiskEvaluator
         if (parent is not null && !Contains(parent.Bounds, targetBounds)) Add(risks, GeometryRiskTypes.LeavesParent, parent);
         if (editableArea is not null && !Contains(editableArea.Bounds, targetBounds)) Add(risks, GeometryRiskTypes.LeavesEditableArea, editableArea);
         var normalizedNeighbors = neighbors.Select(item => item with { OverlapBounds = Intersection(targetBounds, item.Bounds) }).ToArray();
+        var freedWidth = target.Bounds.Width - targetBounds.Width;
+        if (operation == "resizeWidth" && freedWidth > 0.01 && normalizedNeighbors.Any(item => item.GeometryChanged))
+            Add(risks, GeometryRiskTypes.FreedSpace, null);
         foreach (var neighbor in normalizedNeighbors)
         {
             var next = Area(neighbor.OverlapBounds);
@@ -141,25 +158,36 @@ public static class GeometryRiskEvaluator
                 if (target.ElementType is "group" or "fieldGroup" && neighbor.ElementType is "group" or "fieldGroup")
                     Add(risks, GeometryRiskTypes.GroupOverlap, new(neighbor.ElementId, neighbor.DisplayName, neighbor.ElementType, neighbor.Bounds));
             }
-            else if (neighbor.GeometryChanged)
+            else if (freedWidth > 0.01 && neighbor.GeometryChanged)
                 Add(risks, GeometryRiskTypes.EntersNeighborArea, new(neighbor.ElementId, neighbor.DisplayName, neighbor.ElementType, neighbor.Bounds));
         }
         if (Math.Sqrt(Math.Pow(targetBounds.Left - target.Bounds.Left, 2) + Math.Pow(targetBounds.Top - target.Bounds.Top, 2)) > Math.Max(target.Bounds.Width, target.Bounds.Height) * 4)
             Add(risks, GeometryRiskTypes.UnusualSpacing, null);
         var normalizedMode = GeometryEditModes.Normalize(editMode);
         var actions = new List<string>();
-        if (normalizedMode == GeometryEditModes.Guided && risks.Any(item => item.RiskType == GeometryRiskTypes.LeavesGroup)) actions.Add(GeometryRiskActions.ClampToGroup);
-        if (normalizedMode == GeometryEditModes.Guided && risks.Any(item => item.RiskType is GeometryRiskTypes.LeavesParent or GeometryRiskTypes.LeavesEditableArea)) actions.Add(GeometryRiskActions.ClampToArea);
-        actions.Add(GeometryRiskActions.ApplyAnyway);
-        if (risks.Any(item => item.RiskType is GeometryRiskTypes.EntersNeighborArea or GeometryRiskTypes.OverlapsNeighbor or GeometryRiskTypes.GroupOverlap)) actions.Add(GeometryRiskActions.GoBack);
-        actions.Add(GeometryRiskActions.Cancel);
+        if (risks.Any(item => item.RiskType == GeometryRiskTypes.FreedSpace))
+        {
+            actions.Add(GeometryRiskActions.PreserveSpace);
+            actions.Add(GeometryRiskActions.ReflowNeighbors);
+            if (groupWidthEditable) actions.Add(GeometryRiskActions.ShrinkGroup);
+            actions.Add(GeometryRiskActions.Cancel);
+        }
+        else
+        {
+            if (normalizedMode == GeometryEditModes.Guided && risks.Any(item => item.RiskType == GeometryRiskTypes.LeavesGroup)) actions.Add(GeometryRiskActions.ClampToGroup);
+            if (normalizedMode == GeometryEditModes.Guided && risks.Any(item => item.RiskType is GeometryRiskTypes.LeavesParent or GeometryRiskTypes.LeavesEditableArea)) actions.Add(GeometryRiskActions.ClampToArea);
+            actions.Add(GeometryRiskActions.ApplyAnyway);
+            if (risks.Any(item => item.RiskType is GeometryRiskTypes.EntersNeighborArea or GeometryRiskTypes.OverlapsNeighbor or GeometryRiskTypes.GroupOverlap)) actions.Add(GeometryRiskActions.GoBack);
+            actions.Add(GeometryRiskActions.Cancel);
+        }
         var (title, message) = Describe(risks.FirstOrDefault(), target, group, parent, editableArea);
         return new(risks.Count > 0, normalizedMode, risks.FirstOrDefault()?.RiskType, risks, title, message,
             target with { Bounds = targetBounds }, group, parent, editableArea, normalizedNeighbors,
             actions.Distinct(StringComparer.Ordinal).ToArray(),
             new(target.ElementId, group?.ElementId, parent?.ElementId, editableArea?.ElementId, scopeId,
                 AffectedElementIds: normalizedNeighbors.Select(item => item.ElementId).ToArray(), CurrentBounds: target.Bounds,
-                TargetBounds: targetBounds, RollbackStatus: "guaranteed"),
+                TargetBounds: targetBounds, RollbackStatus: "guaranteed", FreedWidth: Math.Max(0, freedWidth),
+                SpacingTarget: freedWidth > 0 ? SpacingTargets.ReservedWidth : null),
             operationId, rollbackToken,
             new(target.Bounds, targetBounds, group?.Bounds, editableArea?.Bounds ?? parent?.Bounds),
             group is null ? null : Clamp(targetBounds, group.Bounds),
@@ -194,6 +222,7 @@ public static class GeometryRiskEvaluator
         GeometryRiskTypes.LeavesEditableArea => ("Element verlässt den bearbeitbaren Bereich", $"Ein Teil des Elements liegt künftig außerhalb des Bereichs „{area?.DisplayName ?? "bearbeitbarer Bereich"}“."),
         GeometryRiskTypes.GroupOverlap => ("Gruppe überlappt eine andere Gruppe", $"Die Gruppe „{target.DisplayName}“ überlappt „{risk.Subject?.DisplayName ?? "eine Nachbargruppe"}“."),
         GeometryRiskTypes.UnusualSpacing => ("Ungewöhnlich großer Abstand", $"Das Element „{target.DisplayName}“ wird ungewöhnlich weit von seinem bisherigen Bereich verschoben."),
+        GeometryRiskTypes.FreedSpace => ("Platz innerhalb der Gruppe", $"Das Feld „{target.DisplayName}“ wird schmaler. Was soll mit dem frei werdenden Platz geschehen?"),
         _ => (string.Empty, string.Empty),
     };
 }

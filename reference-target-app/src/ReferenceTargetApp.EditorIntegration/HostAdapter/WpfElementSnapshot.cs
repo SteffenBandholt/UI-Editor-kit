@@ -5,9 +5,11 @@ namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 internal sealed record WpfElementSnapshot(
     object Width,
     object Height,
+    object Margin,
     object RenderTransform,
     DependencyProperty? PaddingProperty,
     object? Padding,
     DependencyProperty? FontSizeProperty,
     object? FontSize,
-    object Visibility);
+    object Visibility,
+    IReadOnlyDictionary<string, double> Spacing);

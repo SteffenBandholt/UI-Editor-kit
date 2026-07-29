@@ -22,4 +22,5 @@ public sealed record UiRegistryEntry(
     string? SelectionKind = null,
     IReadOnlyList<string>? SelectionLevels = null,
     IReadOnlyDictionary<string, string>? OperationEffects = null,
-    IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null);
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null,
+    IReadOnlyList<string>? SpacingTargets = null);

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 
 namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 
@@ -16,12 +17,14 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
         return new WpfElementSnapshot(
             entry.NativeElement.ReadLocalValue(FrameworkElement.WidthProperty),
             entry.NativeElement.ReadLocalValue(FrameworkElement.HeightProperty),
+            entry.NativeElement.ReadLocalValue(FrameworkElement.MarginProperty),
             entry.NativeElement.ReadLocalValue(UIElement.RenderTransformProperty),
             paddingProperty,
             paddingProperty is null ? null : entry.NativeElement.ReadLocalValue(paddingProperty),
             fontSizeProperty,
             fontSizeProperty is null ? null : entry.NativeElement.ReadLocalValue(fontSizeProperty),
-            entry.NativeElement.ReadLocalValue(UIElement.VisibilityProperty));
+            entry.NativeElement.ReadLocalValue(UIElement.VisibilityProperty),
+            WpfSpacingState.Read(entry.NativeElement));
     }
 
     public ElementLayoutState Read(UiRegistryEntry entry)
@@ -41,7 +44,8 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             padding?.Left,
             padding?.Top,
             fontSize,
-            element.Visibility == Visibility.Visible);
+            element.Visibility == Visibility.Visible,
+            new Dictionary<string, double>(WpfSpacingState.Read(element), StringComparer.Ordinal));
     }
 
     public void Apply(UiRegistryEntry entry, ValidatedLayoutChange change)
@@ -78,6 +82,12 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             case HostAdapterOperations.SetVisibility:
                 element.Visibility = change.Visible == true ? Visibility.Visible : Visibility.Collapsed;
                 break;
+            case HostAdapterOperations.SpacingIncrease:
+            case HostAdapterOperations.SpacingDecrease:
+            case HostAdapterOperations.SpacingSet:
+            case HostAdapterOperations.SpacingReset:
+                ApplySpacing(element, change);
+                break;
             default:
                 throw new InvalidOperationException($"Operation '{change.Operation}' ist nicht implementiert.");
         }
@@ -89,12 +99,54 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
         EnsureUiThread(element);
         RestoreLocalValue(element, FrameworkElement.WidthProperty, snapshot.Width);
         RestoreLocalValue(element, FrameworkElement.HeightProperty, snapshot.Height);
+        RestoreLocalValue(element, FrameworkElement.MarginProperty, snapshot.Margin);
         RestoreLocalValue(element, UIElement.RenderTransformProperty, snapshot.RenderTransform);
         if (snapshot.PaddingProperty is not null && snapshot.Padding is not null)
             RestoreLocalValue(element, snapshot.PaddingProperty, snapshot.Padding);
         if (snapshot.FontSizeProperty is not null && snapshot.FontSize is not null)
             RestoreLocalValue(element, snapshot.FontSizeProperty, snapshot.FontSize);
         RestoreLocalValue(element, UIElement.VisibilityProperty, snapshot.Visibility);
+        if (snapshot.Spacing.Count == 0) WpfSpacingState.Clear(element); else WpfSpacingState.Write(element, snapshot.Spacing);
+    }
+
+    private static void ApplySpacing(FrameworkElement element, ValidatedLayoutChange change)
+    {
+        var target = change.SpacingTarget ?? throw new InvalidOperationException("Abstandsziel fehlt.");
+        var previous = WpfSpacingState.Read(element);
+        var values = previous.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        var oldValue = values.GetValueOrDefault(target);
+        var requested = change.SpacingValue ?? 0;
+        var nextValue = change.Operation switch
+        {
+            HostAdapterOperations.SpacingIncrease => oldValue + requested,
+            HostAdapterOperations.SpacingDecrease => Math.Max(0, oldValue - requested),
+            HostAdapterOperations.SpacingSet => requested,
+            HostAdapterOperations.SpacingReset => 0,
+            _ => throw new InvalidOperationException("Abstandsoperation ist nicht implementiert."),
+        };
+        if (nextValue == 0) values.Remove(target); else values[target] = nextValue;
+
+        var margin = element.Margin;
+        var oldLeft = previous.GetValueOrDefault(SpacingTargets.BeforeElement);
+        var oldRight = previous.GetValueOrDefault(SpacingTargets.AfterElement) + previous.GetValueOrDefault(SpacingTargets.ReservedWidth);
+        var oldBottom = previous.GetValueOrDefault(SpacingTargets.ReservedHeight);
+        var newLeft = values.GetValueOrDefault(SpacingTargets.BeforeElement);
+        var newRight = values.GetValueOrDefault(SpacingTargets.AfterElement) + values.GetValueOrDefault(SpacingTargets.ReservedWidth);
+        var newBottom = values.GetValueOrDefault(SpacingTargets.ReservedHeight);
+        element.Margin = new(Math.Max(0, margin.Left - oldLeft + newLeft), margin.Top,
+            Math.Max(0, margin.Right - oldRight + newRight), Math.Max(0, margin.Bottom - oldBottom + newBottom));
+
+        var padding = ReadPadding(element);
+        if (padding is not null)
+        {
+            var oldPadding = new Thickness(previous.GetValueOrDefault(SpacingTargets.GroupPaddingLeft), previous.GetValueOrDefault(SpacingTargets.GroupPaddingTop),
+                previous.GetValueOrDefault(SpacingTargets.GroupPaddingRight), previous.GetValueOrDefault(SpacingTargets.GroupPaddingBottom));
+            var newPadding = new Thickness(values.GetValueOrDefault(SpacingTargets.GroupPaddingLeft), values.GetValueOrDefault(SpacingTargets.GroupPaddingTop),
+                values.GetValueOrDefault(SpacingTargets.GroupPaddingRight), values.GetValueOrDefault(SpacingTargets.GroupPaddingBottom));
+            SetPadding(element, new(Math.Max(0, padding.Value.Left - oldPadding.Left + newPadding.Left), Math.Max(0, padding.Value.Top - oldPadding.Top + newPadding.Top),
+                Math.Max(0, padding.Value.Right - oldPadding.Right + newPadding.Right), Math.Max(0, padding.Value.Bottom - oldPadding.Bottom + newPadding.Bottom)));
+        }
+        WpfSpacingState.Write(element, values);
     }
 
     private static (double X, double Y) ReadPosition(FrameworkElement element)

@@ -148,7 +148,8 @@ public sealed class AtomicJsonLayoutProfileStore
                     entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? previous?.TextOffsetX ?? fallback.TextOffsetX : null,
                     entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? previous?.TextOffsetY ?? fallback.TextOffsetY : null,
                     entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? previous?.FontSize ?? fallback.FontSize : null,
-                    entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? previous?.Visible ?? fallback.Visible : null);
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? previous?.Visible ?? fallback.Visible : null,
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Spacing) ? previous?.Spacing ?? fallback.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null);
             }).ToArray();
             var reconciledOperations = sourceScope?.ExplicitOperations?
                 .Where(operation => baseline.ContainsKey(operation.Key))

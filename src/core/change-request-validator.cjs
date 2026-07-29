@@ -4,6 +4,7 @@ const {
   CHANGE_REQUEST_REQUIRED_FIELDS,
   getForbiddenChangeRequestFields,
 } = require("./change-request-model.cjs");
+const { SPACING_OPERATIONS, SPACING_TARGETS, validateSpacingIntent } = require("./spacing-contract.cjs");
 
 const ALLOWED_LAYOUT_PAYLOAD_FIELDS = Object.freeze([
   "x",
@@ -22,6 +23,10 @@ const CONDITIONAL_LAYOUT_PAYLOAD_FIELDS = Object.freeze(["visibility", "label"])
 
 const OPERATION_PAYLOAD_FIELDS = Object.freeze({
   setVisibility: Object.freeze(["visible"]),
+  spacingIncrease: Object.freeze(["spacing"]),
+  spacingDecrease: Object.freeze(["spacing"]),
+  spacingSet: Object.freeze(["spacing"]),
+  spacingReset: Object.freeze(["spacing"]),
 });
 
 function isPlainRequestObject(value) {
@@ -121,6 +126,11 @@ function validatePayloadFields(changeRequest, errors) {
     errors.push(createError(changeRequest, "invalid_payload", "setVisibility erwartet payload.visible als Boolean.", {
       field: "payload.visible",
     }));
+  }
+
+  if (SPACING_OPERATIONS.includes(changeRequest.operation)) {
+    const spacingResult = validateSpacingIntent(changeRequest.operation, changeRequest.payload, SPACING_TARGETS);
+    spacingResult.errors.forEach((error) => errors.push(createError(changeRequest, error.code, "Layoutabstand ist ungueltig oder nicht freigegeben.", { field: error.field })));
   }
 
   if (hasOwn(changeRequest.payload, "text")) {

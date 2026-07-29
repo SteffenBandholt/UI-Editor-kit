@@ -210,3 +210,16 @@ Jede Layoutoperation muss als `elementOnly`, `groupWithChildren`, `layoutZone`, 
 - PDF-Hinweise verwenden dieselbe Meldungsstruktur; technische PDF-Gültigkeitsregeln bleiben verbindlich.
 
 Details: `docs/M82_2_GEFUEHRT_FREI_BEARBEITEN.md`.
+
+## Lokale Breitenwirkung und Spacing ab M82.3
+
+- `resizeWidth` aendert zunaechst nur die Breite des gewaehlten Elements.
+- Frei werdender Platz wird nur nach ausdruecklicher Entscheidung als `reservedWidth` erhalten, fuer bewusstes Nachruecken freigegeben oder zusammen mit einer editierbaren Gruppenbreite reduziert.
+- `spacingTarget` ist auf `beforeElement`, `afterElement`, Gruppenpadding, horizontalen/vertikalen Kindabstand sowie reservierte Breite/Hoehe begrenzt.
+- `spacingIncrease`, `spacingDecrease`, `spacingSet` und `spacingReset` sind eigenstaendige capability-gesteuerte Operationen.
+- Die Ziel-App bildet Spacing frameworkgerecht ab und muss Ziel, Gruppe, Nachbarpositionen und Nachbargroessen zuruecklesen. Nicht bestaetigte Wirkungen rollen vollstaendig zurueck.
+- Spacing veraendert weder Registry-Parents noch Fachwerte. Gruppenbreite und -hoehe bleiben getrennte Geometrieoperationen.
+- Eine einmalig vor Start-Restore erfasste responsive `capturedBaseline` darf fehlende statische Breite/Hoehe ergaenzen. Sie ist nicht Teil des Registry-Fingerprints.
+- Der native gemeinsame Editor ordnet seinen Workspace bei kleiner, normaler und grosser Inhaltsbreite in einer, zwei beziehungsweise drei Spalten an. Aktionsleiste und Status bleiben ausserhalb des scrollenden Inhalts sichtbar.
+
+Details: `docs/M82_3_SPACER_UND_KOMPAKTE_EDITOR_UI.md`.
