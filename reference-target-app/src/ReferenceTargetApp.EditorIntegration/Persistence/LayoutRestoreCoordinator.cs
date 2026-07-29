@@ -213,8 +213,30 @@ public sealed class LayoutRestoreCoordinator
                 }, source, sequence++));
             }
         }
+        if (desired.Table is { } table)
+        {
+            if (entry.TableColumnLayout is not null)
+            {
+                if (Allows(HostAdapterOperations.SetColumnWidthMode) && table.WidthMode is not null)
+                    requests.Add(Request(entry, HostAdapterOperations.SetColumnWidthMode, TablePayload("widthMode", table.WidthMode), source, sequence++));
+                if (Allows(HostAdapterOperations.SetColumnWrapMode) && table.WrapMode is not null)
+                    requests.Add(Request(entry, HostAdapterOperations.SetColumnWrapMode, TablePayload("wrapMode", table.WrapMode), source, sequence++));
+                if (Allows(HostAdapterOperations.SetColumnOverflowMode) && table.OverflowMode is not null)
+                    requests.Add(Request(entry, HostAdapterOperations.SetColumnOverflowMode, TablePayload("overflowMode", table.OverflowMode), source, sequence++));
+            }
+            if (entry.TableLayout is not null)
+            {
+                if (Allows(HostAdapterOperations.SetHorizontalOverflowMode) && table.HorizontalOverflowMode is not null)
+                    requests.Add(Request(entry, HostAdapterOperations.SetHorizontalOverflowMode, TablePayload("horizontalOverflowMode", table.HorizontalOverflowMode), source, sequence++));
+                if (Allows(HostAdapterOperations.SetRowHeightMode) && table.RowHeightMode is not null)
+                    requests.Add(Request(entry, HostAdapterOperations.SetRowHeightMode, TablePayload("rowHeightMode", table.RowHeightMode), source, sequence++));
+            }
+        }
         return requests;
     }
+
+    private static IReadOnlyDictionary<string, object?> TablePayload(string field, object value) =>
+        new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?> { [field] = value } };
 
     private static ChangeRequest Request(
         UiRegistryEntry entry,

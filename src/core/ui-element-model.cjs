@@ -8,7 +8,15 @@ const UI_ELEMENT_TYPES = Object.freeze([
   "component",
   "componentPart",
   "table",
+  "tableHeader",
+  "tableBody",
+  "tableRow",
   "tableColumn",
+  "tableHeaderCell",
+  "tableDataCell",
+  "tableFooter",
+  "tableViewport",
+  "horizontalScrollArea",
   "list",
   "card",
   "dialog",
@@ -42,6 +50,14 @@ const UI_ELEMENT_ROLES = Object.freeze([
   "fieldLabel",
   "dataFieldLayout",
   "contentTable",
+  "tableHeader",
+  "tableBody",
+  "tableRow",
+  "tableHeaderCell",
+  "tableDataCell",
+  "tableFooter",
+  "tableViewport",
+  "horizontalScrollArea",
   "contentColumn",
   "metaColumn",
   "domainActionLayout",
@@ -62,6 +78,15 @@ const UI_ELEMENT_OPERATIONS = Object.freeze([
   "spacingDecrease",
   "spacingSet",
   "spacingReset",
+  "fitTableToViewport",
+  "resizeColumnsProportionally",
+  "setHorizontalOverflowMode",
+  "setColumnWidthMode",
+  "setColumnWrapMode",
+  "setColumnOverflowMode",
+  "setRowHeightMode",
+  "resetTableColumn",
+  "resetTable",
   "reorder",
   "rename",
   "changeWidth",
@@ -104,6 +129,10 @@ const UI_ELEMENT_OPTIONAL_FIELDS = Object.freeze([
   "operationAffectedIds",
   "geometry",
   "spacingTargets",
+  "tableLayout",
+  "tableColumnLayout",
+  "tableBinding",
+  "rowLayout",
 ]);
 
 const UI_ELEMENT_ARRAY_FIELDS = Object.freeze(["allowedOps", "lockedOps", "selectionLevels", "spacingTargets"]);
@@ -118,6 +147,10 @@ function hasOwn(source, key) {
 function cloneFieldValue(fieldName, value) {
   if (UI_ELEMENT_ARRAY_FIELDS.includes(fieldName) && Array.isArray(value)) {
     return value.slice();
+  }
+
+  if (["tableLayout", "tableColumnLayout", "tableBinding", "rowLayout"].includes(fieldName) && value && typeof value === "object") {
+    return JSON.parse(JSON.stringify(value));
   }
 
   return value;

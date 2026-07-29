@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 
@@ -12,4 +14,7 @@ internal sealed record WpfElementSnapshot(
     DependencyProperty? FontSizeProperty,
     object? FontSize,
     object Visibility,
-    IReadOnlyDictionary<string, double> Spacing);
+    IReadOnlyDictionary<string, double> Spacing,
+    DataGridLength? TableColumnWidth = null,
+    TableColumnLayoutDefinition? TableColumnLayout = null,
+    TableLayoutDefinition? TableLayout = null);

@@ -290,3 +290,11 @@ Beim Erhalt freien Platzes muss der Adapter vor und nach dem Apply Ziel-, Gruppe
 Responsive Ziel-Apps duerfen eine nicht statisch deklarierbare Breite/Hoehe einmalig vor dem Profil-Restore als `capturedBaseline` uebermitteln. Das Feld ist nur Reset-/Recoveryhilfe und darf den Registry-Fingerprint nicht veraendern. Save, Restore, Discard und Reset bleiben der vorhandene Profilweg.
 
 Der gemeinsame native Workspace passt sich an die verfuegbare Inhaltsbreite an. Ziel-App-Adapter liefern dafuer keine eigene Editoroberflaeche und keine zweite UI-/PDF-Layoutlogik.
+
+## HostAdapter-Anbindung für M82.4
+
+Eine Ziel-App registriert echte Inhaltstabellen ausdrücklich mit vollständiger Parentstruktur und bestätigter sichtbarer Spaltenreihenfolge. Jede `tableColumn` verweist auf genau eine Headerzelle und einen Datenzellenbereich; beide verwenden die Spalten-ID als `widthSourceId`. Bedienlisten und automatisch erkannte Tabellen sind ausgeschlossen.
+
+Der Adapter bildet Breite, Breitenmodus, Umbruch, Ellipsis, Zeilenhöhe und horizontalen Überlauf mit den nativen Frameworkmitteln ab. Er misst Viewport, Tabelleninhalt, reservierte Flächen und Scrollbar getrennt, zeigt Überlauf vor einer Anpassung und liest Header-/Datenausrichtung nach der Änderung zurück. WPF verwendet eine gemeinsame `DataGridColumn`; Electron kann einen gemeinsamen CSS-Grid-Track verwenden. Persistenz, Reset, Discard und Rollback bleiben im bestehenden Layoutprofilweg.
+
+Details: `docs/M82_4_TABELLEN_UND_SPALTENBEARBEITUNG.md`.

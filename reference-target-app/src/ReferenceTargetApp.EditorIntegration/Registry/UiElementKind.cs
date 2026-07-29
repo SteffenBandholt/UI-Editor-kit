@@ -11,5 +11,13 @@ public enum UiElementKind
     Area,
     FieldGroup,
     Table,
-    TableColumn
+    TableHeader,
+    TableBody,
+    TableRow,
+    TableColumn,
+    TableHeaderCell,
+    TableDataCell,
+    TableFooter,
+    TableViewport,
+    HorizontalScrollArea
 }

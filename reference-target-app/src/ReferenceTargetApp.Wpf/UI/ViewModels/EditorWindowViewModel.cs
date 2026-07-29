@@ -12,6 +12,8 @@ using ReferenceTargetApp.EditorIntegration.Session;
 using ReferenceTargetApp.EditorIntegration.Geometry;
 using System.Text.Json;
 using ReferenceTargetApp.UI.Editor;
+using ReferenceTargetApp.EditorIntegration.Tables;
+using ReferenceTargetApp.EditorIntegration.HostAdapter;
 
 namespace ReferenceTargetApp.UI.ViewModels;
 
@@ -44,6 +46,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private string editMode = GeometryEditModes.Guided;
     private string technicalDetails = string.Empty;
     private IReadOnlyList<string> selectedSpacingTargets = [];
+    private string columnWidthText = string.Empty;
 
     public EditorWindowViewModel(
         EditorProcessCoordinator coordinator,
@@ -71,6 +74,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         DirectionCommand = new AsyncCommand(ApplyDirectionAsync, parameter => CanUseDirection(parameter as string));
         ToggleVisibilityCommand = new AsyncCommand(_ => ToggleVisibilityAsync(), _ => CanChangeVisibility);
         SpacingCommand = new AsyncCommand(ApplySpacingAsync, parameter => CanUseSpacing(parameter as string));
+        TableCommand = new AsyncCommand(ApplyTableAsync, parameter => CanUseTableOperation(parameter as string));
+        ApplyColumnWidthCommand = new AsyncCommand(_ => ApplyColumnWidthAsync(), _ => CanApplyColumnWidth);
+        SelectWholeColumnCommand = new AsyncCommand(_ => SelectWholeColumnAsync(), _ => CanSelectWholeColumn);
         SaveCommand = new AsyncCommand(_ => SaveAsync(), _ => CanOperate && IsDirty);
         LoadCommand = new AsyncCommand(_ => RunLayoutActionAsync(() => layoutSession.LoadAsync(lifetimeToken), "Profil wurde geladen.", acceptRefreshedTargetAsSaved: layoutSession.AcceptCurrentTargetAsSaved), _ => CanOperate);
         DiscardElementCommand = new AsyncCommand(_ => DiscardElementAsync(), _ => CanOperate && CanDiscardElement);
@@ -109,6 +115,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ICommand DirectionCommand { get; }
     public ICommand ToggleVisibilityCommand { get; }
     public ICommand SpacingCommand { get; }
+    public ICommand TableCommand { get; }
+    public ICommand ApplyColumnWidthCommand { get; }
+    public ICommand SelectWholeColumnCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand LoadCommand { get; }
     public ICommand DiscardElementCommand { get; }
@@ -170,6 +179,19 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public bool CanChildGapHorizontal => HasSpacingTarget("childGapHorizontal");
     public bool CanChildGapVertical => HasSpacingTarget("childGapVertical");
     public string SpacingStatus { get; private set; } = "Keine Abstandsoperation verfügbar";
+    public bool IsTableTarget => state?.Details?.TableLayout is not null || state?.Details?.TableColumnLayout is not null || state?.Details?.TableBinding is not null;
+    public bool IsTableLayout => state?.Details?.TableLayout is not null;
+    public bool IsTableColumn => state?.Details?.TableColumnLayout is not null;
+    public bool CanSelectWholeColumn => CanOperate && state?.Details?.TableBinding?.TryGetValue("columnId", out var columnId) == true && !string.IsNullOrWhiteSpace(columnId);
+    public string TableGeometryStatus { get; private set; } = "Keine Tabelle ausgewählt";
+    public string ColumnModeStatus { get; private set; } = "Keine Spalte ausgewählt";
+    public string ColumnWidthText
+    {
+        get => columnWidthText;
+        set { if (Set(ref columnWidthText, value)) { OnPropertyChanged(nameof(CanApplyColumnWidth)); RaiseCommandStates(); } }
+    }
+    public bool CanApplyColumnWidth => IsTableColumn && CanOperate && double.TryParse(ColumnWidthText, NumberStyles.Float, CultureInfo.CurrentCulture, out var width) &&
+        state?.Details?.TableColumnLayout is { } column && width >= column.MinimumWidth && width <= column.MaximumWidth;
     public bool LeftEnabled { get; private set; }
     public bool RightEnabled { get; private set; }
     public bool UpEnabled { get; private set; }
@@ -481,6 +503,127 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         finally { RunOnUi(() => IsBusy = false); }
     }
 
+    private bool CanUseTableOperation(string? parameter)
+    {
+        if (!CanOperate || string.IsNullOrWhiteSpace(parameter) || state?.Details?.Operations is null) return false;
+        var operation = parameter.Split(':')[0];
+        if (operation == "columnWidth") return IsTableColumn && state.Details.Operations.AvailableOps.Contains(HostAdapterOperations.ResizeWidth, StringComparer.Ordinal);
+        if (operation == "fitSelectedColumn") return IsTableColumn && state.Details.TableBinding?.ContainsKey("tableId") == true && state.Details.Operations.AvailableOps.Contains(HostAdapterOperations.ResizeWidth, StringComparer.Ordinal);
+        return state.Details.Operations.AvailableOps.Contains(operation, StringComparer.Ordinal);
+    }
+
+    private async Task SelectWholeColumnAsync()
+    {
+        if (state?.Details?.TableBinding?.TryGetValue("columnId", out var columnId) != true || string.IsNullOrWhiteSpace(columnId)) return;
+        await SelectElementAsync(columnId);
+        StatusMessage = "Die ganze Spalte wurde ausgewählt; Überschrift und Datenbereich verwenden dieselbe Breitenquelle.";
+    }
+
+    private async Task ApplyColumnWidthAsync()
+    {
+        if (!CanApplyColumnWidth || !double.TryParse(ColumnWidthText, NumberStyles.Float, CultureInfo.CurrentCulture, out var width)) return;
+        await SubmitTableChangeAsync(HostAdapterOperations.ResizeWidth,
+            new Dictionary<string, object?> { ["width"] = width }, "Spaltenbreite wurde auf den genauen Wert gesetzt.");
+    }
+
+    private async Task ApplyTableAsync(object? parameter)
+    {
+        if (parameter is not string value || !CanUseTableOperation(value)) return;
+        var parts = value.Split(':', 2);
+        var operation = parts[0];
+        var argument = parts.Length > 1 ? parts[1] : string.Empty;
+        if (operation == "columnWidth")
+        {
+            var column = state?.Details?.TableColumnLayout;
+            var current = state?.Details?.CurrentLayout.Element?.Width;
+            if (column is null || current is null) return;
+            var width = argument switch
+            {
+                "decrease" => Math.Max(column.MinimumWidth, current.Value - lastValidStep),
+                "increase" => Math.Min(column.MaximumWidth, current.Value + lastValidStep),
+                "minimum" => column.MinimumWidth,
+                "maximum" => column.MaximumWidth,
+                _ => current.Value,
+            };
+            if (width > current &&
+                !dialogService.Confirm(getOwner()!, "Spalte verbreitern", "Die Spalte wird breiter. Dadurch kann die Tabelle den sichtbaren Bereich überschreiten. Trotzdem fortfahren?")) return;
+            await SubmitTableChangeAsync(HostAdapterOperations.ResizeWidth,
+                new Dictionary<string, object?> { ["width"] = width }, $"Spaltenbreite wurde auf {width:G} DIP gesetzt.");
+            return;
+        }
+        if (operation == "fitSelectedColumn")
+        {
+            if (state?.Details?.TableBinding?.TryGetValue("tableId", out var tableId) != true || string.IsNullOrWhiteSpace(tableId)) return;
+            var current = state.Details.CurrentLayout.Table;
+            var preview = current?.ViewportWidth is null || current.TableWidth is null || current.Overflow is null
+                ? "Nur die ausgewählte Spalte wird bis zu ihrer Mindestbreite verkleinert."
+                : $"Vorschau: sichtbarer Bereich {current.ViewportWidth:G} DIP, Tabelle {current.TableWidth:G} DIP, Überlauf {current.Overflow:G} DIP.";
+            if (!dialogService.Confirm(getOwner()!, "Nur ausgewählte Spalte verkleinern", preview + "\n\nFortfahren?")) return;
+            await SubmitTableChangeAsync(HostAdapterOperations.FitTableToViewport,
+                new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?> { ["strategy"] = "selectedColumn", ["selectedColumnId"] = SelectedId, ["neighborAction"] = "shrinkTable", ["previewAccepted"] = true } },
+                "Die ausgewählte Spalte wurde unter Beachtung ihrer Mindestbreite verkleinert.", tableId);
+            return;
+        }
+        var table = new Dictionary<string, object?>();
+        switch (operation)
+        {
+            case HostAdapterOperations.FitTableToViewport:
+            case HostAdapterOperations.ResizeColumnsProportionally:
+                var current = state?.Details?.CurrentLayout.Table;
+                var preview = current?.ViewportWidth is null || current.TableWidth is null || current.Overflow is null
+                    ? "Die registrierten Spalten werden unter Beachtung ihrer Mindestbreiten angepasst."
+                    : $"Vorschau: sichtbarer Bereich {current.ViewportWidth:G} DIP, Tabelle {current.TableWidth:G} DIP, Überlauf {current.Overflow:G} DIP.";
+                if (!dialogService.Confirm(getOwner()!, "Tabelle an sichtbaren Bereich anpassen", preview + "\n\nDie festen Spalten bleiben stabil. Fortfahren?")) return;
+                table["strategy"] = operation == HostAdapterOperations.ResizeColumnsProportionally ? "proportional" : "fitViewport";
+                table["previewAccepted"] = true;
+                break;
+            case HostAdapterOperations.SetHorizontalOverflowMode: table["horizontalOverflowMode"] = argument; break;
+            case HostAdapterOperations.SetColumnWidthMode: table["widthMode"] = argument; break;
+            case HostAdapterOperations.SetColumnWrapMode: table["wrapMode"] = argument; break;
+            case HostAdapterOperations.SetColumnOverflowMode: table["overflowMode"] = argument; break;
+            case HostAdapterOperations.SetRowHeightMode: table["rowHeightMode"] = argument; break;
+        }
+        await SubmitTableChangeAsync(operation, new Dictionary<string, object?> { ["table"] = table }, "Tabellenlayout wurde geändert.");
+    }
+
+    private async Task SubmitTableChangeAsync(string operation, IReadOnlyDictionary<string, object?> payload, string successMessage, string? elementId = null)
+    {
+        IsBusy = true;
+        ClearError();
+        var targetElementId = elementId ?? SelectedId;
+        var targetScopeId = SelectedScope;
+        try
+        {
+            var outcome = await coordinator.SubmitExplicitLayoutChangeAsync(targetElementId, operation, payload, lifetimeToken);
+            ApplyState(outcome.State);
+            RefreshLayoutStatus();
+            if (!outcome.Result.Success) ShowTechnicalFailure(outcome.Result);
+            else
+            {
+                if (outcome.Result.Operation is HostAdapterOperations.ResetTableColumn or HostAdapterOperations.ResetTable)
+                {
+                    layoutSession.ClearExplicitOperations(targetScopeId, targetElementId);
+                    if (outcome.Result.AffectedStates is not null)
+                        foreach (var affected in outcome.Result.AffectedStates)
+                            layoutSession.ClearExplicitOperations(affected.ScopeId, affected.ElementId);
+                }
+                else
+                {
+                    layoutSession.RecordExplicitOperation(targetScopeId, targetElementId, outcome.Result.Operation);
+                    if (outcome.Result.AffectedStates is not null)
+                        foreach (var affected in outcome.Result.AffectedStates)
+                            layoutSession.RecordExplicitOperation(affected.ScopeId, affected.ElementId, HostAdapterOperations.ResizeWidth);
+                }
+                StatusMessage = successMessage;
+            }
+        }
+        catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
+        {
+            ShowError(ErrorCodeFor(exception), exception.Message);
+        }
+        finally { IsBusy = false; }
+    }
+
     private async Task<bool> SaveAsync()
     {
         var result = await RunLayoutActionAsync(() => layoutSession.SaveAsync(lifetimeToken), "Änderungen gespeichert.", refreshProcess: false);
@@ -641,6 +784,20 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         var spacing = details?.CurrentLayout.Spacing ?? new Dictionary<string, double>();
         SpacingStatus = selectedSpacingTargets.Count == 0 ? "Keine Abstandsoperation verfügbar" : string.Join(" · ", selectedSpacingTargets.Select(target => $"{SpacingLabel(target)} {spacing.GetValueOrDefault(target):G} DIP"));
         VisibilityStatus = details is null ? "–" : IsSelectedVisible ? "sichtbar" : "unsichtbar";
+        var table = details?.CurrentLayout.Table;
+        var overflowNames = table?.OverflowColumnIds is { Count: > 0 } overflowIds && details?.TableLayout is { } overflowTable
+            ? string.Join(", ", overflowIds.Select(id => overflowTable.Columns.FirstOrDefault(column => column.ColumnId == id)?.DisplayName ?? id))
+            : string.Empty;
+        TableGeometryStatus = table?.ViewportWidth is not null
+            ? $"Sichtbarer Bereich {table.ViewportWidth:G} DIP · Tabelle {table.TableWidth:G} DIP · Überlauf {table.Overflow:G} DIP{(string.IsNullOrWhiteSpace(overflowNames) ? string.Empty : $" · Ursache {overflowNames}")}"
+            : details?.TableLayout is { } tableDefinition
+                ? $"Sichtbarer Bereich {tableDefinition.ViewportBounds.Width:G} DIP · Tabelle {tableDefinition.ContentBounds.Width:G} DIP"
+                : "Keine Tabelle ausgewählt";
+        ColumnModeStatus = details?.TableColumnLayout is { } column
+            ? $"{column.DisplayName} · {table?.WidthMode ?? column.WidthMode} · {table?.WrapMode ?? column.WrapMode} · {table?.OverflowMode ?? column.OverflowMode} · min. {column.MinimumWidth:G} / max. {column.MaximumWidth:G} DIP"
+            : "Keine Spalte ausgewählt";
+        columnWidthText = details?.TableColumnLayout is not null && details.CurrentLayout.Element is { } columnSize
+            ? columnSize.Width.ToString("G", CultureInfo.CurrentCulture) : string.Empty;
         RaiseDetailsChanged();
         OnPropertyChanged(nameof(ActiveScopeId));
             RaiseCommandStates();
@@ -684,7 +841,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         if (a is null || b is null) return false;
         return Math.Abs(a.X - b.X) > 0.000001 || Math.Abs(a.Y - b.Y) > 0.000001 || Math.Abs(a.Width - b.Width) > 0.000001 || Math.Abs(a.Height - b.Height) > 0.000001 ||
                Different(a.TextOffsetX, b.TextOffsetX) || Different(a.TextOffsetY, b.TextOffsetY) || Different(a.FontSize, b.FontSize) || a.Visible != b.Visible ||
-               DifferentSpacing(a.Spacing, b.Spacing);
+               DifferentSpacing(a.Spacing, b.Spacing) || DifferentTable(a.Table, b.Table);
     }
 
     private static bool Different(double? a, double? b) => a is null != b is null || a is not null && b is not null && Math.Abs(a.Value - b.Value) > 0.000001;
@@ -693,6 +850,10 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         var keys = (a?.Keys ?? []).Concat(b?.Keys ?? []).Distinct(StringComparer.Ordinal);
         return keys.Any(key => Math.Abs((a?.GetValueOrDefault(key) ?? 0) - (b?.GetValueOrDefault(key) ?? 0)) > 0.000001);
     }
+    private static bool DifferentTable(TableElementLayoutState? a, TableElementLayoutState? b) =>
+        a is null != b is null || a is not null && b is not null &&
+        (a.WidthMode != b.WidthMode || a.WrapMode != b.WrapMode || a.OverflowMode != b.OverflowMode ||
+         a.HorizontalOverflowMode != b.HorizontalOverflowMode || a.RowHeightMode != b.RowHeightMode);
     private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; TechnicalDetails = $"Fehlercode: {code}"; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
     private void ShowTechnicalFailure(EditorIntegration.HostAdapter.ChangeResult result)
     {
@@ -715,7 +876,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseDetailsChanged()
     {
-        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
+        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(IsTableTarget), nameof(IsTableLayout), nameof(IsTableColumn), nameof(CanSelectWholeColumn), nameof(TableGeometryStatus), nameof(ColumnModeStatus), nameof(ColumnWidthText), nameof(CanApplyColumnWidth), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
             OnPropertyChanged(property);
     }
 
@@ -757,7 +918,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseCommandStates()
     {
-        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, TableCommand, ApplyColumnWidthCommand, SelectWholeColumnCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(CanOperate));

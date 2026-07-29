@@ -124,6 +124,47 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
             <TextBlock Text="Gruppe und Abstände" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,7"/>
+            <Border Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}" Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="4" Padding="7" Margin="0,0,0,8">
+              <StackPanel>
+                <TextBlock Text="Tabelle und Spalten" FontWeight="SemiBold" FontSize="14"/>
+                <TextBlock Text="{Binding TableGeometryStatus}" TextWrapping="Wrap" Margin="0,3,0,2"/>
+                <TextBlock Text="{Binding ColumnModeStatus}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                <Button Style="{StaticResource CompactButton}" Content="Ganze Spalte auswählen" Command="{Binding SelectWholeColumnCommand}" Visibility="{Binding CanSelectWholeColumn, Converter={StaticResource BoolToVisibility}}"/>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock Text="Breite (DIP)" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                  <TextBox Text="{Binding ColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="72" Margin="0,0,6,6"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Übernehmen" Command="{Binding ApplyColumnWidthCommand}"/>
+                </WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}">
+                  <Button Style="{StaticResource CompactButton}" Content="Schmaler" Command="{Binding TableCommand}" CommandParameter="columnWidth:decrease"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Breiter" Command="{Binding TableCommand}" CommandParameter="columnWidth:increase"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Mindestbreite" Command="{Binding TableCommand}" CommandParameter="columnWidth:minimum"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Maximalbreite" Command="{Binding TableCommand}" CommandParameter="columnWidth:maximum"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Nur ausgewählte Spalte verkleinern" Command="{Binding TableCommand}" CommandParameter="fitSelectedColumn"/>
+                </WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableLayout, Converter={StaticResource BoolToVisibility}}">
+                  <Button Style="{StaticResource CompactButton}" Content="An sichtbaren Bereich anpassen" Command="{Binding TableCommand}" CommandParameter="fitTableToViewport"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Spalten proportional verkleinern" Command="{Binding TableCommand}" CommandParameter="resizeColumnsProportionally"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Scrollen beibehalten" Command="{Binding TableCommand}" CommandParameter="setHorizontalOverflowMode:scroll"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Auf Viewport begrenzen" Command="{Binding TableCommand}" CommandParameter="setHorizontalOverflowMode:fitViewport"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Zeilen automatisch" Command="{Binding TableCommand}" CommandParameter="setRowHeightMode:auto"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Zeilen begrenzen" Command="{Binding TableCommand}" CommandParameter="setRowHeightMode:bounded"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Tabelle Original" Command="{Binding TableCommand}" CommandParameter="resetTable"/>
+                </WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}">
+                  <Button Style="{StaticResource CompactButton}" Content="Fest" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:fixed"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Automatisch" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:auto"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Proportional" Command="{Binding TableCommand}" CommandParameter="setColumnWidthMode:proportional"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Text umbrechen" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:wordWrap"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Zeichenumbruch" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:characterWrap"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Ellipsis" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:ellipsis"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Kein Umbruch" Command="{Binding TableCommand}" CommandParameter="setColumnWrapMode:noWrap"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Überlauf Ellipsis" Command="{Binding TableCommand}" CommandParameter="setColumnOverflowMode:ellipsis"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Überlauf abschneiden" Command="{Binding TableCommand}" CommandParameter="setColumnOverflowMode:clip"/>
+                  <Button Style="{StaticResource CompactButton}" Content="Spalte Original" Command="{Binding TableCommand}" CommandParameter="resetTableColumn"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
             <TextBlock Text="{Binding SpacingStatus}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,7"/>
             <WrapPanel Visibility="{Binding CanBeforeElement, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Spacer davor −" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:decrease"/><Button Style="{StaticResource CompactButton}" Content="Spacer davor +" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:increase"/><Button Style="{StaticResource CompactButton}" Content="Original" Command="{Binding SpacingCommand}" CommandParameter="beforeElement:reset"/></WrapPanel>
             <WrapPanel Visibility="{Binding CanAfterElement, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource CompactButton}" Content="Spacer danach −" Command="{Binding SpacingCommand}" CommandParameter="afterElement:decrease"/><Button Style="{StaticResource CompactButton}" Content="Spacer danach +" Command="{Binding SpacingCommand}" CommandParameter="afterElement:increase"/><Button Style="{StaticResource CompactButton}" Content="Original" Command="{Binding SpacingCommand}" CommandParameter="afterElement:reset"/></WrapPanel>

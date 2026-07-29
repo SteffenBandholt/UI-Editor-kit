@@ -323,7 +323,7 @@ public sealed class LayoutProfileRecoveryService(
                     element.X ?? fallback.X, element.Y ?? fallback.Y, element.Width ?? fallback.Width, element.Height ?? fallback.Height,
                     element.TextOffsetX ?? fallback.TextOffsetX, element.TextOffsetY ?? fallback.TextOffsetY,
                     element.FontSize ?? fallback.FontSize, element.Visible ?? fallback.Visible,
-                    element.Spacing ?? fallback.Spacing);
+                    element.Spacing ?? fallback.Spacing, element.Table ?? fallback.Table);
             }).ToArray());
         }
         states = result;

@@ -147,18 +147,26 @@ function runEditorUiProtocolTests() {
     return prepared.response.payload.changeRequest;
   }
 
-  function accept(request, state) {
+  function accept(request, state, affectedStates = []) {
     const accepted = one(protocol, message(MESSAGE_TYPES.CHANGE_RESULT, { changeResult: {
       success: true, changeId: request.changeId, elementId: request.elementId, operation: request.operation,
       errorCode: null, message: "angewandt", previousState: null, newState: {
         elementId: request.elementId, scopeId: "ui.order-header", ...state,
-      }, rollbackSucceeded: true,
+      }, affectedStates, rollbackSucceeded: true,
     } }, sessionId));
     assert.equal(accepted.response.messageType, MESSAGE_TYPES.CHANGE_RESULT_ACCEPTED);
   }
 
   let request = prepare("move", "right", "move", (payload) => assert.equal(payload.x, 2));
-  accept(request, { x: 2, y: 0, width: 200, height: 30, textOffsetX: 4, textOffsetY: 2, fontSize: 14 });
+  const tableMetrics = { tableId: "table", columnId: "description", viewportWidth: 760, tableWidth: 984, overflow: 224, overflowColumnIds: ["description"] };
+  accept(request, { x: 2, y: 0, width: 200, height: 30, textOffsetX: 4, textOffsetY: 2, fontSize: 14, table: tableMetrics }, [
+    { elementId: "ui.order-header", scopeId: "ui.order-header", x: 0, y: 0, width: 800, height: 300, visible: true, table: { tableId: "table", viewportWidth: 760, tableWidth: 984, overflow: 224 } },
+  ]);
+  result = one(protocol, message(MESSAGE_TYPES.GET_EDITOR_UI_STATE, {}, sessionId));
+  assert.deepEqual(result.response.payload.editorUiState.details.currentLayout.table, tableMetrics);
+  result = one(protocol, message(MESSAGE_TYPES.SELECT_EDITOR_ELEMENT, { elementId: "ui.order-header" }, sessionId));
+  assert.equal(result.response.payload.editorUiState.details.currentLayout.table.viewportWidth, 760);
+  one(protocol, message(MESSAGE_TYPES.SELECT_EDITOR_ELEMENT, { elementId: "ui.order-header.order-number" }, sessionId));
   request = prepare("width", "left", "resizeWidth", (payload) => assert.deepEqual(payload, { width: 198 }));
   accept(request, { x: 2, y: 0, width: 198, height: 30, textOffsetX: 4, textOffsetY: 2, fontSize: 14 });
   request = prepare("height", "down", "resizeHeight", (payload) => assert.deepEqual(payload, { height: 32 }));

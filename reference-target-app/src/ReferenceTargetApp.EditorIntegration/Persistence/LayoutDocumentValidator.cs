@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.Persistence;
 
@@ -13,7 +14,7 @@ public static class LayoutDocumentValidator
     private static readonly HashSet<string> LayoutStateFields = new(StringComparer.Ordinal) { "elements" };
     private static readonly HashSet<string> ElementFields = new(StringComparer.Ordinal)
     {
-        "elementId", "scopeId", "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize", "visible", "spacing"
+        "elementId", "scopeId", "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize", "visible", "spacing", "table"
     };
 
     public static LayoutDocumentValidationResult ValidateJsonShape(JsonElement root)
@@ -128,6 +129,24 @@ public static class LayoutDocumentValidator
         ValidateCapabilityValue(element.FontSize, entry.Capabilities.HasFlag(UiCapability.FontSize), "fontSize", prefix, errors, positive: true, maximum: MaximumFontSize);
         ValidateCapabilityBoolean(element.Visible, entry.Capabilities.HasFlag(UiCapability.Visibility), "visible", prefix, errors);
         ValidateSpacing(element.Spacing, entry, prefix, errors);
+        ValidateTable(element.Table, entry, prefix, errors);
+    }
+
+    private static void ValidateTable(TableElementLayoutState? table, UiRegistryEntry entry, string prefix, ICollection<LayoutPersistenceError> errors)
+    {
+        var allowed = entry.TableLayout is not null || entry.TableColumnLayout is not null;
+        if (!allowed)
+        {
+            if (table is not null) errors.Add(new("operation_not_allowed", "table ist für dieses Element nicht erlaubt.", $"{prefix}.table"));
+            return;
+        }
+        if (table is null) { errors.Add(new("invalid_layout_value", "table fehlt.", $"{prefix}.table")); return; }
+        if (entry.TableColumnLayout is not null &&
+            (!TableWidthModes.All.Contains(table.WidthMode ?? string.Empty) || !TableWrapModes.All.Contains(table.WrapMode ?? string.Empty) || !TableOverflowModes.All.Contains(table.OverflowMode ?? string.Empty)))
+            errors.Add(new("invalid_layout_value", "Spaltenmodus ist ungültig.", $"{prefix}.table"));
+        if (entry.TableLayout is not null &&
+            (!TableHorizontalOverflowModes.All.Contains(table.HorizontalOverflowMode ?? string.Empty) || !TableRowHeightModes.All.Contains(table.RowHeightMode ?? string.Empty)))
+            errors.Add(new("invalid_layout_value", "Tabellenmodus ist ungültig.", $"{prefix}.table"));
     }
 
     private static void ValidateSpacing(IReadOnlyDictionary<string, double>? spacing, UiRegistryEntry entry, string prefix, ICollection<LayoutPersistenceError> errors)

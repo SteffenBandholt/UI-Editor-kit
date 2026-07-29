@@ -23,13 +23,17 @@ const OPTIONAL_ATTRIBUTES = [];
 const ALLOWED_KINDS = [
   "frame", "single", "root", "area", "group", "subgroup", "component", "componentpart",
   "table", "tablecolumn", "list", "card", "dialog", "toolbar", "button", "field", "label",
-  "fieldgroup", "statusindicator",
+  "fieldgroup", "statusindicator", "tableheader", "tablebody", "tablerow", "tableheadercell",
+  "tabledatacell", "tablefooter", "tableviewport", "horizontalscrollarea",
 ];
 const ALLOWED_OPS = [
   "inspect", "show", "hide", "move", "resize", "resizewidth", "resizeheight", "textmove",
   "textresize", "setvisibility", "reorder", "rename", "changewidth", "pin", "unpin", "reset",
   "applypreset", "layout",
   "spacingincrease", "spacingdecrease", "spacingset", "spacingreset",
+  "fittabletoviewport", "resizecolumnsproportionally", "sethorizontaloverflowmode",
+  "setcolumnwidthmode", "setcolumnwrapmode", "setcolumnoverflowmode", "setrowheightmode",
+  "resettablecolumn", "resettable",
 ];
 const ALLOWED_EDITABLE = ["true", "false"];
 

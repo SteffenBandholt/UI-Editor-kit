@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Geometry;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.Electron;
 
@@ -175,7 +176,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 element.AllowedOps.Any(SpacingOperations.All.Contains) &&
                     (element.SpacingTargets is null || element.SpacingTargets.Count == 0 || element.SpacingTargets.Any(target => !SpacingTargets.All.Contains(target))))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registryelement ist ungültig oder doppelt.");
-            var supported = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility", "spacingIncrease", "spacingDecrease", "spacingSet", "spacingReset"], StringComparer.Ordinal);
+            var supported = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility", "spacingIncrease", "spacingDecrease", "spacingSet", "spacingReset", .. HostAdapterOperations.TableOperations], StringComparer.Ordinal);
             if (element.AllowedOps.Any(operation => !supported.Contains(operation)) ||
                 element.LockedOps.Any(operation => operation is not ("executeTargetAction" or "modifyDomainData" or "createRecord" or "deleteRecord")))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registry enthält unzulässige Operationen.");
@@ -193,6 +194,37 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Label darf nicht Parent eines Feldes sein.");
             if (element.Type == "tableColumn" && (byId[element.ParentId].Type != "table" || string.IsNullOrWhiteSpace(element.ColumnRole)))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Tabellenspalte braucht Tabelle und Spaltenrolle.");
+        }
+        var expectedTableParents = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["tableHeader"] = ["table"], ["tableBody"] = ["table"], ["tableFooter"] = ["table"],
+            ["tableRow"] = ["tableBody"], ["tableHeaderCell"] = ["tableColumn"], ["tableDataCell"] = ["tableColumn"],
+            ["horizontalScrollArea"] = ["tableViewport"],
+        };
+        foreach (var element in scope.Elements.Where(element => expectedTableParents.ContainsKey(element.Type)))
+            if (element.ParentId is null || !expectedTableParents[element.Type].Contains(byId[element.ParentId].Type, StringComparer.Ordinal))
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Tabellen-Parent von '{element.Id}' ist ungültig.");
+        foreach (var table in scope.Elements.Where(element => element.Type == "table" && element.TableLayout is not null))
+        {
+            if (TableLayoutEngine.Validate(table.TableLayout!).Count != 0)
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Tabellenvertrag von '{table.Id}' ist ungültig.");
+            var registeredColumns = scope.Elements.Where(element => element.Type == "tableColumn" && element.ParentId == table.Id).Select(element => element.Id).ToArray();
+            if (!table.TableLayout!.ColumnIds.SequenceEqual(registeredColumns, StringComparer.Ordinal))
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Spaltenreihenfolge von '{table.Id}' stimmt nicht mit dem Vertrag überein.");
+        }
+        foreach (var column in scope.Elements.Where(element => element.Type == "tableColumn"))
+        {
+            if (column.TableColumnLayout is null || column.TableBinding is null ||
+                !column.TableBinding.TryGetValue("tableId", out var tableId) || tableId != column.ParentId ||
+                !column.TableBinding.TryGetValue("widthSourceId", out var widthSourceId) || widthSourceId != column.Id ||
+                !byId.TryGetValue(column.TableColumnLayout.HeaderElementId, out var header) || header.Type != "tableHeaderCell" ||
+                !byId.TryGetValue(column.TableColumnLayout.DataCellTemplateId, out var data) || data.Type != "tableDataCell")
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Spaltenbindung von '{column.Id}' ist unvollständig.");
+            foreach (var cell in new[] { header, data })
+                if (cell.TableBinding is null || cell.TableBinding.GetValueOrDefault("columnId") != column.Id ||
+                    cell.TableBinding.GetValueOrDefault("widthSourceId") != column.Id ||
+                    cell.AllowedOps.Any(operation => operation is "resize" or "resizeWidth" or "changeWidth"))
+                    throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Zellenbindung von '{column.Id}' besitzt keine eindeutige Breitenquelle.");
         }
         foreach (var group in scope.Elements.Where(element => element.Type == "fieldGroup"))
         {
@@ -241,7 +273,11 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         string? SelectionKind = null, IReadOnlyList<string>? SelectionLevels = null,
         IReadOnlyDictionary<string, string>? OperationEffects = null,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null,
-        IReadOnlyList<string>? SpacingTargets = null);
+        IReadOnlyList<string>? SpacingTargets = null,
+        TableLayoutDefinition? TableLayout = null,
+        TableColumnLayoutDefinition? TableColumnLayout = null,
+        IReadOnlyDictionary<string, string>? TableBinding = null,
+        IReadOnlyDictionary<string, object?>? RowLayout = null);
     internal sealed record RemoteRegistryBaseline(
         double? X, double? Y, double? Width, double? Height,
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool? Visible,
@@ -251,7 +287,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
     internal sealed record RemoteElementLayoutState(
         string ElementId, double X, double Y, double Width, double Height,
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool Visible,
-        IReadOnlyDictionary<string, double>? Spacing = null);
+        IReadOnlyDictionary<string, double>? Spacing = null,
+        TableElementLayoutState? Table = null);
     internal sealed record RemoteChangeResult(
         bool Success, string ChangeId, string ElementId, string Operation, string? ErrorCode, string Message,
         RemoteElementLayoutState? PreviousState, RemoteElementLayoutState? NewState, bool RollbackSucceeded,
@@ -278,7 +315,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                  Capabilities(item), new Border { Name = SafeName(item.Id) }, item.Type, item.Role,
                  item.AllowedOps.ToArray(), item.LockedOps.ToArray(), item.ColumnRole, item.FieldKind,
                  item.ActionKind, item.ComponentKind, item.SelectionKind, item.SelectionLevels,
-                  item.OperationEffects, item.OperationAffectedIds, item.SpacingTargets)));
+                  item.OperationEffects, item.OperationAffectedIds, item.SpacingTargets,
+                  item.TableLayout, item.TableColumnLayout, item.TableBinding, item.RowLayout)));
             state = ToLocal(remoteState);
             declaredBaseline = CreateDeclaredBaseline(scope, state);
         }
@@ -359,12 +397,21 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                     baseline.Height ?? entry.CapturedBaseline?.Height ?? fallback.Height,
                     baseline.TextOffsetX ?? fallback.TextOffsetX, baseline.TextOffsetY ?? fallback.TextOffsetY,
                     baseline.FontSize ?? fallback.FontSize, baseline.Visible ?? fallback.Visible,
-                    baseline.Spacing ?? fallback.Spacing);
+                    baseline.Spacing ?? fallback.Spacing, DeclaredTableBaseline(entry, fallback.Table));
             }).ToArray());
+        }
+        private static TableElementLayoutState? DeclaredTableBaseline(RemoteRegistrationEntry entry, TableElementLayoutState? fallback)
+        {
+            if (entry.TableColumnLayout is { } column)
+                return new(entry.TableBinding?.GetValueOrDefault("tableId") ?? entry.ParentId ?? string.Empty,
+                    column.ColumnId, column.WidthMode, column.WrapMode, column.OverflowMode);
+            if (entry.TableLayout is { } table)
+                return new(table.TableId, HorizontalOverflowMode: table.HorizontalOverflowMode, RowHeightMode: table.RowHeightMode);
+            return fallback;
         }
         private static ElementLayoutState ToLocal(RemoteElementLayoutState state, string scopeId) => new(
             state.ElementId, scopeId, state.X, state.Y, state.Width, state.Height,
-            state.TextOffsetX, state.TextOffsetY, state.FontSize, state.Visible, state.Spacing);
+            state.TextOffsetX, state.TextOffsetY, state.FontSize, state.Visible, state.Spacing, state.Table);
         private static LayoutState Clone(LayoutState source) => new(source.ScopeId, source.CapturedAt, source.Elements.Select(item => item with { }).ToArray());
 
         private static UiElementKind Kind(string type) => type switch
@@ -372,6 +419,10 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             "root" => UiElementKind.Scope, "area" => UiElementKind.Area, "group" => UiElementKind.Group,
             "fieldGroup" => UiElementKind.FieldGroup, "label" => UiElementKind.StaticText, "field" => UiElementKind.InputField,
             "button" => UiElementKind.Button, "table" => UiElementKind.Table, "tableColumn" => UiElementKind.TableColumn,
+            "tableHeader" => UiElementKind.TableHeader, "tableBody" => UiElementKind.TableBody, "tableRow" => UiElementKind.TableRow,
+            "tableHeaderCell" => UiElementKind.TableHeaderCell, "tableDataCell" => UiElementKind.TableDataCell,
+            "tableFooter" => UiElementKind.TableFooter, "tableViewport" => UiElementKind.TableViewport,
+            "horizontalScrollArea" => UiElementKind.HorizontalScrollArea,
             "statusIndicator" => UiElementKind.StatusIndicator, "componentPart" => UiElementKind.Group,
             _ => throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Elementtyp '{type}' ist nicht erlaubt.")
         };

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Globalization;
 using ReferenceTargetApp.EditorIntegration.Registry;
 using ReferenceTargetApp.EditorIntegration.Geometry;
+using ReferenceTargetApp.EditorIntegration.Tables;
 
 namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 
@@ -34,7 +35,7 @@ internal static class ChangeRequestValidator
             return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "Native WPF-Referenz fehlt.");
 
         var capability = RequiredCapability(request.Operation);
-        if (capability is null && request.Operation != HostAdapterOperations.Resize && !SpacingOperations.All.Contains(request.Operation))
+        if (capability is null && request.Operation != HostAdapterOperations.Resize && !SpacingOperations.All.Contains(request.Operation) && !HostAdapterOperations.TableOperations.Contains(request.Operation))
             return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, $"Operation '{request.Operation}' ist nicht bekannt.");
         if (capability is not null && !entry.Capabilities.HasFlag(capability.Value))
             return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, $"Operation '{request.Operation}' ist für '{request.ElementId}' nicht freigegeben.");
@@ -55,8 +56,44 @@ internal static class ChangeRequestValidator
             HostAdapterOperations.TextResize => ValidateTextResize(request.Payload),
             HostAdapterOperations.SetVisibility => ValidateVisibility(request.Payload),
             HostAdapterOperations.SpacingIncrease or HostAdapterOperations.SpacingDecrease or HostAdapterOperations.SpacingSet or HostAdapterOperations.SpacingReset => ValidateSpacing(request.Operation, request.Payload, entry),
+            HostAdapterOperations.FitTableToViewport or HostAdapterOperations.ResizeColumnsProportionally or
+            HostAdapterOperations.SetHorizontalOverflowMode or HostAdapterOperations.SetColumnWidthMode or
+            HostAdapterOperations.SetColumnWrapMode or HostAdapterOperations.SetColumnOverflowMode or
+            HostAdapterOperations.SetRowHeightMode or HostAdapterOperations.ResetTableColumn or HostAdapterOperations.ResetTable => ValidateTable(request.Operation, request.Payload, entry),
             _ => ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "Operation ist nicht erlaubt.")
         };
+    }
+
+    private static ValidationOutcome ValidateTable(string operation, IReadOnlyDictionary<string, object?> payload, UiRegistryEntry entry)
+    {
+        if (!HasOnlyKeys(payload, "table") || !TryGetDictionary(payload, "table", out var table))
+            return Invalid("Tabellenoperation erwartet ausschließlich table.");
+        if (entry.AllowedOperations?.Contains(operation, StringComparer.Ordinal) != true)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "Tabellenoperation ist für das Ziel nicht freigegeben.");
+        string[] allowed = operation switch
+        {
+            HostAdapterOperations.FitTableToViewport => ["strategy", "selectedColumnId", "neighborAction", "previewAccepted"],
+            HostAdapterOperations.ResizeColumnsProportionally => ["strategy", "previewAccepted"],
+            HostAdapterOperations.SetHorizontalOverflowMode => ["horizontalOverflowMode"],
+            HostAdapterOperations.SetColumnWidthMode => ["widthMode"],
+            HostAdapterOperations.SetColumnWrapMode => ["wrapMode"],
+            HostAdapterOperations.SetColumnOverflowMode => ["overflowMode"],
+            HostAdapterOperations.SetRowHeightMode => ["rowHeightMode"],
+            _ => [],
+        };
+        if (!HasOnlyKeys(table, allowed)) return Invalid("Tabellenpayload enthält unbekannte Felder.");
+        bool StringIn(string key, IReadOnlySet<string> values) => table.TryGetValue(key, out var raw) && raw is string value && values.Contains(value);
+        if (operation == HostAdapterOperations.SetHorizontalOverflowMode && !StringIn("horizontalOverflowMode", TableHorizontalOverflowModes.All)) return Invalid("Horizontaler Überlaufmodus ist ungültig.");
+        if (operation == HostAdapterOperations.SetColumnWidthMode && !StringIn("widthMode", TableWidthModes.All)) return Invalid("Breitenmodus ist ungültig.");
+        if (operation == HostAdapterOperations.SetColumnWrapMode && !StringIn("wrapMode", TableWrapModes.All)) return Invalid("Umbruchmodus ist ungültig.");
+        if (operation == HostAdapterOperations.SetColumnOverflowMode && !StringIn("overflowMode", TableOverflowModes.All)) return Invalid("Überlaufmodus ist ungültig.");
+        if (operation == HostAdapterOperations.SetRowHeightMode && !StringIn("rowHeightMode", TableRowHeightModes.All)) return Invalid("Zeilenhöhenmodus ist ungültig.");
+        if (operation is HostAdapterOperations.FitTableToViewport or HostAdapterOperations.ResizeColumnsProportionally &&
+            (!table.TryGetValue("previewAccepted", out var accepted) || accepted is not true))
+            return ValidationOutcome.Fail("table_preview_confirmation_required", "Tabellenanpassung braucht eine bestätigte Vorschau.");
+        if (entry.WpfTableBinding is null && entry.WpfTableColumnBinding is null)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "WPF-Tabellenbindung fehlt.");
+        return ValidationOutcome.Ok(new(operation, TableIntent: new Dictionary<string, object?>(table, StringComparer.Ordinal)));
     }
 
     private static ValidationOutcome ValidateMove(IReadOnlyDictionary<string, object?> payload)

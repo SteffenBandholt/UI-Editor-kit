@@ -24,7 +24,10 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             fontSizeProperty,
             fontSizeProperty is null ? null : entry.NativeElement.ReadLocalValue(fontSizeProperty),
             entry.NativeElement.ReadLocalValue(UIElement.VisibilityProperty),
-            WpfSpacingState.Read(entry.NativeElement));
+            WpfSpacingState.Read(entry.NativeElement),
+            entry.WpfTableColumnBinding?.Column.Width,
+            entry.WpfTableColumnBinding?.Definition,
+            entry.WpfTableBinding?.Capture());
     }
 
     public ElementLayoutState Read(UiRegistryEntry entry)
@@ -39,13 +42,14 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             entry.ScopeId,
             x,
             y,
-            ReadEffectiveSize(element.Width, element.ActualWidth),
+            entry.WpfTableColumnBinding?.CurrentWidth ?? ReadEffectiveSize(element.Width, element.ActualWidth),
             ReadEffectiveSize(element.Height, element.ActualHeight),
             padding?.Left,
             padding?.Top,
             fontSize,
             element.Visibility == Visibility.Visible,
-            new Dictionary<string, double>(WpfSpacingState.Read(element), StringComparer.Ordinal));
+            new Dictionary<string, double>(WpfSpacingState.Read(element), StringComparer.Ordinal),
+            ReadTableState(entry));
     }
 
     public void Apply(UiRegistryEntry entry, ValidatedLayoutChange change)
@@ -59,7 +63,8 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
                 element.RenderTransform = new TranslateTransform(change.X ?? position.X, change.Y ?? position.Y);
                 break;
             case HostAdapterOperations.ResizeWidth:
-                element.Width = change.Width!.Value;
+                if (entry.WpfTableColumnBinding is not null) entry.WpfTableColumnBinding.SetWidth(change.Width!.Value);
+                else element.Width = change.Width!.Value;
                 break;
             case HostAdapterOperations.ResizeHeight:
                 element.Height = change.Height!.Value;
@@ -88,6 +93,33 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             case HostAdapterOperations.SpacingReset:
                 ApplySpacing(element, change);
                 break;
+            case HostAdapterOperations.FitTableToViewport:
+                entry.WpfTableBinding?.Fit(change.TableIntent?.GetValueOrDefault("selectedColumnId") as string);
+                break;
+            case HostAdapterOperations.ResizeColumnsProportionally:
+                entry.WpfTableBinding?.Fit();
+                break;
+            case HostAdapterOperations.SetHorizontalOverflowMode:
+                entry.WpfTableBinding?.SetHorizontalOverflowMode((string)change.TableIntent!["horizontalOverflowMode"]!);
+                break;
+            case HostAdapterOperations.SetColumnWidthMode:
+                entry.WpfTableColumnBinding?.SetWidthMode((string)change.TableIntent!["widthMode"]!);
+                break;
+            case HostAdapterOperations.SetColumnWrapMode:
+                entry.WpfTableColumnBinding?.SetTextModes((string)change.TableIntent!["wrapMode"]!, entry.WpfTableColumnBinding.Definition.OverflowMode);
+                break;
+            case HostAdapterOperations.SetColumnOverflowMode:
+                entry.WpfTableColumnBinding?.SetTextModes(entry.WpfTableColumnBinding.Definition.WrapMode, (string)change.TableIntent!["overflowMode"]!);
+                break;
+            case HostAdapterOperations.SetRowHeightMode:
+                entry.WpfTableBinding?.SetRowHeightMode((string)change.TableIntent!["rowHeightMode"]!);
+                break;
+            case HostAdapterOperations.ResetTableColumn:
+                entry.WpfTableColumnBinding?.Reset();
+                break;
+            case HostAdapterOperations.ResetTable:
+                entry.WpfTableBinding?.Reset();
+                break;
             default:
                 throw new InvalidOperationException($"Operation '{change.Operation}' ist nicht implementiert.");
         }
@@ -107,6 +139,17 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             RestoreLocalValue(element, snapshot.FontSizeProperty, snapshot.FontSize);
         RestoreLocalValue(element, UIElement.VisibilityProperty, snapshot.Visibility);
         if (snapshot.Spacing.Count == 0) WpfSpacingState.Clear(element); else WpfSpacingState.Write(element, snapshot.Spacing);
+        if (entry.WpfTableColumnBinding is not null && snapshot.TableColumnLayout is not null)
+        {
+            entry.WpfTableColumnBinding.SetWidth(snapshot.TableColumnLayout.CurrentWidth);
+            entry.WpfTableColumnBinding.SetWidthMode(snapshot.TableColumnLayout.WidthMode);
+            entry.WpfTableColumnBinding.SetTextModes(snapshot.TableColumnLayout.WrapMode, snapshot.TableColumnLayout.OverflowMode);
+        }
+        if (entry.WpfTableBinding is not null && snapshot.TableLayout is not null)
+        {
+            entry.WpfTableBinding.SetHorizontalOverflowMode(snapshot.TableLayout.HorizontalOverflowMode);
+            entry.WpfTableBinding.SetRowHeightMode(snapshot.TableLayout.RowHeightMode);
+        }
     }
 
     private static void ApplySpacing(FrameworkElement element, ValidatedLayoutChange change)
@@ -158,6 +201,22 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
 
     private static double ReadEffectiveSize(double configured, double actual) =>
         double.IsNaN(configured) ? actual : configured;
+
+    private static ReferenceTargetApp.EditorIntegration.Tables.TableElementLayoutState? ReadTableState(UiRegistryEntry entry)
+    {
+        if (entry.WpfTableColumnBinding is { } column)
+            return new(entry.TableBinding?.GetValueOrDefault("tableId") ?? entry.ParentId ?? string.Empty,
+                column.Definition.ColumnId, column.Definition.WidthMode, column.Definition.WrapMode, column.Definition.OverflowMode);
+        if (entry.WpfTableBinding is { } table)
+        {
+            var definition = table.Capture();
+            var metrics = ReferenceTargetApp.EditorIntegration.Tables.TableLayoutEngine.Measure(definition);
+            return new(definition.TableId, HorizontalOverflowMode: definition.HorizontalOverflowMode,
+                RowHeightMode: definition.RowHeightMode, ViewportWidth: metrics.ViewportWidth,
+                TableWidth: metrics.TableWidth, Overflow: metrics.Overflow, OverflowColumnIds: metrics.OverflowColumnIds);
+        }
+        return null;
+    }
 
     private static Thickness? ReadPadding(FrameworkElement element)
     {

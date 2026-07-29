@@ -4,6 +4,10 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { SPACING_OPERATIONS, SPACING_TARGETS, normalizeSpacingValues } = require("../core/spacing-contract.cjs");
+const {
+  TABLE_LAYOUT_OPERATIONS, TABLE_WIDTH_MODES, TABLE_WRAP_MODES, TABLE_OVERFLOW_MODES,
+  TABLE_HORIZONTAL_OVERFLOW_MODES, TABLE_ROW_HEIGHT_MODES,
+} = require("../core/table-layout-contract.cjs");
 
 const PROFILE_SCHEMA_VERSION = 2;
 const ACTIVE_PROFILE_SCHEMA_VERSION = 1;
@@ -15,7 +19,11 @@ const STATE_FIELDS = new Set(["elements"]);
 const ELEMENT_FIELDS = new Set([
   "elementId", "scopeId", "x", "y", "width", "height",
   "textOffsetX", "textOffsetY", "fontSize", "visible",
-  "spacing",
+  "spacing", "table",
+]);
+const TABLE_STATE_FIELDS = new Set([
+  "tableId", "columnId", "widthMode", "wrapMode", "overflowMode",
+  "horizontalOverflowMode", "rowHeightMode",
 ]);
 const CAPABILITY_FIELDS = Object.freeze({
   Position: ["x", "y"],
@@ -52,7 +60,10 @@ function kind(type) {
   const values = {
     root: "Scope", area: "Area", group: "Group", fieldGroup: "FieldGroup",
     label: "StaticText", field: "InputField", button: "Button", table: "Table",
-    tableColumn: "TableColumn", statusIndicator: "StatusIndicator",
+    tableColumn: "TableColumn", tableHeader: "TableHeader", tableBody: "TableBody",
+    tableRow: "TableRow", tableHeaderCell: "TableHeaderCell", tableDataCell: "TableDataCell",
+    tableFooter: "TableFooter", tableViewport: "TableViewport", horizontalScrollArea: "HorizontalScrollArea",
+    statusIndicator: "StatusIndicator",
     componentPart: "Group",
   };
   return values[type] || "";
@@ -79,11 +90,43 @@ function assertFields(value, allowed, field, errors) {
 }
 function finite(value) { return typeof value === "number" && Number.isFinite(value); }
 
+function validateTableState(saved, entry, prefix, errors) {
+  const allowed = TABLE_LAYOUT_OPERATIONS.some((operation) => Array.isArray(entry?.allowedOps) && entry.allowedOps.includes(operation));
+  if (!allowed) {
+    if (saved?.table != null) errors.push(error("operation_not_allowed", "table ist nicht erlaubt.", `${prefix}.table`));
+    return;
+  }
+  if (!isObject(saved?.table)) {
+    errors.push(error("invalid_layout_value", "table fehlt oder ist ungÃ¼ltig.", `${prefix}.table`));
+    return;
+  }
+  assertFields(saved.table, TABLE_STATE_FIELDS, `${prefix}.table`, errors);
+  const table = saved.table;
+  const declaredTableId = text(entry?.tableLayout?.tableId || entry?.tableBinding?.tableId);
+  if (!text(table.tableId) || text(table.tableId) !== declaredTableId)
+    errors.push(error("invalid_layout_value", "tableId passt nicht zum Tabellenvertrag.", `${prefix}.table.tableId`));
+  if (entry?.type === "tableColumn") {
+    if (text(table.columnId) !== text(entry?.tableColumnLayout?.columnId))
+      errors.push(error("invalid_layout_value", "columnId passt nicht zum Spaltenvertrag.", `${prefix}.table.columnId`));
+    if (!TABLE_WIDTH_MODES.includes(table.widthMode)) errors.push(error("invalid_layout_value", "widthMode ist ungÃ¼ltig.", `${prefix}.table.widthMode`));
+    if (!TABLE_WRAP_MODES.includes(table.wrapMode)) errors.push(error("invalid_layout_value", "wrapMode ist ungÃ¼ltig.", `${prefix}.table.wrapMode`));
+    if (!TABLE_OVERFLOW_MODES.includes(table.overflowMode)) errors.push(error("invalid_layout_value", "overflowMode ist ungÃ¼ltig.", `${prefix}.table.overflowMode`));
+    if (table.horizontalOverflowMode != null || table.rowHeightMode != null)
+      errors.push(error("invalid_layout_value", "Spaltenstatus enthÃ¤lt Tabellenfelder.", `${prefix}.table`));
+  } else {
+    if (table.columnId != null || table.widthMode != null || table.wrapMode != null || table.overflowMode != null)
+      errors.push(error("invalid_layout_value", "Tabellenstatus enthÃ¤lt Spaltenfelder.", `${prefix}.table`));
+    if (!TABLE_HORIZONTAL_OVERFLOW_MODES.includes(table.horizontalOverflowMode)) errors.push(error("invalid_layout_value", "horizontalOverflowMode ist ungÃ¼ltig.", `${prefix}.table.horizontalOverflowMode`));
+    if (!TABLE_ROW_HEIGHT_MODES.includes(table.rowHeightMode)) errors.push(error("invalid_layout_value", "rowHeightMode ist ungÃ¼ltig.", `${prefix}.table.rowHeightMode`));
+  }
+}
+
 function validateElement(saved, entry, scopeId, errors) {
   const prefix = `scopes.${scopeId}.${text(saved?.elementId) || "unknown"}`;
   assertFields(saved, ELEMENT_FIELDS, prefix, errors);
   if (text(saved?.scopeId) !== scopeId) errors.push(error("wrong_scope", "Element-Scope passt nicht.", `${prefix}.scopeId`));
   const capabilitySet = new Set(capabilities(entry));
+  validateTableState(saved, entry, prefix, errors);
   for (const [capability, fields] of Object.entries(CAPABILITY_FIELDS)) {
     const allowed = capabilitySet.has(capability);
     for (const field of fields) {

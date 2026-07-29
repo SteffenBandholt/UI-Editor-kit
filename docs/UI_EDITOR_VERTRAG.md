@@ -223,3 +223,13 @@ Details: `docs/M82_2_GEFUEHRT_FREI_BEARBEITEN.md`.
 - Der native gemeinsame Editor ordnet seinen Workspace bei kleiner, normaler und grosser Inhaltsbreite in einer, zwei beziehungsweise drei Spalten an. Aktionsleiste und Status bleiben ausserhalb des scrollenden Inhalts sichtbar.
 
 Details: `docs/M82_3_SPACER_UND_KOMPAKTE_EDITOR_UI.md`.
+
+## Appübergreifender Tabellenvertrag ab M82.4
+
+- Tabellen werden als `table`, `tableHeader`, `tableBody`, `tableRow`, `tableColumn`, `tableHeaderCell`, `tableDataCell`, `tableFooter`, `tableViewport` und `horizontalScrollArea` klassifiziert.
+- Jede Spalte ist die einzige Breitenquelle für ihren Header, ihre Datenzellen, leere Zustände, Auswahlrahmen und den gespeicherten Zustand. Header- und Datenzellen bieten keine unabhängige Breitenoperation.
+- Der Zieladapter liefert Viewport-, Inhalts- und Tabellenbreite, reservierte/Scrollbarbreite, Mindest-/Maximalbreiten sowie Wrap-/Overflow- und Zeilenhöhenregeln. Der Core validiert und berechnet Überlauf ohne Fachwerte.
+- Viewport-Fit und proportionale Anpassung verlangen eine bestätigte Vorschau; Mindestbreiten und gesperrte/feste Spalten bleiben verbindlich. Nicht auflösbarer Überlauf bleibt sichtbar oder wird bewusst horizontal gescrollt.
+- Tabellen- und Spaltenzustände verwenden den bestehenden Profil-, Start-Restore-, Discard-, Reset- und Rollbackweg.
+
+Details: `docs/M82_4_TABELLEN_UND_SPALTENBEARBEITUNG.md`.

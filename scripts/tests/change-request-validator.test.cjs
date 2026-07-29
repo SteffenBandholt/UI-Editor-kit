@@ -123,7 +123,7 @@ function assertNoForbiddenFragments(text, label) {
 
 function run() {
   const { ALLOWED_LAYOUT_PAYLOAD_FIELDS, validateChangeRequest, validateChangeRequestShape } = loadValidatorModule();
-  assert.deepEqual(Array.from(ALLOWED_LAYOUT_PAYLOAD_FIELDS), ["x", "y", "width", "height", "text", "spacing", "order", "visibility", "visible", "label"]);
+  assert.deepEqual(Array.from(ALLOWED_LAYOUT_PAYLOAD_FIELDS), ["x", "y", "width", "height", "text", "spacing", "table", "order", "visibility", "visible", "label"]);
 
   const realCore = createRealCore();
   assert.deepEqual(validateChangeRequest(validChangeRequest(), realCore), { ok: true, errors: [] });

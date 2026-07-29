@@ -1,12 +1,12 @@
 "use strict";
 const ELEMENT_FIELDS = Object.freeze(["x", "y", "width", "height", "visible"]);
 const TEXT_FIELDS = Object.freeze(["offsetX", "offsetY", "fontSize"]);
-const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", ...ELEMENT_FIELDS, "element", "text", "spacing"]);
+const LAYOUT_ENTRY_FIELDS = Object.freeze(["elementId", ...ELEMENT_FIELDS, "element", "text", "spacing", "table"]);
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function normalizeLayoutEntry(entry) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.elementId !== "string" || entry.elementId.trim() === "") return null;
   const normalized = { elementId: entry.elementId };
-  const nested = Object.prototype.hasOwnProperty.call(entry, "element") || Object.prototype.hasOwnProperty.call(entry, "text") || Object.prototype.hasOwnProperty.call(entry, "spacing");
+  const nested = Object.prototype.hasOwnProperty.call(entry, "element") || Object.prototype.hasOwnProperty.call(entry, "text") || Object.prototype.hasOwnProperty.call(entry, "spacing") || Object.prototype.hasOwnProperty.call(entry, "table");
   if (nested) {
     const element = {};
     const text = {};
@@ -15,6 +15,7 @@ function normalizeLayoutEntry(entry) {
     if (Object.keys(element).length > 0) normalized.element = element;
     if (Object.keys(text).length > 0) normalized.text = text;
     if (entry.spacing && typeof entry.spacing === "object" && !Array.isArray(entry.spacing)) normalized.spacing = clone(entry.spacing);
+    if (entry.table && typeof entry.table === "object" && !Array.isArray(entry.table)) normalized.table = clone(entry.table);
   } else {
     // M68-M72 layout entries remain readable; new integrations should use element/text.
     for (const field of ELEMENT_FIELDS) if (Object.prototype.hasOwnProperty.call(entry, field)) normalized[field] = clone(entry[field]);
