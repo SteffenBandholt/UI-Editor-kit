@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 
 namespace ReferenceTargetApp.EditorIntegration.HostAdapter;
 
@@ -33,7 +34,7 @@ internal static class ChangeRequestValidator
             return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "Native WPF-Referenz fehlt.");
 
         var capability = RequiredCapability(request.Operation);
-        if (capability is null && request.Operation != HostAdapterOperations.Resize)
+        if (capability is null && request.Operation != HostAdapterOperations.Resize && !SpacingOperations.All.Contains(request.Operation))
             return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, $"Operation '{request.Operation}' ist nicht bekannt.");
         if (capability is not null && !entry.Capabilities.HasFlag(capability.Value))
             return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, $"Operation '{request.Operation}' ist für '{request.ElementId}' nicht freigegeben.");
@@ -53,6 +54,7 @@ internal static class ChangeRequestValidator
             HostAdapterOperations.TextMove => ValidateTextMove(request.Payload),
             HostAdapterOperations.TextResize => ValidateTextResize(request.Payload),
             HostAdapterOperations.SetVisibility => ValidateVisibility(request.Payload),
+            HostAdapterOperations.SpacingIncrease or HostAdapterOperations.SpacingDecrease or HostAdapterOperations.SpacingSet or HostAdapterOperations.SpacingReset => ValidateSpacing(request.Operation, request.Payload, entry),
             _ => ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "Operation ist nicht erlaubt.")
         };
     }
@@ -119,6 +121,24 @@ internal static class ChangeRequestValidator
         return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.SetVisibility, Visible: visible));
     }
 
+    private static ValidationOutcome ValidateSpacing(string operation, IReadOnlyDictionary<string, object?> payload, UiRegistryEntry entry)
+    {
+        if (!HasOnlyKeys(payload, "spacing") || !TryGetDictionary(payload, "spacing", out var spacing))
+            return Invalid("Abstandsoperation erwartet ausschließlich spacing.");
+        var expectedKeys = operation == HostAdapterOperations.SpacingReset ? new[] { "target" } : new[] { "target", "value" };
+        if (!HasOnlyKeys(spacing, expectedKeys) || !spacing.TryGetValue("target", out var rawTarget) || rawTarget is not string target ||
+            !SpacingTargets.All.Contains(target) || entry.SpacingTargets?.Contains(target, StringComparer.Ordinal) != true)
+            return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "Abstandsziel ist nicht freigegeben.");
+        double? value = null;
+        if (operation != HostAdapterOperations.SpacingReset)
+        {
+            if (!TryRequiredFiniteNumber(spacing, "value", out var parsed) || parsed < 0)
+                return Invalid("Abstandswert muss endlich und nicht negativ sein.");
+            value = parsed;
+        }
+        return ValidationOutcome.Ok(new(operation, SpacingTarget: target, SpacingValue: value));
+    }
+
     private static UiCapability? RequiredCapability(string operation) => operation switch
     {
         HostAdapterOperations.Move => UiCapability.Position,
@@ -127,6 +147,7 @@ internal static class ChangeRequestValidator
         HostAdapterOperations.TextMove => UiCapability.TextPosition,
         HostAdapterOperations.TextResize => UiCapability.FontSize,
         HostAdapterOperations.SetVisibility => UiCapability.Visibility,
+        HostAdapterOperations.SpacingIncrease or HostAdapterOperations.SpacingDecrease or HostAdapterOperations.SpacingSet or HostAdapterOperations.SpacingReset => UiCapability.Spacing,
         _ => null
     };
 

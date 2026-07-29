@@ -34,6 +34,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private string stepText = "1";
     private double lastValidStep = 1;
     private bool stepValid = true;
+    private bool diagnosticAutoConfirmGeometry;
     private bool busy;
     private bool closing;
     private string statusMessage = "Editor wird gestartet …";
@@ -42,6 +43,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private int activeWorkspaceIndex;
     private string editMode = GeometryEditModes.Guided;
     private string technicalDetails = string.Empty;
+    private IReadOnlyList<string> selectedSpacingTargets = [];
 
     public EditorWindowViewModel(
         EditorProcessCoordinator coordinator,
@@ -68,6 +70,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         SetEditModeCommand = new AsyncCommand(SetEditModeAsync, parameter => CanOperate && parameter is string);
         DirectionCommand = new AsyncCommand(ApplyDirectionAsync, parameter => CanUseDirection(parameter as string));
         ToggleVisibilityCommand = new AsyncCommand(_ => ToggleVisibilityAsync(), _ => CanChangeVisibility);
+        SpacingCommand = new AsyncCommand(ApplySpacingAsync, parameter => CanUseSpacing(parameter as string));
         SaveCommand = new AsyncCommand(_ => SaveAsync(), _ => CanOperate && IsDirty);
         LoadCommand = new AsyncCommand(_ => RunLayoutActionAsync(() => layoutSession.LoadAsync(lifetimeToken), "Profil wurde geladen.", acceptRefreshedTargetAsSaved: layoutSession.AcceptCurrentTargetAsSaved), _ => CanOperate);
         DiscardElementCommand = new AsyncCommand(_ => DiscardElementAsync(), _ => CanOperate && CanDiscardElement);
@@ -105,6 +108,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ICommand SetEditModeCommand { get; }
     public ICommand DirectionCommand { get; }
     public ICommand ToggleVisibilityCommand { get; }
+    public ICommand SpacingCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand LoadCommand { get; }
     public ICommand DiscardElementCommand { get; }
@@ -156,6 +160,16 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         ReferenceTargetApp.EditorIntegration.HostAdapter.HostAdapterOperations.SetVisibility,
         StringComparer.Ordinal) == true;
     public string VisibilityActionLabel => IsSelectedVisible ? "Ausblenden" : "Einblenden";
+    public bool CanSpacing => CanOperate && selectedSpacingTargets.Count > 0;
+    public bool CanBeforeElement => HasSpacingTarget("beforeElement");
+    public bool CanAfterElement => HasSpacingTarget("afterElement");
+    public bool CanGroupPaddingLeft => HasSpacingTarget("groupPaddingLeft");
+    public bool CanGroupPaddingRight => HasSpacingTarget("groupPaddingRight");
+    public bool CanGroupPaddingTop => HasSpacingTarget("groupPaddingTop");
+    public bool CanGroupPaddingBottom => HasSpacingTarget("groupPaddingBottom");
+    public bool CanChildGapHorizontal => HasSpacingTarget("childGapHorizontal");
+    public bool CanChildGapVertical => HasSpacingTarget("childGapVertical");
+    public string SpacingStatus { get; private set; } = "Keine Abstandsoperation verfügbar";
     public bool LeftEnabled { get; private set; }
     public bool RightEnabled { get; private set; }
     public bool UpEnabled { get; private set; }
@@ -235,7 +249,12 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ActiveProfileId));
     }
 
-    internal async Task ApplyDirectionForDiagnosticAsync(string direction) => await ApplyDirectionAsync(direction);
+    internal async Task ApplyDirectionForDiagnosticAsync(string direction)
+    {
+        diagnosticAutoConfirmGeometry = true;
+        try { await ApplyDirectionAsync(direction); }
+        finally { diagnosticAutoConfirmGeometry = false; }
+    }
     internal async Task SetLayerForDiagnosticAsync(string layer) => await SetLayerAsync(layer);
     internal async Task SetModeForDiagnosticAsync(string mode) => await SetModeAsync(mode);
     internal async Task<bool> SaveForDiagnosticAsync() => await SaveAsync();
@@ -248,6 +267,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         if (IsSelectedVisible != visible) await ToggleVisibilityAsync();
     }
+
+    internal Task SetSpacingForDiagnosticAsync(string target, double value) =>
+        ApplySpacingAsync($"{target}:set:{value.ToString(CultureInfo.InvariantCulture)}");
 
     internal async Task<bool> ConfirmCloseAsync()
     {
@@ -321,7 +343,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             RunOnUi(() => { ApplyState(outcome.State); RefreshLayoutStatus(); });
             if (outcome.Result.GeometryRisk is { HasRisks: true } risk)
             {
-                var decision = RunOnUi(() => dialogService.AskGeometryRisk(getOwner()!, risk));
+                var decision = diagnosticAutoConfirmGeometry
+                    ? risk.RiskType == GeometryRiskTypes.FreedSpace ? GeometryRiskDecision.PreserveSpace : GeometryRiskDecision.ApplyAnyway
+                    : RunOnUi(() => dialogService.AskGeometryRisk(getOwner()!, risk));
                 if (decision is GeometryRiskDecision.Cancel or GeometryRiskDecision.GoBack)
                 {
                     await coordinator.ClearGeometryPreviewAsync(lifetimeToken);
@@ -349,6 +373,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                 else
                 {
                     layoutSession.RecordExplicitOperation(SelectedScope, SelectedId, outcome.Result.Operation);
+                    if (outcome.Result.AffectedStates is not null)
+                        foreach (var affected in outcome.Result.AffectedStates)
+                            layoutSession.RecordExplicitOperation(affected.ScopeId, affected.ElementId, ReferenceTargetApp.EditorIntegration.HostAdapter.HostAdapterOperations.ResizeWidth);
                     StatusMessage = $"{SelectedName}: {outcome.Result.Operation}, Schritt {lastValidStep:G} DIP erfolgreich.";
                 }
             });
@@ -397,6 +424,59 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
             RunOnUi(() => { ShowError(ErrorCodeFor(exception), exception.Message); StatusMessage = "Sichtbarkeitsänderung fehlgeschlagen."; });
+        }
+        finally { RunOnUi(() => IsBusy = false); }
+    }
+
+    private bool CanUseSpacing(string? parameter)
+    {
+        if (!CanSpacing || string.IsNullOrWhiteSpace(parameter)) return false;
+        var target = parameter.Split(':')[0];
+        return selectedSpacingTargets.Contains(target, StringComparer.Ordinal);
+    }
+
+    private bool HasSpacingTarget(string target) => selectedSpacingTargets.Contains(target, StringComparer.Ordinal);
+
+    private async Task ApplySpacingAsync(object? parameter)
+    {
+        if (parameter is not string value || !CanUseSpacing(value)) return;
+        var parts = value.Split(':');
+        var target = parts[0];
+        var action = parts.Length > 1 ? parts[1] : "increase";
+        var operation = action switch
+        {
+            "decrease" => EditorIntegration.HostAdapter.HostAdapterOperations.SpacingDecrease,
+            "reset" => EditorIntegration.HostAdapter.HostAdapterOperations.SpacingReset,
+            "set" => EditorIntegration.HostAdapter.HostAdapterOperations.SpacingSet,
+            _ => EditorIntegration.HostAdapter.HostAdapterOperations.SpacingIncrease,
+        };
+        var spacing = new Dictionary<string, object?> { ["target"] = target };
+        if (operation != EditorIntegration.HostAdapter.HostAdapterOperations.SpacingReset)
+        {
+            var amount = parts.Length > 2 && double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed : lastValidStep;
+            spacing["value"] = amount;
+        }
+        IsBusy = true;
+        ClearError();
+        try
+        {
+            var outcome = await coordinator.SubmitExplicitLayoutChangeAsync(SelectedId, operation,
+                new Dictionary<string, object?> { ["spacing"] = spacing }, lifetimeToken);
+            RunOnUi(() =>
+            {
+                ApplyState(outcome.State); RefreshLayoutStatus();
+                if (!outcome.Result.Success) ShowTechnicalFailure(outcome.Result);
+                else
+                {
+                    layoutSession.RecordExplicitOperation(SelectedScope, SelectedId, outcome.Result.Operation);
+                    StatusMessage = $"{SelectedName}: Layoutabstand geändert.";
+                }
+            });
+        }
+        catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
+        {
+            RunOnUi(() => ShowError(ErrorCodeFor(exception), exception.Message));
         }
         finally { RunOnUi(() => IsBusy = false); }
     }
@@ -557,6 +637,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             ? $"X {text.OffsetX?.ToString("G", CultureInfo.CurrentCulture) ?? "–"} / Y {text.OffsetY?.ToString("G", CultureInfo.CurrentCulture) ?? "–"} DIP" : "nicht verfügbar";
         FontSize = details?.CurrentLayout.Text?.FontSize is { } fontSize ? $"{fontSize:G} DIP" : "nicht verfügbar";
         IsSelectedVisible = details?.Visible ?? true;
+        selectedSpacingTargets = details?.SpacingTargets?.ToArray() ?? [];
+        var spacing = details?.CurrentLayout.Spacing ?? new Dictionary<string, double>();
+        SpacingStatus = selectedSpacingTargets.Count == 0 ? "Keine Abstandsoperation verfügbar" : string.Join(" · ", selectedSpacingTargets.Select(target => $"{SpacingLabel(target)} {spacing.GetValueOrDefault(target):G} DIP"));
         VisibilityStatus = details is null ? "–" : IsSelectedVisible ? "sichtbar" : "unsichtbar";
         RaiseDetailsChanged();
         OnPropertyChanged(nameof(ActiveScopeId));
@@ -600,10 +683,16 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         var b = rightState.Elements.FirstOrDefault(item => item.ElementId == elementId);
         if (a is null || b is null) return false;
         return Math.Abs(a.X - b.X) > 0.000001 || Math.Abs(a.Y - b.Y) > 0.000001 || Math.Abs(a.Width - b.Width) > 0.000001 || Math.Abs(a.Height - b.Height) > 0.000001 ||
-               Different(a.TextOffsetX, b.TextOffsetX) || Different(a.TextOffsetY, b.TextOffsetY) || Different(a.FontSize, b.FontSize) || a.Visible != b.Visible;
+               Different(a.TextOffsetX, b.TextOffsetX) || Different(a.TextOffsetY, b.TextOffsetY) || Different(a.FontSize, b.FontSize) || a.Visible != b.Visible ||
+               DifferentSpacing(a.Spacing, b.Spacing);
     }
 
     private static bool Different(double? a, double? b) => a is null != b is null || a is not null && b is not null && Math.Abs(a.Value - b.Value) > 0.000001;
+    private static bool DifferentSpacing(IReadOnlyDictionary<string, double>? a, IReadOnlyDictionary<string, double>? b)
+    {
+        var keys = (a?.Keys ?? []).Concat(b?.Keys ?? []).Distinct(StringComparer.Ordinal);
+        return keys.Any(key => Math.Abs((a?.GetValueOrDefault(key) ?? 0) - (b?.GetValueOrDefault(key) ?? 0)) > 0.000001);
+    }
     private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; TechnicalDetails = $"Fehlercode: {code}"; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
     private void ShowTechnicalFailure(EditorIntegration.HostAdapter.ChangeResult result)
     {
@@ -626,7 +715,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseDetailsChanged()
     {
-        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
+        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
             OnPropertyChanged(property);
     }
 
@@ -668,13 +757,29 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseCommandStates()
     {
-        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(CanOperate));
         OnPropertyChanged(nameof(ControlsEnabled));
         OnPropertyChanged(nameof(CanChangeVisibility));
+        OnPropertyChanged(nameof(CanSpacing));
     }
+
+    private static string SpacingLabel(string target) => target switch
+    {
+        "beforeElement" => "Spacer davor",
+        "afterElement" => "Spacer danach",
+        "groupPaddingLeft" => "Innen links",
+        "groupPaddingRight" => "Innen rechts",
+        "groupPaddingTop" => "Innen oben",
+        "groupPaddingBottom" => "Innen unten",
+        "childGapHorizontal" => "Kindabstand horizontal",
+        "childGapVertical" => "Kindabstand vertikal",
+        "reservedWidth" => "Reservierte Breite",
+        "reservedHeight" => "Reservierte Höhe",
+        _ => "Abstand",
+    };
 
     private void RaiseEditModeChanged()
     {

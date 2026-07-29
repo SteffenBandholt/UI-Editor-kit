@@ -313,7 +313,7 @@ public sealed class LayoutProfileSession
         CancellationToken cancellationToken)
     {
         var original = CaptureWorking();
-        var applied = new List<(string ScopeId, string ElementId, string Operation)>();
+        var applied = new List<(string ScopeId, string ElementId, string Operation, string? SpacingTarget)>();
         var failures = new List<LayoutApplyFailure>();
         var sequence = 1;
         foreach (var scopePair in operations.OrderBy(pair => pair.Key, StringComparer.Ordinal))
@@ -329,18 +329,22 @@ public sealed class LayoutProfileSession
                 var entry = adapter.GetRegistry().FindById(elementId);
                 if (entry is null || !desiredById.TryGetValue(elementId, out var desiredElement))
                     return Fail("unknown_element", $"Element '{elementId}' ist nicht registriert.");
-                var request = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(desiredElement, entry), source, ref sequence)
-                    .FirstOrDefault(candidate => string.Equals(candidate.Operation, operation, StringComparison.Ordinal));
-                if (request is null)
+                var requests = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(desiredElement, entry), source, ref sequence)
+                    .Where(candidate => string.Equals(candidate.Operation, operation, StringComparison.Ordinal)).ToArray();
+                if (requests.Length == 0)
                     return Fail("operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden.");
-                var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
-                if (result.Success)
+                foreach (var request in requests)
                 {
-                    applied.Add((scopePair.Key, elementId, operation));
-                    continue;
+                    var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
+                    if (result.Success)
+                    {
+                        applied.Add((scopePair.Key, elementId, operation, SpacingTargetOf(request)));
+                        continue;
+                    }
+                    failures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? "target_rejected_change", result.Message));
+                    break;
                 }
-                failures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? "target_rejected_change", result.Message));
-                break;
+                if (failures.Count > 0) break;
             }
             if (failures.Count > 0) break;
         }
@@ -355,7 +359,8 @@ public sealed class LayoutProfileSession
             var entry = adapter.GetRegistry().FindById(item.ElementId)!;
             var originalElement = original[item.ScopeId].Elements.Single(element => element.ElementId == item.ElementId);
             var request = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(originalElement, entry), $"{source}-rollback", ref rollbackSequence)
-                .First(candidate => string.Equals(candidate.Operation, item.Operation, StringComparison.Ordinal));
+                .First(candidate => string.Equals(candidate.Operation, item.Operation, StringComparison.Ordinal) &&
+                    (item.SpacingTarget is null || string.Equals(SpacingTargetOf(candidate), item.SpacingTarget, StringComparison.Ordinal)));
             var result = await HostAdapterDispatch.SubmitAsync(adapter, request, CancellationToken.None).ConfigureAwait(false);
             if (!result.Success)
                 rollbackFailures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? "target_rejected_change", result.Message));
@@ -364,6 +369,14 @@ public sealed class LayoutProfileSession
         return new(false, rollbackFailures.Count == 0 ? "batch_apply_failed" : "rollback_failed",
             rollbackFailures.Count == 0 ? "Explizite Layoutoperation ist fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "Explizite Layoutoperation und Rollback sind fehlgeschlagen.",
             rollbackFailures.Count == 0, failures);
+    }
+
+    private static string? SpacingTargetOf(ChangeRequest request)
+    {
+        if (!string.Equals(request.Operation, HostAdapterOperations.SpacingSet, StringComparison.Ordinal) ||
+            request.Payload is null || !request.Payload.TryGetValue("spacing", out var raw) || raw is not IReadOnlyDictionary<string, object?> spacing ||
+            !spacing.TryGetValue("target", out var target)) return null;
+        return target as string;
     }
 
     private async Task<IReadOnlyList<LayoutApplyFailure>> RollbackAllAsync(IReadOnlyDictionary<string, LayoutState> original, string source)
@@ -400,7 +413,7 @@ public sealed class LayoutProfileSession
                 return new ElementLayoutState(element.ElementId, element.ScopeId,
                     element.X ?? fallback.X, element.Y ?? fallback.Y, element.Width ?? fallback.Width, element.Height ?? fallback.Height,
                     element.TextOffsetX ?? fallback.TextOffsetX, element.TextOffsetY ?? fallback.TextOffsetY, element.FontSize ?? fallback.FontSize,
-                    element.Visible ?? fallback.Visible);
+                    element.Visible ?? fallback.Visible, element.Spacing ?? fallback.Spacing);
             }).ToArray();
             result[persistedScope.ScopeId] = new LayoutState(persistedScope.ScopeId, document.SavedAt, elements);
         }
@@ -434,7 +447,15 @@ public sealed class LayoutProfileSession
         (!capabilities.HasFlag(Registry.UiCapability.Height) || Same(left.Height, right.Height)) &&
         (!capabilities.HasFlag(Registry.UiCapability.TextPosition) || Same(left.TextOffsetX, right.TextOffsetX) && Same(left.TextOffsetY, right.TextOffsetY)) &&
         (!capabilities.HasFlag(Registry.UiCapability.FontSize) || Same(left.FontSize, right.FontSize)) &&
-        (!capabilities.HasFlag(Registry.UiCapability.Visibility) || left.Visible == right.Visible);
+        (!capabilities.HasFlag(Registry.UiCapability.Visibility) || left.Visible == right.Visible) &&
+        (!capabilities.HasFlag(Registry.UiCapability.Spacing) || SameSpacing(left.Spacing, right.Spacing));
+
+    private static bool SameSpacing(IReadOnlyDictionary<string, double>? left, IReadOnlyDictionary<string, double>? right)
+    {
+        var keys = new HashSet<string>((left ?? new Dictionary<string, double>()).Keys, StringComparer.Ordinal);
+        keys.UnionWith((right ?? new Dictionary<string, double>()).Keys);
+        return keys.All(key => Same(left?.GetValueOrDefault(key) ?? 0, right?.GetValueOrDefault(key) ?? 0));
+    }
 
     private static bool Same(double? left, double? right) => left is null && right is null || left is not null && right is not null && Math.Abs(left.Value - right.Value) <= LayoutComparisonTolerance;
 
@@ -447,7 +468,8 @@ public sealed class LayoutProfileSession
         entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? state.TextOffsetX : null,
         entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) ? state.TextOffsetY : null,
         entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) ? state.FontSize : null,
-        entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? state.Visible : null);
+        entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) ? state.Visible : null,
+        entry.Capabilities.HasFlag(Registry.UiCapability.Spacing) ? state.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null);
 
     private static IReadOnlyDictionary<string, LayoutState> CloneStates(IReadOnlyDictionary<string, LayoutState> states) =>
         states.ToDictionary(pair => pair.Key,
@@ -520,10 +542,24 @@ public sealed class LayoutProfileSession
                 var entry = scopePair.Value.GetRegistry().FindById(element.ElementId);
                 if (entry is null) continue;
                 var allowed = entry.AllowedOperations ?? [];
-                // Compatibility inference is only for legacy registries that did
-                // not declare operations. Modern targets must use the explicit
-                // operation ledger so responsive neighbour geometry stays derived.
-                if (allowed.Count > 0) continue;
+                // Compatibility geometry inference is only for legacy registries
+                // that did not declare operations. Modern targets keep responsive
+                // neighbour geometry derived, but an explicit spacing state may be
+                // the intentional side effect of a width-flow decision (for example
+                // reservedWidth after "Platz stehen lassen"). Restore that spacing
+                // intent without inferring any neighbour geometry.
+                if (allowed.Count > 0)
+                {
+                    if (entry.Capabilities.HasFlag(Registry.UiCapability.Spacing) &&
+                        allowed.Contains(HostAdapterOperations.SpacingSet, StringComparer.Ordinal) &&
+                        !SameSpacing(element.Spacing, target.Spacing))
+                    {
+                        if (!result.TryGetValue(scopePair.Key, out var modernValues))
+                            result[scopePair.Key] = modernValues = new(StringComparer.Ordinal);
+                        modernValues.Add($"{element.ElementId}\u001f{HostAdapterOperations.SpacingSet}");
+                    }
+                    continue;
+                }
                 var operations = new List<string>();
                 if (entry.Capabilities.HasFlag(Registry.UiCapability.Position) && (!Same(element.X, target.X) || !Same(element.Y, target.Y)))
                     operations.Add(HostAdapterOperations.Move);
@@ -545,6 +581,8 @@ public sealed class LayoutProfileSession
                     operations.Add(HostAdapterOperations.TextResize);
                 if (entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) && element.Visible != target.Visible)
                     operations.Add(HostAdapterOperations.SetVisibility);
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.Spacing) && !SameSpacing(element.Spacing, target.Spacing))
+                    operations.Add(HostAdapterOperations.SpacingSet);
                 foreach (var operation in operations.Where(operation => allowed.Count == 0 || allowed.Contains(operation, StringComparer.Ordinal)))
                 {
                     if (!result.TryGetValue(scopePair.Key, out var values)) result[scopePair.Key] = values = new(StringComparer.Ordinal);

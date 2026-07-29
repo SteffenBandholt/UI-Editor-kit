@@ -171,9 +171,11 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 string.IsNullOrWhiteSpace(element.Name) || string.IsNullOrWhiteSpace(element.Type) || string.IsNullOrWhiteSpace(element.Role) ||
                 string.IsNullOrWhiteSpace(element.SemanticKey) || element.RegistrationStatus is not ("editorEnabled" or "editorContainer" or "locked") ||
                 string.IsNullOrWhiteSpace(element.RefKey) || !element.ReferenceResolved || element.Baseline is null ||
-                element.AllowedOps.Intersect(element.LockedOps, StringComparer.Ordinal).Any())
+                element.AllowedOps.Intersect(element.LockedOps, StringComparer.Ordinal).Any() ||
+                element.AllowedOps.Any(SpacingOperations.All.Contains) &&
+                    (element.SpacingTargets is null || element.SpacingTargets.Count == 0 || element.SpacingTargets.Any(target => !SpacingTargets.All.Contains(target))))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registryelement ist ungültig oder doppelt.");
-            var supported = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility"], StringComparer.Ordinal);
+            var supported = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility", "spacingIncrease", "spacingDecrease", "spacingSet", "spacingReset"], StringComparer.Ordinal);
             if (element.AllowedOps.Any(operation => !supported.Contains(operation)) ||
                 element.LockedOps.Any(operation => operation is not ("executeTargetAction" or "modifyDomainData" or "createRecord" or "deleteRecord")))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registry enthält unzulässige Operationen.");
@@ -234,22 +236,27 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         IReadOnlyList<string> AllowedOps, IReadOnlyList<string> LockedOps, string? ColumnRole = null,
         string? FieldKind = null, string? ActionKind = null, string? ComponentKind = null,
         string? RefKey = null, bool ReferenceResolved = false, RemoteRegistryBaseline? Baseline = null,
+        RemoteRegistryBaseline? CapturedBaseline = null,
         string? SemanticKey = null, string? RegistrationStatus = null,
         string? SelectionKind = null, IReadOnlyList<string>? SelectionLevels = null,
         IReadOnlyDictionary<string, string>? OperationEffects = null,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null);
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null,
+        IReadOnlyList<string>? SpacingTargets = null);
     internal sealed record RemoteRegistryBaseline(
         double? X, double? Y, double? Width, double? Height,
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool? Visible,
-        double? MinWidth, double? MaxWidth, double? MinHeight, double? MaxHeight);
+        double? MinWidth, double? MaxWidth, double? MinHeight, double? MaxHeight,
+        IReadOnlyDictionary<string, double>? Spacing = null);
     internal sealed record RemoteScopeLayoutState(string ScopeId, DateTimeOffset CapturedAt, IReadOnlyList<RemoteElementLayoutState> Elements);
     internal sealed record RemoteElementLayoutState(
         string ElementId, double X, double Y, double Width, double Height,
-        double? TextOffsetX, double? TextOffsetY, double? FontSize, bool Visible);
+        double? TextOffsetX, double? TextOffsetY, double? FontSize, bool Visible,
+        IReadOnlyDictionary<string, double>? Spacing = null);
     internal sealed record RemoteChangeResult(
         bool Success, string ChangeId, string ElementId, string Operation, string? ErrorCode, string Message,
         RemoteElementLayoutState? PreviousState, RemoteElementLayoutState? NewState, bool RollbackSucceeded,
-        GeometryRiskAssessment? GeometryRisk = null);
+        GeometryRiskAssessment? GeometryRisk = null,
+        IReadOnlyList<RemoteElementLayoutState>? AffectedStates = null);
 
     internal sealed class ElectronPipeHostAdapter : IGeometryRiskHostAdapter
     {
@@ -271,7 +278,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                  Capabilities(item), new Border { Name = SafeName(item.Id) }, item.Type, item.Role,
                  item.AllowedOps.ToArray(), item.LockedOps.ToArray(), item.ColumnRole, item.FieldKind,
                  item.ActionKind, item.ComponentKind, item.SelectionKind, item.SelectionLevels,
-                 item.OperationEffects, item.OperationAffectedIds)));
+                  item.OperationEffects, item.OperationAffectedIds, item.SpacingTargets)));
             state = ToLocal(remoteState);
             declaredBaseline = CreateDeclaredBaseline(scope, state);
         }
@@ -318,8 +325,10 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 var result = new ChangeResult(remote.Success, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
                     remote.ErrorCode, remote.Message, remote.PreviousState is null ? null : ToLocal(remote.PreviousState, registry.Entries[0].ScopeId),
                     remote.NewState is null ? null : ToLocal(remote.NewState, registry.Entries[0].ScopeId), remote.RollbackSucceeded,
-                    remote.GeometryRisk);
+                    remote.GeometryRisk, remote.AffectedStates?.Select(item => ToLocal(item, scopeId)).ToArray());
                 if (remote.Success && result.NewState is not null) UpdateState(result.NewState);
+                if (remote.Success && remote.AffectedStates is not null)
+                    foreach (var affected in remote.AffectedStates) UpdateState(ToLocal(affected, scopeId));
                 return result;
             }
             catch (ElectronEditorException exception)
@@ -346,14 +355,16 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 var baseline = entry.Baseline!;
                 return new ElementLayoutState(entry.Id, scope.ScopeId,
                     baseline.X ?? fallback.X, baseline.Y ?? fallback.Y,
-                    baseline.Width ?? fallback.Width, baseline.Height ?? fallback.Height,
+                    baseline.Width ?? entry.CapturedBaseline?.Width ?? fallback.Width,
+                    baseline.Height ?? entry.CapturedBaseline?.Height ?? fallback.Height,
                     baseline.TextOffsetX ?? fallback.TextOffsetX, baseline.TextOffsetY ?? fallback.TextOffsetY,
-                    baseline.FontSize ?? fallback.FontSize, baseline.Visible ?? fallback.Visible);
+                    baseline.FontSize ?? fallback.FontSize, baseline.Visible ?? fallback.Visible,
+                    baseline.Spacing ?? fallback.Spacing);
             }).ToArray());
         }
         private static ElementLayoutState ToLocal(RemoteElementLayoutState state, string scopeId) => new(
             state.ElementId, scopeId, state.X, state.Y, state.Width, state.Height,
-            state.TextOffsetX, state.TextOffsetY, state.FontSize, state.Visible);
+            state.TextOffsetX, state.TextOffsetY, state.FontSize, state.Visible, state.Spacing);
         private static LayoutState Clone(LayoutState source) => new(source.ScopeId, source.CapturedAt, source.Elements.Select(item => item with { }).ToArray());
 
         private static UiElementKind Kind(string type) => type switch
@@ -375,6 +386,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             if (entry.AllowedOps.Contains("textMove", StringComparer.Ordinal)) result |= UiCapability.TextPosition;
             if (entry.AllowedOps.Contains("textResize", StringComparer.Ordinal)) result |= UiCapability.FontSize;
             if (entry.AllowedOps.Contains("setVisibility", StringComparer.Ordinal)) result |= UiCapability.Visibility;
+            if (entry.AllowedOps.Any(ReferenceTargetApp.EditorIntegration.Geometry.SpacingOperations.All.Contains)) result |= UiCapability.Spacing;
             return result;
         }
 

@@ -202,6 +202,17 @@ public sealed class LayoutRestoreCoordinator
             {
                 ["visible"] = desired.Visible
             }, source, sequence++));
+        if (entry.Capabilities.HasFlag(UiCapability.Spacing))
+        {
+            var desiredSpacing = desired.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal);
+            foreach (var target in entry.SpacingTargets ?? [])
+            {
+                requests.Add(Request(entry, HostAdapterOperations.SpacingSet, new Dictionary<string, object?>
+                {
+                    ["spacing"] = new Dictionary<string, object?> { ["target"] = target, ["value"] = desiredSpacing.GetValueOrDefault(target) }
+                }, source, sequence++));
+            }
+        }
         return requests;
     }
 

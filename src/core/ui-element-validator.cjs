@@ -6,6 +6,7 @@ const {
   UI_ELEMENT_OPERATIONS,
   UI_ELEMENT_REQUIRED_FIELDS,
 } = require("./ui-element-model.cjs");
+const { SPACING_OPERATIONS, SPACING_TARGETS } = require("./spacing-contract.cjs");
 
 const UI_TABLE_COLUMN_ROLES = Object.freeze([
   "contentColumn",
@@ -179,6 +180,12 @@ function validateSelectionAndEffects(element, errors, elementId) {
       if (!UI_LAYOUT_EFFECT_SCOPES.includes(effect))
         errors.push(createError("invalid_operation_effect", `Ungueltige Wirkungsmenge: ${String(effect)}.`, "operationEffects", elementId));
     }
+  }
+  if (hasOwn(element, "spacingTargets") && (!Array.isArray(element.spacingTargets) || element.spacingTargets.some((value) => !SPACING_TARGETS.includes(value)))) {
+    errors.push(createError("invalid_spacing_targets", "spacingTargets enthaelt ungueltige Werte.", "spacingTargets", elementId));
+  }
+  if (Array.isArray(element.allowedOps) && element.allowedOps.some((operation) => SPACING_OPERATIONS.includes(operation)) && (!Array.isArray(element.spacingTargets) || element.spacingTargets.length === 0)) {
+    errors.push(createError("missing_spacing_targets", "Abstandsoperationen brauchen ausdrueckliche spacingTargets.", "spacingTargets", elementId));
   }
 }
 

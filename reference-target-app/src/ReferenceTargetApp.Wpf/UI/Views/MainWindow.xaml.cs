@@ -116,6 +116,7 @@ public partial class MainWindow : Window
             .RestoreAsync(lifetimeCancellation.Token);
         var fullOperationPhase = App.UiFullOperationPhase(Environment.GetCommandLineArgs());
         var uiPdfPhase = App.UiPdfEndToEndPhase(Environment.GetCommandLineArgs());
+        var compactUiDiagnostic = Environment.GetCommandLineArgs().Contains("--m82-3-visible-diagnostic", StringComparer.Ordinal);
         var pdfRegistry = PdfOrderDocumentRegistryFactory.Create();
         var pdfAdapter = new PdfHostAdapter(pdfRegistry);
         var pdfStore = new AtomicJsonPdfLayoutProfileStore(layoutStore.Options.RootDirectory);
@@ -135,7 +136,7 @@ public partial class MainWindow : Window
             : uiPdfPhase is not null
                 ? [UnsavedChangesDecision.Cancel, UnsavedChangesDecision.Save]
                 : [];
-        var diagnosticDialogs = fullOperationPhase is not null || uiPdfPhase is not null
+        var diagnosticDialogs = fullOperationPhase is not null || uiPdfPhase is not null || compactUiDiagnostic
             ? new NativeEditorDialogService(diagnosticUnsavedDecisions,
                 Enumerable.Repeat(GeometryRiskDecision.ApplyAnyway, 64))
             : null;
@@ -163,7 +164,7 @@ public partial class MainWindow : Window
             _ = Dispatcher.BeginInvoke(
                 new Action(() => RunLayoutPersistenceDiagnosticPhase(persistencePhase)),
                 DispatcherPriority.ApplicationIdle);
-        if (Environment.GetCommandLineArgs().Contains("--editor-ui-diagnostic", StringComparer.Ordinal))
+        if (Environment.GetCommandLineArgs().Any(argument => argument is "--editor-ui-diagnostic" or "--m82-3-visible-diagnostic"))
             _ = Dispatcher.BeginInvoke(
                 new Action(async () => await RunEditorUiDiagnosticAsync()),
                 DispatcherPriority.ApplicationIdle);
@@ -488,21 +489,54 @@ public partial class MainWindow : Window
     private async Task RunEditorUiDiagnosticAsync()
     {
         var exitCode = 80;
+        void Stage(string value)
+        {
+            if (Environment.GetCommandLineArgs().Contains("--m82-3-visible-diagnostic", StringComparer.Ordinal)) Title = $"M82.3 Diagnose · {value}";
+        }
         try
         {
+            Stage("Start");
             if (editorWindowCoordinator is null || HostAdapter is null) throw new InvalidOperationException("Editor-Lebenszyklus ist nicht initialisiert.");
             var businessValue = OrderNumberInput.Text;
             var activity = viewModel.ActivityMessage;
             var editor = await editorWindowCoordinator.OpenAsync();
+            Stage("Editor offen");
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             if (!editorWindowCoordinator.HasOpenWindow || !editorWindowCoordinator.HasActiveProcess || editorWindowCoordinator.SessionId is null ||
                 editor.CurrentState?.Tree.Nodes.Count != 8 || editor.CurrentState.Details?.ElementId != OrderHeaderRegistryIds.OrderNumber)
                 throw new InvalidOperationException("Editorfenster, Prozess, Session, Baum oder Details fehlen.");
 
+            var editorWindow = editorWindowCoordinator.Window ?? throw new InvalidOperationException("Editorfenster fehlt.");
+            editorWindow.Width = 760;
+            editorWindow.UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (editorWindow.UiColumnMode != 1) throw new InvalidOperationException("Einspaltenmodus ist bei kleiner Inhaltsbreite nicht aktiv.");
+            editorWindow.Width = 1100;
+            editorWindow.UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (editorWindow.UiColumnMode != 2) throw new InvalidOperationException("Zweispaltenmodus ist bei normaler Inhaltsbreite nicht aktiv.");
+            editorWindow.Width = 1400;
+            editorWindow.UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (editorWindow.UiColumnMode != 3) throw new InvalidOperationException("Dreispaltenmodus ist bei großer Inhaltsbreite nicht aktiv.");
+            editor.ActiveWorkspaceIndex = 1;
+            editorWindow.UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (editorWindow.PdfColumnMode != 3) throw new InvalidOperationException("PDF-Dreispaltenmodus ist nicht aktiv.");
+            editor.ActiveWorkspaceIndex = 0;
+            Stage("Spalten geprüft");
+
             var before = State(OrderHeaderRegistryIds.OrderNumber);
+            await editor.SetSpacingForDiagnosticAsync(SpacingTargets.BeforeElement, 5);
+            var spaced = State(OrderHeaderRegistryIds.OrderNumber);
+            if (spaced.Spacing?.GetValueOrDefault(SpacingTargets.BeforeElement) != 5)
+                throw new InvalidOperationException("Spacer vor dem Element wurde nicht angewandt.");
+            await editor.SetSpacingForDiagnosticAsync(SpacingTargets.BeforeElement, 0);
+            Stage("Spacer geprüft");
             editor.StepText = "1";
             await editor.SetModeForDiagnosticAsync("move");
             await editor.ApplyDirectionForDiagnosticAsync("right");
+            Stage("Geometrie geprüft");
             var moved = State(OrderHeaderRegistryIds.OrderNumber);
             if (Math.Abs(moved.X - before.X - 1) > 0.001) throw new InvalidOperationException("Positionsänderung ist nicht sichtbar.");
 
@@ -537,12 +571,14 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Normaler Fachbutton funktioniert nicht mehr.");
 
             await editorWindowCoordinator.CloseAsync();
+            Stage("Erster Editor geschlossen");
             if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess || editorWindowCoordinator.SessionId is not null)
                 throw new InvalidOperationException("Erster Editor wurde nicht vollständig geschlossen.");
             await editorWindowCoordinator.OpenAsync();
             if (editorWindowCoordinator.WindowCreationCount != 2 || !editorWindowCoordinator.HasActiveProcess)
                 throw new InvalidOperationException("Editor konnte nicht erneut geöffnet werden.");
             await editorWindowCoordinator.CloseAsync();
+            Stage("Zweiter Editor geschlossen");
             if (editorWindowCoordinator.HasActiveProcess) throw new InvalidOperationException("Node-Prozess blieb nach Wiederöffnung aktiv.");
             exitCode = 0;
         }

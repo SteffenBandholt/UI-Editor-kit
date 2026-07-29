@@ -35,7 +35,7 @@ internal sealed class ProfileRecoveryWorkflow(IProfileRecoveryPrompt prompt)
                     "Das kompatible UI-Profil ist bereits durch die Ziel-App aktiv.", profileId, true, session);
                 return new(preappliedStartup, inspection, null);
             }
-            var startup = await RestoreUiAsync(adapters, store, activeStore, cancellationToken);
+            var startup = await RestoreUiAsync(adapters, store, activeStore, cancellationToken, declaredBaseline);
             if (startup.Success) return new(startup, inspection, null);
             if (!startup.RollbackSucceeded)
                 throw new ElectronEditorException(ElectronEditorErrorCodes.UiProfileRestoreFailed,
@@ -69,7 +69,7 @@ internal sealed class ProfileRecoveryWorkflow(IProfileRecoveryPrompt prompt)
                 throw new ElectronEditorException(ElectronEditorErrorCodes.ProfileArchiveFailed, archive.Message);
         }
 
-        var recovered = await RestoreUiAsync(adapters, store, activeStore, cancellationToken);
+        var recovered = await RestoreUiAsync(adapters, store, activeStore, cancellationToken, declaredBaseline);
         if (!recovered.Success)
             throw new ElectronEditorException(ElectronEditorErrorCodes.UiProfileRestoreFailed, recovered.Message);
         if (decision == ProfileRecoveryDecision.Baseline)
@@ -126,7 +126,8 @@ internal sealed class ProfileRecoveryWorkflow(IProfileRecoveryPrompt prompt)
         IReadOnlyDictionary<string, IHostAdapter> adapters,
         AtomicJsonLayoutProfileStore store,
         ActiveLayoutProfileStore activeStore,
-        CancellationToken cancellationToken) =>
-        new LayoutProfileStartupCoordinator(adapters, store, activeStore, allowCompatibleRegistryReconciliation: false)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, LayoutState>? declaredBaseline) =>
+        new LayoutProfileStartupCoordinator(adapters, store, activeStore, allowCompatibleRegistryReconciliation: false, declaredBaseline)
             .RestoreAsync(cancellationToken);
 }

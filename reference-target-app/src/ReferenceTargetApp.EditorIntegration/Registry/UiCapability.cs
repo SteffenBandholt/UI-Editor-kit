@@ -9,5 +9,6 @@ public enum UiCapability
     Height = 1 << 2,
     TextPosition = 1 << 3,
     FontSize = 1 << 4,
-    Visibility = 1 << 5
+    Visibility = 1 << 5,
+    Spacing = 1 << 6
 }

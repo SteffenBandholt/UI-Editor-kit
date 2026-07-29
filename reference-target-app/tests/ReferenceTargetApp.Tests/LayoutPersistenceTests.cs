@@ -168,7 +168,8 @@ public sealed class LayoutPersistenceTests
                 HostAdapterOperations.ResizeWidth,
                 HostAdapterOperations.ResizeHeight,
                 HostAdapterOperations.TextMove,
-                HostAdapterOperations.TextResize
+                HostAdapterOperations.TextResize,
+                HostAdapterOperations.SpacingSet
             };
             Assert.IsTrue(recording.Requests.All(request => allowedOperations.Contains(request.Operation)));
         }));

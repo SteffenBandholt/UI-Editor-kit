@@ -29,6 +29,7 @@ const ALLOWED_OPS = [
   "inspect", "show", "hide", "move", "resize", "resizewidth", "resizeheight", "textmove",
   "textresize", "setvisibility", "reorder", "rename", "changewidth", "pin", "unpin", "reset",
   "applypreset", "layout",
+  "spacingincrease", "spacingdecrease", "spacingset", "spacingreset",
 ];
 const ALLOWED_EDITABLE = ["true", "false"];
 

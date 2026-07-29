@@ -25,6 +25,10 @@ const ELECTRON_TARGET_OPERATIONS = Object.freeze([
   "textMove",
   "textResize",
   "setVisibility",
+  "spacingIncrease",
+  "spacingDecrease",
+  "spacingSet",
+  "spacingReset",
 ]);
 const REQUIRED_FIELDS = Object.freeze([
   "applicationId",

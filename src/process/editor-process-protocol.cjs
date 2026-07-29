@@ -361,6 +361,7 @@ function createEditorProcessProtocol(options) {
                 ...(state.fontSize === null ? {} : { fontSize: state.fontSize }),
               },
             }),
+            ...(state.spacing && typeof state.spacing === "object" ? { spacing: state.spacing } : {}),
           });
         }
         if (editorUiSession) editorUiSession.acceptChangeResult(result);

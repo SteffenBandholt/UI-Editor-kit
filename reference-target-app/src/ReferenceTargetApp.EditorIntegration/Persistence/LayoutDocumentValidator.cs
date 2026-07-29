@@ -13,7 +13,7 @@ public static class LayoutDocumentValidator
     private static readonly HashSet<string> LayoutStateFields = new(StringComparer.Ordinal) { "elements" };
     private static readonly HashSet<string> ElementFields = new(StringComparer.Ordinal)
     {
-        "elementId", "scopeId", "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize", "visible"
+        "elementId", "scopeId", "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize", "visible", "spacing"
     };
 
     public static LayoutDocumentValidationResult ValidateJsonShape(JsonElement root)
@@ -127,6 +127,24 @@ public static class LayoutDocumentValidator
         ValidateCapabilityPair(element.TextOffsetX, element.TextOffsetY, entry.Capabilities.HasFlag(UiCapability.TextPosition), "textOffset", prefix, errors, nonNegative: true);
         ValidateCapabilityValue(element.FontSize, entry.Capabilities.HasFlag(UiCapability.FontSize), "fontSize", prefix, errors, positive: true, maximum: MaximumFontSize);
         ValidateCapabilityBoolean(element.Visible, entry.Capabilities.HasFlag(UiCapability.Visibility), "visible", prefix, errors);
+        ValidateSpacing(element.Spacing, entry, prefix, errors);
+    }
+
+    private static void ValidateSpacing(IReadOnlyDictionary<string, double>? spacing, UiRegistryEntry entry, string prefix, ICollection<LayoutPersistenceError> errors)
+    {
+        var allowed = entry.Capabilities.HasFlag(UiCapability.Spacing);
+        if (!allowed)
+        {
+            if (spacing is not null) errors.Add(new("operation_not_allowed", "spacing ist für dieses Element nicht erlaubt.", $"{prefix}.spacing"));
+            return;
+        }
+        if (spacing is null) { errors.Add(new("invalid_layout_value", "spacing fehlt.", $"{prefix}.spacing")); return; }
+        foreach (var pair in spacing)
+        {
+            if (entry.SpacingTargets?.Contains(pair.Key, StringComparer.Ordinal) != true)
+                errors.Add(new("operation_not_allowed", "spacingTarget ist nicht freigegeben.", $"{prefix}.spacing.{pair.Key}"));
+            ValidateNumber(pair.Value, $"{prefix}.spacing.{pair.Key}", errors, nonNegative: true);
+        }
     }
 
     private static void ValidateCapabilityBoolean(

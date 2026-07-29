@@ -45,5 +45,6 @@ public static class PersistedLayoutDocumentFactory
         entry.Capabilities.HasFlag(UiCapability.TextPosition) ? state.TextOffsetX : null,
         entry.Capabilities.HasFlag(UiCapability.TextPosition) ? state.TextOffsetY : null,
         entry.Capabilities.HasFlag(UiCapability.FontSize) ? state.FontSize : null,
-        entry.Capabilities.HasFlag(UiCapability.Visibility) ? state.Visible : null);
+        entry.Capabilities.HasFlag(UiCapability.Visibility) ? state.Visible : null,
+        entry.Capabilities.HasFlag(UiCapability.Spacing) ? state.Spacing ?? new Dictionary<string, double>(StringComparer.Ordinal) : null);
 }

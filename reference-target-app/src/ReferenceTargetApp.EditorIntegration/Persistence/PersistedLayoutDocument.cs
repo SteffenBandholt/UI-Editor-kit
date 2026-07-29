@@ -21,4 +21,5 @@ public sealed record PersistedElementLayout(
     double? TextOffsetX,
     double? TextOffsetY,
     double? FontSize,
-    bool? Visible = null);
+    bool? Visible = null,
+    IReadOnlyDictionary<string, double>? Spacing = null);

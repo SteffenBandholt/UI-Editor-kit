@@ -40,7 +40,8 @@ public sealed record EditorUiDetails(
     string? SelectionKind = null,
     IReadOnlyList<string>? SelectionLevels = null,
     IReadOnlyDictionary<string, string>? OperationEffects = null,
-    IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null);
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? OperationAffectedIds = null,
+    IReadOnlyList<string>? SpacingTargets = null);
 
 public sealed record EditorUiOperations(
     IReadOnlyList<string> AllowedOps,
@@ -50,7 +51,8 @@ public sealed record EditorUiOperations(
 public sealed record EditorUiLayoutEntry(
     string ElementId,
     EditorUiElementLayout? Element,
-    EditorUiTextLayout? Text);
+    EditorUiTextLayout? Text,
+    IReadOnlyDictionary<string, double>? Spacing = null);
 
 public sealed record EditorUiElementLayout(double X, double Y, double Width, double Height);
 public sealed record EditorUiTextLayout(double? OffsetX, double? OffsetY, double? FontSize);

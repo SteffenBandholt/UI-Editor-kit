@@ -280,3 +280,13 @@ Vor einer riskanten endgültigen Änderung muss der Adapter den bisherigen Zusta
 WPF verwendet `IGeometryRiskHostAdapter` und einen nativen Adorner. Electron verwendet unverändert die lokale Pipe und ergänzt deren ChangeRequest um Modus und operationsgebundene Bestätigung. Browser-, HTTP-, WebSocket- oder Netzwerktransporte sind nicht zulässig.
 
 Die Benutzerpräferenz liegt als eigene atomare Datei im vorhandenen Profilroot. Sie darf weder Ziel-App-Fachwert noch Bestandteil des Layout- oder PDF-Profils sein.
+
+## HostAdapter-Anbindung fuer M82.3
+
+Eine Ziel-App deklariert Spacing nur fuer tatsaechlich unterstuetzte Ziele. Der gemeinsame ChangeRequest transportiert `spacingTarget` und einen neutralen Wert; der Adapter entscheidet, ob dies als Margin, Padding, Gap, Track, Layoutslot oder reservierte Breite/Hoehe umgesetzt wird. Ein echtes sichtbares Spacer-Element ist nicht erforderlich.
+
+Beim Erhalt freien Platzes muss der Adapter vor und nach dem Apply Ziel-, Gruppen- und Nachbarrechtecke vergleichen. Position und Groesse unbeteiligter Nachbarn sowie Position und Groesse der Gruppe bleiben innerhalb der technischen Toleranz unveraendert. Fuer bewusstes Nachruecken oder Gruppenverkleinern wird eine getrennte Aktion mit eigener Wirkungsmenge verwendet. Abweichungen rollen denselben transaktionalen Zustand zurueck.
+
+Responsive Ziel-Apps duerfen eine nicht statisch deklarierbare Breite/Hoehe einmalig vor dem Profil-Restore als `capturedBaseline` uebermitteln. Das Feld ist nur Reset-/Recoveryhilfe und darf den Registry-Fingerprint nicht veraendern. Save, Restore, Discard und Reset bleiben der vorhandene Profilweg.
+
+Der gemeinsame native Workspace passt sich an die verfuegbare Inhaltsbreite an. Ziel-App-Adapter liefern dafuer keine eigene Editoroberflaeche und keine zweite UI-/PDF-Layoutlogik.

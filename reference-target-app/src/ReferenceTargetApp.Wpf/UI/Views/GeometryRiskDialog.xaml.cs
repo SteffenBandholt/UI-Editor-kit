@@ -21,6 +21,9 @@ public partial class GeometryRiskDialog : Window
         AddAction(risk, GeometryRiskActions.ClampToGroup, "In der Gruppe halten", GeometryRiskDecision.ClampToGroup, true);
         AddAction(risk, GeometryRiskActions.ClampToArea, "Im Bereich halten", GeometryRiskDecision.ClampToArea, true);
         AddAction(risk, GeometryRiskActions.ApplyAnyway, risk.EditMode == GeometryEditModes.Free ? "Anwenden" : "Trotzdem anwenden", GeometryRiskDecision.ApplyAnyway, true);
+        AddAction(risk, GeometryRiskActions.PreserveSpace, "Freien Platz stehen lassen", GeometryRiskDecision.PreserveSpace, true);
+        AddAction(risk, GeometryRiskActions.ReflowNeighbors, "Nachbarelemente nachrücken lassen", GeometryRiskDecision.ReflowNeighbors, false);
+        AddAction(risk, GeometryRiskActions.ShrinkGroup, "Gruppe entsprechend verkleinern", GeometryRiskDecision.ShrinkGroup, false);
         AddAction(risk, GeometryRiskActions.GoBack, "Zurück", GeometryRiskDecision.GoBack, false);
         AddAction(risk, GeometryRiskActions.Cancel, "Abbrechen", GeometryRiskDecision.Cancel, false);
     }
@@ -40,7 +43,7 @@ public partial class GeometryRiskDialog : Window
     private void AddAction(GeometryRiskAssessment risk, string action, string label, GeometryRiskDecision value, bool primary)
     {
         if (!risk.SuggestedActions.Contains(action, StringComparer.Ordinal)) return;
-        var button = new Button { Content = label, MinWidth = 110, Margin = new Thickness(6, 0, 0, 0), IsDefault = primary && value == GeometryRiskDecision.ApplyAnyway, IsCancel = value == GeometryRiskDecision.Cancel };
+        var button = new Button { Content = label, MinWidth = 110, Margin = new Thickness(6, 0, 0, 0), IsDefault = primary && value is GeometryRiskDecision.ApplyAnyway or GeometryRiskDecision.PreserveSpace, IsCancel = value == GeometryRiskDecision.Cancel };
         if (primary) { button.Background = FindResource("PrimaryBrush") as System.Windows.Media.Brush; button.Foreground = System.Windows.Media.Brushes.White; }
         button.Click += (_, _) => { decision = value; DialogResult = value is not GeometryRiskDecision.Cancel and not GeometryRiskDecision.GoBack; };
         Actions.Children.Add(button);

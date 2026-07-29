@@ -3,6 +3,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const { SPACING_OPERATIONS, SPACING_TARGETS, normalizeSpacingValues } = require("../core/spacing-contract.cjs");
 
 const PROFILE_SCHEMA_VERSION = 2;
 const ACTIVE_PROFILE_SCHEMA_VERSION = 1;
@@ -14,6 +15,7 @@ const STATE_FIELDS = new Set(["elements"]);
 const ELEMENT_FIELDS = new Set([
   "elementId", "scopeId", "x", "y", "width", "height",
   "textOffsetX", "textOffsetY", "fontSize", "visible",
+  "spacing",
 ]);
 const CAPABILITY_FIELDS = Object.freeze({
   Position: ["x", "y"],
@@ -22,6 +24,7 @@ const CAPABILITY_FIELDS = Object.freeze({
   TextPosition: ["textOffsetX", "textOffsetY"],
   FontSize: ["fontSize"],
   Visibility: ["visible"],
+  Spacing: ["spacing"],
 });
 
 function isObject(value) { return Boolean(value) && typeof value === "object" && !Array.isArray(value); }
@@ -41,6 +44,7 @@ function capabilities(entry) {
   if (ops.has("textMove")) result.push("TextPosition");
   if (ops.has("textResize")) result.push("FontSize");
   if (ops.has("setVisibility")) result.push("Visibility");
+  if (SPACING_OPERATIONS.some((operation) => ops.has(operation))) result.push("Spacing");
   return result.sort();
 }
 
@@ -86,7 +90,18 @@ function validateElement(saved, entry, scopeId, errors) {
       if (!allowed && saved?.[field] != null) errors.push(error("operation_not_allowed", `${field} ist nicht erlaubt.`, `${prefix}.${field}`));
       if (allowed && saved?.[field] == null) errors.push(error("invalid_layout_value", `${field} fehlt.`, `${prefix}.${field}`));
       if (allowed && field === "visible" && typeof saved?.[field] !== "boolean") errors.push(error("invalid_layout_value", `${field} ist ungültig.`, `${prefix}.${field}`));
-      if (allowed && field !== "visible" && !finite(saved?.[field])) errors.push(error("invalid_layout_value", `${field} ist nicht endlich.`, `${prefix}.${field}`));
+      if (allowed && field !== "visible" && field !== "spacing" && !finite(saved?.[field])) errors.push(error("invalid_layout_value", `${field} ist nicht endlich.`, `${prefix}.${field}`));
+      if (allowed && field === "spacing") {
+        try {
+          const normalized = normalizeSpacingValues(saved?.spacing);
+          const supported = Array.isArray(entry?.spacingTargets) ? entry.spacingTargets : [];
+          if (Object.keys(normalized).some((target) => !SPACING_TARGETS.includes(target) || !supported.includes(target))) {
+            errors.push(error("operation_not_allowed", "spacingTarget ist nicht freigegeben.", `${prefix}.spacing`));
+          }
+        } catch {
+          errors.push(error("invalid_layout_value", "spacing ist ungültig.", `${prefix}.spacing`));
+        }
+      }
     }
   }
   const baseline = entry?.baseline || {};
