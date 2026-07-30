@@ -374,3 +374,7 @@ M82.5 macht den capability-gesteuerten Einfachmodus zur Standardansicht des vorh
 ## 15. M82.6 – Topologieneutrales Feintuning und TopScreen-Modulabschluss
 
 M82.6 stellt klar, dass Registry- und Tabellenmetadaten keine zusätzliche Ziel-App-UI erfordern dürfen. Logische Tabellen-/Gruppenziele koppeln vorhandene Refs; ein frameworkneutraler, von der Ziel-App explizit gespeister Topologie-Fingerprint schützt Typ, Parent und Reihenfolge ohne automatische UI-Erkennung. Status: `[A] abgenommen`. Die vollständigen Pflichtläufe und die sichtbare BBM-Diagnostic-Abnahme sind grün: beide Module bestanden Auswahl, Feintuning, Undo, Save und Neustart-Restore; Protokoll erzeugte eine echte vierseitige PDF über den vorhandenen BBM-Druckweg. Restarbeiten behält seine bestehende HTML-Ausgabevorschau ohne PDF-Erzeugung.
+
+## 16. M82.7 – Capability-gesteuerter Einfachmodus
+
+M82.7 stellt sicher, dass der vorhandene Einfachmodus für kompakte Text-/Statusziele ausschließlich wirksame, von der Ziel-App freigegebene Operationen anbietet. `move`, `textResize` und `setVisibility` werden über den bestehenden neutralen Change-Request-, HostAdapter- und Profilweg bedient; Breite, Höhe und Tabellenfunktionen bleiben ohne entsprechende Capability verborgen. Status: `[A] abgenommen`. Die vollständigen Pflichtläufe und die sichtbare isolierte BBM-Diagnostic-Abnahme für beide Restzeichenanzeigen sind grün.

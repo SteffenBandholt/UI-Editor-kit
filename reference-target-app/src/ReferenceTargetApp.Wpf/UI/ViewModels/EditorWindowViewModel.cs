@@ -244,6 +244,16 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public bool CanSimpleTextMove => HasOperation(HostAdapterOperations.TextMove);
     public bool CanSimpleFontSize => HasOperation(HostAdapterOperations.TextResize);
     public bool CanSimpleText => CanSimpleTextMove || CanSimpleFontSize;
+    public bool IsSimpleInlineTextTarget => CanSimpleMove && CanSimpleFontSize && !CanSimpleTextMove && !CanSimpleWidth && !CanSimpleHeight && !IsTableTarget;
+    public bool CanSimpleDisplayMove => CanSimpleTextMove || IsSimpleInlineTextTarget;
+    public bool ShowSimpleElementLayer => !IsSimpleInlineTextTarget;
+    public bool IsSimpleElementLayer => IsElementLayer && !IsSimpleInlineTextTarget;
+    public bool IsSimpleTextLayer => IsTextLayer || IsSimpleInlineTextTarget;
+    public bool ShowSimpleElementSize => CanSimpleWidth || CanSimpleHeight;
+    public bool ShowSimpleDirectPosition => CanSimpleMove;
+    public bool ShowSimpleDirectSize => CanSimpleWidth || CanSimpleHeight;
+    public bool ShowSimpleDirectTextPosition => CanSimpleTextMove;
+    public bool ShowSimpleDirectFontSize => CanSimpleFontSize;
 
     internal EditorUiState? CurrentState => state;
     internal int? ProcessId => coordinator.ProcessId;
@@ -406,7 +416,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     await SetLayerModeAndApplyAsync("element", "height", parts[1]);
                     return;
                 case "textMove" when parts.Length == 2:
-                    await SetLayerModeAndApplyAsync("text", "text-position", parts[1]);
+                    if (CanSimpleTextMove) await SetLayerModeAndApplyAsync("text", "text-position", parts[1]);
+                    else if (IsSimpleInlineTextTarget) await SetLayerModeAndApplyAsync("element", "move", parts[1]);
                     return;
                 case "fontSize" when parts.Length == 2:
                     await SetLayerModeAndApplyAsync("text", "text-size", parts[1]);
@@ -1181,7 +1192,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseDetailsChanged()
     {
-        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(SelectionKindLabel), nameof(SelectionContextLabel), nameof(SelectionContextValue), nameof(TableName), nameof(ColumnName), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSimpleMove), nameof(CanSimpleWidth), nameof(CanSimpleHeight), nameof(CanSimpleTextMove), nameof(CanSimpleFontSize), nameof(CanSimpleText), nameof(IsElementLayer), nameof(IsTextLayer), nameof(DirectXText), nameof(DirectYText), nameof(DirectWidthText), nameof(DirectHeightText), nameof(DirectTextXText), nameof(DirectTextYText), nameof(DirectFontSizeText), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(IsTableTarget), nameof(IsTableLayout), nameof(IsTableColumn), nameof(CanSelectWholeColumn), nameof(TableGeometryStatus), nameof(ColumnModeStatus), nameof(ColumnWidthText), nameof(CanApplyColumnWidth), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
+        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(SelectionKindLabel), nameof(SelectionContextLabel), nameof(SelectionContextValue), nameof(TableName), nameof(ColumnName), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSimpleMove), nameof(CanSimpleWidth), nameof(CanSimpleHeight), nameof(CanSimpleTextMove), nameof(CanSimpleFontSize), nameof(CanSimpleText), nameof(IsSimpleInlineTextTarget), nameof(CanSimpleDisplayMove), nameof(ShowSimpleElementLayer), nameof(IsSimpleElementLayer), nameof(IsSimpleTextLayer), nameof(ShowSimpleElementSize), nameof(ShowSimpleDirectPosition), nameof(ShowSimpleDirectSize), nameof(ShowSimpleDirectTextPosition), nameof(ShowSimpleDirectFontSize), nameof(IsElementLayer), nameof(IsTextLayer), nameof(DirectXText), nameof(DirectYText), nameof(DirectWidthText), nameof(DirectHeightText), nameof(DirectTextXText), nameof(DirectTextYText), nameof(DirectFontSizeText), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(IsTableTarget), nameof(IsTableLayout), nameof(IsTableColumn), nameof(CanSelectWholeColumn), nameof(TableGeometryStatus), nameof(ColumnModeStatus), nameof(ColumnWidthText), nameof(CanApplyColumnWidth), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
             OnPropertyChanged(property);
     }
 

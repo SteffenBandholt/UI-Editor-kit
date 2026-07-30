@@ -6,6 +6,14 @@
 
 ## 1. Zweck
 
+### M82.7 – Capability-gesteuerter Einfachmodus für Restzeichenanzeigen
+
+- Status: `[A] abgenommen`; Implementierung, Pflichtprüfungen und sichtbare isolierte BBM-Diagnostic-Abnahme sind abgeschlossen.
+- Kompakte Text-/Statusziele mit `move`, `textResize` und `setVisibility` verwenden den vorhandenen Textbereich des Einfachmodus. Steuerkreuz, direkte Position, Schriftgröße, Sichtbarkeit, Original, Undo und Save laufen über denselben neutralen Change-Request- und Profilweg.
+- Breite, Höhe, Tabellen- und Gruppengrößenfunktionen bleiben capability-gesteuert verborgen. Keine aktive Schaltfläche des M82.7-Arbeitswegs bleibt wirkungslos.
+- Der Core enthält keine BBM-IDs und erzeugt weder Registry noch Ziel-App-UI. M82.5 und M82.6 bleiben unverändert grün.
+- Detaildokument: `docs/M82_7_CAPABILITY_GESTEUERTER_EINFACHMODUS.md`.
+
 ### M82.6 – Topologieneutrales Feintuning und TopScreen-Modulabschluss
 
 - Status: `[A] abgenommen`; Implementierung, vollständige Pflichtprüfungen und sichtbare BBM-Diagnostic-Abnahme sind abgeschlossen.
