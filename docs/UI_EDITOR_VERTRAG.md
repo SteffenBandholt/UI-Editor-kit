@@ -244,3 +244,14 @@ Details: `docs/M82_4_TABELLEN_UND_SPALTENBEARBEITUNG.md`.
 - Tabellen verwenden weiterhin die M82.4-Spalte als einzige Breitenquelle. Direktwerte und `-10/-1/+1/+10`, Wrap, Ellipsis, Original und Viewport-Fit dürfen keine Nachbarspalten oder Fachwerte implizit verändern.
 
 Details: `docs/M82_5_EINFACHMODUS.md`.
+
+## Topologieneutrale Ziel-App-Anbindung ab M82.6
+
+- Die Ziel-App bleibt alleinige Eigentümerin und Erzeugerin ihrer Registry. Der Editor liest diese Registry; er erzeugt keine Registryeinträge und erkennt keine UI automatisch.
+- Registry- und Tabellenmetadaten dürfen niemals zusätzliche produktive Ziel-App-Knoten voraussetzen. Editorbedingte Wrapper, Viewports, Scrollbereiche, Panels, Grids, Portale oder unsichtbare Hilfselemente sind verboten.
+- Tabellen- und Gruppenziele dürfen logisch sein und mehrere bereits vorhandene Referenzen koppeln. `topologyPolicy` ist `preserveTarget`; `requiresDedicatedWrapper: true` ist ungültig.
+- Eine Ziel-App darf vor und nach Editoroperationen eine ausdrücklich zusammengestellte Liste aus Typ, stabiler Registry-ID, Parent und Reihenfolge fingerprinten. Der Core scannt weder DOM noch WPF-Visual-Tree.
+- Dynamische Fachdatensätze, Texte und Eingabewerte sind nicht Teil des Topologie-Fingerprints. Eine editorbedingte Änderung der produktiven Struktur wird dagegen abgewiesen und über den vorhandenen Rollbackweg zurückgesetzt.
+- Öffnen und Registryrefresh dürfen `display`, `position`, `overflow`, Scrollbesitzer, Haupttracks oder `z-index` nicht verändern. Eine freigegebene Layoutoperation darf ausschließlich ihre deklarierte Wirkung besitzen.
+
+Details: `docs/M82_6_TOPOLOGIENEUTRALES_FEINTUNING.md`.

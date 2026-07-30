@@ -6,6 +6,17 @@
 
 ## 1. Zweck
 
+### M82.6 – Topologieneutrales Feintuning und TopScreen-Modulabschluss
+
+- Status: `[A] abgenommen`; Implementierung, vollständige Pflichtprüfungen und sichtbare BBM-Diagnostic-Abnahme sind abgeschlossen.
+- Ziel-App und Editor bleiben strikt getrennt: Die Ziel-App erzeugt ihre Registry und liefert vorhandene Refs; der Editor liest nur und erzeugt weder Registryeinträge noch Ziel-App-UI.
+- Logische Tabellen-/Gruppenziele funktionieren ohne zusätzliche Wrapper. Der Vertrag schreibt `preserveTarget` vor und weist einen benötigten Wrapper zurück.
+- Electron und WPF besitzen einen reproduzierbaren Topologie-Fingerprint aus expliziten Deskriptoren; dynamische Fachzeilen werden nicht als Strukturregression gewertet.
+- Die vollständigen Kit-Prüfungen sind grün. Ein beim ersten gepackten BBM-Start gefundener Rendererfehler durch `node:crypto` wurde browserfähig korrigiert; der Wiederholungslauf startete sichtbar normal.
+- Die isolierte Diagnostic-Ausgabe schaltet beide BBM-Module über den vorhandenen internen Provider frei; die Release-Ausgabe bleibt auch mit gesetzten DEV-Umgebungsvariablen gesperrt. Restarbeiten und Protokoll bestanden Direktauswahl, Feintuning, Undo, Save, Recovery/Reset und Neustart-Restore.
+- BBM liefert drei vollständige Protokoll-UI-Scopes aus ausschließlich vorhandenen Ziel-App-Refs. Die echte vierseitige Protokoll-PDF lief über den unveränderten BBM-Druckweg. Restarbeiten behält seinen ausdrücklich bestätigten Produktumfang als HTML-Ausgabevorschau ohne PDF-Erzeugung.
+- Detaildokument: `docs/M82_6_TOPOLOGIENEUTRALES_FEINTUNING.md`.
+
 Diese Datei ist das verbindliche Baufortschritts- und Abnahmeprotokoll zum UI-Editor-kit.
 
 ### M82.5 – Radikal vereinfachter Einfachmodus

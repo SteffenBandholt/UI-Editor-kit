@@ -114,6 +114,8 @@ public sealed class M824TableLayoutTests
         });
     }
 
+    internal static TableLayoutDefinition DefinitionForTopologyTest() => Definition();
+
     private static TableLayoutDefinition Definition()
     {
         var columns = new[]

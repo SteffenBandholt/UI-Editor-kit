@@ -47,6 +47,12 @@ public static class TableRowHeightModes
     public static readonly IReadOnlySet<string> All = new HashSet<string>([Fixed, Auto, Bounded, Ellipsis], StringComparer.Ordinal);
 }
 
+public static class TableTopologyPolicies
+{
+    public const string PreserveTarget = "preserveTarget";
+    public static readonly IReadOnlySet<string> All = new HashSet<string>([PreserveTarget], StringComparer.Ordinal);
+}
+
 public sealed record TableBounds(double Left, double Top, double Width, double Height);
 
 public sealed record TableColumnLayoutDefinition(
@@ -88,7 +94,9 @@ public sealed record TableLayoutDefinition(
     string RowHeightMode,
     double MinimumRowHeight,
     double MaximumRowHeight,
-    IReadOnlyList<TableColumnLayoutDefinition> Columns);
+    IReadOnlyList<TableColumnLayoutDefinition> Columns,
+    string TopologyPolicy = TableTopologyPolicies.PreserveTarget,
+    bool RequiresDedicatedWrapper = false);
 
 public sealed record TableLayoutMetrics(
     double ViewportWidth,
@@ -133,6 +141,8 @@ public static class TableLayoutEngine
         if (table.MinimumRowHeight <= 0 || table.MaximumRowHeight < table.MinimumRowHeight) errors.Add("table_row_height_limits_invalid");
         if (!TableHorizontalOverflowModes.All.Contains(table.HorizontalOverflowMode)) errors.Add("table_overflow_mode_invalid");
         if (!TableRowHeightModes.All.Contains(table.RowHeightMode)) errors.Add("table_row_height_mode_invalid");
+        if (!TableTopologyPolicies.All.Contains(table.TopologyPolicy)) errors.Add("table_topology_policy_invalid");
+        if (table.RequiresDedicatedWrapper) errors.Add("table_wrapper_forbidden");
         if (table.ColumnIds.Count != table.Columns.Count || !table.ColumnIds.SequenceEqual(table.Columns.Select(column => column.ColumnId), StringComparer.Ordinal))
             errors.Add("table_column_order_invalid");
         if (table.Columns.Select(column => column.ColumnId).Distinct(StringComparer.Ordinal).Count() != table.Columns.Count)

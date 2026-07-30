@@ -39,6 +39,7 @@ const layoutProfileStartup = require("./electron-target/layout-profile-startup.c
 const geometryRiskContract = require("./core/geometry-risk-contract.cjs");
 const spacingContract = require("./core/spacing-contract.cjs");
 const tableLayoutContract = require("./core/table-layout-contract.cjs");
+const uiTopologyFingerprint = require("./core/ui-topology-fingerprint.cjs");
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
@@ -66,6 +67,7 @@ module.exports = Object.freeze({
   ...geometryRiskContract,
   ...spacingContract,
   ...tableLayoutContract,
+  ...uiTopologyFingerprint,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

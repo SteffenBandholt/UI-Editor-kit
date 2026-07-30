@@ -89,6 +89,7 @@ const expectedExports = [
   "TABLE_WIDTH_POLICIES",
   "TABLE_ROW_HEIGHT_MODES",
   "TABLE_ALIGNMENT_MODES",
+  "TABLE_TOPOLOGY_POLICIES",
   "TABLE_LAYOUT_OPERATIONS",
   "normalizeTableColumn",
   "normalizeTableLayout",
@@ -98,6 +99,9 @@ const expectedExports = [
   "measureTableLayout",
   "fitTableToViewport",
   "updateTableColumn",
+  "normalizeUiTopology",
+  "createUiTopologyFingerprint",
+  "compareUiTopology",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -125,6 +129,7 @@ expectedExports.forEach((name) => {
     "TABLE_ELEMENT_TYPES", "TABLE_WIDTH_MODES", "TABLE_WRAP_MODES", "TABLE_OVERFLOW_MODES",
     "TABLE_HORIZONTAL_OVERFLOW_MODES", "TABLE_VERTICAL_OVERFLOW_MODES", "TABLE_WIDTH_POLICIES",
     "TABLE_ROW_HEIGHT_MODES", "TABLE_ALIGNMENT_MODES", "TABLE_LAYOUT_OPERATIONS",
+    "TABLE_TOPOLOGY_POLICIES",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else if ([
