@@ -516,8 +516,10 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                 if (!outcome.Result.Success)
                 {
                     ShowTechnicalFailure(outcome.Result);
-                    StatusMessage = "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten.";
+                    StatusMessage = ErrorMessage;
                 }
+                else if (!LayoutStatesDiffer(outcome.Result.PreviousState, outcome.Result.NewState))
+                    StatusMessage = $"{SelectedName}: Der Layoutwert ist bereits unverändert gesetzt.";
                 else
                 {
                     layoutSession.RecordExplicitOperation(SelectedScope, SelectedId, outcome.Result.Operation);
@@ -527,8 +529,10 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     layoutSession.CommitUndoFrame();
                     RaiseUndoChanged();
                     undoCommitted = true;
-                    LastChangeSummary = $"Zuletzt: {SelectedName} · {FriendlyOperation(outcome.Result.Operation)} · {lastValidStep:G} DIP";
-                    StatusMessage = $"{SelectedName}: {FriendlyOperation(outcome.Result.Operation)}, Schritt {lastValidStep:G} DIP erfolgreich.";
+                    var summary = DescribeSuccessfulChange(outcome.Result, SelectedName,
+                        $"{SelectedName}: {FriendlyOperation(outcome.Result.Operation)}, Schritt {lastValidStep:G} DIP erfolgreich.");
+                    LastChangeSummary = $"Zuletzt: {summary}";
+                    StatusMessage = summary;
                     OnPropertyChanged(nameof(LastChangeSummary));
                 }
             });
@@ -863,7 +867,13 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             var outcome = await coordinator.SubmitSimpleLayoutChangeAsync(SelectedId, operation, payload, lifetimeToken);
             ApplyState(outcome.State);
             RefreshLayoutStatus();
-            if (!outcome.Result.Success) ShowTechnicalFailure(outcome.Result);
+            if (!outcome.Result.Success)
+            {
+                ShowTechnicalFailure(outcome.Result);
+                StatusMessage = ErrorMessage;
+            }
+            else if (!LayoutStatesDiffer(outcome.Result.PreviousState, outcome.Result.NewState))
+                StatusMessage = $"{SelectedName}: Der Layoutwert ist bereits unverändert gesetzt.";
             else
             {
                 layoutSession.RecordExplicitOperation(SelectedScope, SelectedId, outcome.Result.Operation);
@@ -873,8 +883,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                 layoutSession.CommitUndoFrame();
                 RaiseUndoChanged();
                 undoCommitted = true;
-                LastChangeSummary = $"Zuletzt: {SelectedName} · {successMessage}";
-                StatusMessage = successMessage;
+                var summary = DescribeSuccessfulChange(outcome.Result, SelectedName, $"{SelectedName}: {successMessage}");
+                LastChangeSummary = $"Zuletzt: {summary}";
+                StatusMessage = summary;
                 OnPropertyChanged(nameof(LastChangeSummary));
             }
         }
@@ -1163,12 +1174,29 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         a is null != b is null || a is not null && b is not null &&
         (a.WidthMode != b.WidthMode || a.WrapMode != b.WrapMode || a.OverflowMode != b.OverflowMode ||
          a.HorizontalOverflowMode != b.HorizontalOverflowMode || a.RowHeightMode != b.RowHeightMode);
+    private static bool LayoutStatesDiffer(ElementLayoutState? previous, ElementLayoutState? current) =>
+        previous is null != current is null || previous is not null && current is not null &&
+        (Math.Abs(previous.X - current.X) > 0.000001 || Math.Abs(previous.Y - current.Y) > 0.000001 ||
+         Math.Abs(previous.Width - current.Width) > 0.000001 || Math.Abs(previous.Height - current.Height) > 0.000001 ||
+         Different(previous.TextOffsetX, current.TextOffsetX) || Different(previous.TextOffsetY, current.TextOffsetY) ||
+         Different(previous.FontSize, current.FontSize) || previous.Visible != current.Visible ||
+         DifferentSpacing(previous.Spacing, current.Spacing) || DifferentTable(previous.Table, current.Table));
+    private static string DescribeSuccessfulChange(ChangeResult result, string displayName, string fallback)
+    {
+        if (result.Operation != HostAdapterOperations.Move || result.PreviousState is null || result.NewState is null) return fallback;
+        var changes = new List<string>();
+        if (Math.Abs(result.PreviousState.X - result.NewState.X) > 0.000001)
+            changes.Add($"X: {result.PreviousState.X:G} → {result.NewState.X:G}");
+        if (Math.Abs(result.PreviousState.Y - result.NewState.Y) > 0.000001)
+            changes.Add($"Y: {result.PreviousState.Y:G} → {result.NewState.Y:G}");
+        return changes.Count == 0 ? fallback : $"{displayName} – {string.Join(", ", changes)}";
+    }
     private void ShowError(string code, string message) { ErrorCode = code; ErrorMessage = message; TechnicalDetails = $"Fehlercode: {code}"; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
     private void ShowTechnicalFailure(EditorIntegration.HostAdapter.ChangeResult result)
     {
         ErrorCode = result.RollbackSucceeded ? result.ErrorCode ?? "target_rejected_change" : "rollback_failed";
         ErrorMessage = result.RollbackSucceeded
-            ? "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten."
+            ? string.IsNullOrWhiteSpace(result.Message) ? "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten." : result.Message
             : "Die Änderung und ihre Wiederherstellung sind fehlgeschlagen.";
         TechnicalDetails = JsonSerializer.Serialize(new
         {

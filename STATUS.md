@@ -6,6 +6,14 @@
 
 ## 1. Zweck
 
+### M82.7.1 – Freies Verschieben und eindeutige Aktionsrückmeldung
+
+- Status: `[A] abgenommen`; gezielte Reparatur, Regression und sichtbare isolierte BBM-Diagnostic-Abnahme sind abgeschlossen.
+- Wiederholte Verschiebungen und direkte X-/Y-Werte laufen kumulativ über den vorhandenen neutralen Change-Request-, HostAdapter-, Undo- und Profilweg. Visuelle Grenzen werden nicht als willkürliche Editorgrenze interpretiert; technische Ziel-App-Grenzen bleiben verbindlich.
+- Erfolgreiche Aktionen nennen Anzeigename und alten/neuen Wert. Eine technisch abgelehnte oder unveränderte Aktion bleibt ohne neuen Dirty-/Undo-Eintrag und meldet den Grund im Hauptstatus statt eines wirkungslosen Klicks.
+- Der Core bleibt appneutral: keine BBM-ID, keine Registryerzeugung, keine Ziel-App-UI und keine Topologieänderung.
+- Detaildokument: `docs/M82_7_CAPABILITY_GESTEUERTER_EINFACHMODUS.md`.
+
 ### M82.7 – Capability-gesteuerter Einfachmodus für Restzeichenanzeigen
 
 - Status: `[A] abgenommen`; Implementierung, Pflichtprüfungen und sichtbare isolierte BBM-Diagnostic-Abnahme sind abgeschlossen.
