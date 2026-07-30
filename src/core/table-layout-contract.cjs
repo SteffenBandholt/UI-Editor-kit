@@ -21,6 +21,7 @@ const TABLE_VERTICAL_OVERFLOW_MODES = Object.freeze(["none", "auto", "scroll"]);
 const TABLE_WIDTH_POLICIES = Object.freeze(["content", "viewport", "bounded", "explicit"]);
 const TABLE_ROW_HEIGHT_MODES = Object.freeze(["fixed", "auto", "bounded", "ellipsis"]);
 const TABLE_ALIGNMENT_MODES = Object.freeze(["start", "center", "end", "stretch"]);
+const TABLE_TOPOLOGY_POLICIES = Object.freeze(["preserveTarget"]);
 const TABLE_LAYOUT_OPERATIONS = Object.freeze([
   "fitTableToViewport",
   "resizeColumnsProportionally",
@@ -116,6 +117,8 @@ function normalizeTableLayout(table) {
     viewportBounds: bounds(source.viewportBounds),
     contentBounds: bounds(source.contentBounds),
     parentId: source.parentId === null ? null : text(source.parentId),
+    topologyPolicy: text(source.topologyPolicy) || "preserveTarget",
+    requiresDedicatedWrapper: false,
     columnIds: Object.freeze(Array.isArray(source.columnIds) ? source.columnIds.map(text).filter(Boolean) : columns.map((column) => column.columnId)),
     rowTemplateId: source.rowTemplateId == null ? null : text(source.rowTemplateId),
     horizontalOverflowMode: text(source.horizontalOverflowMode) || "auto",
@@ -143,6 +146,8 @@ function validateTableLayout(table) {
   for (const path of forbiddenPaths(table)) errors.push(error("table_domain_data_forbidden", path, "Fach- und Kundendaten sind im Tabellenvertrag nicht erlaubt."));
   for (const field of ["tableId", "displayName"]) if (!model[field]) errors.push(error("table_field_missing", field, `${field} fehlt.`));
   if (!model.parentId) errors.push(error("table_field_missing", "parentId", "parentId fehlt."));
+  if (!TABLE_TOPOLOGY_POLICIES.includes(model.topologyPolicy)) errors.push(error("table_topology_policy_invalid", "topologyPolicy", "Der Tabellenvertrag muss die vorhandene Ziel-App-Topologie bewahren."));
+  if (table.requiresDedicatedWrapper === true) errors.push(error("table_wrapper_forbidden", "requiresDedicatedWrapper", "Ein Tabellenvertrag darf keinen zusaetzlichen UI-Wrapper verlangen."));
   if (!TABLE_HORIZONTAL_OVERFLOW_MODES.includes(model.horizontalOverflowMode)) errors.push(error("table_overflow_mode_invalid", "horizontalOverflowMode", "Horizontaler Überlaufmodus ist ungültig."));
   if (!TABLE_VERTICAL_OVERFLOW_MODES.includes(model.verticalOverflowMode)) errors.push(error("table_overflow_mode_invalid", "verticalOverflowMode", "Vertikaler Überlaufmodus ist ungültig."));
   if (!TABLE_WIDTH_POLICIES.includes(model.widthPolicy)) errors.push(error("table_width_policy_invalid", "widthPolicy", "Breitenregel ist ungültig."));
@@ -306,6 +311,7 @@ module.exports = Object.freeze({
   TABLE_WIDTH_POLICIES,
   TABLE_ROW_HEIGHT_MODES,
   TABLE_ALIGNMENT_MODES,
+  TABLE_TOPOLOGY_POLICIES,
   TABLE_LAYOUT_OPERATIONS,
   normalizeTableColumn,
   normalizeTableLayout,

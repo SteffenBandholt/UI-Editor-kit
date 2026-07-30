@@ -370,3 +370,7 @@ M82.4 ergänzt echte Inhaltstabellen, ihre strukturellen Auswahlziele und genau 
 ## 14. M82.5 – Radikal vereinfachter Einfachmodus
 
 M82.5 macht den capability-gesteuerten Einfachmodus zur Standardansicht des vorhandenen nativen Editors. Auswahl, Text/Element, Steuerkreuz, Schrittweite, direkte Werte, Undo und Save bilden den normalen Weg; technische Details sowie M82.2-/M82.3-/M82.4-Funktionen bleiben geschlossen unter **Erweitert**. WPF und Electron verwenden weiterhin denselben Core, HostAdapter, Profil- und Rollbackweg. Status: `[A]`; vollständige Pflichtläufe sowie die sichtbare paketierte BBM-Abnahme mit Save/Neustart-Restore, mehrstufigem Undo, Tabellen-Fit und echter zweiseitiger PDF mit 28 Registryelementen sind abgeschlossen.
+
+## 15. M82.6 – Topologieneutrales Feintuning und TopScreen-Modulabschluss
+
+M82.6 stellt klar, dass Registry- und Tabellenmetadaten keine zusätzliche Ziel-App-UI erfordern dürfen. Logische Tabellen-/Gruppenziele koppeln vorhandene Refs; ein frameworkneutraler, von der Ziel-App explizit gespeister Topologie-Fingerprint schützt Typ, Parent und Reihenfolge ohne automatische UI-Erkennung. Status: `[A] abgenommen`. Die vollständigen Pflichtläufe und die sichtbare BBM-Diagnostic-Abnahme sind grün: beide Module bestanden Auswahl, Feintuning, Undo, Save und Neustart-Restore; Protokoll erzeugte eine echte vierseitige PDF über den vorhandenen BBM-Druckweg. Restarbeiten behält seine bestehende HTML-Ausgabevorschau ohne PDF-Erzeugung.

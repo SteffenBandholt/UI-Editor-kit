@@ -308,3 +308,13 @@ Direkte Werte und Schrittaktionen verwenden dieselben Operationen wie der erweit
 Eine M82.4-Inhaltstabelle behält genau eine Breitenquelle pro Spalte. Header, Datenbereich und optionaler Footer müssen dieselbe Spalten-ID referenzieren. Ein Zieladapter darf bei einer einfachen Spaltenänderung weder Nachbarspalten noch Fachdaten ungefragt verändern. Save, Session-Undo, Restore, Discard und Reset verwenden den vorhandenen Profil- und HostAdapterweg.
 
 Details: `docs/M82_5_EINFACHMODUS.md`.
+
+## Topologieneutrale HostAdapter-Anbindung für M82.6
+
+Eine Ziel-App bildet logische Tabellen- oder Gruppenziele ausschließlich auf bereits vorhandene native Referenzen ab. Der Adapter darf für Registrymetadaten keine zusätzlichen Controls, DOM-Knoten, Wrapper, Viewports oder Scrollbereiche erzeugen. Header und Daten können dieselbe logische Spalten-ID und Breitenquelle verwenden, obwohl kein gemeinsamer zusätzlicher Container existiert.
+
+Für den Schutz stellt die Ziel-App aus ihren expliziten Registry-/Ref-Beziehungen Deskriptoren mit Typ, stabiler ID, Parent und Reihenfolge zusammen. Der gemeinsame Fingerprintdienst verarbeitet nur diese Deskriptoren und führt keine automatische UI-Erkennung durch. Dynamische Fachzeilen werden ausdrücklich markiert und ignoriert. Vor und nach einer Änderungsanforderung vergleicht der HostAdapter die Topologie; eine Abweichung wird abgewiesen und transaktional zurückgerollt.
+
+Öffnen, Fokussieren und Registryrefresh bleiben reine Lese-/Synchronisationsvorgänge und dürfen keine produktiven Styles oder Scrollbesitzer ändern. Der Einfachmodus, die bestehende Session, Save/Restore und der Profilstore bleiben unverändert.
+
+Details: `docs/M82_6_TOPOLOGIENEUTRALES_FEINTUNING.md`.
