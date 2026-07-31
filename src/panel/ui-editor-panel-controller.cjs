@@ -287,7 +287,10 @@ function createUiEditorPanelController(options) {
 
     if (state.mode === PANEL_MODES.TEXT_SIZE) {
       if (!["left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for text size.");
-      const current = Number.isFinite(textLayout.fontSize) ? textLayout.fontSize : 16;
+      if (!Number.isFinite(textLayout.fontSize) || textLayout.fontSize <= 0) {
+        return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current font size is unavailable.", { field: "fontSize" });
+      }
+      const current = textLayout.fontSize;
       const min = minFor("minFontSize"), max = minFor("maxFontSize");
       const step = resolveOperationStep({ registryElement, operation: "fontSize", panelStepSize: state.stepSize });
       const fontSize = current + (direction === "left" ? -step : step);
