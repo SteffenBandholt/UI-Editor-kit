@@ -10,8 +10,8 @@ const { setup } = require("../../test/m70-test-helpers.cjs");
 const root = path.join(__dirname, "../..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 let count = 0;
-function run(name, action) { action(); count += 1; console.log(`OK ${count}/22 ${name}`); }
-async function runAsync(name, action) { await action(); count += 1; console.log(`OK ${count}/22 ${name}`); }
+function run(name, action) { action(); count += 1; console.log(`OK ${count}/31 ${name}`); }
+async function runAsync(name, action) { await action(); count += 1; console.log(`OK ${count}/31 ${name}`); }
 
 const operations = ["move", "textResize", "setVisibility"];
 const model = createUiEditorPanelViewModel({
@@ -49,6 +49,15 @@ run("Sichtbarkeit bleibt an setVisibility gebunden", () => { assert.match(viewMo
 run("erfolgreiche Einfachaenderung aktiviert Undo und Dirty ueber die vorhandene Session", () => { assert.match(viewModel, /layoutSession\.CommitUndoFrame\(\);[\s\S]*RaiseUndoChanged\(\)/); assert.match(session, /IsDirty/); });
 run("blockierte Operation erzeugt keinen Undo-Frame", () => assert.match(viewModel, /if \(!undoCommitted\) layoutSession\.CancelUndoFrame\(\)/));
 run("Core bleibt ziel-app-neutral und erzeugt keine Registry", () => { assert.doesNotMatch(core + viewModel, /restarbeiten\.|protokoll\.|bbm\./i); assert.doesNotMatch(core, /registerElement|createRegistry/); });
+run("M82.7.4 Move-Gruppe folgt ausschliesslich der move-Capability", () => assert.match(viewModel, /ShowSimpleMove\s*=>\s*CanSimpleMove/));
+run("M82.7.4 Move-Gruppe wird capability-gesteuert vollstaendig ein- oder ausgeblendet", () => assert.match(xaml, /StackPanel Visibility="\{Binding ShowSimpleMove, Converter=\{StaticResource BoolToVisibility\}\}"[\s\S]*?Text="Element verschieben"[\s\S]*?CommandParameter="elementMove:down"/));
+run("M82.7.4 Groessenbereich existiert nur fuer mindestens eine Groessencapability", () => assert.match(viewModel, /ShowSimpleElementSize\s*=>\s*CanSimpleWidth \|\| CanSimpleHeight/));
+run("M82.7.4 Breitenbedienung folgt ausschliesslich resizeWidth oder resize", () => { assert.match(viewModel, /CanSimpleWidth\s*=>\s*HasOperation\(HostAdapterOperations\.ResizeWidth\) \|\| HasOperation\(HostAdapterOperations\.Resize\)/); assert.match(xaml, /CommandParameter="elementWidth:left"[^>]*Visibility="\{Binding CanSimpleWidth/); });
+run("M82.7.4 Hoehenbedienung folgt ausschliesslich resizeHeight oder resize", () => { assert.match(viewModel, /CanSimpleHeight\s*=>\s*HasOperation\(HostAdapterOperations\.ResizeHeight\) \|\| HasOperation\(HostAdapterOperations\.Resize\)/); assert.match(xaml, /CommandParameter="elementHeight:up"[^>]*Visibility="\{Binding CanSimpleHeight/); });
+run("M82.7.4 Sichtbarkeit folgt ausschliesslich setVisibility", () => { assert.match(viewModel, /ShowSimpleVisibility\s*=>\s*HasOperation\(HostAdapterOperations\.SetVisibility\)/); assert.match(xaml, /CommandParameter="visibility"[^>]*Visibility="\{Binding ShowSimpleVisibility/); });
+run("M82.7.4 Capability-Kombinationen bleiben voneinander unabhaengig", () => { const visible = (ops) => ({ move: ops.includes("move"), size: ops.some((item) => ["resize", "resizeWidth", "resizeHeight"].includes(item)), width: ops.some((item) => ["resize", "resizeWidth"].includes(item)), height: ops.some((item) => ["resize", "resizeHeight"].includes(item)), visibility: ops.includes("setVisibility") }); assert.deepEqual(visible(["resizeWidth", "setVisibility"]), { move: false, size: true, width: true, height: false, visibility: true }); assert.deepEqual(visible(["move", "resizeHeight"]), { move: true, size: true, width: false, height: true, visibility: false }); });
+run("M82.7.4 gemeinsamer Capability-Weg enthaelt keine BBM-Kennung", () => assert.doesNotMatch(viewModel + xaml, /restarbeiten\.|protokoll\.|bbm\./i));
+run("M82.7.4 Dirty-, Undo- und Save-Vertrag bleibt unveraendert", () => { assert.match(viewModel, /SaveCommand = new AsyncCommand\([^\n]*IsDirty\)/); assert.match(viewModel, /layoutSession\.CommitUndoFrame\(\)/); assert.match(session, /IsDirty/); });
 
 const { registry, host, runtime } = setup();
 const controller = createUiEditorPanelController({ runtime, registry });
@@ -63,8 +72,8 @@ run("erfolgreiche Bewegung meldet Anzeigename und kumulierten Alt-Neu-Wert", () 
 run("technische Ziel-App-Grenze erscheint im Hauptstatus", () => { assert.match(viewModel, /ShowTechnicalFailure\(outcome\.Result\);\s*StatusMessage = ErrorMessage;/); assert.match(viewModel, /string\.IsNullOrWhiteSpace\(result\.Message\)[\s\S]*result\.Message/); });
 run("wirkungslose oder blockierte Aenderung erzeugt weder Dirty noch Undo", () => assert.match(viewModel, /else if \(!LayoutStatesDiffer\(outcome\.Result\.PreviousState, outcome\.Result\.NewState\)\)[\s\S]*else\s*\{[\s\S]*layoutSession\.CommitUndoFrame\(\)/));
 
-assert.equal(count, 22);
-console.log("TESTS OK: M82.7.1 capability-gesteuerter kumulativer Einfachmodus (22/22)");
+assert.equal(count, 31);
+console.log("TESTS OK: M82.7.1 bis M82.7.4 capability-gesteuerter Einfachmodus (31/31)");
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });
