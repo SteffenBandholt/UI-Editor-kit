@@ -9,6 +9,7 @@ internal sealed record ValidatedLayoutChange(
     double? TextOffsetX = null,
     double? TextOffsetY = null,
     double? FontSize = null,
+    double? ExpectedCurrentFontSize = null,
     bool? Visible = null,
     string? SpacingTarget = null,
     double? SpacingValue = null,

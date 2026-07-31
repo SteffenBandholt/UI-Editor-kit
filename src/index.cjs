@@ -40,6 +40,7 @@ const geometryRiskContract = require("./core/geometry-risk-contract.cjs");
 const spacingContract = require("./core/spacing-contract.cjs");
 const tableLayoutContract = require("./core/table-layout-contract.cjs");
 const uiTopologyFingerprint = require("./core/ui-topology-fingerprint.cjs");
+const textResizeContract = require("./core/text-resize-contract.cjs");
 
 module.exports = Object.freeze({
   createUiEditorRuntime,
@@ -68,6 +69,7 @@ module.exports = Object.freeze({
   ...spacingContract,
   ...tableLayoutContract,
   ...uiTopologyFingerprint,
+  ...textResizeContract,
   validateTargetAppAdapterPath,
   createTargetAppAdapterRuntime,
   getTargetAppAdapterPathSummary,

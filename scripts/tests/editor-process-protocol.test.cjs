@@ -175,7 +175,7 @@ function runEditorUiProtocolTests() {
   one(protocol, message(MESSAGE_TYPES.SET_EDITOR_LAYER, { layer: "text" }, sessionId));
   request = prepare("text-position", "up", "textMove", (payload) => assert.deepEqual(payload, { text: { offsetY: 0 } }));
   accept(request, { x: 2, y: 0, width: 198, height: 32, textOffsetX: 4, textOffsetY: 0, fontSize: 14 });
-  request = prepare("text-size", "right", "textResize", (payload) => assert.deepEqual(payload, { text: { fontSize: 16 } }));
+  request = prepare("text-size", "right", "textResize", (payload) => assert.deepEqual(payload, { text: { fontSize: 16, unit: "dip", expectedCurrentFontSize: 14 } }));
   accept(request, { x: 2, y: 0, width: 198, height: 32, textOffsetX: 4, textOffsetY: 0, fontSize: 16 });
 
   result = one(protocol, message(MESSAGE_TYPES.ACTIVATE_EDITOR_DIRECTION, { direction: "up" }, sessionId));

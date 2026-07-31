@@ -293,7 +293,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         bool Success, string ChangeId, string ElementId, string Operation, string? ErrorCode, string Message,
         RemoteElementLayoutState? PreviousState, RemoteElementLayoutState? NewState, bool RollbackSucceeded,
         GeometryRiskAssessment? GeometryRisk = null,
-        IReadOnlyList<RemoteElementLayoutState>? AffectedStates = null);
+        IReadOnlyList<RemoteElementLayoutState>? AffectedStates = null,
+        TextResizeReadback? TextResize = null);
 
     internal sealed class ElectronPipeHostAdapter : IGeometryRiskHostAdapter
     {
@@ -363,7 +364,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                 var result = new ChangeResult(remote.Success, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
                     remote.ErrorCode, remote.Message, remote.PreviousState is null ? null : ToLocal(remote.PreviousState, registry.Entries[0].ScopeId),
                     remote.NewState is null ? null : ToLocal(remote.NewState, registry.Entries[0].ScopeId), remote.RollbackSucceeded,
-                    remote.GeometryRisk, remote.AffectedStates?.Select(item => ToLocal(item, scopeId)).ToArray());
+                    remote.GeometryRisk, remote.AffectedStates?.Select(item => ToLocal(item, scopeId)).ToArray(), remote.TextResize);
                 if (remote.Success && result.NewState is not null) UpdateState(result.NewState);
                 if (remote.Success && remote.AffectedStates is not null)
                     foreach (var affected in remote.AffectedStates) UpdateState(ToLocal(affected, scopeId));

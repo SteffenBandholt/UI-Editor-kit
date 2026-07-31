@@ -145,10 +145,16 @@ internal static class ChangeRequestValidator
     private static ValidationOutcome ValidateTextResize(IReadOnlyDictionary<string, object?> payload)
     {
         if (!HasOnlyKeys(payload, "text") || !TryGetDictionary(payload, "text", out var text) ||
-            !HasOnlyKeys(text, "fontSize") || !TryRequiredFiniteNumber(text, "fontSize", out var fontSize) ||
+            !HasOnlyKeys(text, "fontSize", "unit", "expectedCurrentFontSize") || !TryRequiredFiniteNumber(text, "fontSize", out var fontSize) ||
             fontSize <= 0 || fontSize > MaximumFontSize)
             return Invalid($"textResize erwartet eine Schriftgröße größer 0 und höchstens {MaximumFontSize.ToString(CultureInfo.InvariantCulture)}.");
-        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.TextResize, FontSize: fontSize));
+        if (text.TryGetValue("unit", out var rawUnit) &&
+            (rawUnit is not string unit || !string.Equals(unit, TextResizeContract.Unit, StringComparison.Ordinal)))
+            return Invalid("textResize verwendet ausschliesslich die normalisierte Einheit dip.");
+        if (!TryOptionalFiniteNumber(text, "expectedCurrentFontSize", out var expectedCurrentFontSize) || expectedCurrentFontSize <= 0)
+            return Invalid("Der erwartete aktuelle Schriftwert muss eine positive endliche DIP-Zahl sein.");
+        return ValidationOutcome.Ok(new ValidatedLayoutChange(HostAdapterOperations.TextResize,
+            FontSize: fontSize, ExpectedCurrentFontSize: expectedCurrentFontSize));
     }
 
     private static ValidationOutcome ValidateVisibility(IReadOnlyDictionary<string, object?> payload)

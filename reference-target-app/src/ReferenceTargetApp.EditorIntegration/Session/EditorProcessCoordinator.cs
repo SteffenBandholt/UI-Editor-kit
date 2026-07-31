@@ -261,7 +261,8 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             EnsureActiveSession();
             if (!hostAdapters.TryGetValue(ActiveScopeId, out var adapter))
                 throw new EditorProcessException("unknown_scope", "Scope ist nicht registriert.");
-            var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation, payload,
+            var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation,
+                EnrichTextResizePayload(adapter, elementId, operation, payload),
                 DateTimeOffset.UtcNow, "ui-editor-panel", ActiveScopeId);
             var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
             var state = await RequestEditorUiStateCoreAsync(
@@ -288,7 +289,8 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             EnsureActiveSession();
             if (!hostAdapters.TryGetValue(ActiveScopeId, out var adapter))
                 throw new EditorProcessException("unknown_scope", "Scope ist nicht registriert.");
-            var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation, payload,
+            var request = new ChangeRequest(Guid.NewGuid().ToString("N"), elementId, operation,
+                EnrichTextResizePayload(adapter, elementId, operation, payload),
                 DateTimeOffset.UtcNow, "ui-editor-panel", ActiveScopeId);
             ChangeResult result;
             if (adapter is IGeometryRiskHostAdapter geometryAdapter)
@@ -312,6 +314,22 @@ public sealed class EditorProcessCoordinator : IAsyncDisposable
             return new(state, result);
         }
         finally { transitionLock.Release(); }
+    }
+
+    private static IReadOnlyDictionary<string, object?> EnrichTextResizePayload(
+        IHostAdapter adapter,
+        string elementId,
+        string operation,
+        IReadOnlyDictionary<string, object?> payload)
+    {
+        if (operation != HostAdapterOperations.TextResize ||
+            !payload.TryGetValue("text", out var rawText) || rawText is not IReadOnlyDictionary<string, object?> sourceText)
+            return payload;
+        var text = sourceText.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        text.TryAdd("unit", TextResizeContract.Unit);
+        var current = adapter.GetCurrentLayoutState().Elements.FirstOrDefault(entry => entry.ElementId == elementId)?.FontSize;
+        if (current.HasValue) text.TryAdd("expectedCurrentFontSize", current.Value);
+        return new Dictionary<string, object?>(payload, StringComparer.Ordinal) { ["text"] = text };
     }
 
     public async Task ClearGeometryPreviewAsync(CancellationToken cancellationToken = default)

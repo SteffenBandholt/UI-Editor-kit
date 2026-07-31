@@ -158,13 +158,26 @@ function validatePayloadFields(changeRequest, errors) {
       return;
     }
 
+    const allowedTextFields = changeRequest.operation === "textResize"
+      ? ["fontSize", "unit", "expectedCurrentFontSize"]
+      : ["offsetX", "offsetY", "fontSize"];
     Object.keys(text).forEach((fieldName) => {
-      if (!["offsetX", "offsetY", "fontSize"].includes(fieldName)) {
+      if (!allowedTextFields.includes(fieldName)) {
         errors.push(createError(changeRequest, "invalid_payload", `payload.text enthaelt keinen neutralen Textlayoutwert: ${fieldName}`, {
           field: `payload.text.${fieldName}`,
         }));
       }
     });
+    if (changeRequest.operation === "textResize") {
+      const fontSize = Number(text.fontSize);
+      const expected = text.expectedCurrentFontSize === undefined ? null : Number(text.expectedCurrentFontSize);
+      if (!Number.isFinite(fontSize) || fontSize <= 0 || text.unit !== undefined && text.unit !== "dip" ||
+          expected !== null && (!Number.isFinite(expected) || expected <= 0)) {
+        errors.push(createError(changeRequest, "invalid_payload", "textResize erwartet einen positiven DIP-Wert und optional einen positiven erwarteten Istwert.", {
+          field: "payload.text",
+        }));
+      }
+    }
   }
 }
 

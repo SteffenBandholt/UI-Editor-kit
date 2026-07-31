@@ -332,3 +332,13 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Tabellenmetriken und betroffene Spaltenzustände bleiben über den Electron-Prozessvertrag erhalten. JavaScript und WPF bilden dieselben Tabellenrollen in demselben Scope-Fingerprint ab; Reset-Operationen werden nicht als wiederherzustellende Benutzeränderungen persistiert.
 - Die gepackte BBM-Development-Abnahme belegte gemeinsame Header-/Datenbreiten, echten sichtbaren Text-Ellipsis, begrenzten inneren Überlauf bei 900/1400/maximierter Fensterbreite, Speichern und Neustart-Restore sowie Spaltenreset mit anschließendem Discard.
 - Commit/PR: keiner; gemäß Nutzeranweisung wird weder committet noch gepusht.
+## M82.7.2 – Generischer textResize-Weg
+
+- Status: `[A]`; Implementierung, automatisierte Pflichtprüfungen und sichtbare paketierte BBM-Abnahme sind abgeschlossen.
+- Der gemeinsame Vertrag überträgt normalisierte DIP-Werte, optionalen erwarteten Host-Istwert und strukturierten Readback mit Ausgangs-, Ziel- und tatsächlich angewandtem Wert.
+- Erfolg setzt eine reale Hoständerung und passenden Istwert innerhalb 0,02 DIP voraus; No-op, Konflikt, fehlender Readback und Mismatch bleiben ohne Dirty und Undo.
+- WPF setzt die echte `FontSize` von `Control` und `TextBlock`, erhält Bindings und liest nach `UpdateLayout` zurück; Electron überlässt die konkrete DOM-Abbildung der Ziel-App.
+- Interne Undo-/Restore-Batches überspringen bereits erfüllte `textResize`-Ziele, ohne interaktive No-ops als Erfolg zu melden.
+- Der gemeinsame Core enthält keine BBM-IDs; keine neue UI, Registry, automatische Erkennung oder Profilablage wurde ergänzt.
+- Pflichtprüfungen: Solution-Build 0 Fehler/0 Warnungen, Manager-Tests 103/103, Referenz-App-Tests 106/106, `npm test`, `npm pack --dry-run` und `npm run release:check` grün.
+- Commit/PR: keiner; gemäß Nutzeranweisung wurde weder committet noch gepusht.

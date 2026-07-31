@@ -13,7 +13,8 @@ public sealed record ChangeResult(
     ElementLayoutState? NewState,
     bool RollbackSucceeded,
     GeometryRiskAssessment? GeometryRisk = null,
-    IReadOnlyList<ElementLayoutState>? AffectedStates = null)
+    IReadOnlyList<ElementLayoutState>? AffectedStates = null,
+    TextResizeReadback? TextResize = null)
 {
     internal static ChangeResult Rejected(ChangeRequest? request, string errorCode, string message) => new(
         false,
