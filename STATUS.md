@@ -6,6 +6,14 @@
 
 ## 1. Zweck
 
+### M82.7.3 – realen `textResize`-Istwert im Editor herstellen
+
+- Status: `[A] abgenommen`; Implementierung, automatisierte Regression und sichtbare isolierte BBM-Zwei-Start-Abnahme sind abgeschlossen.
+- Der gemeinsame Editor zeigt und verwendet ausschließlich den vom Host bestätigten Schrift-Istwert. Kleiner, Größer und direkte Eingabe bleiben bei fehlendem Readback gesperrt; Zielwechsel, Undo und Reset ersetzen veraltete Wunschwerte durch den neuen Hostzustand.
+- Der Core bleibt frei von BBM-IDs. Dirty, Undo und Save entstehen nur nach einer vom Host bestätigten realen Änderung.
+- Die sichtbare BBM-Abnahme bestätigte Kurz-/Langtext, normale Bezeichnung, Feld, Bewegung, Sichtbarkeit, Save und Neustart-Restore mit isolierter Testdatenbank und unveränderten Benutzerdateien.
+- Detaildokument: `docs/M82_7_3_TEXTRESIZE_ISTWERT.md`.
+
 ### M82.7.1 – Freies Verschieben und eindeutige Aktionsrückmeldung
 
 - Status: `[A] abgenommen`; gezielte Reparatur, Regression und sichtbare isolierte BBM-Diagnostic-Abnahme sind abgeschlossen.
