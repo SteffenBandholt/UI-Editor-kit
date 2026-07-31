@@ -3,6 +3,7 @@ const { RUNTIME_ERROR_CODES } = require("../runtime/runtime-error-codes.cjs");
 const { PANEL_LAYERS, PANEL_MODES } = require("./panel-intents.cjs");
 const { createPanelMessageCatalog } = require("./panel-message-catalog.cjs");
 const { resolveOperationStep } = require("../runtime/operation-step-resolver.cjs");
+const { createTextResizePayload } = require("../core/text-resize-contract.cjs");
 
 const PANEL_ERROR_CODES = Object.freeze({
   NO_SELECTION: "NO_SELECTION",
@@ -292,7 +293,7 @@ function createUiEditorPanelController(options) {
       const fontSize = current + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && fontSize < min.value) return blocked("MIN_SIZE_REACHED", "minimum font size reached.");
       if (Number.isFinite(max.value) && fontSize > max.value) return blocked("MAX_SIZE_REACHED", "maximum font size reached.");
-      return { ok: true, changeRequest: { elementId: state.selectedElementId, operation: "textResize", payload: { text: { fontSize } }, source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
+      return { ok: true, changeRequest: { elementId: state.selectedElementId, operation: "textResize", payload: createTextResizePayload(fontSize, current), source: "ui-editor-panel", changeId: `ui-editor-panel:${Date.now()}`, createdAt: new Date().toISOString() } };
     }
 
     return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "mode is not allowed.");

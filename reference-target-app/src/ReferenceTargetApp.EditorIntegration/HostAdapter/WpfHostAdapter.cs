@@ -290,9 +290,33 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
         try
         {
             previousState = layoutAccess.Read(entry);
+            if (change.Operation == HostAdapterOperations.TextResize)
+            {
+                var expectation = TextResizeContract.VerifyExpectedCurrent(
+                    change.FontSize!.Value, change.ExpectedCurrentFontSize, previousState.FontSize);
+                if (!expectation.Success)
+                    return Failure(request, expectation.ErrorCode!, expectation.Message,
+                        previousState, previousState, true, expectation.Readback);
+            }
             snapshot = layoutAccess.Capture(entry);
             layoutAccess.Apply(entry, change);
+            if (change.Operation == HostAdapterOperations.TextResize) RefreshLayout(entry);
             var newState = layoutAccess.Read(entry);
+            TextResizeReadback? textResize = null;
+            if (change.Operation == HostAdapterOperations.TextResize)
+            {
+                var verification = TextResizeContract.VerifyReadback(
+                    change.FontSize!.Value, change.ExpectedCurrentFontSize, previousState.FontSize, newState.FontSize);
+                textResize = verification.Readback;
+                if (!verification.Success)
+                {
+                    layoutAccess.Restore(entry, snapshot);
+                    RefreshLayout(entry);
+                    var restoredState = layoutAccess.Read(entry);
+                    return Failure(request, verification.ErrorCode!, verification.Message,
+                        previousState, restoredState, true, verification.Readback);
+                }
+            }
             return new ChangeResult(
                 true,
                 request.ChangeId,
@@ -302,7 +326,8 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
                 "Layoutänderung wurde angewandt.",
                 previousState,
                 newState,
-                true);
+                true,
+                TextResize: textResize);
         }
         catch (Exception applyException)
         {
@@ -350,7 +375,8 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
         string message,
         ElementLayoutState? previousState,
         ElementLayoutState? newState,
-        bool rollbackSucceeded) => new(
+        bool rollbackSucceeded,
+        TextResizeReadback? textResize = null) => new(
             false,
             request.ChangeId,
             request.ElementId,
@@ -359,5 +385,6 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
             message,
             previousState,
             newState,
-            rollbackSucceeded);
+            rollbackSucceeded,
+            TextResize: textResize);
 }

@@ -366,6 +366,7 @@ public sealed class LayoutProfileSession
             if (!adapters.TryGetValue(scopePair.Key, out var adapter) || !desired.TryGetValue(scopePair.Key, out var desiredScope))
                 return Fail("unknown_scope", $"Scope '{scopePair.Key}' ist nicht registriert.");
             var desiredById = desiredScope.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+            var currentById = adapter.GetCurrentLayoutState().Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
             foreach (var token in scopePair.Value.OrderBy(value => value, StringComparer.Ordinal))
             {
                 var parts = token.Split('\u001f', 2);
@@ -380,6 +381,8 @@ public sealed class LayoutProfileSession
                     return Fail("operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden.");
                 foreach (var request in requests)
                 {
+                    if (currentById.TryGetValue(elementId, out var current) && TextResizeContract.IsAlreadyApplied(request, current))
+                        continue;
                     var result = await HostAdapterDispatch.SubmitAsync(adapter, request, cancellationToken).ConfigureAwait(false);
                     if (result.Success)
                     {

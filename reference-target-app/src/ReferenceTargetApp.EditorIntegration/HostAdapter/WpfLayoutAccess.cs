@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Data;
 using ReferenceTargetApp.EditorIntegration.Registry;
 using ReferenceTargetApp.EditorIntegration.Geometry;
 
@@ -23,6 +24,7 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             paddingProperty is null ? null : entry.NativeElement.ReadLocalValue(paddingProperty),
             fontSizeProperty,
             fontSizeProperty is null ? null : entry.NativeElement.ReadLocalValue(fontSizeProperty),
+            fontSizeProperty is null ? null : BindingOperations.GetBindingBase(entry.NativeElement, fontSizeProperty),
             entry.NativeElement.ReadLocalValue(UIElement.VisibilityProperty),
             WpfSpacingState.Read(entry.NativeElement),
             entry.WpfTableColumnBinding?.Column.Width,
@@ -135,7 +137,9 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
         RestoreLocalValue(element, UIElement.RenderTransformProperty, snapshot.RenderTransform);
         if (snapshot.PaddingProperty is not null && snapshot.Padding is not null)
             RestoreLocalValue(element, snapshot.PaddingProperty, snapshot.Padding);
-        if (snapshot.FontSizeProperty is not null && snapshot.FontSize is not null)
+        if (snapshot.FontSizeProperty is not null && snapshot.FontSizeBinding is not null)
+            BindingOperations.SetBinding(element, snapshot.FontSizeProperty, snapshot.FontSizeBinding);
+        else if (snapshot.FontSizeProperty is not null && snapshot.FontSize is not null)
             RestoreLocalValue(element, snapshot.FontSizeProperty, snapshot.FontSize);
         RestoreLocalValue(element, UIElement.VisibilityProperty, snapshot.Visibility);
         if (snapshot.Spacing.Count == 0) WpfSpacingState.Clear(element); else WpfSpacingState.Write(element, snapshot.Spacing);
@@ -239,7 +243,7 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
     private static void SetFontSize(FrameworkElement element, double fontSize)
     {
         var property = GetFontSizeProperty(element) ?? throw new InvalidOperationException("Element besitzt keine Schriftgrößen-Eigenschaft.");
-        element.SetValue(property, fontSize);
+        element.SetCurrentValue(property, fontSize);
     }
 
     private static DependencyProperty? GetPaddingProperty(FrameworkElement element) => element switch
@@ -252,6 +256,7 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
     private static DependencyProperty? GetFontSizeProperty(FrameworkElement element) => element switch
     {
         Control => Control.FontSizeProperty,
+        TextBlock => TextBlock.FontSizeProperty,
         Border => TextElement.FontSizeProperty,
         _ => null
     };

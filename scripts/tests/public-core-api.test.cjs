@@ -102,6 +102,12 @@ const expectedExports = [
   "normalizeUiTopology",
   "createUiTopologyFingerprint",
   "compareUiTopology",
+  "TEXT_RESIZE_UNIT",
+  "TEXT_RESIZE_TOLERANCE",
+  "TEXT_RESIZE_ERROR_CODES",
+  "createTextResizePayload",
+  "normalizeTextResizeIntent",
+  "verifyTextResizeReadback",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -129,14 +135,14 @@ expectedExports.forEach((name) => {
     "TABLE_ELEMENT_TYPES", "TABLE_WIDTH_MODES", "TABLE_WRAP_MODES", "TABLE_OVERFLOW_MODES",
     "TABLE_HORIZONTAL_OVERFLOW_MODES", "TABLE_VERTICAL_OVERFLOW_MODES", "TABLE_WIDTH_POLICIES",
     "TABLE_ROW_HEIGHT_MODES", "TABLE_ALIGNMENT_MODES", "TABLE_LAYOUT_OPERATIONS",
-    "TABLE_TOPOLOGY_POLICIES",
+    "TABLE_TOPOLOGY_POLICIES", "TEXT_RESIZE_ERROR_CODES",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else if ([
-    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_ADAPTER_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION", "PDF_TARGET_CONTRACT_VERSION",
+    "ELECTRON_TARGET_CONTRACT_VERSION", "ELECTRON_TARGET_ADAPTER_VERSION", "ELECTRON_TARGET_FRAMEWORK", "LOCAL_TARGET_PROTOCOL_NAME", "LOCAL_TARGET_PROTOCOL_VERSION", "PDF_TARGET_CONTRACT_VERSION", "TEXT_RESIZE_UNIT",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "string", `${name} ist kein String-Export`);
-  } else if (["LOCAL_TARGET_MAX_MESSAGE_BYTES", "PROFILE_SCHEMA_VERSION"].includes(name)) {
+  } else if (["LOCAL_TARGET_MAX_MESSAGE_BYTES", "PROFILE_SCHEMA_VERSION", "TEXT_RESIZE_TOLERANCE"].includes(name)) {
     assert.equal(typeof publicApi[name], "number", `${name} ist kein Zahlen-Export`);
   } else {
     assert.equal(typeof publicApi[name], "function", `${name} ist kein Funktions-Export`);

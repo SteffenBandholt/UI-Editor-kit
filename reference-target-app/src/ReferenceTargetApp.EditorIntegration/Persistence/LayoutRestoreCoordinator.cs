@@ -101,11 +101,14 @@ public sealed class LayoutRestoreCoordinator
         var applied = 0;
         var failures = new List<LayoutApplyFailure>();
         var sequence = 1;
+        var currentById = hostAdapter.GetCurrentLayoutState().Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
         foreach (var entry in registry.Entries.OrderBy(item => item.Order).ThenBy(item => item.ElementId, StringComparer.Ordinal))
         {
             if (!desiredById.TryGetValue(entry.ElementId, out var desired)) continue;
             foreach (var request in CreateRequests(entry, desired, source, ref sequence))
             {
+                if (currentById.TryGetValue(entry.ElementId, out var current) && TextResizeContract.IsAlreadyApplied(request, current))
+                    continue;
                 var result = hostAdapter.SubmitChangeRequest(request);
                 if (result.Success)
                 {
@@ -135,11 +138,14 @@ public sealed class LayoutRestoreCoordinator
         var applied = 0;
         var failures = new List<LayoutApplyFailure>();
         var sequence = 1;
+        var currentById = hostAdapter.GetCurrentLayoutState().Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
         foreach (var entry in registry.Entries.OrderBy(item => item.Order).ThenBy(item => item.ElementId, StringComparer.Ordinal))
         {
             if (!desiredById.TryGetValue(entry.ElementId, out var desired)) continue;
             foreach (var request in CreateRequests(entry, desired, source, ref sequence))
             {
+                if (currentById.TryGetValue(entry.ElementId, out var current) && TextResizeContract.IsAlreadyApplied(request, current))
+                    continue;
                 var result = await HostAdapterDispatch.SubmitAsync(hostAdapter, request, cancellationToken).ConfigureAwait(false);
                 if (result.Success) { applied++; continue; }
                 failures.Add(new(result.ElementId, result.Operation,
