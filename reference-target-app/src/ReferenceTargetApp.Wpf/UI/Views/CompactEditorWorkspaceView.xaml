@@ -89,6 +89,7 @@
             </WrapPanel>
 
             <StackPanel Visibility="{Binding IsSimpleElementLayer, Converter={StaticResource BoolToVisibility}}">
+              <StackPanel Visibility="{Binding ShowSimpleMove, Converter={StaticResource BoolToVisibility}}">
               <TextBlock Text="Element verschieben" FontWeight="SemiBold"/>
               <Grid HorizontalAlignment="Left" Margin="0,5,0,9">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -98,6 +99,7 @@
                 <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource PadButton}" Content="→" Command="{Binding SimpleActionCommand}" CommandParameter="elementMove:right" IsEnabled="{Binding CanSimpleMove}"/>
                 <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource PadButton}" Content="↓" Command="{Binding SimpleActionCommand}" CommandParameter="elementMove:down" IsEnabled="{Binding CanSimpleMove}"/>
               </Grid>
+              </StackPanel>
               <TextBlock Text="Größe" FontWeight="SemiBold" Visibility="{Binding ShowSimpleElementSize, Converter={StaticResource BoolToVisibility}}"/>
               <WrapPanel Margin="0,5,0,6" Visibility="{Binding ShowSimpleElementSize, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Breite" Width="56" VerticalAlignment="Center" Visibility="{Binding CanSimpleWidth, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource SimpleButton}" Content="−" Command="{Binding SimpleActionCommand}" CommandParameter="elementWidth:left" IsEnabled="{Binding CanSimpleWidth}" Visibility="{Binding CanSimpleWidth, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource SimpleButton}" Content="+" Command="{Binding SimpleActionCommand}" CommandParameter="elementWidth:right" IsEnabled="{Binding CanSimpleWidth}" Visibility="{Binding CanSimpleWidth, Converter={StaticResource BoolToVisibility}}"/><TextBlock Text="Höhe" Margin="10,0,6,7" VerticalAlignment="Center" Visibility="{Binding CanSimpleHeight, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource SimpleButton}" Content="−" Command="{Binding SimpleActionCommand}" CommandParameter="elementHeight:up" IsEnabled="{Binding CanSimpleHeight}" Visibility="{Binding CanSimpleHeight, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource SimpleButton}" Content="+" Command="{Binding SimpleActionCommand}" CommandParameter="elementHeight:down" IsEnabled="{Binding CanSimpleHeight}" Visibility="{Binding CanSimpleHeight, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
             </StackPanel>
@@ -121,7 +123,7 @@
                 <WrapPanel Visibility="{Binding ShowSimpleDirectFontSize, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Schrift" Width="48" VerticalAlignment="Center"/><TextBox Text="{Binding DirectFontSizeText}" Width="68" Margin="0,0,4,6" IsEnabled="{Binding CanSimpleFontSize}"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyDirectValueCommand}" CommandParameter="fontSize" IsEnabled="{Binding CanSimpleFontSize}"/></WrapPanel>
               </StackPanel>
             </Expander>
-            <WrapPanel Margin="0,12,0,0"><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="original" IsEnabled="{Binding CanResetElement}"/><Button Style="{StaticResource SimpleButton}" Content="{Binding VisibilityActionLabel}" Command="{Binding SimpleActionCommand}" CommandParameter="visibility" IsEnabled="{Binding CanChangeVisibility}"/></WrapPanel>
+            <WrapPanel Margin="0,12,0,0"><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="original" IsEnabled="{Binding CanResetElement}"/><Button Style="{StaticResource SimpleButton}" Content="{Binding VisibilityActionLabel}" Command="{Binding SimpleActionCommand}" CommandParameter="visibility" IsEnabled="{Binding CanChangeVisibility}" Visibility="{Binding ShowSimpleVisibility, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
           </StackPanel>
         </ScrollViewer>
       </Border>

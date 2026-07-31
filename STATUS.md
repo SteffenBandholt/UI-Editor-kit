@@ -6,6 +6,14 @@
 
 ## 1. Zweck
 
+### M82.7.4 – Capability-gesteuerte Bediengruppen
+
+- Status: `[A] abgenommen`; generische Bediengruppen, automatisierte Regression und sichtbare isolierte BBM-Zwei-Start-Abnahme sind abgeschlossen.
+- Verschieben, Breite, Höhe und Sichtbarkeit werden im Einfachmodus ausschließlich bei der jeweiligen Host-Capability gezeigt. Nicht verfügbare Bediengruppen bleiben vollständig verborgen.
+- Der gemeinsame Core enthält keine BBM-ID und keine elementspezifische Apply-Logik. Dirty, Undo und Save bleiben unverändert an eine bestätigte reale Hoständerung gebunden.
+- Sichtbar bestätigt sind Ampel-Direktauswahl, ausgeblendete Verschiebegruppe, Breite/Höhe +5 DIP, Sichtbarkeit, Undo, Original, Save und Neustart-Restore ohne Grid-, Flex- oder Scrolländerung.
+- Detaildokument: `docs/M82_7_4_CAPABILITY_BEDIENGRUPPEN.md`.
+
 ### M82.7.3 – realen `textResize`-Istwert im Editor herstellen
 
 - Status: `[A] abgenommen`; Implementierung, automatisierte Regression und sichtbare isolierte BBM-Zwei-Start-Abnahme sind abgeschlossen.
