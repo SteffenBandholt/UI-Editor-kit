@@ -140,4 +140,8 @@ Danach den folgenden Auftrag vollständig einfügen:
 3. `Arbeitsanweisung.md`
 4. allgemeine technische Konventionen
 
+## Pflichtregel: Komponentenvertrag bei editorfähigen Komponenten
+
+Neue oder strukturell geänderte editorfähige UI-Komponenten sind nur zusammen mit einem vollständigen Komponentenvertrag fertig. Der Vertrag muss stabile Komponenten-/Element-IDs, Scope, vollständige Pflichtslots, Parents, explizite Single-/Multi-Ref-Semantik, Typ/Rolle/Auswahlart, Baseline, Grenzen, erlaubte und gesperrte Operationen sowie Operationseffekte enthalten. Die Ziel-App liefert die Ref-Auflösung und aggregiert ihre Komponenten in die Registry; der gemeinsame Editor erzeugt keine Ziele und erkennt keine UI automatisch. Vollständigkeits- und Laufzeit-Ref-Prüfungen müssen grün sein. Eine spätere manuelle Einzelregistrierung ist kein regulärer Entwicklungsschritt.
+
 Sicherheits-, Datenschutz- und Zugriffsregeln können nicht aufgehoben werden.
