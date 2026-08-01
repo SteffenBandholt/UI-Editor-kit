@@ -183,7 +183,8 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
         targetSession.ShutdownRequested -= TargetSession_ShutdownRequested;
         targetSession.Disconnected -= TargetSession_Disconnected;
         if (coordinator.Window is not null) coordinator.Window.Closed -= EditorWindow_Closed;
-        try { await targetSession.ShutdownTargetSessionAsync(); } catch { }
+        var disposition = coordinator.LastCloseDisposition.ToString().ToLowerInvariant();
+        try { await targetSession.ShutdownTargetSessionAsync(disposition); } catch { }
         await coordinator.DisposeAsync();
         selectionService.Dispose();
         await targetSession.DisposeAsync();

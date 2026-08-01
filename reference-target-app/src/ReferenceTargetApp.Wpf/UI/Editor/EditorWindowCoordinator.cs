@@ -12,6 +12,14 @@ using ReferenceTargetApp.PdfRendering;
 
 namespace ReferenceTargetApp.UI.Editor;
 
+internal enum EditorCloseDisposition
+{
+    Unknown,
+    Clean,
+    Saved,
+    Discarded,
+}
+
 internal sealed class EditorWindowCoordinator(
     Window? owner,
     IReadOnlyDictionary<string, IHostAdapter> hostAdapters,
@@ -42,6 +50,7 @@ internal sealed class EditorWindowCoordinator(
     internal bool HasActiveProcess => processCoordinator?.ProcessId is not null;
     internal string? SessionId => processCoordinator?.SessionId;
     internal IReadOnlyList<EditorProcessDiagnostic> ProcessDiagnostics => processCoordinator?.Diagnostics ?? [];
+    internal EditorCloseDisposition LastCloseDisposition { get; private set; } = EditorCloseDisposition.Unknown;
 
     internal async Task<EditorWindowViewModel> OpenAsync()
     {
@@ -106,6 +115,7 @@ internal sealed class EditorWindowCoordinator(
             closing = true;
             var currentWindow = window;
             var currentViewModel = viewModel;
+            LastCloseDisposition = currentViewModel?.CloseDisposition ?? EditorCloseDisposition.Unknown;
             currentViewModel?.BeginClosing(currentViewModel.IsBusy);
             if (processCoordinator is not null)
                 await processCoordinator.DisposeAsync();

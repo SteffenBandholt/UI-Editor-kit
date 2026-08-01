@@ -113,8 +113,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
     public Task ActivateTargetAsync(CancellationToken cancellationToken = default) =>
         connection.SendEventAsync("activateTarget", cancellationToken: cancellationToken);
 
-    public Task ShutdownTargetSessionAsync(CancellationToken cancellationToken = default) =>
-        connection.SendEventAsync("editorClosed", cancellationToken: cancellationToken);
+    public Task ShutdownTargetSessionAsync(string disposition = "unknown", CancellationToken cancellationToken = default) =>
+        connection.SendEventAsync("editorClosed", new { disposition }, cancellationToken);
 
     public void ConfigureRegistryRefreshStatus(Func<ElectronRegistryRefreshStatus> statusProvider) =>
         registryRefreshStatus = statusProvider ?? throw new ArgumentNullException(nameof(statusProvider));
