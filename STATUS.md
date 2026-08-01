@@ -6,6 +6,13 @@
 
 ## 1. Zweck
 
+### M82.7.5 – Eindeutiger Editorabschluss für gespeicherte Layouts
+
+- Status: `[A] abgenommen`; neutraler Close-Vertrag, automatisierte Regression und sichtbare isolierte BBM-Zwei-Start-Abnahme sind abgeschlossen.
+- Der native Editor meldet nach erfolgreichem Speichern `saved`, bei sauberem Zustand `clean` und nach ausdrücklich gewähltem „Ohne Speichern“ `discarded`; Fehler und Abbrüche bleiben `unknown`.
+- Die Disposition läuft über die vorhandene Electron-Pipe. Der gemeinsame Core enthält keine BBM-ID, keine Ziel-App-Registry und keine Profilablage.
+- Detaildokument: `docs/M82_7_5_EDITOR_CLOSE_DISPOSITION.md`.
+
 ### M82.7.4 – Capability-gesteuerte Bediengruppen
 
 - Status: `[A] abgenommen`; generische Bediengruppen, automatisierte Regression und sichtbare isolierte BBM-Zwei-Start-Abnahme sind abgeschlossen.

@@ -28,6 +28,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private readonly Func<Window?> getOwner;
     private readonly Func<Task> requestClose;
     private readonly CancellationToken lifetimeToken;
+    internal EditorCloseDisposition CloseDisposition { get; private set; } = EditorCloseDisposition.Unknown;
     private readonly Dispatcher dispatcher;
     private readonly IPdfEditorWorkspace pdfWorkspace;
     private readonly EditorPreferenceStore preferenceStore;
@@ -349,14 +350,25 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     internal async Task<bool> ConfirmCloseAsync()
     {
-        if (!IsDirty && !pdfWorkspace.IsDirty) return true;
+        CloseDisposition = EditorCloseDisposition.Unknown;
+        if (!IsDirty && !pdfWorkspace.IsDirty)
+        {
+            CloseDisposition = EditorCloseDisposition.Clean;
+            return true;
+        }
         var dirtyAreas = IsDirty && pdfWorkspace.IsDirty ? "Programmoberfläche und PDF-Ausgabe" : IsDirty ? "Programmoberfläche" : "PDF-Ausgabe";
         var decision = dialogService.AskUnsavedChanges(getOwner()!, "Der Editor wird geschlossen. Wählen Sie Speichern und schließen, Ohne Speichern schließen oder Abbrechen.");
         if (decision == UnsavedChangesDecision.Cancel) { StatusMessage = "Schließen abgebrochen."; return false; }
-        if (decision != UnsavedChangesDecision.Save) return true;
+        if (decision != UnsavedChangesDecision.Save)
+        {
+            CloseDisposition = EditorCloseDisposition.Discarded;
+            return true;
+        }
         StatusMessage = "Ungespeichert: " + dirtyAreas + ". Zustände werden gespeichert …";
         if (IsDirty && !await SaveAsync()) return false;
-        return !pdfWorkspace.IsDirty || await pdfWorkspace.SaveAsync();
+        if (pdfWorkspace.IsDirty && !await pdfWorkspace.SaveAsync()) return false;
+        CloseDisposition = EditorCloseDisposition.Saved;
+        return true;
     }
 
     internal void BeginClosing(bool operationWasRunning)
