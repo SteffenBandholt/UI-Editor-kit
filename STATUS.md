@@ -6,6 +6,15 @@
 
 ## 1. Zweck
 
+### M83.0 – Komponentenbasierte Vollregistrierung
+
+- Status: `[A]` abgenommen; die appneutrale Vertragsvalidierung, alle automatisierten Kit-Prüfungen und die sichtbare isolierte BBM-Acceptance sind grün.
+- Der neue Komponenten-/Slot-Vertrag validiert stabile deklarierte IDs, Pflichtslots, Parents, Single-/Multi-Refs, Capabilities, Baselines, Grenzen und direkte Kindauswahl.
+- Unvollständige Verträge liefern benannte Guardrail-Fehler; der gemeinsame Core erzeugt keine Registryziele und enthält keine BBM-IDs.
+- Die Ziel-App bleibt Eigentümerin von Registry, Ref-Auflösung und HostAdapter.
+- Das spätere PDF-Prinzip ist dokumentiert; M83.0 ergänzt keine PDF-Funktion.
+- Sichtbar bestätigt sind getrennte Auswahl von Meta-Spalte, Nr., Datum und Klasse, Kind-Isolation, Ampel-Multi-Ref, Rerender, Speichern und automatischer Zweitstart mit Restore ohne neue Scrollleiste oder Topologieänderung.
+
 ### M82.7.5 – Eindeutiger Editorabschluss für gespeicherte Layouts
 
 - Status: `[A] abgenommen`; neutraler Close-Vertrag, automatisierte Regression und sichtbare isolierte BBM-Zwei-Start-Abnahme sind abgeschlossen.

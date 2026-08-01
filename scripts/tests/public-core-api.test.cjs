@@ -108,6 +108,13 @@ const expectedExports = [
   "createTextResizePayload",
   "normalizeTextResizeIntent",
   "verifyTextResizeReadback",
+  "UI_COMPONENT_REFERENCE_KINDS",
+  "UI_COMPONENT_PRESENCE_MODES",
+  "normalizeUiComponentContract",
+  "aggregateUiComponentContracts",
+  "validateUiComponentContracts",
+  "validateUiComponentReferenceBindings",
+  "orderUiComponentSelectionTargetIds",
   "validateTargetAppAdapterPath",
   "createTargetAppAdapterRuntime",
   "getTargetAppAdapterPathSummary",
@@ -135,7 +142,7 @@ expectedExports.forEach((name) => {
     "TABLE_ELEMENT_TYPES", "TABLE_WIDTH_MODES", "TABLE_WRAP_MODES", "TABLE_OVERFLOW_MODES",
     "TABLE_HORIZONTAL_OVERFLOW_MODES", "TABLE_VERTICAL_OVERFLOW_MODES", "TABLE_WIDTH_POLICIES",
     "TABLE_ROW_HEIGHT_MODES", "TABLE_ALIGNMENT_MODES", "TABLE_LAYOUT_OPERATIONS",
-    "TABLE_TOPOLOGY_POLICIES", "TEXT_RESIZE_ERROR_CODES",
+    "TABLE_TOPOLOGY_POLICIES", "TEXT_RESIZE_ERROR_CODES", "UI_COMPONENT_REFERENCE_KINDS", "UI_COMPONENT_PRESENCE_MODES",
   ].includes(name)) {
     assert.equal(typeof publicApi[name], "object", `${name} ist kein Objekt-Export`);
   } else if ([
