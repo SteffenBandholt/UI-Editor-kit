@@ -75,9 +75,9 @@ function table(overrides = {}) {
 function boundElements() {
   const result = [{ id: "table", type: "table", allowedOps: [] }];
   for (const item of table().columns) {
-    result.push({ id: item.columnId, type: "tableColumn", tableColumnLayout: item, allowedOps: ["resizeWidth"] });
-    result.push({ id: item.headerElementId, type: "tableHeaderCell", tableBinding: { columnId: item.columnId, widthSourceId: item.columnId }, allowedOps: [] });
-    result.push({ id: item.dataCellTemplateId, type: "tableDataCell", tableBinding: { columnId: item.columnId, widthSourceId: item.columnId }, allowedOps: [] });
+    result.push({ id: item.columnId, type: "tableColumn", parentId: "table", tableColumnLayout: item, allowedOps: ["resizeWidth"] });
+    result.push({ id: item.headerElementId, type: "tableHeaderCell", parentId: item.columnId, tableBinding: { columnId: item.columnId, widthSourceId: item.columnId }, allowedOps: [] });
+    result.push({ id: item.dataCellTemplateId, type: "tableDataCell", parentId: item.columnId, tableBinding: { columnId: item.columnId, widthSourceId: item.columnId }, allowedOps: [] });
   }
   return result;
 }
@@ -87,7 +87,7 @@ run("gültige Tabelle wird akzeptiert", () => assert.equal(validateTableLayout(t
 run("Spalte besitzt eine eindeutige Breitenquelle", () => assert.equal(validateTableLayout(table()).model.columns[1].widthSourceId, "description"));
 run("abweichende Breitenquelle wird abgewiesen", () => assert.equal(validateTableLayout(table({ columns: [column("x", 100, 40, { }), { ...column("y", 100, 40), widthSourceId: "x" }] })).ok, false));
 run("Header- und Datenzelle sind an dieselbe Spalte gebunden", () => assert.equal(validateTableElementBindings(boundElements()).ok, true));
-run("unabhängige Headerbreite ist gesperrt", () => { const elements = boundElements(); elements.find((entry) => entry.type === "tableHeaderCell").allowedOps = ["resizeWidth"]; assert.equal(validateTableElementBindings(elements).ok, false); });
+run("Zellbreite nutzt kontrolliert dieselbe registrierte Spaltenquelle", () => { const elements = boundElements(); elements.filter((entry) => ["tableHeaderCell", "tableDataCell"].includes(entry.type)).forEach((entry) => { entry.allowedOps = ["resizeWidth"]; }); assert.equal(validateTableElementBindings(elements).ok, true); });
 run("fehlender Datenzellenbereich wird erkannt", () => assert.equal(validateTableElementBindings(boundElements().filter((entry) => entry.id !== "table.description.cells")).ok, false));
 run("Viewportbreite wird gemessen", () => assert.equal(measureTableLayout(table()).viewportWidth, 760));
 run("Spaltensumme wird gemessen", () => assert.equal(measureTableLayout(table()).columnWidth, 960));
