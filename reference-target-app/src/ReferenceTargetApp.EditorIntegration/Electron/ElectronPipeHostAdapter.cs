@@ -223,7 +223,10 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             foreach (var cell in new[] { header, data })
                 if (cell.TableBinding is null || cell.TableBinding.GetValueOrDefault("columnId") != column.Id ||
                     cell.TableBinding.GetValueOrDefault("widthSourceId") != column.Id ||
-                    cell.AllowedOps.Any(operation => operation is "resize" or "resizeWidth" or "changeWidth"))
+                    cell.AllowedOps.Any(operation => operation is "resize" or "changeWidth") ||
+                    cell.AllowedOps.Contains("resizeWidth", StringComparer.Ordinal) &&
+                        (!column.TableColumnLayout.Resizable ||
+                         !column.AllowedOps.Any(operation => operation is "resize" or "resizeWidth")))
                     throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, $"Zellenbindung von '{column.Id}' besitzt keine eindeutige Breitenquelle.");
         }
         foreach (var group in scope.Elements.Where(element => element.Type == "fieldGroup"))

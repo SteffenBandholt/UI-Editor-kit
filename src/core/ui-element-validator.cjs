@@ -449,8 +449,6 @@ function validateTableStructures(elements, elementsById, errors) {
           errors.push(createError("table_column_contract_mismatch", "Spaltenvertrag stimmt nicht mit dem Tabellenvertrag überein.", "tableColumnLayout", getElementId(element)));
       }
     }
-    if (["tableHeaderCell", "tableDataCell"].includes(element.type) && Array.isArray(element.allowedOps) && element.allowedOps.some((operation) => ["resize", "resizeWidth", "changeWidth"].includes(operation)))
-      errors.push(createError("table_cell_width_operation_forbidden", "Header- und Datenzellen dürfen keine unabhängige Breitenoperation anbieten.", "allowedOps", getElementId(element)));
   }
   if (elements.some((element) => element?.tableLayout || element?.tableColumnLayout || element?.tableBinding)) {
     const bindingResult = validateTableElementBindings(elements);

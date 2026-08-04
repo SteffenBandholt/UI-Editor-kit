@@ -293,7 +293,7 @@ Der gemeinsame native Workspace passt sich an die verfuegbare Inhaltsbreite an. 
 
 ## HostAdapter-Anbindung für M82.4
 
-Eine Ziel-App registriert echte Inhaltstabellen ausdrücklich mit vollständiger Parentstruktur und bestätigter sichtbarer Spaltenreihenfolge. Jede `tableColumn` verweist auf genau eine Headerzelle und einen Datenzellenbereich; beide verwenden die Spalten-ID als `widthSourceId`. Bedienlisten und automatisch erkannte Tabellen sind ausgeschlossen.
+Eine Ziel-App registriert echte Inhaltstabellen ausdrücklich mit vollständiger Parentstruktur und bestätigter sichtbarer Spaltenreihenfolge. Jede `tableColumn` verweist auf genau eine Headerzelle und einen Datenzellenbereich; beide verwenden die Spalten-ID als `widthSourceId`. Dürfen die sichtbaren Zellen `resizeWidth` anbieten, muss die Spalte selbst veränderbar und für `resizeWidth` freigegeben sein; der Adapter wendet die Änderung ausschließlich an dieser gemeinsamen Quelle an. Bedienlisten und automatisch erkannte Tabellen sind ausgeschlossen.
 
 Der Adapter bildet Breite, Breitenmodus, Umbruch, Ellipsis, Zeilenhöhe und horizontalen Überlauf mit den nativen Frameworkmitteln ab. Er misst Viewport, Tabelleninhalt, reservierte Flächen und Scrollbar getrennt, zeigt Überlauf vor einer Anpassung und liest Header-/Datenausrichtung nach der Änderung zurück. WPF verwendet eine gemeinsame `DataGridColumn`; Electron kann einen gemeinsamen CSS-Grid-Track verwenden. Persistenz, Reset, Discard und Rollback bleiben im bestehenden Layoutprofilweg.
 

@@ -6,6 +6,15 @@
 
 ## 1. Zweck
 
+### M86.15-Core – Breitenänderung für sichtbare Tabellenzellen
+
+- Status: `[T] umgesetzt`; gezielte Core-, Registry-, Vertrags-, Fingerprint- und native Tests sowie die vollständige Kit-Suite sind grün. Eine Ziel-App-Abnahme ist nicht Bestandteil dieses Core-Pakets.
+- `tableHeaderCell` und `tableDataCell` dürfen `resizeWidth` neben ihren übrigen ausdrücklich registrierten sichtbaren Operationen anbieten.
+- Die zentrale Tabellenvalidierung löst die Zelloperation ausschließlich auf die vorhandene `tableColumn` mit identischer `columnId`/`widthSourceId` auf. Header, Daten-Multi-Refs und Rerender verwenden dieselbe Quelle; ungültige Breiten und abweichende Bindungen bleiben gesperrt.
+- Tabellenparents, Spaltenreihenfolge, Zellerzeugung/-löschung, Fachinhalte, Registry-Vollständigkeit und Fingerprintprüfung bleiben unverändert geschützt. Generisches `resize` und `changeWidth` sind für Tabellenzellen weiterhin unzulässig.
+- Der Electron-Registry-Validator verwendet dieselbe appneutrale Freigaberegel. Es wurden keine Ziel-App-IDs und keine BBM-Dateien ergänzt.
+- Commit/PR: keiner; gemäß Nutzeranweisung wird weder committet noch gepusht.
+
 ### M83.0 – Komponentenbasierte Vollregistrierung
 
 - Status: `[A]` abgenommen; die appneutrale Vertragsvalidierung, alle automatisierten Kit-Prüfungen und die sichtbare isolierte BBM-Acceptance sind grün.

@@ -249,6 +249,62 @@ function updateTableColumn(table, columnId, values) {
   return result.ok ? { ok: true, model, metrics: measureTableLayout(model) } : result;
 }
 
+function resolveTableCellWidthSource(elements, cellId) {
+  if (!Array.isArray(elements)) return { ok: false, errors: [error("table_bindings_invalid", "elements", "Elementliste fehlt.")] };
+  const byId = new Map(elements.map((element) => [element?.id, element]));
+  const cell = byId.get(text(cellId));
+  if (!cell || !["tableHeaderCell", "tableDataCell"].includes(cell.type))
+    return { ok: false, errors: [error("table_cell_unknown", "cellId", "Tabellenzelle ist nicht registriert.")] };
+  const column = byId.get(cell.parentId);
+  if (!column || column.type !== "tableColumn" || !isObject(column.tableColumnLayout))
+    return { ok: false, errors: [error("table_cell_width_source_missing", cell.id, "Registrierte Spaltenquelle der Zelle fehlt.")] };
+  const layout = normalizeTableColumn(column.tableColumnLayout);
+  const binding = cell.tableBinding;
+  const expectedCellIds = new Set([layout.headerElementId, layout.dataCellTemplateId, ...layout.cellElementIds]);
+  if (!isObject(binding) || binding.columnId !== column.id || binding.widthSourceId !== column.id ||
+      layout.columnId !== column.id || layout.widthSourceId !== column.id || !expectedCellIds.has(cell.id) ||
+      (cell.type === "tableHeaderCell" && cell.id !== layout.headerElementId) ||
+      (cell.type === "tableDataCell" && cell.id === layout.headerElementId)) {
+    return { ok: false, errors: [error("table_column_binding_inconsistent", cell.id, "Header und Datenzellen muessen die registrierte Spalte als einzige Breitenquelle verwenden.")] };
+  }
+  const affectedElementIds = Object.freeze([...new Set([
+    column.id,
+    layout.headerElementId,
+    layout.dataCellTemplateId,
+    ...layout.cellElementIds,
+  ].filter(Boolean))]);
+  return Object.freeze({
+    ok: true,
+    cellId: cell.id,
+    columnId: column.id,
+    widthSourceId: column.id,
+    affectedElementIds,
+    columnLayout: layout,
+    sourceAllowedOps: Object.freeze(Array.isArray(column.allowedOps) ? column.allowedOps.slice() : []),
+  });
+}
+
+function updateTableColumnWidthFromCell(elements, table, cellId, width) {
+  const source = resolveTableCellWidthSource(elements, cellId);
+  if (!source.ok) return source;
+  const tableValidation = validateTableLayout(table);
+  if (!tableValidation.ok) return tableValidation;
+  const column = tableValidation.model.columns.find((candidate) => candidate.columnId === source.widthSourceId);
+  if (!column || column.headerElementId !== source.columnLayout.headerElementId ||
+      column.dataCellTemplateId !== source.columnLayout.dataCellTemplateId)
+    return { ok: false, errors: [error("table_cell_width_source_missing", "cellId", "Registrierte Spaltenquelle gehoert nicht zum Tabellenvertrag.")] };
+  if (!Number.isFinite(width) || width < column.minimumWidth || width > column.maximumWidth)
+    return { ok: false, errors: [error("table_cell_width_invalid", "width", "Breite liegt ausserhalb der registrierten Grenzen.")] };
+  const updated = updateTableColumn(tableValidation.model, source.widthSourceId, { currentWidth: width });
+  return updated.ok ? {
+    ...updated,
+    cellId: source.cellId,
+    columnId: source.columnId,
+    widthSourceId: source.widthSourceId,
+    affectedElementIds: source.affectedElementIds,
+  } : updated;
+}
+
 function validateTableElementBindings(elements) {
   if (!Array.isArray(elements)) return { ok: false, errors: [error("table_bindings_invalid", "elements", "Elementliste fehlt.")] };
   const byId = new Map(elements.map((element) => [element?.id, element]));
@@ -265,8 +321,19 @@ function validateTableElementBindings(elements) {
       if (!target || target.type !== expectedType) errors.push(error("table_column_binding_missing", `${column.id}.${field}`, "Header- oder Datenzellenbindung fehlt."));
       else if (target.tableBinding?.widthSourceId !== column.id || target.tableBinding?.columnId !== column.id)
         errors.push(error("table_column_binding_inconsistent", target.id, "Header und Datenzellen müssen die Spalte als einzige Breitenquelle verwenden."));
-      if (target?.allowedOps?.some((operation) => ["resize", "resizeWidth", "changeWidth"].includes(operation)))
+      if (target?.allowedOps?.some((operation) => ["resize", "changeWidth"].includes(operation)))
         errors.push(error("table_cell_width_operation_forbidden", target.id, "Zellen dürfen keine unabhängige Breitenoperation anbieten."));
+    }
+  }
+  for (const cell of elements.filter((element) => ["tableHeaderCell", "tableDataCell"].includes(element?.type))) {
+    const source = resolveTableCellWidthSource(elements, cell.id);
+    if (!source.ok) {
+      errors.push(...source.errors);
+      continue;
+    }
+    if (cell.allowedOps?.includes("resizeWidth")) {
+      if (!source.columnLayout.resizable || !source.sourceAllowedOps.some((operation) => ["resize", "resizeWidth"].includes(operation)))
+        errors.push(error("table_cell_width_source_not_resizable", cell.id, "Registrierte Spaltenquelle ist nicht fuer resizeWidth freigegeben."));
     }
   }
   return { ok: errors.length === 0, errors };
@@ -317,6 +384,8 @@ module.exports = Object.freeze({
   normalizeTableLayout,
   validateTableLayout,
   validateTableElementBindings,
+  resolveTableCellWidthSource,
+  updateTableColumnWidthFromCell,
   validateTableLayoutIntent,
   measureTableLayout,
   fitTableToViewport,

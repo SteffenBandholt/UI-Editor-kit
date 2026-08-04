@@ -95,6 +95,8 @@ const expectedExports = [
   "normalizeTableLayout",
   "validateTableLayout",
   "validateTableElementBindings",
+  "resolveTableCellWidthSource",
+  "updateTableColumnWidthFromCell",
   "validateTableLayoutIntent",
   "measureTableLayout",
   "fitTableToViewport",

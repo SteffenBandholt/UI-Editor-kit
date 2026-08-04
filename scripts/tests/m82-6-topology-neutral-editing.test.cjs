@@ -29,9 +29,9 @@ const table = {
   columns: [{ columnId: "table.content", displayName: "Inhalt", headerElementId: "table.content.header", dataCellTemplateId: "table.content.cells", cellElementIds: ["existing.a", "existing.b"], currentWidth: 600, minimumWidth: 100, maximumWidth: 900, widthMode: "proportional", resizable: true, wrapMode: "wordWrap", overflowMode: "clip", alignment: "stretch", visibility: true, order: 0, lockedOps: [], widthSourceId: "table.content" }],
 };
 const bindings = [
-  { id: "table.content", type: "tableColumn", tableColumnLayout: table.columns[0] },
-  { id: "table.content.header", type: "tableHeaderCell", allowedOps: ["textResize"], tableBinding: { columnId: "table.content", widthSourceId: "table.content" } },
-  { id: "table.content.cells", type: "tableDataCell", allowedOps: [], tableBinding: { columnId: "table.content", widthSourceId: "table.content" } },
+  { id: "table.content", type: "tableColumn", parentId: "table", tableColumnLayout: table.columns[0] },
+  { id: "table.content.header", type: "tableHeaderCell", parentId: "table.content", allowedOps: ["textResize"], tableBinding: { columnId: "table.content", widthSourceId: "table.content" } },
+  { id: "table.content.cells", type: "tableDataCell", parentId: "table.content", allowedOps: [], tableBinding: { columnId: "table.content", widthSourceId: "table.content" } },
 ];
 
 run("Ziel-App liefert explizite Topologieknoten", () => assert.equal(normalizeUiTopology(baseline).length, 4));

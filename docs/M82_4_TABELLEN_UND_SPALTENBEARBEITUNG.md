@@ -8,11 +8,11 @@ M82.4 ergänzt den bestehenden UI-Editor um einen appübergreifenden Tabellenver
 
 Der Vertrag unterscheidet `table`, `tableHeader`, `tableBody`, `tableRow`, `tableColumn`, `tableHeaderCell`, `tableDataCell`, `tableFooter`, `tableViewport` und `horizontalScrollArea`. Eine Tabelle deklariert Geometrie, Viewport, Inhalt, Parent, Spaltenreihenfolge, Überlaufregeln, Breitenpolitik und begrenzte Zeilenhöhe. Jede Spalte deklariert Anzeigename, Header- und Datenreferenz, aktuelle/minimale/maximale Breite, Breiten-, Umbruch- und Überlaufmodus, Ausrichtung, Sichtbarkeit und Sperren.
 
-Fachwerte, dynamische Zeilen, Kunden-/Projekt- und Datenbankdaten werden durch die Vertragsvalidierung abgewiesen. Header- und Datenzellen dürfen keine unabhängige Breitenoperation anbieten.
+Fachwerte, dynamische Zeilen, Kunden-/Projekt- und Datenbankdaten werden durch die Vertragsvalidierung abgewiesen. Header- und Datenzellen dürfen `resizeWidth` anbieten, wenn die Operation über ihre registrierte Spaltenquelle läuft. Unabhängiges `resize` oder `changeWidth` bleibt gesperrt.
 
 ## Eine Breitenquelle
 
-`widthSourceId` muss mit `columnId` identisch sein. Header, sichtbare Datenzellen, leere Zustände, Auswahl und persistierter Zustand verweisen dadurch auf dieselbe Spalte. Der Registryvalidator prüft Parentstruktur, Header-/Datenbindung und genau eine Breitenquelle. Eine isolierte Headerbreite ist ungültig.
+`widthSourceId` muss mit `columnId` identisch sein. Header, sichtbare Datenzellen, leere Zustände, Auswahl und persistierter Zustand verweisen dadurch auf dieselbe Spalte. Der Registryvalidator prüft Parentstruktur, Header-/Datenbindung und genau eine Breitenquelle. `resizeWidth` an einer Header- oder Datenzelle wird auf diese vorhandene Quelle aufgelöst; eine isolierte Zellbreite ist ungültig.
 
 ## Viewport, Überlauf und Anpassung
 
