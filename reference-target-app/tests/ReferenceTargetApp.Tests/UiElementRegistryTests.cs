@@ -88,11 +88,11 @@ public sealed class UiElementRegistryTests
                 UiCapability.Width | UiCapability.Height | UiCapability.Visibility,
                 editableScope.FindById("scope")?.Capabilities);
             AssertInvalid(UiRegistryValidationErrorCode.InvalidCapability, [
-                new("scope", "scope", null, UiElementKind.Scope, "Scope", 0, UiCapability.Position, new Border())
+                new("scope", "scope", null, UiElementKind.Scope, "Scope", 0, UiCapability.TextPosition, new Border())
             ]);
             AssertInvalid(UiRegistryValidationErrorCode.InvalidCapability, [
                 Scope("scope", new Border()),
-                new("group", "scope", "scope", UiElementKind.Group, "Group", 10, UiCapability.FontSize, new Border())
+                new("group", "scope", "scope", UiElementKind.Group, "Group", 10, UiCapability.TextPosition, new Border())
             ]);
         });
     }
