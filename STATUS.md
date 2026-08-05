@@ -6,6 +6,14 @@
 
 ## 1. Zweck
 
+### M86.15a-Core – Native Capability-Matrix für den Universalvertrag
+
+- Status: `[T] umgesetzt`; die native Capability-Matrix akzeptiert für die betroffenen sichtbaren Struktur- und Tabellenelemente denselben universellen Geometrievertrag wie der JavaScript-Core.
+- `Scope`, Tabellenkopf, Tabellenkörper, Tabellenzeile, Tabellenfuß, Tabellenviewport und horizontaler Scrollbereich erlauben nun auch Position; `TableColumn` zusätzlich Position und Höhe; Header- und Datenzellen zusätzlich Position, Breite und Höhe. `Group` akzeptiert bei ausdrücklich deklariertem sichtbarem Text zusätzlich Schriftgröße.
+- Neun gezielte native Regressionen sichern die geforderten Positivfälle sowie die fortbestehende Sperre unbekannter Capabilities, ungültiger Tabellenbindungen und falscher Fingerprints. Parent-, Tabellen-, Wert- und Fingerprintprüfung bleiben aktiv; es wurden keine Ziel-App-IDs oder BBM-Filter ergänzt.
+- Nachweis: native Suite 115/115, M86.15-Core 10/10, Registry-/Fingerprinttests, vollständiges `npm test`, `git diff --check` sowie normaler BBM-Start mit sichtbar geöffnetem Editor für Protokoll und Restarbeiten grün.
+- Git-Abschluss: Commit und Push erfolgen auf `codex/m86-15a-native-universal-capabilities`; kein PR und kein Merge.
+
 ### M86.15-Core – Breitenänderung für sichtbare Tabellenzellen
 
 - Status: `[T] umgesetzt`; gezielte Core-, Registry-, Vertrags-, Fingerprint- und native Tests sowie die vollständige Kit-Suite sind grün. Eine Ziel-App-Abnahme ist nicht Bestandteil dieses Core-Pakets.
