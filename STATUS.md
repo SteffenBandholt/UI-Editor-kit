@@ -391,3 +391,20 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Der gemeinsame Core enthält keine BBM-IDs; keine neue UI, Registry, automatische Erkennung oder Profilablage wurde ergänzt.
 - Pflichtprüfungen: Solution-Build 0 Fehler/0 Warnungen, Manager-Tests 103/103, Referenz-App-Tests 106/106, `npm test`, `npm pack --dry-run` und `npm run release:check` grün.
 - Commit/PR: keiner; gemäß Nutzeranweisung wurde weder committet noch gepusht.
+
+## M86.23 – Verbindlicher Save-/Close-Handshake
+
+- Status: `[x]`; gemeinsamer Core-/Electron-Protokollweg und gezielte Regressionstests sind umgesetzt.
+- Der Layout-Core schreibt den vollständigen Snapshot atomar mit Write-through und Flush, erzeugt danach eine eindeutige `saveRequestId` und wartet vor dem Clean-Übergang auf `acknowledgeLayoutSaveAccepted` der Ziel-App.
+- Fehlende, abgelehnte oder zeitlich ausbleibende Bestätigung lässt die Layoutsession dirty; der bestehende Close-Dialog schließt das Fenster deshalb nicht.
+- `prepareEditorClose` wendet `saved`, `clean` oder `discarded` an und bereinigt Marker vor dem nativen Fenster-Close; `editorClosed` beendet die Sitzung danach idempotent. Die Ziel-App schreibt ihre Discard-Grenze nach jedem Save fort.
+- Core-Guardrail: `M8623SaveCloseAcknowledgementTests` prüft persistenten Schreibabschluss vor Ack, eindeutige IDs, Dirty-Erhalt bei Ack-Fehler und die Close-Reihenfolge.
+- Commit/Push/PR/Merge: keiner.
+
+## M86.24 – Sichtbarer Save-and-continue-Pfad
+
+- Status: `[A]`; der bestehende M86.23-Corepfad wurde über den tatsächlich sichtbaren nativen WPF-Dialog in BBM praktisch abgenommen.
+- `Speichern und fortfahren` setzt die Entscheidung `Save`, wartet auf atomaren Profilwrite und Ziel-App-Acknowledgement und setzt erst danach `saved`. Ablehnung oder Timeout hält die Session dirty und lässt das Fenster offen.
+- `prepareEditorClose` bleibt nach der Bestätigung und vor `CloseAsync`; `discarded` kann nach einem bestätigten Save nicht anstelle von `saved` ausgelöst werden.
+- Core-Guardrail: `M8624VisibleSaveButtonTests`; die BBM-Abnahme steuert zusätzlich den sichtbaren Dialogbutton physisch und prüft zwei getrennte Ziel-App-Prozesse für den Neustart-Restore.
+- Commit/Push/PR/Merge: keiner.

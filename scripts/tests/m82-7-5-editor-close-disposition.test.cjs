@@ -37,12 +37,13 @@ run("M82.7.5 Kit 05: Abbruch bleibt unbekannt und schliesst nicht", () => {
 run("M82.7.5 Kit 06: Coordinator bewahrt die Disposition ueber Window-Cleanup hinaus", () => {
   assert.match(coordinator, /LastCloseDisposition = currentViewModel\?\.CloseDisposition \?\? EditorCloseDisposition\.Unknown/);
 });
-run("M82.7.5 Kit 07: Electron-Ereignis transportiert die Disposition als Payload", () => {
-  assert.match(pipeAdapter, /SendEventAsync\("editorClosed", new \{ disposition \}, cancellationToken\)/);
+run("M82.7.5 Kit 07: Electron-Ereignis transportiert Disposition und bestätigte Save-ID als Payload", () => {
+  assert.match(pipeAdapter, /SendEventAsync\("editorClosed", new \{ disposition, saveRequestId \}, cancellationToken\)/);
 });
 run("M82.7.5 Kit 08: Ziel-App erhaelt die normalisierte Disposition beim Sitzungsende", () => {
   assert.match(electronEditor, /LastCloseDisposition\.ToString\(\)\.ToLowerInvariant\(\)/);
-  assert.match(electronEditor, /ShutdownTargetSessionAsync\(disposition\)/);
+  assert.match(electronEditor, /ShutdownTargetSessionAsync\(disposition, layoutSession\.LastAcknowledgedSaveRequestId\)/);
+  assert.match(electronEditor, /prepareTargetClose: disposition => target\.PrepareTargetCloseAsync/);
 });
 run("M82.7.5 Kit 09: gemeinsame Dateien enthalten keine BBM-Element-IDs", () => {
   for (const source of [coordinator, viewModel, electronEditor, pipeAdapter]) assert.doesNotMatch(source, /restarbeiten\.|protokoll\.|bbm\./i);

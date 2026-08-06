@@ -32,7 +32,8 @@ internal sealed class EditorWindowCoordinator(
     string? pdfOutputPath,
     IEditorDialogService? dialogService = null,
     EditorProcessOptions? editorProcessOptions = null,
-    IPdfEditorWorkspace? pdfWorkspaceOverride = null) : IAsyncDisposable
+    IPdfEditorWorkspace? pdfWorkspaceOverride = null,
+    Func<EditorCloseDisposition, Task<bool>>? prepareTargetClose = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim lifecycleLock = new(1, 1);
     private CancellationTokenSource? lifetimeCancellation;
@@ -83,7 +84,7 @@ internal sealed class EditorWindowCoordinator(
                     selectionService,
                     dialogService ?? new NativeEditorDialogService(),
                     () => window,
-                    CloseAsync,
+                    CompleteConfirmedCloseAsync,
                     lifetimeCancellation.Token,
                     pdfWorkspace);
                 window = new EditorWindow(viewModel, this);
@@ -139,6 +140,13 @@ internal sealed class EditorWindowCoordinator(
     internal async Task RequestCloseAsync()
     {
         if (viewModel is not null && !await viewModel.ConfirmCloseAsync()) return;
+        await CompleteConfirmedCloseAsync();
+    }
+
+    private async Task CompleteConfirmedCloseAsync()
+    {
+        var disposition = viewModel?.CloseDisposition ?? EditorCloseDisposition.Unknown;
+        if (prepareTargetClose is not null && !await prepareTargetClose(disposition)) return;
         await CloseAsync();
     }
 
