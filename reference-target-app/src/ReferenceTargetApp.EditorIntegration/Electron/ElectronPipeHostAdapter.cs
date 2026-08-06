@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Geometry;
+using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Registry;
 using ReferenceTargetApp.EditorIntegration.Tables;
 
@@ -113,8 +114,50 @@ public sealed class ElectronTargetSession : IAsyncDisposable
     public Task ActivateTargetAsync(CancellationToken cancellationToken = default) =>
         connection.SendEventAsync("activateTarget", cancellationToken: cancellationToken);
 
-    public Task ShutdownTargetSessionAsync(string disposition = "unknown", CancellationToken cancellationToken = default) =>
-        connection.SendEventAsync("editorClosed", new { disposition }, cancellationToken);
+    public async Task<LayoutSaveAcknowledgement> AcknowledgeLayoutSaveAsync(
+        LayoutSaveSnapshot snapshot,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        var response = await connection.RequestAsync(
+            "acknowledgeLayoutSave",
+            new { saveRequestId = snapshot.RequestId, snapshot = snapshot.Document },
+            TimeSpan.FromSeconds(10),
+            cancellationToken).ConfigureAwait(false);
+        if (!response.TryGetProperty("saveAcknowledgement", out var acknowledgement) ||
+            acknowledgement.ValueKind != JsonValueKind.Object ||
+            !string.Equals(Text(acknowledgement, "saveRequestId"), snapshot.RequestId, StringComparison.Ordinal) ||
+            !Boolean(acknowledgement, "accepted") ||
+            !Boolean(acknowledgement, "persisted"))
+            return new(false, "layout_save_acknowledgement_failed", "BBM hat den persistenten Layoutsnapshot nicht bestätigt.");
+        return new(true, "layout_save_acknowledged", "BBM hat den persistenten Layoutsnapshot bestätigt.");
+    }
+
+    public Task ShutdownTargetSessionAsync(
+        string disposition = "unknown",
+        string? saveRequestId = null,
+        CancellationToken cancellationToken = default) =>
+        connection.SendEventAsync("editorClosed", new { disposition, saveRequestId }, cancellationToken);
+
+    public async Task<bool> PrepareTargetCloseAsync(
+        string disposition,
+        string? saveRequestId = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await connection.RequestAsync(
+                "prepareEditorClose",
+                new { disposition, saveRequestId },
+                TimeSpan.FromSeconds(10),
+                cancellationToken).ConfigureAwait(false);
+            return response.TryGetProperty("closePreparation", out var preparation) &&
+                   preparation.ValueKind == JsonValueKind.Object &&
+                   Boolean(preparation, "accepted") &&
+                   string.Equals(Text(preparation, "disposition"), disposition, StringComparison.Ordinal);
+        }
+        catch (ElectronEditorException) { return false; }
+    }
 
     public void ConfigureRegistryRefreshStatus(Func<ElectronRegistryRefreshStatus> statusProvider) =>
         registryRefreshStatus = statusProvider ?? throw new ArgumentNullException(nameof(statusProvider));
@@ -249,6 +292,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
     private static int? Int(JsonElement payload, string name) =>
         payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result) ? result : null;
+    private static bool Boolean(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
 
     public async ValueTask DisposeAsync()
     {

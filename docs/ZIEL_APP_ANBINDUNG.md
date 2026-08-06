@@ -318,3 +318,11 @@ Für den Schutz stellt die Ziel-App aus ihren expliziten Registry-/Ref-Beziehung
 Öffnen, Fokussieren und Registryrefresh bleiben reine Lese-/Synchronisationsvorgänge und dürfen keine produktiven Styles oder Scrollbesitzer ändern. Der Einfachmodus, die bestehende Session, Save/Restore und der Profilstore bleiben unverändert.
 
 Details: `docs/M82_6_TOPOLOGIENEUTRALES_FEINTUNING.md`.
+
+## Save-/Close-Handshake M86.23
+
+Bei einer Electron-Ziel-App ist der atomare Profil-Schreibabschluss allein noch keine vollständige Close-Freigabe. Nach erfolgreichem Write-through und Flush erzeugt der Core eine eindeutige `saveRequestId` und sendet den tatsächlich persistent geschriebenen Layoutsnapshot über `acknowledgeLayoutSave` an die Ziel-App. Die Ziel-App darf `accepted: true` und `persisted: true` nur zurückgeben, wenn Snapshot, aktive Scopes und angewendeter Rendererzustand übereinstimmen. Wiederholungen derselben `saveRequestId` sind ausschließlich mit demselben Snapshot idempotent.
+
+Erst nach dieser korrelierten Bestätigung wird der Layoutzustand im Editor als gespeichert übernommen. Ein Fehler oder Timeout lässt die Session dirty; „Speichern und schließen“ gibt dann `false` zurück und das native Fenster bleibt offen. Vor dem tatsächlichen Fenster-Close bestätigt die Ziel-App über `prepareEditorClose`, dass `saved`, `clean` oder `discarded` angewandt und alle transienten Marker bereinigt sind. `editorClosed` ist danach nur noch der idempotente Sitzungsabschluss. `discarded` stellt ausschließlich Änderungen seit der letzten bestätigten Save-Grenze zurück. Auswahl-, Hover-, Komponenten- und Diagnosemarker sind niemals Bestandteil des Save-Snapshots.
+
+Die Ziel-App vergleicht beim Acknowledgement die explizit persistierten Operationen mit den tatsächlich angewendeten Rendererwerten. Responsive oder elastische Istwerte nicht bearbeiteter Elemente dürfen die Bestätigung nicht allein durch normale Layoutschwankungen blockieren. Scope-/Elementidentität, erlaubte Snapshotfelder, bekannte Operationen und alle explizit bearbeiteten Werte bleiben verbindlich zu validieren.

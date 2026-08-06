@@ -16,16 +16,19 @@ namespace ReferenceTargetApp.UI.Editor;
 public sealed class ElectronTargetEditorSession : IAsyncDisposable
 {
     private readonly ElectronTargetSession targetSession;
+    private readonly LayoutProfileSession layoutSession;
     private readonly TargetAppSelectionService selectionService;
     private readonly EditorWindowCoordinator coordinator;
     private bool disposed;
 
     private ElectronTargetEditorSession(
         ElectronTargetSession targetSession,
+        LayoutProfileSession layoutSession,
         TargetAppSelectionService selectionService,
         EditorWindowCoordinator coordinator)
     {
         this.targetSession = targetSession;
+        this.layoutSession = layoutSession;
         this.selectionService = selectionService;
         this.coordinator = coordinator;
         targetSession.ElementSelected += TargetSession_ElementSelected;
@@ -69,6 +72,7 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 target.HostAdapters, profileStore, activeProfileStore, uiRecoveryContext, cancellationToken,
                 target.DeclaredBaselineStates, target.Contract.StartupLayout?.Applied == true);
             var startup = uiPreparation.Startup;
+            startup.Session.ConfigureSaveAcknowledgement(target.AcknowledgeLayoutSaveAsync);
 
             var selection = new TargetAppSelectionService(
                 target.BeginTargetSelectionAsync,
@@ -108,8 +112,10 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 null,
                 null,
                 editorProcessOptions: EditorProcessOptions.FromRepositoryRoot(editorRuntimeRoot),
-                pdfWorkspaceOverride: pdfWorkspace);
-            var session = new ElectronTargetEditorSession(target, selection, coordinator);
+                pdfWorkspaceOverride: pdfWorkspace,
+                prepareTargetClose: disposition => target.PrepareTargetCloseAsync(
+                    disposition.ToString().ToLowerInvariant(), startup.Session.LastAcknowledgedSaveRequestId));
+            var session = new ElectronTargetEditorSession(target, startup.Session, selection, coordinator);
             target.ConfigureRegistryRefreshStatus(() =>
             {
                 var status = startup.Session.GetStatus();
@@ -184,7 +190,7 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
         targetSession.Disconnected -= TargetSession_Disconnected;
         if (coordinator.Window is not null) coordinator.Window.Closed -= EditorWindow_Closed;
         var disposition = coordinator.LastCloseDisposition.ToString().ToLowerInvariant();
-        try { await targetSession.ShutdownTargetSessionAsync(disposition); } catch { }
+        try { await targetSession.ShutdownTargetSessionAsync(disposition, layoutSession.LastAcknowledgedSaveRequestId); } catch { }
         await coordinator.DisposeAsync();
         selectionService.Dispose();
         await targetSession.DisposeAsync();

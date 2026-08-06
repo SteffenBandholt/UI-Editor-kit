@@ -8,7 +8,17 @@ public sealed record LayoutOperationResult(
     string Code,
     string Message,
     bool RollbackSucceeded = true,
-    IReadOnlyList<LayoutApplyFailure>? Failures = null);
+    IReadOnlyList<LayoutApplyFailure>? Failures = null,
+    string? SaveRequestId = null);
+
+public sealed record LayoutSaveSnapshot(
+    string RequestId,
+    PersistedLayoutProfileDocument Document);
+
+public sealed record LayoutSaveAcknowledgement(
+    bool Accepted,
+    string Code,
+    string Message);
 
 public sealed record LayoutProfileSessionStatus(
     string ActiveProfileId,
@@ -38,6 +48,7 @@ public sealed class LayoutProfileSession
     private LayoutUndoFrame? pendingUndoFrame;
     private bool savedHasExplicitOperationMetadata;
     private readonly bool allowCompatibleRegistryReconciliation;
+    private Func<LayoutSaveSnapshot, CancellationToken, Task<LayoutSaveAcknowledgement>>? saveAcknowledger;
 
     public LayoutProfileSession(
         IReadOnlyDictionary<string, IHostAdapter> adapters,
@@ -66,6 +77,7 @@ public sealed class LayoutProfileSession
     public string ActiveProfileId { get; private set; }
     public string ProfileRoot => profileStore.RootDirectory;
     public string ApplicationId => profileStore.DocumentApplicationId;
+    public string? LastAcknowledgedSaveRequestId { get; private set; }
     public bool IsOperationRunning => operationLock.CurrentCount == 0;
     public LayoutUndoStatus GetUndoStatus() => new(undoFrames.Count > 0, undoFrames.Count, undoFrames.LastOrDefault()?.Description);
 
@@ -90,6 +102,10 @@ public sealed class LayoutProfileSession
         pendingUndoFrame = null;
         undoFrames.Clear();
     }
+
+    public void ConfigureSaveAcknowledgement(
+        Func<LayoutSaveSnapshot, CancellationToken, Task<LayoutSaveAcknowledgement>> acknowledger) =>
+        saveAcknowledger = acknowledger ?? throw new ArgumentNullException(nameof(acknowledger));
 
     public async Task<LayoutOperationResult> UndoAsync(CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
@@ -148,10 +164,29 @@ public sealed class LayoutProfileSession
                 workingExplicitOperations = InferOperations(saved, working);
             var result = await profileStore.SaveAsync(ActiveProfileId, adapters, working, cancellationToken, OperationsForDocument(workingExplicitOperations, adapters.Keys)).ConfigureAwait(false);
             if (!result.Success) return Fail(result.Code, result.Message);
+            if (result.Document is null) return Fail("layout_save_snapshot_missing", "Der persistent gespeicherte Layoutsnapshot fehlt.");
+            var snapshot = new LayoutSaveSnapshot(Guid.NewGuid().ToString("N"), result.Document);
+            if (saveAcknowledger is not null)
+            {
+                LayoutSaveAcknowledgement acknowledgement;
+                try
+                {
+                    acknowledgement = await saveAcknowledger(snapshot, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception exception)
+                {
+                    return Fail("layout_save_acknowledgement_failed", $"Layout wurde persistent geschrieben, aber die Ziel-App konnte den Save nicht bestätigen: {exception.Message}");
+                }
+                if (!acknowledgement.Accepted)
+                    return Fail(string.IsNullOrWhiteSpace(acknowledgement.Code) ? "layout_save_acknowledgement_failed" : acknowledgement.Code,
+                        string.IsNullOrWhiteSpace(acknowledgement.Message) ? "Die Ziel-App hat den persistenten Save nicht bestätigt." : acknowledgement.Message);
+            }
             saved = CloneStates(working);
             savedExplicitOperations = CloneOperations(workingExplicitOperations);
             savedHasExplicitOperationMetadata = true;
-            return Ok("layout_saved", "Änderungen gespeichert.");
+            LastAcknowledgedSaveRequestId = snapshot.RequestId;
+            return new(true, "layout_saved", "Änderungen persistent gespeichert und bestätigt.", SaveRequestId: snapshot.RequestId);
         }, cancellationToken).ConfigureAwait(false);
 
     public async Task<LayoutOperationResult> LoadAsync(CancellationToken cancellationToken = default) =>
