@@ -84,6 +84,95 @@ public sealed class M76PdfModelTests
     }
 
     [TestMethod]
+    public async Task PdfBoundaryResizeIsAtomicPreservesTotalAndHasSingleUndoStep()
+    {
+        var root = NewRoot();
+        try
+        {
+            var adapter = new PdfHostAdapter(PdfOrderDocumentRegistryFactory.Create());
+            var session = new PdfLayoutSession(adapter, new AtomicJsonPdfLayoutProfileStore(root));
+            var beforeTotal = PdfRegistryIds.Columns.Sum(id => State(adapter, id).Width!.Value);
+            var result = await session.ApplyBatchAsync([Request(PdfRegistryIds.Table, PdfLayoutOperations.ResizeColumnBoundary,
+                new() { ["table"] = new Dictionary<string, object?>
+                {
+                    ["leftColumnId"] = PdfRegistryIds.DescriptionColumn,
+                    ["rightColumnId"] = PdfRegistryIds.QuantityColumn,
+                    ["delta"] = 5d
+                } })]);
+            Assert.IsTrue(result.Success, result.Message);
+            Assert.AreEqual(75, State(adapter, PdfRegistryIds.DescriptionColumn).Width!.Value, 0.001);
+            Assert.AreEqual(13, State(adapter, PdfRegistryIds.QuantityColumn).Width!.Value, 0.001);
+            Assert.AreEqual(beforeTotal, PdfRegistryIds.Columns.Sum(id => State(adapter, id).Width!.Value), 0.001);
+            Assert.IsTrue(session.CanUndo);
+            Assert.IsTrue((await session.UndoAsync()).Success);
+            Assert.AreEqual(70, State(adapter, PdfRegistryIds.DescriptionColumn).Width!.Value, 0.001);
+            Assert.AreEqual(18, State(adapter, PdfRegistryIds.QuantityColumn).Width!.Value, 0.001);
+            Assert.IsFalse(session.CanUndo);
+        }
+        finally { Delete(root); }
+    }
+
+    [TestMethod]
+    public async Task PdfBoundarySaveAndReloadUsesAdjacentFlowPositions()
+    {
+        var root = NewRoot();
+        try
+        {
+            var registry = PdfOrderDocumentRegistryFactory.Create();
+            var adapter = new PdfHostAdapter(registry);
+            var store = new AtomicJsonPdfLayoutProfileStore(root);
+            var session = new PdfLayoutSession(adapter, store);
+            var changed = await session.ApplyBatchAsync([Request(PdfRegistryIds.Table, PdfLayoutOperations.ResizeColumnBoundary,
+                new() { ["table"] = new Dictionary<string, object?>
+                {
+                    ["leftColumnId"] = PdfRegistryIds.UnitPriceColumn,
+                    ["rightColumnId"] = PdfRegistryIds.TotalPriceColumn,
+                    ["delta"] = -5d
+                } })]);
+            Assert.IsTrue(changed.Success, changed.Message);
+            Assert.AreEqual(23, State(adapter, PdfRegistryIds.UnitPriceColumn).Width!.Value, 0.001);
+            Assert.AreEqual(37, State(adapter, PdfRegistryIds.TotalPriceColumn).Width!.Value, 0.001);
+
+            var saved = await session.SaveAsync();
+            Assert.IsTrue(saved.Success, saved.Message);
+
+            var loaded = await store.LoadAsync(registry);
+            Assert.IsTrue(loaded.Success, loaded.Message);
+            Assert.IsTrue(loaded.Found);
+            Assert.IsNotNull(loaded.Document);
+            Assert.AreEqual(23, loaded.Document.LayoutState.Elements.Single(element => element.ElementId == PdfRegistryIds.UnitPriceColumn).Width!.Value, 0.001);
+            Assert.AreEqual(37, loaded.Document.LayoutState.Elements.Single(element => element.ElementId == PdfRegistryIds.TotalPriceColumn).Width!.Value, 0.001);
+        }
+        finally { Delete(root); }
+    }
+
+    [TestMethod]
+    public async Task PdfTableOriginalResetsCompleteTableAndHasOneUndoStep()
+    {
+        var root = NewRoot();
+        try
+        {
+            var adapter = new PdfHostAdapter(PdfOrderDocumentRegistryFactory.Create());
+            var session = new PdfLayoutSession(adapter, new AtomicJsonPdfLayoutProfileStore(root));
+            Assert.IsTrue((await session.ApplyBatchAsync([Request(PdfRegistryIds.Table, PdfLayoutOperations.ResizeColumnBoundary,
+                new() { ["table"] = new Dictionary<string, object?>
+                {
+                    ["leftColumnId"] = PdfRegistryIds.DescriptionColumn,
+                    ["rightColumnId"] = PdfRegistryIds.QuantityColumn,
+                    ["delta"] = 5d
+                } })])).Success);
+
+            Assert.IsTrue((await session.ResetTableAsync(PdfRegistryIds.Table)).Success);
+            Assert.AreEqual(70, State(adapter, PdfRegistryIds.DescriptionColumn).Width!.Value, 0.001);
+            Assert.AreEqual(18, State(adapter, PdfRegistryIds.QuantityColumn).Width!.Value, 0.001);
+            Assert.IsTrue((await session.UndoAsync()).Success);
+            Assert.AreEqual(75, State(adapter, PdfRegistryIds.DescriptionColumn).Width!.Value, 0.001);
+            Assert.AreEqual(13, State(adapter, PdfRegistryIds.QuantityColumn).Width!.Value, 0.001);
+        }
+        finally { Delete(root); }
+    }
+
+    [TestMethod]
     public async Task PdfProfileHasIndependentSchemaAndSaveLoadDiscardResetSemantics()
     {
         var root = NewRoot();

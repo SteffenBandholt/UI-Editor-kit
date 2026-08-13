@@ -19,6 +19,24 @@ namespace ReferenceTargetApp.UI.ViewModels;
 
 internal sealed record EditorScopeChoice(string ScopeId, string DisplayName);
 
+internal sealed record TableColumnEditorItem(
+    string ColumnId, string DisplayName, double EffectiveWidth, double LogicalWidth, string WidthMode,
+    double HeaderWidth, double HeaderContentWidth, double DataContentWidthMinimum, double DataContentWidthMaximum,
+    bool RuntimeWidthValid, double MinimumWidth, double MaximumWidth, double PreviewWidth)
+{
+    public string WidthLabel => $"wirksam {EffectiveWidth:0.###} DIP · gespeichert {LogicalWidth:0.###} · {WidthMode}";
+    public string RuntimeLabel => $"Kopf {HeaderWidth:0.###} · Inhalt {DataContentWidthMinimum:0.###}–{DataContentWidthMaximum:0.###} DIP · {(RuntimeWidthValid ? "konsistent" : "Abweichung")}";
+    public string LimitsLabel => $"{MinimumWidth:0.###}–{MaximumWidth:0.###} DIP";
+}
+
+internal sealed record TableBoundaryEditorItem(
+    string LeftColumnId, string LeftDisplayName, string RightColumnId, string RightDisplayName,
+    double CurrentPosition, double MinimumDelta, double MaximumDelta, bool Enabled)
+{
+    public string DisplayName => $"{LeftDisplayName}  |  {RightDisplayName}";
+    public string PositionLabel => $"Grenze bei {CurrentPosition:0.###} DIP";
+}
+
 internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 {
     private readonly EditorProcessCoordinator coordinator;
@@ -48,6 +66,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private string technicalDetails = string.Empty;
     private IReadOnlyList<string> selectedSpacingTargets = [];
     private string columnWidthText = string.Empty;
+    private TableBoundaryEditorItem? selectedTableBoundary;
     private bool simpleActionInProgress;
     private string directXText = string.Empty;
     private string directYText = string.Empty;
@@ -85,6 +104,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         SpacingCommand = new AsyncCommand(ApplySpacingAsync, parameter => CanUseSpacing(parameter as string));
         TableCommand = new AsyncCommand(ApplyTableAsync, parameter => CanUseTableOperation(parameter as string));
         ApplyColumnWidthCommand = new AsyncCommand(_ => ApplyColumnWidthAsync(), _ => CanApplyColumnWidth);
+        MoveTableBoundaryCommand = new AsyncCommand(MoveTableBoundaryAsync, parameter => CanMoveTableBoundary && parameter is string);
         SimpleActionCommand = new AsyncCommand(ApplySimpleActionAsync, parameter => CanOperate && parameter is string);
         SetStepPresetCommand = new AsyncCommand(SetStepPresetAsync, parameter => CanOperate && parameter is string);
         ApplyDirectValueCommand = new AsyncCommand(ApplyDirectValueAsync, parameter => CanOperate && parameter is string);
@@ -130,6 +150,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ICommand SpacingCommand { get; }
     public ICommand TableCommand { get; }
     public ICommand ApplyColumnWidthCommand { get; }
+    public ICommand MoveTableBoundaryCommand { get; }
     public ICommand SimpleActionCommand { get; }
     public ICommand SetStepPresetCommand { get; }
     public ICommand ApplyDirectValueCommand { get; }
@@ -177,6 +198,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public string SelectionContextValue { get; private set; } = "–";
     public string TableName { get; private set; } = "–";
     public string ColumnName { get; private set; } = "–";
+    public string TableEditorTitle => HasTableOverview
+        ? state?.Details?.TableEditor?.DisplayName ?? TableName
+        : ColumnName;
     public string Operations { get; private set; } = "–";
     public string LayoutEffectInfo { get; private set; } = "Wirkung: keine Bearbeitung ausgewählt";
     public string EditMode => editMode;
@@ -213,13 +237,31 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public bool CanSelectWholeColumn => CanOperate && state?.Details?.TableBinding?.TryGetValue("columnId", out var columnId) == true && !string.IsNullOrWhiteSpace(columnId);
     public string TableGeometryStatus { get; private set; } = "Keine Tabelle ausgewählt";
     public string ColumnModeStatus { get; private set; } = "Keine Spalte ausgewählt";
+    private string SelectedColumnWidthMode => state?.Details?.CurrentLayout.Table?.WidthMode ?? state?.Details?.TableColumnLayout?.WidthMode ?? string.Empty;
+    public string ColumnWidthInputStatus => SelectedColumnWidthMode switch
+    {
+        "fixed" => "Direkte Eingabe setzt die wirksame feste Breite.",
+        "proportional" => "Direkte Eingabe ist im proportionalen Modus nicht eindeutig. Grenze verschieben oder zuerst ‚Breite fest‘ wählen.",
+        "auto" => "Direkte Eingabe ist im automatischen Modus nicht eindeutig. Zuerst ‚Breite fest‘ wählen.",
+        _ => "Direkte Breite ist für diese Auswahl nicht verfügbar.",
+    };
     public string ColumnWidthText
     {
         get => columnWidthText;
         set { if (Set(ref columnWidthText, value)) { OnPropertyChanged(nameof(CanApplyColumnWidth)); RaiseCommandStates(); } }
     }
-    public bool CanApplyColumnWidth => IsTableColumn && CanOperate && double.TryParse(ColumnWidthText, NumberStyles.Float, CultureInfo.CurrentCulture, out var width) &&
+    public bool CanApplyColumnWidth => IsTableColumn && CanOperate && SelectedColumnWidthMode == "fixed" && double.TryParse(ColumnWidthText, NumberStyles.Float, CultureInfo.CurrentCulture, out var width) &&
         state?.Details?.TableColumnLayout is { } column && width >= column.MinimumWidth && width <= column.MaximumWidth;
+    public ObservableCollection<TableColumnEditorItem> TableColumns { get; } = [];
+    public ObservableCollection<TableBoundaryEditorItem> TableBoundaries { get; } = [];
+    public TableBoundaryEditorItem? SelectedTableBoundary
+    {
+        get => selectedTableBoundary;
+        set { if (Set(ref selectedTableBoundary, value)) { OnPropertyChanged(nameof(CanMoveTableBoundary)); RaiseCommandStates(); } }
+    }
+    public bool HasTableOverview => IsTableLayout && TableColumns.Count > 0;
+    public bool CanMoveTableBoundary => CanOperate && stepValid && HasTableOverview && SelectedTableBoundary?.Enabled == true &&
+        state?.Details?.TableEditor?.BoundaryResizePolicy == TableBoundaryResizePolicies.AdjacentPreserveTotal;
     public bool LeftEnabled { get; private set; }
     public bool RightEnabled { get; private set; }
     public bool UpEnabled { get; private set; }
@@ -361,6 +403,14 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         if (decision == UnsavedChangesDecision.Cancel) { StatusMessage = "Schließen abgebrochen."; return false; }
         if (decision != UnsavedChangesDecision.Save)
         {
+            if (IsDirty)
+            {
+                var discarded = await RunLayoutActionAsync(() => layoutSession.DiscardAllAsync(lifetimeToken),
+                    "Nicht gespeicherte UI-Änderungen wurden verworfen.",
+                    acceptRefreshedTargetAsSaved: layoutSession.AcceptCurrentTargetAsSaved);
+                if (!discarded.Success) return false;
+            }
+            if (pdfWorkspace.IsDirty && !await pdfWorkspace.DiscardAllForCloseAsync()) return false;
             CloseDisposition = EditorCloseDisposition.Discarded;
             return true;
         }
@@ -442,7 +492,10 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     await ToggleVisibilityAsync();
                     return;
                 case "original":
-                    await ResetElementWithUndoAsync();
+                    if (HasTableOverview && !string.IsNullOrWhiteSpace(CurrentTableId()))
+                        await ApplyTableAsync(HostAdapterOperations.ResetTable);
+                    else
+                        await ResetElementWithUndoAsync();
                     return;
                 case "column" when parts.Length == 2 && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var delta):
                     await ChangeColumnWidthByAsync(delta);
@@ -669,11 +722,17 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         finally { RunOnUi(() => IsBusy = false); }
     }
 
+    private string? CurrentTableId() => state?.Details?.TableEditor?.TableId ??
+        state?.Details?.TableBinding?.GetValueOrDefault("tableId") ??
+        (IsTableLayout ? SelectedId : null);
+
     private bool CanUseTableOperation(string? parameter)
     {
         if (!CanOperate || string.IsNullOrWhiteSpace(parameter) || state?.Details?.Operations is null) return false;
         var operation = parameter.Split(':')[0];
-        if (operation == "columnWidth") return IsTableColumn && state.Details.Operations.AvailableOps.Contains(HostAdapterOperations.ResizeWidth, StringComparer.Ordinal);
+        if (operation == HostAdapterOperations.ResetTable)
+            return HasTableOverview && !string.IsNullOrWhiteSpace(CurrentTableId());
+        if (operation == "columnWidth") return IsTableColumn && SelectedColumnWidthMode == "fixed" && state.Details.Operations.AvailableOps.Contains(HostAdapterOperations.ResizeWidth, StringComparer.Ordinal);
         if (operation == "fitSelectedColumn") return IsTableColumn && state.Details.TableBinding?.ContainsKey("tableId") == true && state.Details.Operations.AvailableOps.Contains(HostAdapterOperations.ResizeWidth, StringComparer.Ordinal);
         return state.Details.Operations.AvailableOps.Contains(operation, StringComparer.Ordinal);
     }
@@ -690,6 +749,36 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         if (!CanApplyColumnWidth || !double.TryParse(ColumnWidthText, NumberStyles.Float, CultureInfo.CurrentCulture, out var width)) return;
         await SubmitTableChangeAsync(HostAdapterOperations.ResizeWidth,
             new Dictionary<string, object?> { ["width"] = width }, "Spaltenbreite wurde auf den genauen Wert gesetzt.", simple: true);
+    }
+
+    private async Task MoveTableBoundaryAsync(object? parameter)
+    {
+        if (!CanMoveTableBoundary || SelectedTableBoundary is null || parameter is not string text) return;
+        var delta = text switch
+        {
+            "left" => -lastValidStep,
+            "right" => lastValidStep,
+            _ when double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => double.NaN,
+        };
+        if (!double.IsFinite(delta)) return;
+        if (delta < SelectedTableBoundary.MinimumDelta - 0.000001 || delta > SelectedTableBoundary.MaximumDelta + 0.000001)
+        {
+            ShowError("table_boundary_limit", "Diese Grenzverschiebung würde eine registrierte Mindest- oder Maximalbreite überschreiten.");
+            return;
+        }
+        var tableId = state?.Details?.TableEditor?.TableId;
+        if (string.IsNullOrWhiteSpace(tableId)) return;
+        await SubmitTableChangeAsync(HostAdapterOperations.ResizeColumnBoundary,
+            new Dictionary<string, object?>
+            {
+                ["table"] = new Dictionary<string, object?>
+                {
+                    ["leftColumnId"] = SelectedTableBoundary.LeftColumnId,
+                    ["rightColumnId"] = SelectedTableBoundary.RightColumnId,
+                    ["delta"] = delta,
+                },
+            }, $"Grenze {SelectedTableBoundary.DisplayName} wurde um {Math.Abs(delta):G} DIP nach {(delta > 0 ? "rechts" : "links")} verschoben.", tableId, simple: true);
     }
 
     private async Task ApplyTableAsync(object? parameter)
@@ -749,12 +838,20 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             case HostAdapterOperations.SetColumnOverflowMode: table["overflowMode"] = argument; break;
             case HostAdapterOperations.SetRowHeightMode: table["rowHeightMode"] = argument; break;
         }
-        await SubmitTableChangeAsync(operation, new Dictionary<string, object?> { ["table"] = table }, "Tabellenlayout wurde geändert.");
+        var tableTargetId = operation == HostAdapterOperations.ResetTable ? CurrentTableId() : null;
+        await SubmitTableChangeAsync(operation, new Dictionary<string, object?> { ["table"] = table },
+            operation == HostAdapterOperations.ResetTable
+                ? "Die vollständige Tabelle verwendet wieder ihr ursprüngliches Layout."
+                : "Tabellenlayout wurde geändert.",
+            tableTargetId);
     }
 
     private async Task SubmitTableChangeAsync(string operation, IReadOnlyDictionary<string, object?> payload, string successMessage, string? elementId = null, bool simple = false)
     {
         layoutSession.BeginUndoFrame($"{SelectedName} Tabellenlayout");
+        var resetUndoColumnIds = operation == HostAdapterOperations.ResetTable
+            ? TableColumns.Select(column => column.ColumnId).ToArray()
+            : operation == HostAdapterOperations.ResetTableColumn ? [elementId ?? SelectedId] : [];
         var undoCommitted = false;
         IsBusy = true;
         ClearError();
@@ -772,19 +869,34 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             {
                 if (outcome.Result.Operation is HostAdapterOperations.ResetTableColumn or HostAdapterOperations.ResetTable)
                 {
+                    foreach (var columnId in resetUndoColumnIds)
+                    {
+                        layoutSession.RecordPendingUndoOperation(targetScopeId, columnId, HostAdapterOperations.ResizeWidth);
+                        layoutSession.RecordPendingUndoOperation(targetScopeId, columnId, HostAdapterOperations.SetColumnWidthMode);
+                    }
                     layoutSession.ClearExplicitOperations(targetScopeId, targetElementId);
                     if (outcome.Result.AffectedStates is not null)
                         foreach (var affected in outcome.Result.AffectedStates)
+                        {
+                            layoutSession.RecordPendingUndoOperation(affected.ScopeId, affected.ElementId, HostAdapterOperations.ResizeWidth);
+                            layoutSession.RecordPendingUndoOperation(affected.ScopeId, affected.ElementId, HostAdapterOperations.SetColumnWidthMode);
                             layoutSession.ClearExplicitOperations(affected.ScopeId, affected.ElementId);
+                        }
                 }
                 else
                 {
-                    layoutSession.RecordExplicitOperation(targetScopeId, targetElementId, outcome.Result.Operation);
+                    if (outcome.Result.Operation != HostAdapterOperations.ResizeColumnBoundary)
+                        layoutSession.RecordExplicitOperation(targetScopeId, targetElementId, outcome.Result.Operation);
                     if (outcome.Result.AffectedStates is not null)
                         foreach (var affected in outcome.Result.AffectedStates)
+                        {
                             layoutSession.RecordExplicitOperation(affected.ScopeId, affected.ElementId, HostAdapterOperations.ResizeWidth);
+                            if (outcome.Result.Operation == HostAdapterOperations.ResizeColumnBoundary)
+                                layoutSession.RecordExplicitOperation(affected.ScopeId, affected.ElementId, HostAdapterOperations.SetColumnWidthMode);
+                        }
                 }
                 layoutSession.CommitUndoFrame();
+                RefreshLayoutStatus();
                 RaiseUndoChanged();
                 undoCommitted = true;
                 LastChangeSummary = $"Zuletzt: {SelectedName} · {FriendlyOperation(outcome.Result.Operation)}";
@@ -805,6 +917,11 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private async Task ChangeColumnWidthByAsync(double delta)
     {
+        if (SelectedColumnWidthMode != "fixed")
+        {
+            ShowError("table_column_width_mode_requires_fixed", ColumnWidthInputStatus);
+            return;
+        }
         var column = state?.Details?.TableColumnLayout;
         var current = state?.Details?.CurrentLayout.Element?.Width;
         if (column is null || current is null) return;
@@ -940,6 +1057,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             string.IsNullOrWhiteSpace(description) ? "Letzte Änderung rückgängig gemacht." : $"Rückgängig: {description}");
         if (result.Success)
         {
+            RaiseUndoChanged();
             LastChangeSummary = string.IsNullOrWhiteSpace(description) ? "Zuletzt: Änderung rückgängig" : $"Zuletzt rückgängig: {description}";
             OnPropertyChanged(nameof(LastChangeSummary));
         }
@@ -1101,6 +1219,35 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             : details?.TableLayout is not null ? details.Label ?? "Tabelle" : "–";
         ColumnName = details?.TableColumnLayout?.DisplayName ??
             (details?.TableBinding?.TryGetValue("columnId", out var columnId) == true ? FindNodeLabel(next, columnId) : null) ?? "–";
+        (string LeftColumnId, string RightColumnId)? previousBoundary = SelectedTableBoundary is null
+            ? null
+            : (SelectedTableBoundary.LeftColumnId, SelectedTableBoundary.RightColumnId);
+        TableColumns.Clear();
+        TableBoundaries.Clear();
+        if (details?.TableEditor is { } tableEditor)
+        {
+            var total = Math.Max(1, tableEditor.TotalWidth);
+            foreach (var tableColumn in tableEditor.Columns.OrderBy(item => item.Order))
+            {
+                var logical = tableColumn.LogicalWidth ?? tableColumn.CurrentWidth;
+                var content = tableColumn.DataContentWidths?.Where(value => value > 0).ToArray() ?? [];
+                TableColumns.Add(new(tableColumn.ColumnId, tableColumn.DisplayName, tableColumn.CurrentWidth, logical,
+                    tableColumn.WidthMode ?? "fixed", tableColumn.HeaderWidth ?? tableColumn.CurrentWidth,
+                    tableColumn.HeaderContentWidth ?? tableColumn.CurrentWidth,
+                    content.Length == 0 ? tableColumn.CurrentWidth : content.Min(),
+                    content.Length == 0 ? tableColumn.CurrentWidth : content.Max(), tableColumn.RuntimeWidthValid,
+                    tableColumn.MinimumWidth, tableColumn.MaximumWidth, Math.Max(28, 270 * tableColumn.CurrentWidth / total)));
+            }
+            foreach (var boundary in tableEditor.Boundaries)
+                TableBoundaries.Add(new(boundary.LeftColumnId, boundary.LeftDisplayName, boundary.RightColumnId,
+                    boundary.RightDisplayName, boundary.CurrentPosition, boundary.MinimumDelta, boundary.MaximumDelta, boundary.Enabled));
+        }
+        SelectedTableBoundary = previousBoundary is { } pair
+            ? TableBoundaries.FirstOrDefault(boundary => boundary.LeftColumnId == pair.LeftColumnId && boundary.RightColumnId == pair.RightColumnId)
+            : null;
+        SelectedTableBoundary ??= TableBoundaries.FirstOrDefault(boundary => boundary.RightColumnId == SelectedId)
+            ?? TableBoundaries.FirstOrDefault(boundary => boundary.LeftColumnId == SelectedId)
+            ?? TableBoundaries.LastOrDefault();
         Operations = details?.Operations is null ? "–" : string.Join(", ", details.Operations.AvailableOps);
         LayoutEffectInfo = DescribeLayoutEffect(details);
         Position = details?.CurrentLayout.Element is { } element ? $"X {element.X:G} / Y {element.Y:G} DIP" : "–";
@@ -1122,8 +1269,14 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             : details?.TableLayout is { } tableDefinition
                 ? $"Sichtbarer Bereich {tableDefinition.ViewportBounds.Width:G} DIP · Tabelle {tableDefinition.ContentBounds.Width:G} DIP"
                 : "Keine Tabelle ausgewählt";
+        var selectedContentWidths = table?.DataContentWidths?.Where(value => value > 0).ToArray() ?? [];
+        var selectedContentWidth = selectedContentWidths.Length == 0
+            ? "nicht gemessen"
+            : selectedContentWidths.Min() == selectedContentWidths.Max()
+                ? $"{selectedContentWidths[0]:G} DIP"
+                : $"{selectedContentWidths.Min():G}–{selectedContentWidths.Max():G} DIP";
         ColumnModeStatus = details?.TableColumnLayout is { } column
-            ? $"{column.DisplayName} · {table?.WidthMode ?? column.WidthMode} · {table?.WrapMode ?? column.WrapMode} · {table?.OverflowMode ?? column.OverflowMode} · min. {column.MinimumWidth:G} / max. {column.MaximumWidth:G} DIP"
+            ? $"{column.DisplayName} · {table?.WidthMode ?? column.WidthMode} · gespeichert {table?.LogicalWidth ?? details.CurrentLayout.Element?.Width ?? column.CurrentWidth:G} DIP · wirksam {table?.EffectiveWidth ?? details.CurrentLayout.Element?.Width ?? column.CurrentWidth:G} DIP · Kopf {table?.HeaderWidth ?? details.CurrentLayout.Element?.Width ?? column.CurrentWidth:G} DIP · Inhalt {selectedContentWidth} · {(table?.RuntimeWidthValid == false ? "Breitenabweichung" : "Breitenquelle konsistent")} · {table?.WrapMode ?? column.WrapMode} · {table?.OverflowMode ?? column.OverflowMode} · min. {column.MinimumWidth:G} / max. {column.MaximumWidth:G} DIP"
             : "Keine Spalte ausgewählt";
         columnWidthText = details?.TableColumnLayout is not null && details.CurrentLayout.Element is { } columnSize
             ? columnSize.Width.ToString("G", CultureInfo.CurrentCulture) : string.Empty;
@@ -1236,7 +1389,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseDetailsChanged()
     {
-        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(SelectionKindLabel), nameof(SelectionContextLabel), nameof(SelectionContextValue), nameof(TableName), nameof(ColumnName), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(SimpleFontSizeLabel), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSimpleMove), nameof(CanSimpleWidth), nameof(CanSimpleHeight), nameof(CanSimpleTextMove), nameof(ShowSimpleFontSize), nameof(CanSimpleFontSize), nameof(CanSimpleText), nameof(IsSimpleInlineTextTarget), nameof(CanSimpleDisplayMove), nameof(ShowSimpleMove), nameof(ShowSimpleVisibility), nameof(ShowSimpleElementLayer), nameof(IsSimpleElementLayer), nameof(IsSimpleTextLayer), nameof(ShowSimpleElementSize), nameof(ShowSimpleDirectPosition), nameof(ShowSimpleDirectSize), nameof(ShowSimpleDirectTextPosition), nameof(ShowSimpleDirectFontSize), nameof(IsElementLayer), nameof(IsTextLayer), nameof(DirectXText), nameof(DirectYText), nameof(DirectWidthText), nameof(DirectHeightText), nameof(DirectTextXText), nameof(DirectTextYText), nameof(DirectFontSizeText), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(IsTableTarget), nameof(IsTableLayout), nameof(IsTableColumn), nameof(CanSelectWholeColumn), nameof(TableGeometryStatus), nameof(ColumnModeStatus), nameof(ColumnWidthText), nameof(CanApplyColumnWidth), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
+        OnPropertyChanged(nameof(ColumnWidthInputStatus));
+        foreach (var property in new[] { nameof(SelectedName), nameof(SelectedId), nameof(SelectedType), nameof(SelectedScope), nameof(SelectedParent), nameof(SelectedRole), nameof(SelectionKindLabel), nameof(SelectionContextLabel), nameof(SelectionContextValue), nameof(TableName), nameof(ColumnName), nameof(TableEditorTitle), nameof(Operations), nameof(LayoutEffectInfo), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(SimpleFontSizeLabel), nameof(VisibilityStatus), nameof(IsSelectedVisible), nameof(CanChangeVisibility), nameof(VisibilityActionLabel), nameof(CanSimpleMove), nameof(CanSimpleWidth), nameof(CanSimpleHeight), nameof(CanSimpleTextMove), nameof(ShowSimpleFontSize), nameof(CanSimpleFontSize), nameof(CanSimpleText), nameof(IsSimpleInlineTextTarget), nameof(CanSimpleDisplayMove), nameof(ShowSimpleMove), nameof(ShowSimpleVisibility), nameof(ShowSimpleElementLayer), nameof(IsSimpleElementLayer), nameof(IsSimpleTextLayer), nameof(ShowSimpleElementSize), nameof(ShowSimpleDirectPosition), nameof(ShowSimpleDirectSize), nameof(ShowSimpleDirectTextPosition), nameof(ShowSimpleDirectFontSize), nameof(IsElementLayer), nameof(IsTextLayer), nameof(DirectXText), nameof(DirectYText), nameof(DirectWidthText), nameof(DirectHeightText), nameof(DirectTextXText), nameof(DirectTextYText), nameof(DirectFontSizeText), nameof(CanSpacing), nameof(CanBeforeElement), nameof(CanAfterElement), nameof(CanGroupPaddingLeft), nameof(CanGroupPaddingRight), nameof(CanGroupPaddingTop), nameof(CanGroupPaddingBottom), nameof(CanChildGapHorizontal), nameof(CanChildGapVertical), nameof(SpacingStatus), nameof(IsTableTarget), nameof(IsTableLayout), nameof(IsTableColumn), nameof(CanSelectWholeColumn), nameof(TableGeometryStatus), nameof(ColumnModeStatus), nameof(ColumnWidthText), nameof(CanApplyColumnWidth), nameof(HasTableOverview), nameof(CanMoveTableBoundary), nameof(LeftEnabled), nameof(RightEnabled), nameof(UpEnabled), nameof(DownEnabled), nameof(CanInteract), nameof(ControlsEnabled) })
             OnPropertyChanged(property);
     }
 
@@ -1278,13 +1432,14 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseCommandStates()
     {
-        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, TableCommand, ApplyColumnWidthCommand, SimpleActionCommand, SetStepPresetCommand, ApplyDirectValueCommand, UndoCommand, SelectWholeColumnCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, TableCommand, ApplyColumnWidthCommand, MoveTableBoundaryCommand, SimpleActionCommand, SetStepPresetCommand, ApplyDirectValueCommand, UndoCommand, SelectWholeColumnCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(CanOperate));
         OnPropertyChanged(nameof(ControlsEnabled));
         OnPropertyChanged(nameof(CanChangeVisibility));
         OnPropertyChanged(nameof(CanSpacing));
+        OnPropertyChanged(nameof(CanMoveTableBoundary));
     }
 
     private void RaiseUndoChanged()

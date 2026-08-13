@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.IO;
+using ReferenceTargetApp.EditorIntegration.Electron;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Registry;
@@ -11,6 +12,17 @@ namespace ReferenceTargetApp.Tests;
 [TestClass]
 public sealed class M824TableLayoutTests
 {
+    [TestMethod]
+    public void ElectronPdfHandshakeAcceptsAtomicTableBoundaryResize()
+    {
+        var contract = new ElectronPdfTargetContract(
+            "target", "protocol", "TOP-Liste", "1.0", 1,
+            $"sha256:{new string('a', 64)}", "pdf.protocol", [HostAdapterOperations.ResizeColumnBoundary],
+            "margins", "nativePdf", "explicit", "document", "available");
+
+        contract.Validate("target");
+    }
+
     [TestMethod]
     public void TableEngineMeasuresViewportAndOverflow()
     {
@@ -86,6 +98,146 @@ public sealed class M824TableLayoutTests
     }
 
     [TestMethod]
+    public void BoundaryResizeChangesExactlyTwoAdjacentColumnsAndPreservesTotal()
+    {
+        StaTest.Run(() =>
+        {
+            var setup = CreateAdapter();
+            var beforeState = setup.Adapter.GetCurrentLayoutState();
+            var beforeDescription = beforeState.Elements.Single(element => element.ElementId == "table.description").Width;
+            var beforeMeta = beforeState.Elements.Single(element => element.ElementId == "table.meta").Width;
+            var result = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
+                new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>
+                {
+                    ["leftColumnId"] = "table.description", ["rightColumnId"] = "table.meta", ["delta"] = 20d
+                } }));
+            Assert.IsTrue(result.Success, result.Message);
+            Assert.AreEqual(beforeDescription + 20, setup.Description.Width.Value, 0.001);
+            Assert.AreEqual(beforeMeta - 20, setup.Meta.Width.Value, 0.001);
+            Assert.AreEqual(DataGridLengthUnitType.Star, setup.Description.Width.UnitType);
+            Assert.AreEqual(DataGridLengthUnitType.Pixel, setup.Meta.Width.UnitType);
+            CollectionAssert.AreEquivalent(new[] { "table.description", "table.meta" }, result.AffectedStates!.Select(state => state.ElementId).ToArray());
+        });
+    }
+
+    [TestMethod]
+    public void BoundaryUndoTracksTheTwoColumnsInsteadOfAnUnrestorableTableIntent()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), $"m82-4-boundary-undo-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(root);
+            try
+            {
+                var setup = CreateAdapter();
+                var scopeAdapters = new Dictionary<string, IHostAdapter>(StringComparer.Ordinal) { ["scope"] = setup.Adapter };
+                var session = new LayoutProfileSession(scopeAdapters,
+                    new Dictionary<string, LayoutState>(StringComparer.Ordinal) { ["scope"] = setup.Adapter.GetCurrentLayoutState() },
+                    new AtomicJsonLayoutProfileStore(root, "app"), new ActiveLayoutProfileStore(root), LayoutProfileCatalog.StandardId);
+                session.BeginUndoFrame("Tabellengrenze");
+                var changed = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
+                    new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>
+                    {
+                        ["leftColumnId"] = "table.description", ["rightColumnId"] = "table.meta", ["delta"] = 20d
+                    } }));
+                Assert.IsTrue(changed.Success, changed.Message);
+                foreach (var affected in changed.AffectedStates!)
+                {
+                    session.RecordExplicitOperation("scope", affected.ElementId, HostAdapterOperations.ResizeWidth);
+                    session.RecordExplicitOperation("scope", affected.ElementId, HostAdapterOperations.SetColumnWidthMode);
+                }
+                session.CommitUndoFrame();
+
+                var undone = session.UndoAsync().GetAwaiter().GetResult();
+                Assert.IsTrue(undone.Success, undone.Message);
+                Assert.IsFalse(session.GetUndoStatus().CanUndo);
+            }
+            finally { Directory.Delete(root, true); }
+        });
+    }
+
+    [TestMethod]
+    public void TableResetUndoRestoresEveryAffectedColumnIncludingPreviouslyUneditedColumns()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), $"m82-4-table-reset-undo-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(root);
+            try
+            {
+                var setup = CreateAdapter();
+                var scopeAdapters = new Dictionary<string, IHostAdapter>(StringComparer.Ordinal) { ["scope"] = setup.Adapter };
+                var session = new LayoutProfileSession(scopeAdapters,
+                    new Dictionary<string, LayoutState>(StringComparer.Ordinal) { ["scope"] = setup.Adapter.GetCurrentLayoutState() },
+                    new AtomicJsonLayoutProfileStore(root, "app"), new ActiveLayoutProfileStore(root), LayoutProfileCatalog.StandardId);
+
+                Assert.IsTrue(setup.Adapter.SubmitChangeRequest(Request("table.number", HostAdapterOperations.ResizeWidth,
+                    new Dictionary<string, object?> { ["width"] = 100d })).Success);
+                var beforeReset = setup.Adapter.GetCurrentLayoutState();
+                session.AcceptCurrentTargetAsSaved();
+                session.BeginUndoFrame("Tabelle Original");
+                var reset = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResetTable,
+                    new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>() }));
+                Assert.IsTrue(reset.Success, reset.Message);
+                foreach (var columnId in new[] { "table.number", "table.description", "table.meta" })
+                {
+                    session.RecordPendingUndoOperation("scope", columnId, HostAdapterOperations.ResizeWidth);
+                    session.RecordPendingUndoOperation("scope", columnId, HostAdapterOperations.SetColumnWidthMode);
+                    session.ClearExplicitOperations("scope", columnId);
+                }
+                session.CommitUndoFrame();
+
+                var undone = session.UndoAsync().GetAwaiter().GetResult();
+                Assert.IsTrue(undone.Success, undone.Message);
+                var restored = setup.Adapter.GetCurrentLayoutState();
+                foreach (var expected in beforeReset.Elements.Where(element => element.Table?.ColumnId is not null))
+                {
+                    var actual = restored.Elements.Single(element => element.ElementId == expected.ElementId);
+                    Assert.AreEqual(expected.Width, actual.Width, 0.001, expected.ElementId);
+                    Assert.AreEqual(expected.Table!.WidthMode, actual.Table!.WidthMode, expected.ElementId);
+                }
+                Assert.IsFalse(session.GetStatus().IsDirty);
+            }
+            finally { Directory.Delete(root, true); }
+        });
+    }
+
+    [TestMethod]
+    public void ExplicitCleanBoundaryDiscardsOnlyTheTrackedBoundaryColumns()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), $"m82-4-boundary-discard-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(root);
+            try
+            {
+                var setup = CreateAdapter();
+                var scopeAdapters = new Dictionary<string, IHostAdapter>(StringComparer.Ordinal) { ["scope"] = setup.Adapter };
+                var session = new LayoutProfileSession(scopeAdapters,
+                    new Dictionary<string, LayoutState>(StringComparer.Ordinal) { ["scope"] = setup.Adapter.GetCurrentLayoutState() },
+                    new AtomicJsonLayoutProfileStore(root, "app"), new ActiveLayoutProfileStore(root), LayoutProfileCatalog.StandardId);
+                session.AcceptCurrentTargetAsSaved();
+                var changed = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
+                    new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>
+                    {
+                        ["leftColumnId"] = "table.description", ["rightColumnId"] = "table.meta", ["delta"] = 20d
+                    } }));
+                Assert.IsTrue(changed.Success, changed.Message);
+                foreach (var affected in changed.AffectedStates!)
+                {
+                    session.RecordExplicitOperation("scope", affected.ElementId, HostAdapterOperations.ResizeWidth);
+                    session.RecordExplicitOperation("scope", affected.ElementId, HostAdapterOperations.SetColumnWidthMode);
+                }
+
+                var discarded = session.DiscardAllAsync().GetAwaiter().GetResult();
+                Assert.IsTrue(discarded.Success, discarded.Message);
+                Assert.IsFalse(session.GetStatus().IsDirty);
+            }
+            finally { Directory.Delete(root, true); }
+        });
+    }
+
+    [TestMethod]
     public void TableAndColumnModesArePersistedAndRestored()
     {
         StaTest.Run(() =>
@@ -126,7 +278,8 @@ public sealed class M824TableLayoutTests
         };
         return new("table", "Aufgabenliste", new(0, 0, 984, 400), new(0, 0, 600, 360), new(0, 0, 984, 400),
             "scope", columns.Select(column => column.ColumnId).ToArray(), "table.row", TableHorizontalOverflowModes.Auto, "auto", "bounded",
-            360, 1600, 24, 0, TableRowHeightModes.Bounded, 36, 120, columns);
+            360, 1600, 24, 0, TableRowHeightModes.Bounded, 36, 120, columns,
+            BoundaryResizePolicy: TableBoundaryResizePolicies.AdjacentPreserveTotal);
     }
 
     private static TableColumnLayoutDefinition Column(string id, string name, double width, double minimum, bool resizable, string mode, int order) =>
@@ -148,8 +301,11 @@ public sealed class M824TableLayoutTests
         var descriptionBinding = new WpfTableColumnBinding(grid, description, definition.Columns[1]);
         var metaBinding = new WpfTableColumnBinding(grid, meta, definition.Columns[2]);
         numberBinding.SetWidth(80); descriptionBinding.SetWidth(700); metaBinding.SetWidth(180);
+        numberBinding.SetWidthMode(definition.Columns[0].WidthMode);
+        descriptionBinding.SetWidthMode(definition.Columns[1].WidthMode);
+        metaBinding.SetWidthMode(definition.Columns[2].WidthMode);
         var tableBinding = new WpfTableBinding(grid, definition, [numberBinding, descriptionBinding, metaBinding]);
-        var tableOps = new[] { HostAdapterOperations.FitTableToViewport, HostAdapterOperations.ResizeColumnsProportionally,
+        var tableOps = new[] { HostAdapterOperations.FitTableToViewport, HostAdapterOperations.ResizeColumnsProportionally, HostAdapterOperations.ResizeColumnBoundary,
             HostAdapterOperations.SetHorizontalOverflowMode, HostAdapterOperations.SetRowHeightMode, HostAdapterOperations.ResetTable };
         var columnOps = new[] { HostAdapterOperations.ResizeWidth, HostAdapterOperations.SetColumnWidthMode,
             HostAdapterOperations.SetColumnWrapMode, HostAdapterOperations.SetColumnOverflowMode, HostAdapterOperations.ResetTableColumn };

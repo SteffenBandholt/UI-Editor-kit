@@ -101,6 +101,12 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             case HostAdapterOperations.ResizeColumnsProportionally:
                 entry.WpfTableBinding?.Fit();
                 break;
+            case HostAdapterOperations.ResizeColumnBoundary:
+                entry.WpfTableBinding?.ResizeBoundary(
+                    (string)change.TableIntent!["leftColumnId"]!,
+                    (string)change.TableIntent!["rightColumnId"]!,
+                    Convert.ToDouble(change.TableIntent!["delta"], System.Globalization.CultureInfo.InvariantCulture));
+                break;
             case HostAdapterOperations.SetHorizontalOverflowMode:
                 entry.WpfTableBinding?.SetHorizontalOverflowMode((string)change.TableIntent!["horizontalOverflowMode"]!);
                 break;
@@ -151,8 +157,7 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
         }
         if (entry.WpfTableBinding is not null && snapshot.TableLayout is not null)
         {
-            entry.WpfTableBinding.SetHorizontalOverflowMode(snapshot.TableLayout.HorizontalOverflowMode);
-            entry.WpfTableBinding.SetRowHeightMode(snapshot.TableLayout.RowHeightMode);
+            entry.WpfTableBinding.Restore(snapshot.TableLayout);
         }
     }
 

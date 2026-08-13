@@ -22,9 +22,11 @@ const TABLE_WIDTH_POLICIES = Object.freeze(["content", "viewport", "bounded", "e
 const TABLE_ROW_HEIGHT_MODES = Object.freeze(["fixed", "auto", "bounded", "ellipsis"]);
 const TABLE_ALIGNMENT_MODES = Object.freeze(["start", "center", "end", "stretch"]);
 const TABLE_TOPOLOGY_POLICIES = Object.freeze(["preserveTarget"]);
+const TABLE_BOUNDARY_RESIZE_POLICIES = Object.freeze(["independent", "adjacentPreserveTotal"]);
 const TABLE_LAYOUT_OPERATIONS = Object.freeze([
   "fitTableToViewport",
   "resizeColumnsProportionally",
+  "resizeColumnBoundary",
   "setHorizontalOverflowMode",
   "setColumnWidthMode",
   "setColumnWrapMode",
@@ -118,6 +120,7 @@ function normalizeTableLayout(table) {
     contentBounds: bounds(source.contentBounds),
     parentId: source.parentId === null ? null : text(source.parentId),
     topologyPolicy: text(source.topologyPolicy) || "preserveTarget",
+    boundaryResizePolicy: text(source.boundaryResizePolicy) || "independent",
     requiresDedicatedWrapper: false,
     columnIds: Object.freeze(Array.isArray(source.columnIds) ? source.columnIds.map(text).filter(Boolean) : columns.map((column) => column.columnId)),
     rowTemplateId: source.rowTemplateId == null ? null : text(source.rowTemplateId),
@@ -147,6 +150,7 @@ function validateTableLayout(table) {
   for (const field of ["tableId", "displayName"]) if (!model[field]) errors.push(error("table_field_missing", field, `${field} fehlt.`));
   if (!model.parentId) errors.push(error("table_field_missing", "parentId", "parentId fehlt."));
   if (!TABLE_TOPOLOGY_POLICIES.includes(model.topologyPolicy)) errors.push(error("table_topology_policy_invalid", "topologyPolicy", "Der Tabellenvertrag muss die vorhandene Ziel-App-Topologie bewahren."));
+  if (!TABLE_BOUNDARY_RESIZE_POLICIES.includes(model.boundaryResizePolicy)) errors.push(error("table_boundary_policy_invalid", "boundaryResizePolicy", "Die Spaltengrenzenregel ist ungültig."));
   if (table.requiresDedicatedWrapper === true) errors.push(error("table_wrapper_forbidden", "requiresDedicatedWrapper", "Ein Tabellenvertrag darf keinen zusaetzlichen UI-Wrapper verlangen."));
   if (!TABLE_HORIZONTAL_OVERFLOW_MODES.includes(model.horizontalOverflowMode)) errors.push(error("table_overflow_mode_invalid", "horizontalOverflowMode", "Horizontaler Überlaufmodus ist ungültig."));
   if (!TABLE_VERTICAL_OVERFLOW_MODES.includes(model.verticalOverflowMode)) errors.push(error("table_overflow_mode_invalid", "verticalOverflowMode", "Vertikaler Überlaufmodus ist ungültig."));
@@ -249,6 +253,109 @@ function updateTableColumn(table, columnId, values) {
   return result.ok ? { ok: true, model, metrics: measureTableLayout(model) } : result;
 }
 
+function normalizeTableColumnRuntimeMetrics(metrics) {
+  const source = isObject(metrics) ? metrics : {};
+  const widths = (value) => Object.freeze((Array.isArray(value) ? value : [])
+    .map((entry) => finite(entry, NaN))
+    .filter((entry) => Number.isFinite(entry) && entry >= 0));
+  return Object.freeze({
+    columnId: text(source.columnId),
+    logicalWidth: Math.max(0, finite(source.logicalWidth)),
+    effectiveWidth: Math.max(0, finite(source.effectiveWidth)),
+    headerWidth: Math.max(0, finite(source.headerWidth)),
+    headerContentWidth: Math.max(0, finite(source.headerContentWidth)),
+    dataCellWidths: widths(source.dataCellWidths),
+    dataContentWidths: widths(source.dataContentWidths),
+    mountedDataCellCount: Math.max(0, Math.trunc(finite(source.mountedDataCellCount))),
+  });
+}
+
+function validateTableColumnRuntimeMetrics(metrics, options = {}) {
+  const model = normalizeTableColumnRuntimeMetrics(metrics);
+  const tolerance = Math.max(0.01, finite(options.tolerance, 1));
+  const errors = [];
+  const mismatch = (field, actual, expected) => {
+    if (Math.abs(actual - expected) > tolerance)
+      errors.push(error("table_runtime_width_mismatch", field,
+        `Wirksame Spaltenbreite ${expected} und ${field} ${actual} weichen voneinander ab.`));
+  };
+  if (!model.columnId) errors.push(error("table_runtime_column_missing", "columnId", "Spalten-ID fehlt in der Laufzeitmessung."));
+  for (const field of ["logicalWidth", "effectiveWidth", "headerWidth"])
+    if (!(model[field] > 0)) errors.push(error("table_runtime_width_invalid", field, `${field} muss positiv und endlich sein.`));
+  if (model.effectiveWidth > 0 && model.headerWidth > 0) mismatch("headerWidth", model.headerWidth, model.effectiveWidth);
+  if (model.mountedDataCellCount !== model.dataCellWidths.length)
+    errors.push(error("table_runtime_data_cells_incomplete", "dataCellWidths", "Nicht alle gebundenen Datenzellen wurden gemessen."));
+  if (model.dataContentWidths.length !== model.dataCellWidths.length)
+    errors.push(error("table_runtime_content_cells_incomplete", "dataContentWidths", "Nicht alle Inhaltsboxen wurden gemessen."));
+  model.dataCellWidths.forEach((width, index) => {
+    if (!(width > 0)) errors.push(error("table_runtime_width_invalid", `dataCellWidths[${index}]`, "Datenzellenbreite muss positiv sein."));
+    else if (model.effectiveWidth > 0) mismatch(`dataCellWidths[${index}]`, width, model.effectiveWidth);
+    const contentWidth = model.dataContentWidths[index];
+    if (!(contentWidth > 0) || contentWidth > width + tolerance)
+      errors.push(error("table_runtime_content_width_invalid", `dataContentWidths[${index}]`, "Inhaltsbox muss positiv sein und innerhalb der Datenzelle liegen."));
+  });
+  if (!(model.headerContentWidth > 0) || model.headerContentWidth > model.headerWidth + tolerance)
+    errors.push(error("table_runtime_content_width_invalid", "headerContentWidth", "Kopf-Inhaltsbox muss positiv sein und innerhalb der Kopfzelle liegen."));
+  return { ok: errors.length === 0, errors, model, tolerance };
+}
+
+function resizeTableColumnBoundary(table, intent = {}) {
+  const validation = validateTableLayout(table);
+  if (!validation.ok) return { ok: false, errors: validation.errors };
+  const model = validation.model;
+  if (model.boundaryResizePolicy !== "adjacentPreserveTotal") {
+    return { ok: false, errors: [error("table_boundary_policy_forbidden", "boundaryResizePolicy", "Diese Tabelle erlaubt keine gekoppelte Spaltengrenzen-Änderung.")] };
+  }
+  const leftColumnId = text(intent.leftColumnId);
+  const rightColumnId = text(intent.rightColumnId);
+  const delta = Number(intent.delta);
+  const leftIndex = model.columnIds.indexOf(leftColumnId);
+  const rightIndex = model.columnIds.indexOf(rightColumnId);
+  if (leftIndex < 0 || rightIndex !== leftIndex + 1) {
+    return { ok: false, errors: [error("table_boundary_columns_not_adjacent", "columnIds", "Spaltengrenzen können nur zwischen zwei unmittelbar benachbarten Spalten verschoben werden.")] };
+  }
+  if (!Number.isFinite(delta) || Math.abs(delta) < 0.000001) {
+    return { ok: false, errors: [error("table_boundary_delta_invalid", "delta", "Die Grenzverschiebung muss eine endliche Zahl ungleich null sein.")] };
+  }
+  const left = model.columns[leftIndex];
+  const right = model.columns[rightIndex];
+  if (!left.resizable || !right.resizable || !left.visibility || !right.visibility) {
+    return { ok: false, errors: [error("table_boundary_columns_locked", "columnIds", "Beide Nachbarspalten müssen sichtbar und in der Breite veränderbar sein.")] };
+  }
+  const nextLeft = left.currentWidth + delta;
+  const nextRight = right.currentWidth - delta;
+  if (nextLeft < left.minimumWidth - 0.000001) {
+    return { ok: false, errors: [error("table_boundary_left_minimum", "delta", `${left.displayName} kann nicht schmaler als ${left.minimumWidth} werden.`)] };
+  }
+  if (nextLeft > left.maximumWidth + 0.000001) {
+    return { ok: false, errors: [error("table_boundary_left_maximum", "delta", `${left.displayName} kann nicht breiter als ${left.maximumWidth} werden.`)] };
+  }
+  if (nextRight < right.minimumWidth - 0.000001) {
+    return { ok: false, errors: [error("table_boundary_right_minimum", "delta", `${right.displayName} kann nicht schmaler als ${right.minimumWidth} werden.`)] };
+  }
+  if (nextRight > right.maximumWidth + 0.000001) {
+    return { ok: false, errors: [error("table_boundary_right_maximum", "delta", `${right.displayName} kann nicht breiter als ${right.maximumWidth} werden.`)] };
+  }
+  const beforeTotal = model.columns.reduce((sum, column) => sum + column.currentWidth, 0);
+  const columns = model.columns.map((column, index) => index === leftIndex
+    ? normalizeTableColumn({ ...column, currentWidth: nextLeft })
+    : index === rightIndex
+      ? normalizeTableColumn({ ...column, currentWidth: nextRight })
+      : column);
+  const afterTotal = columns.reduce((sum, column) => sum + column.currentWidth, 0);
+  if (Math.abs(beforeTotal - afterTotal) > 0.000001) {
+    return { ok: false, errors: [error("table_boundary_total_changed", "delta", "Die feste Tabellenbreite würde sich durch die Grenzverschiebung ändern.")] };
+  }
+  const next = normalizeTableLayout({ ...model, columns });
+  return Object.freeze({
+    ok: true,
+    changed: true,
+    model: next,
+    metrics: measureTableLayout(next),
+    boundary: Object.freeze({ leftColumnId, rightColumnId, delta, leftWidth: nextLeft, rightWidth: nextRight, totalWidth: afterTotal }),
+  });
+}
+
 function resolveTableCellWidthSource(elements, cellId) {
   if (!Array.isArray(elements)) return { ok: false, errors: [error("table_bindings_invalid", "elements", "Elementliste fehlt.")] };
   const byId = new Map(elements.map((element) => [element?.id, element]));
@@ -348,6 +455,7 @@ function validateTableLayoutIntent(operation, payload) {
   const allowed = {
     fitTableToViewport: ["strategy", "selectedColumnId", "neighborAction", "previewAccepted"],
     resizeColumnsProportionally: ["strategy", "previewAccepted"],
+    resizeColumnBoundary: ["leftColumnId", "rightColumnId", "delta"],
     setHorizontalOverflowMode: ["horizontalOverflowMode"],
     setColumnWidthMode: ["widthMode"],
     setColumnWrapMode: ["wrapMode"],
@@ -363,6 +471,10 @@ function validateTableLayoutIntent(operation, payload) {
   if (operation === "setColumnWrapMode" && !TABLE_WRAP_MODES.includes(intent.wrapMode)) errors.push(error("table_column_wrap_mode_invalid", "payload.table.wrapMode", "Umbruchmodus ist ungültig."));
   if (operation === "setColumnOverflowMode" && !TABLE_OVERFLOW_MODES.includes(intent.overflowMode)) errors.push(error("table_column_overflow_mode_invalid", "payload.table.overflowMode", "Überlaufmodus ist ungültig."));
   if (operation === "setRowHeightMode" && !TABLE_ROW_HEIGHT_MODES.includes(intent.rowHeightMode)) errors.push(error("table_row_height_mode_invalid", "payload.table.rowHeightMode", "Zeilenhöhenmodus ist ungültig."));
+  if (operation === "resizeColumnBoundary") {
+    if (!text(intent.leftColumnId) || !text(intent.rightColumnId)) errors.push(error("table_boundary_column_missing", "payload.table", "Beide Nachbarspalten müssen angegeben werden."));
+    if (!Number.isFinite(Number(intent.delta)) || Math.abs(Number(intent.delta)) < 0.000001) errors.push(error("table_boundary_delta_invalid", "payload.table.delta", "Die Grenzverschiebung muss eine endliche Zahl ungleich null sein."));
+  }
   if (["fitTableToViewport", "resizeColumnsProportionally"].includes(operation) && intent.previewAccepted !== true)
     errors.push(error("table_preview_confirmation_required", "payload.table.previewAccepted", "Anpassung an den Viewport braucht eine bestätigte Vorschau."));
   return { ok: errors.length === 0, errors, intent: clone(intent) };
@@ -379,6 +491,7 @@ module.exports = Object.freeze({
   TABLE_ROW_HEIGHT_MODES,
   TABLE_ALIGNMENT_MODES,
   TABLE_TOPOLOGY_POLICIES,
+  TABLE_BOUNDARY_RESIZE_POLICIES,
   TABLE_LAYOUT_OPERATIONS,
   normalizeTableColumn,
   normalizeTableLayout,
@@ -388,6 +501,9 @@ module.exports = Object.freeze({
   updateTableColumnWidthFromCell,
   validateTableLayoutIntent,
   measureTableLayout,
+  normalizeTableColumnRuntimeMetrics,
+  validateTableColumnRuntimeMetrics,
   fitTableToViewport,
   updateTableColumn,
+  resizeTableColumnBoundary,
 });

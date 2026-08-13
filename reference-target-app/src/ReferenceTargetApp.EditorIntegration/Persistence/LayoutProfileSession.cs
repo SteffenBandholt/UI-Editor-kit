@@ -132,6 +132,16 @@ public sealed class LayoutProfileSession
         scopeOperations.Add($"{elementId}\u001f{operation}");
     }
 
+    public void RecordPendingUndoOperation(string scopeId, string elementId, string operation)
+    {
+        if (pendingUndoFrame is null || !adapters.TryGetValue(scopeId, out var adapter)) return;
+        var entry = adapter.GetRegistry().FindById(elementId);
+        if (entry?.AllowedOperations?.Contains(operation, StringComparer.Ordinal) != true) return;
+        if (!pendingUndoFrame.ExplicitOperations.TryGetValue(scopeId, out var scopeOperations))
+            pendingUndoFrame.ExplicitOperations[scopeId] = scopeOperations = new(StringComparer.Ordinal);
+        scopeOperations.Add($"{elementId}\u001f{operation}");
+    }
+
     public void ClearExplicitOperations(string scopeId, string elementId) => RemoveElementOperations(scopeId, elementId);
 
     public async Task InitializeSavedStateAsync(CancellationToken cancellationToken = default)
@@ -152,7 +162,12 @@ public sealed class LayoutProfileSession
         return new(ActiveProfileId, dirtyIds.Count > 0, dirtyIds, CloneStates(working), CloneStates(saved), CloneStates(baseline));
     }
 
-    public void AcceptCurrentTargetAsSaved() => saved = CloneStates(CaptureWorking());
+    public void AcceptCurrentTargetAsSaved()
+    {
+        saved = CloneStates(CaptureWorking());
+        savedExplicitOperations = CloneOperations(workingExplicitOperations);
+        savedHasExplicitOperationMetadata = true;
+    }
 
     public void AcceptCurrentTargetElementAsSaved(string scopeId, string elementId) => NormalizeSavedElement(scopeId, elementId);
 

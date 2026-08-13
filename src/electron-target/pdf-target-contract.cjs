@@ -22,6 +22,7 @@ const PDF_TARGET_OPERATIONS = Object.freeze([
   "setLineSpacing",
   "setVisibility",
   "setPageMargins",
+  "resizeColumnBoundary",
 ]);
 const PDF_ELEMENT_KINDS = new Set([
   "document",
@@ -115,6 +116,7 @@ function canonicalPdfRegistry(registry) {
       refKey: text(element?.refKey),
       rendererKey: text(element?.rendererKey),
       columnRole: text(element?.columnRole),
+      boundaryResizePolicy: text(element?.boundaryResizePolicy),
     })).sort((left, right) => left.id.localeCompare(right.id)),
   };
 }
@@ -165,6 +167,9 @@ function validatePdfRegistry(registry) {
     if (element?.editable !== (allowed.length > 0)) errors.push({ code: "pdf_registry_editable_invalid", field: `${prefix}.editable` });
     if (element?.visible !== true) errors.push({ code: "pdf_registry_visibility_invalid", field: `${prefix}.visible` });
     if (element?.kind === "tableColumn" && !text(element?.columnRole)) errors.push({ code: "pdf_registry_column_role_missing", field: `${prefix}.columnRole` });
+    if (element?.kind === "table" && element?.capabilities?.includes("resizeColumnBoundary") && element?.boundaryResizePolicy !== "adjacentPreserveTotal") {
+      errors.push({ code: "pdf_registry_boundary_policy_invalid", field: `${prefix}.boundaryResizePolicy` });
+    }
   }
   const roots = elements.filter((element) => element?.kind === "document" && element?.parentId == null);
   if (roots.length !== 1 || roots[0]?.id !== registry.scopeId) errors.push({ code: "pdf_registry_root_invalid", field: "elements" });

@@ -14,6 +14,61 @@ function currentEntry(sessionState, elementId) {
   return sessionState.getSessionEntries().find((entry) => entry.elementId === elementId) || { elementId };
 }
 
+function tableEditorModel(registry, sessionState, selectedElement) {
+  if (!selectedElement) return null;
+  const tableId = selectedElement.tableLayout?.tableId || selectedElement.tableBinding?.tableId ||
+    (selectedElement.type === "tableColumn" ? selectedElement.parentId : null);
+  const table = tableId ? registry.getElementById(tableId) : null;
+  if (!table?.tableLayout) return null;
+  const columns = table.tableLayout.columns.map((column) => {
+    const entry = currentEntry(sessionState, column.columnId);
+    const logicalWidth = Number(entry?.element?.width ?? column.currentWidth);
+    const effectiveWidth = Number(entry?.table?.effectiveWidth ?? logicalWidth);
+    return {
+      columnId: column.columnId,
+      displayName: column.displayName,
+      currentWidth: Number.isFinite(effectiveWidth) ? effectiveWidth : column.currentWidth,
+      logicalWidth: Number.isFinite(logicalWidth) ? logicalWidth : column.currentWidth,
+      widthMode: entry?.table?.widthMode || column.widthMode,
+      headerWidth: Number(entry?.table?.headerWidth ?? effectiveWidth),
+      headerContentWidth: Number(entry?.table?.headerContentWidth ?? effectiveWidth),
+      dataCellWidths: Array.isArray(entry?.table?.dataCellWidths) ? entry.table.dataCellWidths.map(Number) : [],
+      dataContentWidths: Array.isArray(entry?.table?.dataContentWidths) ? entry.table.dataContentWidths.map(Number) : [],
+      runtimeWidthValid: entry?.table?.runtimeWidthValid !== false,
+      minimumWidth: column.minimumWidth,
+      maximumWidth: column.maximumWidth,
+      order: column.order,
+      resizable: column.resizable !== false,
+    };
+  });
+  let position = 0;
+  const boundaries = columns.slice(0, -1).map((left, index) => {
+    const right = columns[index + 1];
+    position += left.currentWidth;
+    const minimumDelta = Math.max(left.minimumWidth - left.currentWidth, right.currentWidth - right.maximumWidth);
+    const maximumDelta = Math.min(left.maximumWidth - left.currentWidth, right.currentWidth - right.minimumWidth);
+    return {
+      leftColumnId: left.columnId,
+      leftDisplayName: left.displayName,
+      rightColumnId: right.columnId,
+      rightDisplayName: right.displayName,
+      currentPosition: position,
+      minimumDelta,
+      maximumDelta,
+      enabled: table.tableLayout.boundaryResizePolicy === "adjacentPreserveTotal" && left.resizable && right.resizable,
+    };
+  });
+  return {
+    tableId,
+    displayName: table.tableLayout.displayName || table.name,
+    boundaryResizePolicy: table.tableLayout.boundaryResizePolicy || "independent",
+    unit: "DIP",
+    totalWidth: columns.reduce((sum, column) => sum + column.currentWidth, 0),
+    columns,
+    boundaries,
+  };
+}
+
 function createEditorUiSession(options) {
   const cfg = options || {};
   if (!cfg.editorCore || !cfg.registry || !cfg.sessionState) throw new TypeError("Editor-UI-Session benoetigt Core, Registry und SessionState.");
@@ -59,6 +114,7 @@ function createEditorUiSession(options) {
     const details = selectedElementId ? createEditorDetailsViewModel(editorCore, selectedElementId) : null;
     if (details) {
       details.currentLayout = clone(currentEntry(sessionState, selectedElementId));
+      details.tableEditor = clone(tableEditorModel(registry, sessionState, registry.getElementById(selectedElementId)));
       const currentVisible = details.currentLayout?.element?.visible;
       if (typeof currentVisible === "boolean") details.visible = currentVisible;
     }

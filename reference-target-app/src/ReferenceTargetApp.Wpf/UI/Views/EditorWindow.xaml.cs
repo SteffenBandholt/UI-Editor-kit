@@ -23,6 +23,11 @@ public partial class EditorWindow : Window
 
     internal void CompleteClose()
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(CompleteClose);
+            return;
+        }
         closeAllowed = true;
         Close();
     }

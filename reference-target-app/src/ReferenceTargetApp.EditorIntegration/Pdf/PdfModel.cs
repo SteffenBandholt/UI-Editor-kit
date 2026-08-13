@@ -37,9 +37,15 @@ public static class PdfLayoutOperations
     public const string SetLineSpacing = "setLineSpacing";
     public const string SetVisibility = "setVisibility";
     public const string SetPageMargins = "setPageMargins";
+    public const string ResizeColumnBoundary = "resizeColumnBoundary";
 
     public static readonly IReadOnlyList<string> Mutating =
-        [Move, Resize, ResizeWidth, ResizeHeight, TextMove, TextResize, SetTextAlignment, SetLineSpacing, SetVisibility, SetPageMargins];
+        [Move, Resize, ResizeWidth, ResizeHeight, TextMove, TextResize, SetTextAlignment, SetLineSpacing, SetVisibility, SetPageMargins, ResizeColumnBoundary];
+}
+
+public static class PdfTableBoundaryResizePolicies
+{
+    public const string AdjacentPreserveTotal = "adjacentPreserveTotal";
 }
 
 public sealed record PdfBox(
@@ -89,7 +95,8 @@ public sealed record PdfElementDefinition(
     string? ColumnRole = null,
     string? RefKey = null,
     string? RendererKey = null,
-    PdfLayoutBounds? LayoutBounds = null);
+    PdfLayoutBounds? LayoutBounds = null,
+    string? BoundaryResizePolicy = null);
 
 public sealed class PdfDocumentDefinition
 {
@@ -276,7 +283,7 @@ public static class PdfOrderDocumentRegistryFactory
             E(PdfRegistryIds.Customer, "Kundendatenblock", PdfRegistryIds.Header, PdfElementKind.Group, PdfElementRole.Content, Pwh, PdfPageArea.Header, new(15,43,100,17), 90),
             E(PdfRegistryIds.CustomerAddress, "Kundenanschrift", PdfRegistryIds.Customer, PdfElementKind.Text, PdfElementRole.Content, Text, PdfPageArea.Header, new(15,44,95,15,1,1,3.1), 100),
             E(PdfRegistryIds.Body, "Inhaltsbereich", PdfRegistryIds.Page, PdfElementKind.Area, PdfElementRole.Layout, PdfCapability.None, PdfPageArea.Body, new(15,65,180,187), 110),
-            E(PdfRegistryIds.Table, "Positionstabelle", PdfRegistryIds.Body, PdfElementKind.Table, PdfElementRole.Content, PdfCapability.Position | PdfCapability.Width, PdfPageArea.Body, new(15,68,180,180), 120),
+            E(PdfRegistryIds.Table, "Positionstabelle", PdfRegistryIds.Body, PdfElementKind.Table, PdfElementRole.Content, PdfCapability.Position | PdfCapability.Width, PdfPageArea.Body, new(15,68,180,180), 120, boundaryResizePolicy: PdfTableBoundaryResizePolicies.AdjacentPreserveTotal),
             E(PdfRegistryIds.PositionColumn, "Positionsnummer", PdfRegistryIds.Table, PdfElementKind.TableColumn, PdfElementRole.Structure, PdfCapability.Width, PdfPageArea.Body, new(15,68,14,180), 130, "structureColumn"),
             E(PdfRegistryIds.DescriptionColumn, "Beschreibung", PdfRegistryIds.Table, PdfElementKind.TableColumn, PdfElementRole.Content, PdfCapability.Width, PdfPageArea.Body, new(29,68,70,180), 140, "contentColumn"),
             E(PdfRegistryIds.QuantityColumn, "Menge", PdfRegistryIds.Table, PdfElementKind.TableColumn, PdfElementRole.Meta, PdfCapability.Width, PdfPageArea.Body, new(99,68,18,180), 150, "metaColumn"),
@@ -299,7 +306,7 @@ public static class PdfOrderDocumentRegistryFactory
     private const PdfCapability Text = Pwh | PdfCapability.TextPosition | PdfCapability.FontSize;
 
     private static PdfElementDefinition E(string id, string name, string? parent, PdfElementKind kind, PdfElementRole role,
-        PdfCapability capabilities, PdfPageArea area, PdfBox baseline, int order, string? columnRole = null)
+        PdfCapability capabilities, PdfPageArea area, PdfBox baseline, int order, string? columnRole = null, string? boundaryResizePolicy = null)
     {
         var allowed = new List<string> { PdfLayoutOperations.Inspect };
         if (capabilities.HasFlag(PdfCapability.Position)) allowed.Add(PdfLayoutOperations.Move);
@@ -312,8 +319,9 @@ public static class PdfOrderDocumentRegistryFactory
         if (capabilities.HasFlag(PdfCapability.LineSpacing)) allowed.Add(PdfLayoutOperations.SetLineSpacing);
         if (capabilities.HasFlag(PdfCapability.Visibility)) allowed.Add(PdfLayoutOperations.SetVisibility);
         if (capabilities.HasFlag(PdfCapability.PageMargins)) allowed.Add(PdfLayoutOperations.SetPageMargins);
+        if (boundaryResizePolicy == PdfTableBoundaryResizePolicies.AdjacentPreserveTotal) allowed.Add(PdfLayoutOperations.ResizeColumnBoundary);
         var locked = PdfLayoutOperations.Mutating.Where(operation => !allowed.Contains(operation, StringComparer.Ordinal)).ToArray();
         return new(id, name, PdfRegistryIds.Scope, parent, kind, role, capabilities, area, baseline, order,
-            true, capabilities != PdfCapability.None, allowed, locked, columnRole);
+            true, capabilities != PdfCapability.None, allowed, locked, columnRole, BoundaryResizePolicy: boundaryResizePolicy);
     }
 }

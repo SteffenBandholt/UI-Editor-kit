@@ -28,6 +28,7 @@ public sealed class PdfLayoutSession
     private readonly SemaphoreSlim operationLock = new(1, 1);
     private readonly PdfLayoutState baseline;
     private PdfLayoutState saved;
+    private readonly Stack<PdfLayoutState> undo = new();
 
     public PdfLayoutSession(IPdfHostAdapter adapter, AtomicJsonPdfLayoutProfileStore store)
     {
@@ -42,6 +43,8 @@ public sealed class PdfLayoutSession
         var working = Clone(adapter.GetCurrentLayoutState());
         return new(!Equivalent(working, saved), working, Clone(saved), Clone(baseline));
     }
+
+    public bool CanUndo => undo.Count > 0;
 
     public Task<PdfLayoutOperationResult> SaveAsync(CancellationToken cancellationToken = default) => Exclusive(async () =>
     {
@@ -59,14 +62,15 @@ public sealed class PdfLayoutSession
         var applied = await ApplyStateAsync(load.Document.LayoutState, "pdf-load", cancellationToken).ConfigureAwait(false);
         if (!applied.Success) return applied;
         saved = Clone(load.Document.LayoutState);
+        undo.Clear();
         return Ok("pdf_layout_loaded", "PDF-Layout vom Datenträger geladen.");
     }, cancellationToken);
 
     public Task<PdfLayoutOperationResult> DiscardAsync(CancellationToken cancellationToken = default) =>
-        Exclusive(() => ApplyStateAsync(saved, "pdf-discard", cancellationToken), cancellationToken);
+        Exclusive(() => ApplyStateWithUndoAsync(saved, "pdf-discard", cancellationToken), cancellationToken);
 
     public Task<PdfLayoutOperationResult> ResetAsync(CancellationToken cancellationToken = default) =>
-        Exclusive(() => ApplyStateAsync(baseline, "pdf-reset", cancellationToken), cancellationToken);
+        Exclusive(() => ApplyStateWithUndoAsync(baseline, "pdf-reset", cancellationToken), cancellationToken);
 
     public Task<PdfLayoutOperationResult> DiscardElementAsync(string elementId, CancellationToken cancellationToken = default) =>
         ApplyElementAsync(elementId, saved, "pdf-discard-element", cancellationToken);
@@ -74,8 +78,43 @@ public sealed class PdfLayoutSession
     public Task<PdfLayoutOperationResult> ResetElementAsync(string elementId, CancellationToken cancellationToken = default) =>
         ApplyElementAsync(elementId, baseline, "pdf-reset-element", cancellationToken);
 
+    public Task<PdfLayoutOperationResult> ResetTableAsync(string tableElementId, CancellationToken cancellationToken = default) =>
+        Exclusive(async () =>
+        {
+            var registry = adapter.GetRegistry();
+            var table = registry.FindById(tableElementId);
+            if (table?.Kind != PdfElementKind.Table)
+                return Fail(PdfErrorCodes.UnknownElement, "PDF-Tabelle ist nicht registriert: " + tableElementId);
+            var tableIds = registry.Entries
+                .Where(entry => entry.ElementId == tableElementId || entry.ParentId == tableElementId)
+                .Select(entry => entry.ElementId)
+                .ToHashSet(StringComparer.Ordinal);
+            var baselineById = baseline.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+            var current = adapter.GetCurrentLayoutState();
+            var merged = new PdfLayoutState(registry.Document.DocumentId, DateTimeOffset.UtcNow,
+                current.Elements.Select(element => tableIds.Contains(element.ElementId)
+                    ? baselineById[element.ElementId] with { }
+                    : element with { }).ToArray());
+            return await ApplyStateWithUndoAsync(merged, "pdf-reset-table", cancellationToken).ConfigureAwait(false);
+        }, cancellationToken);
+
     public Task<PdfLayoutOperationResult> ApplyBatchAsync(IEnumerable<PdfChangeRequest> requests, CancellationToken cancellationToken = default) =>
-        Exclusive(() => ApplyRequestsAsync(requests.ToArray(), "pdf-batch", cancellationToken), cancellationToken);
+        Exclusive(async () =>
+        {
+            var original = Clone(adapter.GetCurrentLayoutState());
+            var result = await ApplyRequestsAsync(requests.ToArray(), "pdf-batch", cancellationToken).ConfigureAwait(false);
+            if (result.Success && !Equivalent(original, adapter.GetCurrentLayoutState())) undo.Push(original);
+            return result;
+        }, cancellationToken);
+
+    public Task<PdfLayoutOperationResult> UndoAsync(CancellationToken cancellationToken = default) => Exclusive(async () =>
+    {
+        if (undo.Count == 0) return Fail("pdf_undo_empty", "Es gibt keine PDF-LayoutÃ¤nderung zum RÃ¼ckgÃ¤ngigmachen.");
+        var target = undo.Peek();
+        var result = await ApplyStateAsync(target, "pdf-undo", cancellationToken).ConfigureAwait(false);
+        if (result.Success) undo.Pop();
+        return result.Success ? Ok("pdf_layout_undone", "Letzte PDF-LayoutÃ¤nderung rÃ¼ckgÃ¤ngig gemacht.") : result;
+    }, cancellationToken);
 
     private async Task<PdfLayoutOperationResult> Exclusive(Func<Task<PdfLayoutOperationResult>> operation, CancellationToken cancellationToken)
     {
@@ -96,8 +135,16 @@ public sealed class PdfLayoutSession
             var target = desired.Elements.Single(element => element.ElementId == elementId);
             var merged = new PdfLayoutState(adapter.GetRegistry().Document.DocumentId, DateTimeOffset.UtcNow,
                 current.Elements.Select(element => element.ElementId == elementId ? target with { } : element with { }).ToArray());
-            return await ApplyStateAsync(merged, source, cancellationToken).ConfigureAwait(false);
+            return await ApplyStateWithUndoAsync(merged, source, cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
+    }
+
+    private async Task<PdfLayoutOperationResult> ApplyStateWithUndoAsync(PdfLayoutState desired, string source, CancellationToken cancellationToken)
+    {
+        var original = Clone(adapter.GetCurrentLayoutState());
+        var result = await ApplyStateAsync(desired, source, cancellationToken).ConfigureAwait(false);
+        if (result.Success && !Equivalent(original, adapter.GetCurrentLayoutState())) undo.Push(original);
+        return result;
     }
 
     private async Task<PdfLayoutOperationResult> ApplyStateAsync(PdfLayoutState desired, string source, CancellationToken cancellationToken)

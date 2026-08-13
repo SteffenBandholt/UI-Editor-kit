@@ -7,6 +7,7 @@ internal interface IPdfEditorWorkspace : IDisposable
     bool IsDirty { get; }
     Task InitializeAsync();
     Task<bool> SaveAsync();
+    Task<bool> DiscardAllForCloseAsync();
     void Cancel();
 }
 
@@ -17,6 +18,7 @@ internal sealed class UnavailablePdfEditorWorkspaceViewModel(string message) : I
     public bool IsDirty => false;
     public Task InitializeAsync() => Task.CompletedTask;
     public Task<bool> SaveAsync() => Task.FromResult(true);
+    public Task<bool> DiscardAllForCloseAsync() => Task.FromResult(true);
     public void Cancel() { }
     public void Dispose() { }
 }

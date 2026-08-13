@@ -107,6 +107,7 @@ function run() {
     "spacingReset",
     "fitTableToViewport",
     "resizeColumnsProportionally",
+    "resizeColumnBoundary",
     "setHorizontalOverflowMode",
     "setColumnWidthMode",
     "setColumnWrapMode",

@@ -6,6 +6,9 @@
         Width="1380" Height="900" MinWidth="620" MinHeight="650"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource WindowBackgroundBrush}">
+    <Window.Resources>
+      <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    </Window.Resources>
     <TabControl SelectedIndex="{Binding ActiveWorkspaceIndex, Mode=TwoWay}" Margin="10">
       <TabItem Header="Programmoberfläche">
     <Grid>
@@ -184,13 +187,14 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
             <Grid>
-              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <TextBlock Text="PDF-Profil:" VerticalAlignment="Center" Margin="0,0,8,0"/><TextBlock Grid.Column="1" Text="{Binding ProfileId}" FontWeight="SemiBold" VerticalAlignment="Center"/>
               <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding DirtyStatus}" FontWeight="SemiBold" Margin="0,0,18,0"/><TextBlock Text="{Binding PreviewStatus}" FontWeight="SemiBold" Foreground="#8A4B08"/></StackPanel>
               <Button Grid.Column="3" Content="Speichern" Command="{Binding SaveCommand}" Margin="10,0,5,0"/>
-              <Button Grid.Column="4" Content="Laden" Command="{Binding LoadCommand}" Margin="5,0"/>
-              <Button Grid.Column="5" Content="PDF neu erzeugen" Command="{Binding RenderCommand}" Margin="5,0"/>
-              <Button Grid.Column="6" Content="Vorschau aktualisieren" Command="{Binding RefreshPreviewCommand}" Margin="5,0,0,0"/>
+              <Button Grid.Column="4" Content="R&#x00FC;ckg&#x00E4;ngig" Command="{Binding UndoCommand}" Margin="5,0"/>
+              <Button Grid.Column="5" Content="Laden" Command="{Binding LoadCommand}" Margin="5,0"/>
+              <Button Grid.Column="6" Content="PDF neu erzeugen" Command="{Binding RenderCommand}" Margin="5,0"/>
+              <Button Grid.Column="7" Content="Vorschau aktualisieren" Command="{Binding RefreshPreviewCommand}" Margin="5,0,0,0"/>
             </Grid>
           </Border>
           <Grid x:Name="PdfAdaptiveGrid" Grid.Row="1" SizeChanged="PdfAdaptiveGrid_SizeChanged">
@@ -252,6 +256,24 @@
                     </Grid>
                   </Expander>
                 </StackPanel></GroupBox>
+                <GroupBox Header="PDF-Tabelle · Spalten und Grenzen" Visibility="{Binding HasTableOverview, Converter={StaticResource BoolToVisibility}}">
+                  <StackPanel>
+                    <TextBlock Text="{Binding TableEditorTitle}" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,6"/>
+                    <TextBlock Text="Spalten von links nach rechts" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                      <ItemsControl ItemsSource="{Binding TableColumns}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate><Border Width="{Binding PreviewWidth}" MinWidth="28" Background="#FFFFFF" BorderBrush="#2563EB" BorderThickness="1" Padding="5" Margin="0,0,-1,0"><StackPanel><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}"/><TextBlock Text="{Binding WidthLabel}" TextWrapping="Wrap" ToolTip="{Binding RuntimeLabel}"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding TableColumns}" Margin="0,7,0,4"><ItemsControl.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/><StackPanel Grid.Column="1" Margin="8,0,0,0"><TextBlock Text="{Binding WidthLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding RuntimeLabel}" Foreground="#64748B" TextWrapping="Wrap"/></StackPanel></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Spaltengrenze verschieben" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                    <ListBox ItemsSource="{Binding TableBoundaries}" SelectedItem="{Binding SelectedTableBoundary, Mode=TwoWay}" DisplayMemberPath="DisplayName" Margin="0,5,0,4" MaxHeight="66"/>
+                    <TextBlock Text="{Binding SelectedTableBoundary.PositionLabel}" Foreground="#475569"/>
+                    <WrapPanel Margin="0,5,0,4"><TextBlock Text="Schritt (mm)" VerticalAlignment="Center" Margin="0,0,6,7"/><TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="64" Height="31" Margin="0,0,6,7"/><Button Content="←" ToolTip="Grenze nach links" AutomationProperties.Name="PDF-Spaltengrenze nach links" Command="{Binding MoveTableBoundaryCommand}" CommandParameter="left" IsEnabled="{Binding CanMoveTableBoundary}"/><Button Content="→" ToolTip="Grenze nach rechts" AutomationProperties.Name="PDF-Spaltengrenze nach rechts" Command="{Binding MoveTableBoundaryCommand}" CommandParameter="right" IsEnabled="{Binding CanMoveTableBoundary}"/><Button Content="Tabelle Original" Command="{Binding ResetTableCommand}"/></WrapPanel>
+                    <TextBlock Text="Links wird um denselben Betrag breiter, rechts schmaler. Die Tabellenbreite und Paginierungsregeln bleiben unverändert." Foreground="#475569" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </GroupBox>
                 <GroupBox Header="Bearbeitung in Millimetern"><StackPanel IsEnabled="{Binding CanOperate}">
                   <TextBlock Text="Ebene"/><WrapPanel><Button Content="Element" Command="{Binding SetLayerCommand}" CommandParameter="element"/><Button Content="Text" Command="{Binding SetLayerCommand}" CommandParameter="text" IsEnabled="{Binding CanTextPosition}" Margin="6,0,0,0"/></WrapPanel>
                   <TextBlock Text="Modus" Margin="0,10,0,3"/><WrapPanel><Button Content="Position" Command="{Binding SetModeCommand}" CommandParameter="position" IsEnabled="{Binding CanPosition}"/><Button Content="Breite" Command="{Binding SetModeCommand}" CommandParameter="width" IsEnabled="{Binding CanWidth}"/><Button Content="Höhe" Command="{Binding SetModeCommand}" CommandParameter="height" IsEnabled="{Binding CanHeight}"/><Button Content="Textposition" Command="{Binding SetModeCommand}" CommandParameter="textPosition" IsEnabled="{Binding CanTextPosition}"/><Button Content="Schriftgröße" Command="{Binding SetModeCommand}" CommandParameter="fontSize" IsEnabled="{Binding CanFontSize}"/></WrapPanel>

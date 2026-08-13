@@ -46,7 +46,43 @@ public sealed record EditorUiDetails(
     TableLayoutDefinition? TableLayout = null,
     TableColumnLayoutDefinition? TableColumnLayout = null,
     IReadOnlyDictionary<string, string>? TableBinding = null,
-    IReadOnlyDictionary<string, JsonElement>? RowLayout = null);
+    IReadOnlyDictionary<string, JsonElement>? RowLayout = null,
+    EditorUiTableEditor? TableEditor = null);
+
+public sealed record EditorUiTableEditor(
+    string TableId,
+    string DisplayName,
+    string BoundaryResizePolicy,
+    string Unit,
+    double TotalWidth,
+    IReadOnlyList<EditorUiTableColumn> Columns,
+    IReadOnlyList<EditorUiTableBoundary> Boundaries);
+
+public sealed record EditorUiTableColumn(
+    string ColumnId,
+    string DisplayName,
+    double CurrentWidth,
+    double MinimumWidth,
+    double MaximumWidth,
+    int Order,
+    bool Resizable,
+    double? LogicalWidth = null,
+    string? WidthMode = null,
+    double? HeaderWidth = null,
+    double? HeaderContentWidth = null,
+    IReadOnlyList<double>? DataCellWidths = null,
+    IReadOnlyList<double>? DataContentWidths = null,
+    bool RuntimeWidthValid = true);
+
+public sealed record EditorUiTableBoundary(
+    string LeftColumnId,
+    string LeftDisplayName,
+    string RightColumnId,
+    string RightDisplayName,
+    double CurrentPosition,
+    double MinimumDelta,
+    double MaximumDelta,
+    bool Enabled);
 
 public sealed record EditorUiOperations(
     IReadOnlyList<string> AllowedOps,

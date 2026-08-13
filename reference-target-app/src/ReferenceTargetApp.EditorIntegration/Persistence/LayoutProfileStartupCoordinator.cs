@@ -26,7 +26,14 @@ public sealed class LayoutProfileStartupCoordinator(
             allowCompatibleRegistryReconciliation: allowCompatibleRegistryReconciliation);
         var load = await session.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (!load.Success && load.Code == "layout_profile_not_found")
+        {
+            // A declared baseline is the reset source. The clean boundary of a
+            // brand-new profile is nevertheless the actually rendered target
+            // state, because responsive layout may legitimately differ from the
+            // nominal baseline before the editor performs its first operation.
+            session.AcceptCurrentTargetAsSaved();
             return new(true, false, load.Code, load.Message, profileId, true, session);
+        }
         return new(load.Success, true, load.Code, load.Message, profileId, load.RollbackSucceeded, session);
     }
 }

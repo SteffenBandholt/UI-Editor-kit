@@ -31,6 +31,7 @@ const OPERATION_PAYLOAD_FIELDS = Object.freeze({
   spacingReset: Object.freeze(["spacing"]),
   fitTableToViewport: Object.freeze(["table"]),
   resizeColumnsProportionally: Object.freeze(["table"]),
+  resizeColumnBoundary: Object.freeze(["table"]),
   setHorizontalOverflowMode: Object.freeze(["table"]),
   setColumnWidthMode: Object.freeze(["table"]),
   setColumnWrapMode: Object.freeze(["table"]),

@@ -43,3 +43,11 @@ Electron transportiert Tabellenmetadaten im bestehenden lokalen Vertrag. Die Zie
 Die M82.4-Einzeltests prüfen Vertragstypen, Bindungen, Messung, Überlauf, Fit, Mindest-/Maximalbreiten, feste/flexible Spalten, ausgewählte Spalte, Umbruch, Ellipsis, Persistenz, Start-Restore, Reset, WPF-/Electron-Abbildung, Direktauswahl und den Ausschluss von BBM-IDs sowie Browser-/Netzwerkpfaden.
 
 Die praktische Abnahme mit der gepackten BBM-Development-Version bestätigte drei zusammengefasste Spalten mit gemeinsamer Header-/Datenbreite, sichtbaren Text-Ellipsis, begrenzten inneren Überlauf bei schmaler, mittlerer und maximierter Fensterbreite sowie Speichern, Neustart-Restore, Spaltenreset und Discard. Der Electron-Prozessvertrag erhält dabei Tabellenmetriken und betroffene Spaltenzustände; JavaScript und WPF erzeugen für denselben Tabellenscope denselben Fingerprint.
+
+## K17 - Bedienbare Spaltengrenzen
+
+Der Tabellenvertrag kennt nun die ausdrückliche Operation `resizeColumnBoundary` mit der Policy `adjacentPreserveTotal`. Der Request nennt die linke und rechte unmittelbar benachbarte Spalte sowie ein Delta. Der gemeinsame Core vergrößert eine Seite und verkleinert die andere Seite im selben atomaren Schritt; Tabellensumme, Mindest-/Maximalbreiten, Header-/Datenbindung und Multi-Refs bleiben gewahrt. Ein Bedienvorgang erzeugt genau einen Undo-Rahmen.
+
+Der native UI- und PDF-Arbeitsbereich zeigt zur gewählten Tabelle Spaltenreihenfolge, Istbreiten, Grenzen und die vorhandenen Spaltengrenzen. Kleine und größere Plus-/Minus-Schritte laufen über denselben neutralen Vertrag. UI- und PDF-Layout bleiben getrennte Sitzungen und getrennte Profile; Save, Undo, Reset, Discard und Neustart-Restore verwenden weiterhin die bestehenden Wege. Der Core enthält weder BBM-IDs noch Fachlogik oder automatische Tabellenerkennung.
+
+Guardrails prüfen Vertrag, Payload, Nachbarschaft, feste Summe, Limits, atomaren Readback, Rollback, WPF-/Electron-Abbildung und PDF-Undo. Die reale BBM-Abnahme bestätigte Auswahl, sichtbare Grenzverschiebung, Rerender durch eine neue Zeile, Save und Restore nach Prozessneustart für UI und PDF.

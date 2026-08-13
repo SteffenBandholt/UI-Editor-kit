@@ -72,6 +72,8 @@ public sealed class M825SimpleModeTests
         StringAssert.Contains(xaml, "Content=\"{Binding UndoLabel}\"");
         StringAssert.Contains(xaml, "CommandParameter=\"column:-10\"");
         StringAssert.Contains(xaml, "CommandParameter=\"column:10\"");
+        StringAssert.Contains(xaml, "Content=\"Tabelle Original\"");
+        StringAssert.Contains(xaml, "CommandParameter=\"resetTable\"");
         StringAssert.Contains(xaml, "Header=\"Erweitert\" IsExpanded=\"False\"");
         Assert.IsGreaterThan(xaml.IndexOf("Erweitert", StringComparison.Ordinal), xaml.IndexOf("Details anzeigen", StringComparison.Ordinal));
         Assert.IsGreaterThan(xaml.IndexOf("Details anzeigen", StringComparison.Ordinal), xaml.IndexOf("SelectedId", StringComparison.Ordinal));
@@ -79,6 +81,10 @@ public sealed class M825SimpleModeTests
         var viewModel = File.ReadAllText(Path.Combine(root, "reference-target-app", "src", "ReferenceTargetApp.Wpf", "UI", "ViewModels", "EditorWindowViewModel.cs"));
         StringAssert.Contains(viewModel, "SubmitSimpleLayoutChangeAsync(targetElementId, operation, payload");
         StringAssert.Contains(viewModel, "simple: true");
+        StringAssert.Contains(viewModel, "DiscardAllForCloseAsync");
+
+        var editorWindow = File.ReadAllText(Path.Combine(root, "reference-target-app", "src", "ReferenceTargetApp.Wpf", "UI", "Views", "EditorWindow.xaml"));
+        StringAssert.Contains(editorWindow, "Content=\"Tabelle Original\" Command=\"{Binding ResetTableCommand}\"");
 
         var processProtocol = File.ReadAllText(Path.Combine(root, "src", "process", "editor-process-protocol.cjs"));
         StringAssert.Contains(processProtocol, "const previousState = previous && previous.editorUiSession.snapshot()");

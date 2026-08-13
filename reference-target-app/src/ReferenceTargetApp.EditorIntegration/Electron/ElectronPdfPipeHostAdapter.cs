@@ -3,7 +3,7 @@ using ReferenceTargetApp.EditorIntegration.Pdf;
 
 namespace ReferenceTargetApp.EditorIntegration.Electron;
 
-public sealed record ElectronPdfRenderBound(string ElementId, int PageNumber, PdfBox Box);
+public sealed record ElectronPdfRenderBound(string ElementId, int PageNumber, PdfBox Box, string? Part = null, double? ContentWidth = null);
 public sealed record ElectronPdfPreviewMetadata(
     string State, bool Stale, int Generation, int PageCount, DateTimeOffset? GeneratedAt,
     string ActiveDocumentId, string? ControlledOutputPath, IReadOnlyList<ElectronPdfRenderBound> RenderBounds);
@@ -52,12 +52,16 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
             var remote = Required<RemotePdfChangeResult>(response, "changeResult");
             var result = new PdfChangeResult(remote.Success, remote.ChangeId, remote.ElementId, remote.Operation, remote.ErrorCode, remote.Message,
                 remote.PreviousState is null ? null : ToLocal(remote.PreviousState, registry),
-                remote.NewState is null ? null : ToLocal(remote.NewState, registry), remote.RollbackSucceeded);
-            if (result.Success && result.NewState is not null)
+                remote.NewState is null ? null : ToLocal(remote.NewState, registry), remote.RollbackSucceeded,
+                remote.AffectedStates?.Select(item => ToLocal(item, registry)).ToArray());
+            if (result.Success)
             {
+                var updates = new Dictionary<string, PdfElementLayoutState>(StringComparer.Ordinal);
+                if (result.NewState is not null) updates[result.NewState.ElementId] = result.NewState;
+                if (result.AffectedStates is not null) foreach (var affected in result.AffectedStates) updates[affected.ElementId] = affected;
                 lock (stateLock)
                     state = new(state.ScopeId, DateTimeOffset.UtcNow,
-                        state.Elements.Select(element => element.ElementId == result.NewState.ElementId ? result.NewState : element with { }).ToArray());
+                        state.Elements.Select(element => updates.GetValueOrDefault(element.ElementId) ?? element with { }).ToArray());
             }
             return result;
         }
@@ -93,7 +97,7 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
         var entries = remote.Elements.Select(entry => new PdfElementDefinition(
             entry.Id, entry.Name, entry.ScopeId, entry.ParentId, Kind(entry.Kind), Role(entry.Role), Capabilities(entry.Capabilities),
             Area(entry.PageArea), entry.Baseline.ToBox(), entry.Order, entry.Visible, entry.Editable,
-            entry.AllowedOps, entry.LockedOps, entry.ColumnRole, entry.RefKey, entry.RendererKey, entry.LayoutBounds.ToLocal())).ToArray();
+            entry.AllowedOps, entry.LockedOps, entry.ColumnRole, entry.RefKey, entry.RendererKey, entry.LayoutBounds.ToLocal(), entry.BoundaryResizePolicy)).ToArray();
         return new(new(remote.ScopeId, remote.ApplicationId, remote.DocumentTypeId, PdfPageFormat.A4, orientation,
             PdfLayoutUnit.Millimeter, new(margins.Left, margins.Top, margins.Right, margins.Bottom), "Arial", page, entries));
     }
@@ -161,7 +165,8 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
     private sealed record RemoteMargins(double Top, double Right, double Bottom, double Left);
     private sealed record RemotePdfElement(string Id, string Name, string ScopeId, string? ParentId, string Kind, string Role, string PageArea,
         int Order, bool Visible, bool Editable, IReadOnlyList<string> Capabilities, IReadOnlyList<string> AllowedOps, IReadOnlyList<string> LockedOps,
-        RemotePdfBox Baseline, RemotePdfBounds LayoutBounds, string RefKey, string RendererKey, string? ColumnRole = null);
+        RemotePdfBox Baseline, RemotePdfBounds LayoutBounds, string RefKey, string RendererKey, string? ColumnRole = null,
+        string? BoundaryResizePolicy = null);
     private sealed record RemotePdfBounds(double MinX, double MaxX, double MinY, double MaxY, double MinWidth, double MaxWidth, double MinHeight, double MaxHeight)
     { public PdfLayoutBounds ToLocal() => new(MinX, MaxX, MinY, MaxY, MinWidth, MaxWidth, MinHeight, MaxHeight); }
     private sealed record RemotePdfBox(double X, double Y, double Width, double Height, double? TextOffsetX = null, double? TextOffsetY = null,
@@ -173,10 +178,11 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
         double? TextOffsetX, double? TextOffsetY, double? FontSize, string? TextAlignment, double? LineSpacing, bool? Visible,
         double? MarginTop, double? MarginRight, double? MarginBottom, double? MarginLeft);
     private sealed record RemotePdfChangeResult(bool Success, string ChangeId, string ElementId, string Operation, string? ErrorCode, string Message,
-        RemotePdfElementState? PreviousState, RemotePdfElementState? NewState, bool RollbackSucceeded);
-    private sealed record RemotePdfRenderBound(string ElementId, int PageNumber, RemotePdfBox Box);
+        RemotePdfElementState? PreviousState, RemotePdfElementState? NewState, bool RollbackSucceeded,
+        IReadOnlyList<RemotePdfElementState>? AffectedStates = null);
+    private sealed record RemotePdfRenderBound(string ElementId, int PageNumber, RemotePdfBox Box, string? Part = null, double? ContentWidth = null);
     private sealed record RemotePdfPreviewMetadata(string State, bool Stale, int Generation, int PageCount, DateTimeOffset? GeneratedAt,
         string ActiveDocumentId, string? ControlledOutputPath, IReadOnlyList<RemotePdfRenderBound> RenderBounds)
     { public ElectronPdfPreviewMetadata ToLocal() => new(State, Stale, Generation, PageCount, GeneratedAt, ActiveDocumentId, ControlledOutputPath,
-        RenderBounds.Select(bound => new ElectronPdfRenderBound(bound.ElementId, bound.PageNumber, bound.Box.ToBox())).ToArray()); }
+        RenderBounds.Select(bound => new ElectronPdfRenderBound(bound.ElementId, bound.PageNumber, bound.Box.ToBox(), bound.Part, bound.ContentWidth)).ToArray()); }
 }

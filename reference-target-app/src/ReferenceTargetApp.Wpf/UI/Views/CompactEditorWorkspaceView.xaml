@@ -134,11 +134,46 @@
             <TextBlock Text="Tabelle und Abschluss" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10"/>
             <Border Visibility="{Binding IsTableTarget, Converter={StaticResource BoolToVisibility}}" Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="5" Padding="9">
               <StackPanel>
-                <TextBlock Text="{Binding ColumnName}" FontWeight="SemiBold" FontSize="15"/>
+                <TextBlock Text="{Binding TableEditorTitle}" FontWeight="SemiBold" FontSize="15"/>
                 <TextBlock Text="{Binding TableGeometryStatus}" TextWrapping="Wrap" Margin="0,4,0,8"/>
+                <StackPanel Visibility="{Binding HasTableOverview, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock Text="Spalten von links nach rechts" FontWeight="SemiBold" Margin="0,2,0,5"/>
+                  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding TableColumns}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate><DataTemplate>
+                        <Border Width="{Binding PreviewWidth}" MinWidth="28" Background="#FFFFFF" BorderBrush="#2563EB" BorderThickness="1" Padding="5" Margin="0,0,-1,0">
+                          <StackPanel><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}"/><TextBlock Text="{Binding WidthLabel}" Foreground="#334155" TextWrapping="Wrap" ToolTip="{Binding RuntimeLabel}"/></StackPanel>
+                        </Border>
+                      </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                  <ItemsControl ItemsSource="{Binding TableColumns}" Margin="0,7,0,4">
+                    <ItemsControl.ItemTemplate><DataTemplate>
+                      <Grid Margin="0,1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}"/>
+                        <StackPanel Grid.Column="1" Margin="8,0"><TextBlock Text="{Binding WidthLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding RuntimeLabel}" Foreground="#64748B" TextWrapping="Wrap"/></StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding LimitsLabel}" Foreground="#64748B"/>
+                      </Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Separator Margin="0,5"/>
+                  <TextBlock Text="Spaltengrenze verschieben" FontWeight="SemiBold"/>
+                  <ListBox ItemsSource="{Binding TableBoundaries}" SelectedItem="{Binding SelectedTableBoundary, Mode=TwoWay}" DisplayMemberPath="DisplayName" Margin="0,5,0,4" MaxHeight="66"/>
+                  <TextBlock Text="{Binding SelectedTableBoundary.PositionLabel}" Foreground="#475569"/>
+                  <WrapPanel Margin="0,5,0,4">
+                    <TextBlock Text="Schritt (DIP)" VerticalAlignment="Center" Margin="0,0,6,7"/>
+                    <TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="64" Height="31" Margin="0,0,6,7"/>
+                    <Button Style="{StaticResource SimpleButton}" Content="←" ToolTip="Grenze nach links" AutomationProperties.Name="Spaltengrenze nach links" Command="{Binding MoveTableBoundaryCommand}" CommandParameter="left" IsEnabled="{Binding CanMoveTableBoundary}"/>
+                    <Button Style="{StaticResource SimpleButton}" Content="→" ToolTip="Grenze nach rechts" AutomationProperties.Name="Spaltengrenze nach rechts" Command="{Binding MoveTableBoundaryCommand}" CommandParameter="right" IsEnabled="{Binding CanMoveTableBoundary}"/>
+                    <Button Style="{StaticResource SimpleButton}" Content="Tabelle Original" Command="{Binding TableCommand}" CommandParameter="resetTable"/>
+                  </WrapPanel>
+                  <TextBlock Text="Links wird um denselben Betrag breiter, rechts schmaler. Die Tabellenbreite bleibt unverändert." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,7"/>
+                </StackPanel>
                 <Button Style="{StaticResource SimpleButton}" Content="Ganze Spalte auswählen" Command="{Binding SelectWholeColumnCommand}" Visibility="{Binding CanSelectWholeColumn, Converter={StaticResource BoolToVisibility}}"/>
                 <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="−10" Command="{Binding SimpleActionCommand}" CommandParameter="column:-10"/><Button Style="{StaticResource SimpleButton}" Content="−1" Command="{Binding SimpleActionCommand}" CommandParameter="column:-1"/><Button Style="{StaticResource SimpleButton}" Content="+1" Command="{Binding SimpleActionCommand}" CommandParameter="column:1"/><Button Style="{StaticResource SimpleButton}" Content="+10" Command="{Binding SimpleActionCommand}" CommandParameter="column:10"/></WrapPanel>
-                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Breite" VerticalAlignment="Center" Margin="0,0,6,7"/><TextBox Text="{Binding ColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="78" Height="31" Margin="0,0,6,7"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyColumnWidthCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Umbruch" Command="{Binding SimpleActionCommand}" CommandParameter="columnWrap"/><Button Style="{StaticResource SimpleButton}" Content="Ellipsis" Command="{Binding SimpleActionCommand}" CommandParameter="columnEllipsis"/><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="columnOriginal"/></WrapPanel>
+                <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Gespeicherter Wert" VerticalAlignment="Center" Margin="0,0,6,7"/><TextBox Text="{Binding ColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="78" Height="31" Margin="0,0,6,7"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyColumnWidthCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Umbruch" Command="{Binding SimpleActionCommand}" CommandParameter="columnWrap"/><Button Style="{StaticResource SimpleButton}" Content="Ellipsis" Command="{Binding SimpleActionCommand}" CommandParameter="columnEllipsis"/><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="columnOriginal"/></WrapPanel>
+                <TextBlock Text="{Binding ColumnWidthInputStatus}" Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}" Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,6"/>
                 <Button Style="{StaticResource SimpleButton}" Content="Tabelle in sichtbaren Bereich einpassen" Command="{Binding SimpleActionCommand}" CommandParameter="tableFit"/>
               </StackPanel>
             </Border>

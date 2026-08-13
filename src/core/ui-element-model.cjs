@@ -80,6 +80,7 @@ const UI_ELEMENT_OPERATIONS = Object.freeze([
   "spacingReset",
   "fitTableToViewport",
   "resizeColumnsProportionally",
+  "resizeColumnBoundary",
   "setHorizontalOverflowMode",
   "setColumnWidthMode",
   "setColumnWrapMode",

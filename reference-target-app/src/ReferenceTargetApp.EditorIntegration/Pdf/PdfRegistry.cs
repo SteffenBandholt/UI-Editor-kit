@@ -70,6 +70,9 @@ public static class PdfRegistryValidator
             ValidateBox(element, Zone(document.PageTemplate, element.PageArea), errors);
             if (element.Kind == PdfElementKind.TableColumn && string.IsNullOrWhiteSpace(element.ColumnRole))
                 errors.Add(new("pdf_registry_invalid", "Tabellenspalte benötigt columnRole.", element.ElementId));
+            if (element.AllowedOperations.Contains(PdfLayoutOperations.ResizeColumnBoundary, StringComparer.Ordinal) &&
+                (element.Kind != PdfElementKind.Table || element.BoundaryResizePolicy != PdfTableBoundaryResizePolicies.AdjacentPreserveTotal))
+                errors.Add(new("pdf_registry_invalid", "Gekoppelte Spaltengrenzen benötigen eine Tabelle mit fester Gesamtsummenregel.", element.ElementId));
         }
 
         foreach (var element in entries)
@@ -142,7 +145,7 @@ public static class PdfRegistryFingerprint
         var canonical = string.Join("\n", registry.Entries.OrderBy(element => element.ElementId, StringComparer.Ordinal).Select(element =>
             string.Join("|", element.ElementId, element.ScopeId, element.ParentId ?? string.Empty, element.Kind, element.Role,
                 string.Join(",", Enum.GetValues<PdfCapability>().Where(value => value != PdfCapability.None && element.Capabilities.HasFlag(value)).OrderBy(value => value)),
-                element.PageArea, element.StableOrder.ToString(CultureInfo.InvariantCulture))));
+                element.PageArea, element.StableOrder.ToString(CultureInfo.InvariantCulture), element.BoundaryResizePolicy ?? string.Empty)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 }

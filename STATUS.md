@@ -401,6 +401,23 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Core-Guardrail: `M8623SaveCloseAcknowledgementTests` prüft persistenten Schreibabschluss vor Ack, eindeutige IDs, Dirty-Erhalt bei Ack-Fehler und die Close-Reihenfolge.
 - Commit/Push/PR/Merge: keiner.
 
+## K17.1 – Sichere Rücksetzwege des realen Tabelleneditors
+
+- Status: `[A]`; die reale BBM-Protokolltabelle und die reale Protokoll-PDF-Tabelle wurden über die sichtbaren Bedienelemente des nativen Editors vollständig geprüft.
+- Grenzoperationen erhalten feste, proportionale und automatische Breitenmodi. Responsive Spalten werden nicht mehr als zwei starre Pixeltracks persistiert; die rechte Metaspalte bleibt auch im 1100 x 900-Fenster sichtbar.
+- Eine Grenzverschiebung bildet genau einen Undo-Schritt. `Tabelle Original` setzt alle Spalten gemeinsam zurück; Undo stellt auch zuvor nicht einzeln bearbeitete Nachbarspalten samt Breitenmodus wieder her.
+- `Ohne Speichern fortfahren` verwirft UI- und PDF-Änderungen vor dem Fenster-Close. Neue Profile akzeptieren den realen responsiven Zielzustand als saubere Sitzungsgrenze, ohne die deklarierte Original-Baseline zu verlieren.
+- UI und PDF wurden getrennt geändert, verworfen, gespeichert und nach vollständigem BBM-Neustart wiederhergestellt. Die PDF-Regeneration blieb bei zwei Seiten.
+- Pflichtprüfungen: `npm test`, `npm pack --dry-run`, `npm run release:check` und 127/127 native Tests grün. Commit/Push/PR/Merge: keiner.
+
+## K17 - Real bedienbarer Tabelleneditor
+
+- Status: `[A]`; atomare Spaltengrenzen sind im gemeinsamen Core, im nativen WPF-UI und im PDF-Arbeitsbereich umgesetzt und mit der echten BBM-Protokolltabelle praktisch geprüft.
+- `resizeColumnBoundary` verschiebt genau zwei benachbarte Spalten bei fester Gesamtsumme; Limits, gemeinsame Header-/Datenbreiten, Multi-Refs, ein Undo-Rahmen, Reset, Save und Restore bleiben verbindlich.
+- UI und PDF besitzen getrennte Layoutsitzungen und Profile. Der Core bleibt app-neutral und enthält keine BBM-IDs oder Fachlogik.
+- Reale Abnahme: sichtbare UI-Änderung, Rerender durch neue TOP-Zeile, Undo, Save und Prozessneustart-Restore sowie PDF-Regeneration mit unveränderten zwei Seiten.
+- Der native WPF-Lifecycle-Pfad schließt und initialisiert UI-gebundene PDF-Sammlungen nun dispatcher-sicher; der zuvor rote Test und der vollständige native Lauf mit 127/127 Tests sind grün. Commit/Push/PR/Merge: keiner.
+
 ## M86.24 – Sichtbarer Save-and-continue-Pfad
 
 - Status: `[A]`; der bestehende M86.23-Corepfad wurde über den tatsächlich sichtbaren nativen WPF-Dialog in BBM praktisch abgenommen.
@@ -408,3 +425,33 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - `prepareEditorClose` bleibt nach der Bestätigung und vor `CloseAsync`; `discarded` kann nach einem bestätigten Save nicht anstelle von `saved` ausgelöst werden.
 - Core-Guardrail: `M8624VisibleSaveButtonTests`; die BBM-Abnahme steuert zusätzlich den sichtbaren Dialogbutton physisch und prüft zwei getrennte Ziel-App-Prozesse für den Neustart-Restore.
 - Commit/Push/PR/Merge: keiner.
+
+## K17.2 – Sichtbare Tabellen-Grenzbedienung
+
+- Status: `[A]`; die bestehende atomare `resizeColumnBoundary`-Operation ist im normalen nativen UI- und PDF-Arbeitsbereich als verständliche Bediengruppe sichtbar.
+- Die Gruppe erscheint ausschließlich beim expliziten Tabellenziel, nennt Tabellen- und Spaltenanzeigenamen und bietet einstellbare Schrittweite, direkte Links-/Rechts-Pfeile, sichtbares Undo und `Tabelle Original`. Untergeordnete Zellen und einzelne PDF-Spalten zeigen die Gruppe nicht.
+- UI-Abnahme mit BBM: beide Grenzen praktisch bewegt; Header und Datenzeilen blieben gemeinsam ausgerichtet. PDF-Abnahme mit den sichtbaren Spalten `TOP`, `Gegenstand`, `Meta rechts`: `24,18 / 120,9 / 40,92 mm` wurde sichtbar zu `24,18 / 125,9 / 35,92 mm`, anschließend mit vier unveränderten Seiten neu erzeugt und zurückgesetzt.
+- Der PDF-Registry-/Fingerprintvertrag blieb unverändert; kurze PDF-Spaltennamen werden nur aus vorhandener Spaltenrolle und vorhandenem Anzeigenamen für diese Oberfläche gebildet.
+- Prüfungen: `npm test`, Solution-Build, 127/127 Referenz-App-Tests, K17-Guardrail und reale Electron-/WPF-Bedienung grün. Nächster Schritt: fachliche Sichtabnahme. Commit/Push/PR/Merge: keiner.
+
+## K17.3 - Persistierte Tabellengeometrie nach Prozessneustart
+
+- Status: `[A]`; gespeicherte UI-Spaltenbreiten werden als explizite Operationen einschließlich Breitenmodus wiederhergestellt und nach dem Host-Rerender erneut bestätigt. Responsive Begrenzung ersetzt den logischen Benutzerwert nicht.
+- Die reale BBM-Abnahme bestätigt nacheinander `700 DIP` und `679,955 / 115,925 DIP` über vollständige Prozessneustarts sowie die Rückkehr des gespeicherten Werts nach kleinem und wieder großem Fenster.
+- PDF-Grenzen werden als fortlaufende Spaltentracks validiert. Dadurch kann die bestätigte Geometrie `24,18 / 119,9 / 41,92 mm` gespeichert und nach Neustart exakt geladen werden, ohne an veralteten absoluten X-Werten zu scheitern.
+- `Tabelle Original` wurde für UI (`64 / 650 / 172 DIP`) und PDF (`24,18 / 120,9 / 40,92 mm`) gespeichert und nach erneutem vollständigem Neustart bestätigt. Beide Sitzungen waren danach sauber und ohne Undo-Historie.
+- Gezielte native PDF-Modell-, K17-, PDF-Adapter-, Golden-Fixture- und Vertragsprüfungen sind grün. Commit/Push/PR/Merge: keiner.
+
+## K17.4 - Logische und wirksame Tabellenbreiten
+
+- Status: `[A]`; der gemeinsame app-neutrale Tabellenvertrag normalisiert und validiert nun Laufzeitmetriken für logische Breite, wirksamen Track, Kopf, alle montierten Datenzellen und Inhaltsboxen.
+- Der native UI-Editor zeigt pro Spalte ausdrücklich `wirksam`, `gespeichert`, Breitenmodus sowie Kopf-/Zellen-/Inhaltskonsistenz. Direkte Zahleneingabe bleibt nur im festen Modus exakt; proportionale und automatische Tracks erklären die Grenzbedienung.
+- Der PDF-Arbeitsbereich zeigt gespeicherte und reale Millimeterwerte getrennt. BBM-Abnahme: `24,18 / 120,9 / 40,92 mm` gespeichert und `24,178 / 120,901 / 40,924 mm` gerendert; Kopf, Zellen und Inhalt konsistent, vier Seiten unverändert.
+- Der gemeinsame Core enthält keine BBM-, Protokoll- oder Restarbeiten-IDs. K17-Guardrail, vollständiges `npm run pretest`, Vertrags-Selbsttest und Release-Build sind grün. Commit/Push/PR/Merge: keiner.
+
+## K17.5 - Realer Save-Pfad im normalen BBM-Benutzerfluss
+
+- Status: `[A]`; der sichtbare Save-Button wurde ausschließlich im produktiven `npm start`-Weg verwendet. Der UI-Grenzschritt `563,387 / 170,992 DIP` -> `564,391 / 169,989 DIP` erzeugte die Save-ID `341e52e13880461ba3f7edbad1d2df24`; BBM bestätigte denselben Snapshot erst nach dem atomaren Datenträgerwrite mit `accepted=true` und `persisted=true`.
+- Nach Bestätigung war die UI-Sitzung clean, der Save-Button deaktiviert und die Erfolgsmeldung sichtbar. Wiederöffnung im laufenden BBM und vollständiger BBM-Neustart stellten exakt dieselbe Geometrie wieder her.
+- PDF wurde sichtbar von `24,18 / 120,9 / 40,92 mm` auf `24,18 / 121,9 / 39,92 mm` geändert und gespeichert. Wiederöffnung und Vollneustart erhielten den Zustand; die kontrollierte echte BBM-PDF-Vorschau blieb bei vier Seiten.
+- `npm run pretest`, Vertrags-Selbsttest und 38 gezielte native Save-/Restore-/Tabellen-/PDF-Tests sind grün. Der bekannte paketfremde rote BBM-Sammelstand bleibt dokumentiert. Commit/Push/PR/Merge: keiner.

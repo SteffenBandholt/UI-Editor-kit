@@ -31,7 +31,7 @@ const ALLOWED_OPS = [
   "textresize", "setvisibility", "reorder", "rename", "changewidth", "pin", "unpin", "reset",
   "applypreset", "layout",
   "spacingincrease", "spacingdecrease", "spacingset", "spacingreset",
-  "fittabletoviewport", "resizecolumnsproportionally", "sethorizontaloverflowmode",
+  "fittabletoviewport", "resizecolumnsproportionally", "resizecolumnboundary", "sethorizontaloverflowmode",
   "setcolumnwidthmode", "setcolumnwrapmode", "setcolumnoverflowmode", "setrowheightmode",
   "resettablecolumn", "resettable",
 ];

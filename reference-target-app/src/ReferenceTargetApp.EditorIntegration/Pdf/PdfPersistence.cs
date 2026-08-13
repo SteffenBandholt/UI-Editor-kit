@@ -89,6 +89,19 @@ public static class PdfLayoutStateValidator
         var states = state.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
         var boxes = registry.Entries.ToDictionary(element => element.ElementId,
             element => PdfLayoutStateFactory.Resolve(element, states[element.ElementId]), StringComparer.Ordinal);
+        foreach (var table in registry.Entries.Where(element => element.Kind == PdfElementKind.Table))
+        {
+            var tableBox = boxes[table.ElementId];
+            var nextColumnX = tableBox.X;
+            foreach (var column in registry.Entries
+                         .Where(element => element.Kind == PdfElementKind.TableColumn && element.ParentId == table.ElementId)
+                         .OrderBy(element => element.StableOrder))
+            {
+                var columnBox = boxes[column.ElementId];
+                boxes[column.ElementId] = columnBox with { X = nextColumnX };
+                nextColumnX += columnBox.Width;
+            }
+        }
         foreach (var element in registry.Entries)
         {
             var box = boxes[element.ElementId];

@@ -302,6 +302,21 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
             layoutAccess.Apply(entry, change);
             if (change.Operation == HostAdapterOperations.TextResize) RefreshLayout(entry);
             var newState = layoutAccess.Read(entry);
+            IReadOnlyList<ElementLayoutState>? affectedStates = null;
+            if (change.Operation == HostAdapterOperations.ResizeColumnBoundary && entry.WpfTableBinding is { } tableBinding)
+            {
+                var affectedColumnIds = new HashSet<string>(StringComparer.Ordinal)
+                {
+                    change.TableIntent?["leftColumnId"] as string ?? string.Empty,
+                    change.TableIntent?["rightColumnId"] as string ?? string.Empty,
+                };
+                affectedStates = tableBinding.Columns
+                    .Where(binding => affectedColumnIds.Contains(binding.Definition.ColumnId))
+                    .Select(binding => registry.FindById(binding.Definition.ColumnId))
+                    .Where(candidate => candidate is not null)
+                    .Select(candidate => layoutAccess.Read(candidate!))
+                    .ToArray();
+            }
             TextResizeReadback? textResize = null;
             if (change.Operation == HostAdapterOperations.TextResize)
             {
@@ -327,6 +342,7 @@ public sealed class WpfHostAdapter : IGeometryRiskHostAdapter
                 previousState,
                 newState,
                 true,
+                AffectedStates: affectedStates,
                 TextResize: textResize);
         }
         catch (Exception applyException)

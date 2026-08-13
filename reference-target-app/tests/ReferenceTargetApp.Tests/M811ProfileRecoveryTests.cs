@@ -65,6 +65,25 @@ public sealed class M811ProfileRecoveryTests
     }
 
     [TestMethod]
+    public void MissingProfileUsesRenderedStateAsCleanBoundaryAndKeepsDeclaredResetBaseline()
+    {
+        StaTest.Run(() => WithRoot(root =>
+        {
+            var adapters = Adapters(("ui.a", 240d));
+            var declaredBaseline = States(Adapters(("ui.a", 200d)));
+            var startup = Await(new LayoutProfileStartupCoordinator(
+                adapters, new AtomicJsonLayoutProfileStore(root, "bbm-produktiv"), new ActiveLayoutProfileStore(root),
+                declaredBaseline: declaredBaseline).RestoreAsync());
+
+            Assert.IsTrue(startup.Success, startup.Message);
+            Assert.IsFalse(startup.Session.GetStatus().IsDirty);
+            Assert.IsTrue(Await(startup.Session.ResetElementAsync("ui.a", "ui.a.field")).Success);
+            Assert.AreEqual(200d, adapters["ui.a"].GetCurrentLayoutState().Elements.Single(element => element.ElementId == "ui.a.field").Width);
+            Assert.IsTrue(startup.Session.GetStatus().IsDirty);
+        }));
+    }
+
+    [TestMethod]
     public void TargetStartupAppliedProfileIsNotAppliedTwiceAndKeepsDeclaredResetBaseline()
     {
         StaTest.Run(() => WithRoot(root =>

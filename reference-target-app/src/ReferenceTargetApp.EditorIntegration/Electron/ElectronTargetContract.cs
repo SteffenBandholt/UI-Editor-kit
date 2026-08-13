@@ -104,7 +104,7 @@ public sealed record ElectronPdfTargetContract(
     public void Validate(string expectedApplicationId)
     {
         var allowed = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize",
-            "setTextAlignment", "setLineSpacing", "setVisibility", "setPageMargins"], StringComparer.Ordinal);
+            "setTextAlignment", "setLineSpacing", "setVisibility", "setPageMargins", "resizeColumnBoundary"], StringComparer.Ordinal);
         if (ApplicationId != expectedApplicationId || string.IsNullOrWhiteSpace(DocumentTypeId) || string.IsNullOrWhiteSpace(DisplayName) ||
             ContractVersion != "1.0" || RegistryVersion < 1 || !RegistryFingerprint.StartsWith("sha256:", StringComparison.Ordinal) || RegistryFingerprint.Length != 71 ||
             string.IsNullOrWhiteSpace(ProfileScope) || !ProfileScope.StartsWith("pdf.", StringComparison.Ordinal) ||

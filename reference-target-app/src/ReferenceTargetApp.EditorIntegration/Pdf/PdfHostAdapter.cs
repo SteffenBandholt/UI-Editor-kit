@@ -65,7 +65,8 @@ public sealed record PdfChangeResult(
     string Message,
     PdfElementLayoutState? PreviousState,
     PdfElementLayoutState? NewState,
-    bool RollbackSucceeded)
+    bool RollbackSucceeded,
+    IReadOnlyList<PdfElementLayoutState>? AffectedStates = null)
 {
     public static PdfChangeResult Reject(PdfChangeRequest? request, string code, string message) =>
         new(false, request?.ChangeId ?? string.Empty, request?.ElementId ?? string.Empty, request?.Operation ?? string.Empty,
@@ -110,6 +111,8 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
         if (element is null) return PdfChangeResult.Reject(request, PdfErrorCodes.UnknownElement, "PDF-Element ist nicht registriert.");
         if (request.ScopeId != PdfRegistryIds.Scope || element.ScopeId != request.ScopeId)
             return PdfChangeResult.Reject(request, PdfErrorCodes.LayoutIncompatible, "PDF-Scope passt nicht zum Element.");
+        if (request.Operation == PdfLayoutOperations.ResizeColumnBoundary)
+            return ResizeColumnBoundary(request, element);
         var required = RequiredCapability(request.Operation);
         if (required is null || !element.Capabilities.HasFlag(required.Value))
             return PdfChangeResult.Reject(request, PdfErrorCodes.OperationNotAllowed, "PDF-Operation ist für dieses Element nicht erlaubt.");
@@ -134,6 +137,51 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
             return new(false, request.ChangeId, request.ElementId, request.Operation, PdfErrorCodes.BatchFailed,
                 $"PDF-Layoutänderung fehlgeschlagen: {exception.Message}", previousState, previousState, true);
         }
+    }
+
+    private PdfChangeResult ResizeColumnBoundary(PdfChangeRequest request, PdfElementDefinition table)
+    {
+        if (table.Kind != PdfElementKind.Table || table.BoundaryResizePolicy != PdfTableBoundaryResizePolicies.AdjacentPreserveTotal ||
+            !table.AllowedOperations.Contains(PdfLayoutOperations.ResizeColumnBoundary, StringComparer.Ordinal))
+            return PdfChangeResult.Reject(request, PdfErrorCodes.OperationNotAllowed, "Diese PDF-Tabelle erlaubt keine gekoppelte Spaltengrenzen-Änderung.");
+        var payload = request.Payload;
+        if (payload is null || !Only(payload, "table") || !Dictionary(payload, "table", out var intent) ||
+            !Only(intent, "leftColumnId", "rightColumnId", "delta") ||
+            !intent.TryGetValue("leftColumnId", out var rawLeft) || rawLeft is not string leftId || string.IsNullOrWhiteSpace(leftId) ||
+            !intent.TryGetValue("rightColumnId", out var rawRight) || rawRight is not string rightId || string.IsNullOrWhiteSpace(rightId) ||
+            !Required(intent, "delta", out var delta) || Math.Abs(delta) < Epsilon)
+            return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidNumber, "Die PDF-Spaltengrenze erwartet zwei Nachbarspalten und eine endliche Verschiebung ungleich null.");
+        var columns = registry.Entries.Where(candidate => candidate.Kind == PdfElementKind.TableColumn && candidate.ParentId == table.ElementId)
+            .OrderBy(candidate => candidate.StableOrder).ToArray();
+        var leftIndex = Array.FindIndex(columns, candidate => candidate.ElementId == leftId);
+        var rightIndex = Array.FindIndex(columns, candidate => candidate.ElementId == rightId);
+        if (leftIndex < 0 || rightIndex != leftIndex + 1)
+            return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidTableWidth, "Spaltengrenzen können nur zwischen zwei unmittelbar benachbarten PDF-Spalten verschoben werden.");
+        var left = columns[leftIndex];
+        var right = columns[rightIndex];
+        var leftBox = current[left.ElementId];
+        var rightBox = current[right.ElementId];
+        var nextLeft = leftBox with { Width = leftBox.Width + delta };
+        var nextRight = rightBox with { Width = rightBox.Width - delta };
+        var leftMinimum = Math.Max(5, left.LayoutBounds?.MinWidth ?? 5);
+        var rightMinimum = Math.Max(5, right.LayoutBounds?.MinWidth ?? 5);
+        var leftMaximum = left.LayoutBounds?.MaxWidth ?? double.MaxValue;
+        var rightMaximum = right.LayoutBounds?.MaxWidth ?? double.MaxValue;
+        if (nextLeft.Width < leftMinimum - Epsilon) return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidColumnWidth, $"{left.Name} kann nicht schmaler als {leftMinimum:G} mm werden.");
+        if (nextLeft.Width > leftMaximum + Epsilon) return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidColumnWidth, $"{left.Name} kann nicht breiter als {leftMaximum:G} mm werden.");
+        if (nextRight.Width < rightMinimum - Epsilon) return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidColumnWidth, $"{right.Name} kann nicht schmaler als {rightMinimum:G} mm werden.");
+        if (nextRight.Width > rightMaximum + Epsilon) return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidColumnWidth, $"{right.Name} kann nicht breiter als {rightMaximum:G} mm werden.");
+        var beforeTotal = columns.Sum(candidate => current[candidate.ElementId].Width);
+        var afterTotal = beforeTotal - leftBox.Width - rightBox.Width + nextLeft.Width + nextRight.Width;
+        if (Math.Abs(beforeTotal - afterTotal) > Epsilon || afterTotal > current[table.ElementId].Width + Epsilon)
+            return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidTableWidth, "Die feste PDF-Tabellenbreite würde sich ändern.");
+        var previousTable = PdfLayoutStateFactory.FromBox(table, current[table.ElementId]);
+        current[left.ElementId] = nextLeft;
+        current[right.ElementId] = nextRight;
+        var affected = new[] { PdfLayoutStateFactory.FromBox(left, nextLeft), PdfLayoutStateFactory.FromBox(right, nextRight) };
+        return new(true, request.ChangeId, request.ElementId, request.Operation, null,
+            $"Grenze {left.Name} | {right.Name} wurde verschoben; die Tabellenbreite blieb unverändert.",
+            previousTable, PdfLayoutStateFactory.FromBox(table, current[table.ElementId]), true, affected);
     }
 
     private ParseResult Parse(PdfChangeRequest request, PdfElementDefinition element, PdfBox currentBox)
