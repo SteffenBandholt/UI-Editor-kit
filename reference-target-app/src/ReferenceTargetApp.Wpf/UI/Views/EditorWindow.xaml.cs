@@ -74,15 +74,15 @@ public partial class EditorWindow : Window
     {
         if (DataContext is EditorWindowViewModel viewModel && viewModel.PdfBinding is PdfEditorWorkspaceViewModel pdf)
         {
-            var point = e.GetPosition(PdfPreviewViewport);
-            pdf.SelectAtPreview(point.X, point.Y, PdfPreviewViewport.ActualWidth, PdfPreviewViewport.ActualHeight);
+            var point = e.GetPosition(PdfPageSurface);
+            pdf.SelectAtPreview(point.X, point.Y, PdfPageSurface.ActualWidth, PdfPageSurface.ActualHeight);
         }
     }
 
     private void PdfPreviewViewport_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (DataContext is EditorWindowViewModel viewModel && viewModel.PdfBinding is PdfEditorWorkspaceViewModel pdf)
-            pdf.UpdateOverlay(e.NewSize.Width, e.NewSize.Height);
+            pdf.UpdateOverlay(PdfPageSurface.Width, PdfPageSurface.Height);
     }
 
     internal int UiColumnMode => CompactUiWorkspace.ColumnMode;

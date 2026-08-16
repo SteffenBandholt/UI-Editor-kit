@@ -154,6 +154,9 @@ public sealed class M822GeometryRiskTests
         StringAssert.Contains(source, "finally { activeRender?.Dispose(); activeRender = null; IsBusy = false;");
         StringAssert.Contains(source, "boundaryFailure");
         StringAssert.Contains(source, "Änderung wurde nicht übernommen. Sie können direkt weiterarbeiten.");
+        StringAssert.Contains(source, "result.Success && electronAdapter is not null");
+        StringAssert.Contains(source, "await RenderAsync()");
+        StringAssert.Contains(source, "registry.FindById(bound.ElementId)?.Editable == true");
     }
 
     [TestMethod]
@@ -183,6 +186,15 @@ public sealed class M822GeometryRiskTests
         Assert.IsTrue(pdfTab.Descendants().Any(element =>
             string.Equals((string?)element.Attribute("GroupName"), "PdfEditMode", StringComparison.Ordinal) &&
             string.Equals((string?)element.Attribute("Content"), "Frei", StringComparison.Ordinal)));
+        Assert.IsTrue(pdfTab.Descendants().Any(element =>
+            string.Equals((string?)element.Attribute("Content"), "Original", StringComparison.Ordinal)));
+        Assert.IsTrue(pdfTab.Descendants().Any(element =>
+            string.Equals((string?)element.Attribute("Content"), "Sichtbarkeit EIN/AUS", StringComparison.Ordinal)));
+        var pageSurface = pdfTab.Descendants().Single(element =>
+            string.Equals((string?)element.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")), "PdfPageSurface", StringComparison.Ordinal));
+        Assert.AreEqual("210", (string?)pageSurface.Attribute("Width"));
+        Assert.AreEqual("297", (string?)pageSurface.Attribute("Height"));
+        Assert.IsTrue(pageSurface.Ancestors().Any(element => element.Name.LocalName == "Viewbox"));
     }
 
     private static string FindRepositoryRoot()

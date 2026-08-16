@@ -6,6 +6,14 @@
 
 ## 1. Zweck
 
+### K17.7 – PDF-Editor im realen BBM unmittelbar bedienbar
+
+- Status: `[A] abgenommen`; die bestehende native PDF-Arbeitsfläche und der vorhandene Electron-/BBM-Adapter wurden repariert, ohne zweiten Editor, Renderer oder Profilweg.
+- Bild, Klickkoordinaten und roter Auswahlrahmen verwenden nun dieselbe skalierte 210 × 297-mm-Seitenfläche. Sichtbare kleine Ziele wie `Seite · Wert` sind dadurch direkt und eindeutig auswählbar; ausgeblendete Ziele bleiben über den Elementbaum erreichbar.
+- Erfolgreiche BBM-PDF-Aktionen erzeugen die echte Vorschau unmittelbar neu. Verschieben, Schriftgröße, Sichtbarkeit, Rückgängig und Original zeigen deshalb ohne zusätzlichen Klick auf „PDF neu erzeugen“ den bestätigten PDF-Istzustand. Schriftgrößen und Schrittweite werden korrekt in `pt` angezeigt.
+- Reale isolierte Zwei-Start-Abnahme im BBM-Protokoll: sichtbare Titelauswahl, rechts/runter/links/hoch jeweils mit aktueller PDF, Seitenwert separat ausgewählt, nach links verschoben, auf 11 pt vergrößert und ausgeblendet; Rückgängig, Original und Save bestätigt. Nach vollständigem BBM-/Editor-Neustart kamen Titel `x=18` sowie Seitenwert `x=158`, `fontSize=11`, `visible=false` sauber und ohne Dirty zurück.
+- Automatisiert grün: ReferenceTargetApp 132/132, Manager 103/103, M81-Adaptertests, M85-Satzvertrag mit 47 unveränderten Fixtures sowie echter Print-DOM-Nachweis für Position, Schrift und Sichtbarkeit. Commit und Push: keiner.
+
 ### M86.15a-Core – Native Capability-Matrix für den Universalvertrag
 
 - Status: `[T] umgesetzt`; die native Capability-Matrix akzeptiert für die betroffenen sichtbaren Struktur- und Tabellenelemente denselben universellen Geometrievertrag wie der JavaScript-Core.

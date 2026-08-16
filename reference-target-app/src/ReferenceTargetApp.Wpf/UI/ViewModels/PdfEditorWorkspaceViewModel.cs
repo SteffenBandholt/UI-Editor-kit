@@ -178,7 +178,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public string Position => Current is { } value ? Pair(value.X, value.Y) + " mm" : "–";
     public string Size => Current is { } value ? Pair(value.Width, value.Height) + " mm" : "–";
     public string TextPosition => Current is { } value ? Pair(value.TextOffsetX, value.TextOffsetY) + " mm" : "–";
-    public string FontSize => Current?.FontSize is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
+    public string FontSize => Current?.FontSize is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) + " pt" : "–";
+    public string StepLabel => mode == "fontSize" ? "Schrittweite (pt)" : "Schrittweite (mm)";
     public string TableInfo => CreateTableInfo();
     public ObservableCollection<PdfTableColumnEditorItem> TableColumns { get; } = [];
     public ObservableCollection<PdfTableBoundaryEditorItem> TableBoundaries { get; } = [];
@@ -411,8 +412,9 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         else { operation = PdfLayoutOperations.TextResize; payload = new Dictionary<string, object?> { ["text"] = new Dictionary<string, object?> { ["fontSize"] = current.FontSize!.Value + (direction == "left" ? -step : step) } }; }
         var request = new PdfChangeRequest(Guid.NewGuid().ToString("N"), selected.ElementId, operation, payload,
             DateTimeOffset.UtcNow, "native-pdf-editor", registry.Document.DocumentId);
-        var result = await session.ApplyBatchAsync([request], lifetimeToken);
-        ApplyResult(result, $"{selected.Name}: {operation}, Schritt {step:G} mm erfolgreich.", true);
+        var unit = mode == "fontSize" ? "pt" : "mm";
+        await LayoutActionAsync(() => session.ApplyBatchAsync([request], lifetimeToken),
+            $"{selected.Name}: {operation}, Schritt {step:G} {unit} erfolgreich.");
     }
 
     private async Task ApplyPropertyAsync(string? action)
@@ -450,7 +452,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         }
         var request = new PdfChangeRequest(Guid.NewGuid().ToString("N"), selected.ElementId, operation, payload,
             DateTimeOffset.UtcNow, "native-pdf-editor", registry.Document.DocumentId);
-        ApplyResult(await session.ApplyBatchAsync([request], lifetimeToken), $"{selected.Name}: {operation} erfolgreich.", true);
+        await LayoutActionAsync(() => session.ApplyBatchAsync([request], lifetimeToken),
+            $"{selected.Name}: {operation} erfolgreich.");
     }
 
     private async Task MoveTableBoundaryAsync(object? parameter)
@@ -481,8 +484,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
                     ["delta"] = delta,
                 },
             }, DateTimeOffset.UtcNow, "native-pdf-editor", registry.Document.DocumentId);
-        ApplyResult(await session.ApplyBatchAsync([request], lifetimeToken),
-            $"PDF-Grenze {SelectedTableBoundary.DisplayName} wurde um {Math.Abs(delta):G} mm nach {(delta > 0 ? "rechts" : "links")} verschoben.", true);
+        await LayoutActionAsync(() => session.ApplyBatchAsync([request], lifetimeToken),
+            $"PDF-Grenze {SelectedTableBoundary.DisplayName} wurde um {Math.Abs(delta):G} mm nach {(delta > 0 ? "rechts" : "links")} verschoben.");
     }
 
     private bool CanProperty(string? action) => CanOperate && selected is not null && action switch
@@ -509,7 +512,12 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private async Task LayoutActionAsync(Func<Task<PdfLayoutOperationResult>> action, string success)
     {
         IsBusy = true; ClearError();
-        try { ApplyResult(await action(), success, true); }
+        try
+        {
+            var result = await action();
+            ApplyResult(result, success, true);
+            if (result.Success && electronAdapter is not null) await RenderAsync();
+        }
         finally { IsBusy = false; }
     }
 
@@ -639,7 +647,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         outputPath = metadata.ControlledOutputPath is null ? string.Empty : Path.GetFullPath(metadata.ControlledOutputPath);
         runtimeBounds = metadata.RenderBounds;
         bounds = metadata.RenderBounds.Select(bound => new PdfRenderBound(bound.ElementId, bound.PageNumber, bound.Box,
-            registry.FindById(bound.ElementId)?.StableOrder ?? int.MaxValue, false)).ToArray();
+            registry.FindById(bound.ElementId)?.StableOrder ?? int.MaxValue,
+            registry.FindById(bound.ElementId)?.Editable == true)).ToArray();
         previewStale = metadata.Stale;
         OnPropertyChanged(nameof(OutputPath));
     }
@@ -661,7 +670,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private void RaiseAll()
     {
         OnPropertyChanged(nameof(CanUndo));
-        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(HasTableOverview), nameof(TableEditorTitle), nameof(CanMoveTableBoundary), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
+        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(StepLabel), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(HasTableOverview), nameof(TableEditorTitle), nameof(CanMoveTableBoundary), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
         RaiseCommandStates();
     }
     private void RaiseCommandStates()
