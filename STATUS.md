@@ -455,3 +455,11 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Nach Bestätigung war die UI-Sitzung clean, der Save-Button deaktiviert und die Erfolgsmeldung sichtbar. Wiederöffnung im laufenden BBM und vollständiger BBM-Neustart stellten exakt dieselbe Geometrie wieder her.
 - PDF wurde sichtbar von `24,18 / 120,9 / 40,92 mm` auf `24,18 / 121,9 / 39,92 mm` geändert und gespeichert. Wiederöffnung und Vollneustart erhielten den Zustand; die kontrollierte echte BBM-PDF-Vorschau blieb bei vier Seiten.
 - `npm run pretest`, Vertrags-Selbsttest und 38 gezielte native Save-/Restore-/Tabellen-/PDF-Tests sind grün. Der bekannte paketfremde rote BBM-Sammelstand bleibt dokumentiert. Commit/Push/PR/Merge: keiner.
+
+## K17.6 - Reale PDF-Position und Renderer-Readback
+
+- Status: `[A]`; im normalen Produktivweg `npm start` -> reales Protokoll #21 -> PDF-Editor wurden Dokumenttitel, Projektbezeichnung und TOP-Tabelle jeweils um exakt `+10 mm` verschoben und in der neu erzeugten vierseitigen PDF sichtbar bestätigt.
+- Der Electron-PDF-Adapter akzeptiert einen erfolgreichen Änderungs-Readback nur noch bei passender Change-ID, Element-ID, Operation, passendem Vorzustand und exakt angeforderten X-/Y-Werten. Fehlende oder abweichende Rückgaben werden als `electron_change_readback_failed` abgelehnt und aus dem tatsächlichen Host-Zustand zurückgerollt.
+- Die Vorschau gilt nur dann als aktuell, wenn der BBM-Renderer für alle verschobenen sichtbaren Elemente echte angewandte X-/Y-Koordinaten aus dem Print-DOM zurückliefert. Ein logisch geänderter, aber optisch ignorierter Zustand wird damit nicht mehr als Erfolg gemeldet.
+- Ablehnung, Ein-Schritt-Undo, Element-Original, Save, Wiederöffnung und vollständiger BBM-Neustart wurden geprüft. Das nur für die Abnahme erzeugte PDF-Profil wurde anschließend wieder entfernt. Commit/Push/PR/Merge: keiner.
+- Vier neue native M87-Tests, 37 relevante native Tests, der vollständige native Lauf mit 132 Tests, `npm run pretest`, BBM-M85 mit allen 47 Goldens und den neuen realen Positionsfällen sowie gezieltes ESLint sind grün. Der vollständige Kit-`npm test` bleibt ausschließlich an einer bereits vorher vorhandenen, paketfremden Public-API-Erwartung rot.

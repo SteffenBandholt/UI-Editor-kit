@@ -3,7 +3,9 @@ using ReferenceTargetApp.EditorIntegration.Pdf;
 
 namespace ReferenceTargetApp.EditorIntegration.Electron;
 
-public sealed record ElectronPdfRenderBound(string ElementId, int PageNumber, PdfBox Box, string? Part = null, double? ContentWidth = null);
+public sealed record ElectronPdfRenderBound(
+    string ElementId, int PageNumber, PdfBox Box, string? Part = null, double? ContentWidth = null,
+    double? AppliedX = null, double? AppliedY = null);
 public sealed record ElectronPdfPreviewMetadata(
     string State, bool Stale, int Generation, int PageCount, DateTimeOffset? GeneratedAt,
     string ActiveDocumentId, string? ControlledOutputPath, IReadOnlyList<ElectronPdfRenderBound> RenderBounds);
@@ -48,6 +50,7 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
     {
         try
         {
+            var before = GetCurrentLayoutState();
             var response = await connection.RequestAsync("submitPdfChangeRequest", new { changeRequest = request }, TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
             var remote = Required<RemotePdfChangeResult>(response, "changeResult");
             var result = new PdfChangeResult(remote.Success, remote.ChangeId, remote.ElementId, remote.Operation, remote.ErrorCode, remote.Message,
@@ -56,6 +59,12 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
                 remote.AffectedStates?.Select(item => ToLocal(item, registry)).ToArray());
             if (result.Success)
             {
+                var readbackFailure = ValidateSuccessfulChangeReadback(request, result, before);
+                if (readbackFailure is not null)
+                {
+                    await RefreshStateFromTargetAsync(cancellationToken).ConfigureAwait(false);
+                    return readbackFailure;
+                }
                 var updates = new Dictionary<string, PdfElementLayoutState>(StringComparer.Ordinal);
                 if (result.NewState is not null) updates[result.NewState.ElementId] = result.NewState;
                 if (result.AffectedStates is not null) foreach (var affected in result.AffectedStates) updates[affected.ElementId] = affected;
@@ -74,7 +83,11 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
     public async Task<ElectronPdfPreviewMetadata> RegeneratePreviewAsync(CancellationToken cancellationToken = default)
     {
         var response = await connection.RequestAsync("regeneratePdfPreview", timeout: TimeSpan.FromMinutes(2), cancellationToken: cancellationToken).ConfigureAwait(false);
-        return Required<RemotePdfPreviewMetadata>(response, "previewMetadata").ToLocal();
+        var metadata = Required<RemotePdfPreviewMetadata>(response, "previewMetadata").ToLocal();
+        var readbackFailure = ValidatePreviewPositionReadback(registry, GetCurrentLayoutState(), metadata);
+        if (readbackFailure is not null)
+            throw new ElectronEditorException(ElectronEditorErrorCodes.ChangeReadbackFailed, readbackFailure);
+        return metadata;
     }
 
     public async Task<ElectronPdfPreviewMetadata> GetPreviewMetadataAsync(CancellationToken cancellationToken = default)
@@ -120,6 +133,95 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
         return PdfLayoutStateFactory.FromBox(definition, box);
     }
     private static PdfLayoutState Clone(PdfLayoutState value) => new(value.ScopeId, value.CapturedAt, value.Elements.Select(element => element with { }).ToArray());
+
+    private async Task RefreshStateFromTargetAsync(CancellationToken cancellationToken)
+    {
+        var response = await connection.RequestAsync("getCurrentPdfLayoutState", timeout: TimeSpan.FromSeconds(10), cancellationToken: cancellationToken).ConfigureAwait(false);
+        var refreshed = ToLocal(Required<RemotePdfLayoutState>(response, "layoutState"), registry);
+        var validation = PdfLayoutStateValidator.Validate(refreshed, registry);
+        if (!validation.Success)
+            throw new ElectronEditorException(ElectronEditorErrorCodes.ChangeReadbackFailed, "PDF-Istzustand konnte nach fehlerhaftem Readback nicht sicher gelesen werden.");
+        lock (stateLock) state = refreshed;
+    }
+
+    internal static PdfChangeResult? ValidateSuccessfulChangeReadback(
+        PdfChangeRequest request, PdfChangeResult result, PdfLayoutState before)
+    {
+        if (!result.Success) return null;
+        PdfChangeResult Failure(string detail) => new(false, request.ChangeId, request.ElementId, request.Operation,
+            ElectronEditorErrorCodes.ChangeReadbackFailed,
+            $"PDF-Aenderung wurde nicht bestaetigt: {detail}", null, null, false);
+
+        if (result.ChangeId != request.ChangeId || result.ElementId != request.ElementId || result.Operation != request.Operation)
+            return Failure("Korrelationsdaten der Ziel-App weichen vom Auftrag ab.");
+        if (result.PreviousState is null || result.NewState is null)
+            return Failure("Vorher-/Nachher-Istzustand fehlt.");
+        if (result.PreviousState.ElementId != request.ElementId || result.NewState.ElementId != request.ElementId ||
+            result.PreviousState.ScopeId != request.ScopeId || result.NewState.ScopeId != request.ScopeId)
+            return Failure("Element oder Scope des Istzustands weicht vom Auftrag ab.");
+        var cached = before.Elements.FirstOrDefault(element => element.ElementId == request.ElementId);
+        if (cached is null || !Equivalent(cached, result.PreviousState))
+            return Failure("Vorher-Istzustand stimmt nicht mit dem zuletzt gelesenen Hostzustand ueberein.");
+
+        if (request.Operation == PdfLayoutOperations.Move)
+        {
+            var hasX = request.Payload?.ContainsKey("x") == true;
+            var hasY = request.Payload?.ContainsKey("y") == true;
+            if (request.Payload is null || !hasX && !hasY ||
+                hasX && !RequestedNumber(request.Payload, "x", out _) ||
+                hasY && !RequestedNumber(request.Payload, "y", out _) ||
+                !RequestedOrPrevious(request.Payload, "x", result.PreviousState.X, out var expectedX) ||
+                !RequestedOrPrevious(request.Payload, "y", result.PreviousState.Y, out var expectedY) ||
+                !Same(result.NewState.X, expectedX) || !Same(result.NewState.Y, expectedY))
+                return Failure("angewendete X-/Y-Position stimmt nicht mit dem Auftrag ueberein.");
+        }
+        return null;
+    }
+
+    internal static string? ValidatePreviewPositionReadback(
+        PdfElementRegistry registry, PdfLayoutState current, ElectronPdfPreviewMetadata metadata)
+    {
+        foreach (var element in current.Elements)
+        {
+            var definition = registry.FindById(element.ElementId);
+            if (definition is null || !definition.Capabilities.HasFlag(PdfCapability.Position) || element.Visible == false ||
+                !element.X.HasValue || !element.Y.HasValue ||
+                Same(element.X, definition.BaselineLayout.X) && Same(element.Y, definition.BaselineLayout.Y)) continue;
+            var bounds = metadata.RenderBounds.Where(bound => bound.ElementId == element.ElementId).ToArray();
+            if (bounds.Length == 0)
+                return $"Renderer-Readback fuer {element.ElementId} fehlt.";
+            if (bounds.Any(bound => !Same(bound.AppliedX, element.X) || !Same(bound.AppliedY, element.Y)))
+                return $"Renderer-Readback fuer {element.ElementId} weicht von X={element.X:G}/Y={element.Y:G} mm ab.";
+        }
+        return null;
+    }
+
+    private static bool RequestedNumber(IReadOnlyDictionary<string, object?> payload, string key, out double value)
+    {
+        value = 0;
+        if (!payload.TryGetValue(key, out var raw) || raw is null or bool or char or string || raw is not IConvertible) return false;
+        try { value = Convert.ToDouble(raw, System.Globalization.CultureInfo.InvariantCulture); return double.IsFinite(value); }
+        catch { return false; }
+    }
+
+    private static bool RequestedOrPrevious(
+        IReadOnlyDictionary<string, object?> payload, string key, double? previous, out double? value)
+    {
+        if (!payload.ContainsKey(key)) { value = previous; return true; }
+        var success = RequestedNumber(payload, key, out var requested);
+        value = success ? requested : null;
+        return success;
+    }
+
+    private static bool Equivalent(PdfElementLayoutState left, PdfElementLayoutState right) =>
+        left.ElementId == right.ElementId && left.ScopeId == right.ScopeId && Same(left.X, right.X) && Same(left.Y, right.Y) &&
+        Same(left.Width, right.Width) && Same(left.Height, right.Height) && Same(left.TextOffsetX, right.TextOffsetX) &&
+        Same(left.TextOffsetY, right.TextOffsetY) && Same(left.FontSize, right.FontSize) && left.TextAlignment == right.TextAlignment &&
+        Same(left.LineSpacing, right.LineSpacing) && left.Visible == right.Visible && Same(left.MarginTop, right.MarginTop) &&
+        Same(left.MarginRight, right.MarginRight) && Same(left.MarginBottom, right.MarginBottom) && Same(left.MarginLeft, right.MarginLeft);
+
+    private static bool Same(double? left, double? right) => left.HasValue == right.HasValue &&
+        (!left.HasValue || Math.Abs(left.Value - right!.Value) <= 0.001);
 
     private static T Required<T>(JsonElement payload, string property)
     {
@@ -180,9 +282,12 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
     private sealed record RemotePdfChangeResult(bool Success, string ChangeId, string ElementId, string Operation, string? ErrorCode, string Message,
         RemotePdfElementState? PreviousState, RemotePdfElementState? NewState, bool RollbackSucceeded,
         IReadOnlyList<RemotePdfElementState>? AffectedStates = null);
-    private sealed record RemotePdfRenderBound(string ElementId, int PageNumber, RemotePdfBox Box, string? Part = null, double? ContentWidth = null);
+    private sealed record RemotePdfRenderBound(
+        string ElementId, int PageNumber, RemotePdfBox Box, string? Part = null, double? ContentWidth = null,
+        double? AppliedX = null, double? AppliedY = null);
     private sealed record RemotePdfPreviewMetadata(string State, bool Stale, int Generation, int PageCount, DateTimeOffset? GeneratedAt,
         string ActiveDocumentId, string? ControlledOutputPath, IReadOnlyList<RemotePdfRenderBound> RenderBounds)
     { public ElectronPdfPreviewMetadata ToLocal() => new(State, Stale, Generation, PageCount, GeneratedAt, ActiveDocumentId, ControlledOutputPath,
-        RenderBounds.Select(bound => new ElectronPdfRenderBound(bound.ElementId, bound.PageNumber, bound.Box.ToBox(), bound.Part, bound.ContentWidth)).ToArray()); }
+        RenderBounds.Select(bound => new ElectronPdfRenderBound(bound.ElementId, bound.PageNumber, bound.Box.ToBox(), bound.Part, bound.ContentWidth,
+            bound.AppliedX, bound.AppliedY)).ToArray()); }
 }
