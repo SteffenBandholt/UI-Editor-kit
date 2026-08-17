@@ -98,25 +98,42 @@ public sealed class M824TableLayoutTests
     }
 
     [TestMethod]
-    public void BoundaryResizeChangesExactlyTwoAdjacentColumnsAndPreservesTotal()
+    public void WpfBoundaryResizePreservesTotalModesAndOnlyChangesAdjacentColumns()
     {
         StaTest.Run(() =>
         {
             var setup = CreateAdapter();
-            var beforeState = setup.Adapter.GetCurrentLayoutState();
-            var beforeDescription = beforeState.Elements.Single(element => element.ElementId == "table.description").Width;
-            var beforeMeta = beforeState.Elements.Single(element => element.ElementId == "table.meta").Width;
+            var beforeColumns = setup.TableBinding.Definition.Columns.ToDictionary(column => column.ColumnId, column => column.CurrentWidth, StringComparer.Ordinal);
             var result = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
-                new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>
-                {
-                    ["leftColumnId"] = "table.description", ["rightColumnId"] = "table.meta", ["delta"] = 20d
-                } }));
+                BoundaryPayload("table.description", "table.meta", 20)));
+
             Assert.IsTrue(result.Success, result.Message);
-            Assert.AreEqual(beforeDescription + 20, setup.Description.Width.Value, 0.001);
-            Assert.AreEqual(beforeMeta - 20, setup.Meta.Width.Value, 0.001);
+            Assert.AreEqual(80, setup.Number.Width.Value, 0.001);
+            Assert.AreEqual(beforeColumns["table.description"] + 20, setup.Description.Width.Value, 0.001);
+            Assert.AreEqual(beforeColumns["table.meta"] - 20, setup.Meta.Width.Value, 0.001);
+            Assert.AreEqual(beforeColumns.Values.Sum(), setup.Number.Width.Value + setup.Description.Width.Value + setup.Meta.Width.Value, 0.001);
             Assert.AreEqual(DataGridLengthUnitType.Star, setup.Description.Width.UnitType);
             Assert.AreEqual(DataGridLengthUnitType.Pixel, setup.Meta.Width.UnitType);
             CollectionAssert.AreEquivalent(new[] { "table.description", "table.meta" }, result.AffectedStates!.Select(state => state.ElementId).ToArray());
+        });
+    }
+
+    [TestMethod]
+    public void WpfBoundaryResizeRejectsNonAdjacentColumnsWithoutChangingWidths()
+    {
+        StaTest.Run(() =>
+        {
+            var setup = CreateAdapter();
+            var beforeNumber = setup.Number.Width;
+            var beforeDescription = setup.Description.Width;
+            var beforeMeta = setup.Meta.Width;
+            var result = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
+                BoundaryPayload("table.number", "table.meta", 20)));
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(beforeNumber, setup.Number.Width);
+            Assert.AreEqual(beforeDescription, setup.Description.Width);
+            Assert.AreEqual(beforeMeta, setup.Meta.Width);
         });
     }
 
@@ -136,10 +153,7 @@ public sealed class M824TableLayoutTests
                     new AtomicJsonLayoutProfileStore(root, "app"), new ActiveLayoutProfileStore(root), LayoutProfileCatalog.StandardId);
                 session.BeginUndoFrame("Tabellengrenze");
                 var changed = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
-                    new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>
-                    {
-                        ["leftColumnId"] = "table.description", ["rightColumnId"] = "table.meta", ["delta"] = 20d
-                    } }));
+                    BoundaryPayload("table.description", "table.meta", 20)));
                 Assert.IsTrue(changed.Success, changed.Message);
                 foreach (var affected in changed.AffectedStates!)
                 {
@@ -218,10 +232,7 @@ public sealed class M824TableLayoutTests
                     new AtomicJsonLayoutProfileStore(root, "app"), new ActiveLayoutProfileStore(root), LayoutProfileCatalog.StandardId);
                 session.AcceptCurrentTargetAsSaved();
                 var changed = setup.Adapter.SubmitChangeRequest(Request("table", HostAdapterOperations.ResizeColumnBoundary,
-                    new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?>
-                    {
-                        ["leftColumnId"] = "table.description", ["rightColumnId"] = "table.meta", ["delta"] = 20d
-                    } }));
+                    BoundaryPayload("table.description", "table.meta", 20)));
                 Assert.IsTrue(changed.Success, changed.Message);
                 foreach (var affected in changed.AffectedStates!)
                 {
@@ -235,6 +246,18 @@ public sealed class M824TableLayoutTests
             }
             finally { Directory.Delete(root, true); }
         });
+    }
+
+    [TestMethod]
+    public void ElectronHandshakeAcceptsSharedBoundaryResizeOperation()
+    {
+        var contract = new ElectronTargetContract(
+            "target", "Ziel-App", "1.0.0", "electron", "1.2", "1.2", 1,
+            $"sha256:{new string('a', 64)}", "complete", ["scope"], "profiles",
+            [HostAdapterOperations.ResizeColumnBoundary],
+            "bidirectional", "layout", true, true, LocalTargetProtocol.Version, "session", 1, "unavailable", null);
+
+        contract.Validate();
     }
 
     [TestMethod]
@@ -279,7 +302,7 @@ public sealed class M824TableLayoutTests
         return new("table", "Aufgabenliste", new(0, 0, 984, 400), new(0, 0, 600, 360), new(0, 0, 984, 400),
             "scope", columns.Select(column => column.ColumnId).ToArray(), "table.row", TableHorizontalOverflowModes.Auto, "auto", "bounded",
             360, 1600, 24, 0, TableRowHeightModes.Bounded, 36, 120, columns,
-            BoundaryResizePolicy: TableBoundaryResizePolicies.AdjacentPreserveTotal);
+            BoundaryResizePolicy: TableLayoutEngine.AdjacentPreserveTotalBoundaryResizePolicy);
     }
 
     private static TableColumnLayoutDefinition Column(string id, string name, double width, double minimum, bool resizable, string mode, int order) =>
@@ -328,6 +351,17 @@ public sealed class M824TableLayoutTests
 
     private static IReadOnlyDictionary<string, object?> TablePayload(string field, object value) =>
         new Dictionary<string, object?> { ["table"] = new Dictionary<string, object?> { [field] = value } };
+
+    private static IReadOnlyDictionary<string, object?> BoundaryPayload(string leftColumnId, string rightColumnId, double delta) =>
+        new Dictionary<string, object?>
+        {
+            ["table"] = new Dictionary<string, object?>
+            {
+                ["leftColumnId"] = leftColumnId,
+                ["rightColumnId"] = rightColumnId,
+                ["delta"] = delta,
+            },
+        };
 
     private sealed record Setup(
         DataGridTextColumn Number,

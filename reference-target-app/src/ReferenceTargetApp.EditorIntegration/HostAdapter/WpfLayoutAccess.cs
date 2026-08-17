@@ -102,10 +102,10 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
                 entry.WpfTableBinding?.Fit();
                 break;
             case HostAdapterOperations.ResizeColumnBoundary:
-                entry.WpfTableBinding?.ResizeBoundary(
+                entry.WpfTableBinding?.ResizeColumnBoundary(
                     (string)change.TableIntent!["leftColumnId"]!,
-                    (string)change.TableIntent!["rightColumnId"]!,
-                    Convert.ToDouble(change.TableIntent!["delta"], System.Globalization.CultureInfo.InvariantCulture));
+                    (string)change.TableIntent["rightColumnId"]!,
+                    (double)change.TableIntent["delta"]!);
                 break;
             case HostAdapterOperations.SetHorizontalOverflowMode:
                 entry.WpfTableBinding?.SetHorizontalOverflowMode((string)change.TableIntent!["horizontalOverflowMode"]!);

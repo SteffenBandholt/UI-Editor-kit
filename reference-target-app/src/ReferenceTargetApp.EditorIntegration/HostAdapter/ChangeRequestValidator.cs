@@ -90,17 +90,25 @@ internal static class ChangeRequestValidator
         if (operation == HostAdapterOperations.SetColumnWrapMode && !StringIn("wrapMode", TableWrapModes.All)) return Invalid("Umbruchmodus ist ungültig.");
         if (operation == HostAdapterOperations.SetColumnOverflowMode && !StringIn("overflowMode", TableOverflowModes.All)) return Invalid("Überlaufmodus ist ungültig.");
         if (operation == HostAdapterOperations.SetRowHeightMode && !StringIn("rowHeightMode", TableRowHeightModes.All)) return Invalid("Zeilenhöhenmodus ist ungültig.");
-        if (operation == HostAdapterOperations.ResizeColumnBoundary &&
-            (!table.TryGetValue("leftColumnId", out var rawLeft) || rawLeft is not string left || string.IsNullOrWhiteSpace(left) ||
-             !table.TryGetValue("rightColumnId", out var rawRight) || rawRight is not string right || string.IsNullOrWhiteSpace(right) ||
-             !TryRequiredFiniteNumber(table, "delta", out var delta) || Math.Abs(delta) < 0.000001))
-            return Invalid("Die Spaltengrenze erwartet zwei Nachbarspalten und eine endliche Verschiebung ungleich null.");
+        var intent = new Dictionary<string, object?>(table, StringComparer.Ordinal);
+        if (operation == HostAdapterOperations.ResizeColumnBoundary)
+        {
+            if (!table.TryGetValue("leftColumnId", out var rawLeft) || rawLeft is not string leftColumnId || string.IsNullOrWhiteSpace(leftColumnId) ||
+                !table.TryGetValue("rightColumnId", out var rawRight) || rawRight is not string rightColumnId || string.IsNullOrWhiteSpace(rightColumnId) ||
+                !TryRequiredFiniteNumber(table, "delta", out var delta) || Math.Abs(delta) < 0.000001)
+                return Invalid("Spaltengrenze erwartet genau zwei Spalten und eine endliche Verschiebung ungleich null.");
+            if (entry.WpfTableBinding is null)
+                return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "WPF-Tabellenbindung fehlt.");
+            intent["leftColumnId"] = leftColumnId.Trim();
+            intent["rightColumnId"] = rightColumnId.Trim();
+            intent["delta"] = delta;
+        }
         if (operation is HostAdapterOperations.FitTableToViewport or HostAdapterOperations.ResizeColumnsProportionally &&
             (!table.TryGetValue("previewAccepted", out var accepted) || accepted is not true))
             return ValidationOutcome.Fail("table_preview_confirmation_required", "Tabellenanpassung braucht eine bestätigte Vorschau.");
         if (entry.WpfTableBinding is null && entry.WpfTableColumnBinding is null)
             return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "WPF-Tabellenbindung fehlt.");
-        return ValidationOutcome.Ok(new(operation, TableIntent: new Dictionary<string, object?>(table, StringComparer.Ordinal)));
+        return ValidationOutcome.Ok(new(operation, TableIntent: intent));
     }
 
     private static ValidationOutcome ValidateMove(IReadOnlyDictionary<string, object?> payload)

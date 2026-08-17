@@ -485,3 +485,12 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - Die Vorschau gilt nur dann als aktuell, wenn der BBM-Renderer für alle verschobenen sichtbaren Elemente echte angewandte X-/Y-Koordinaten aus dem Print-DOM zurückliefert. Ein logisch geänderter, aber optisch ignorierter Zustand wird damit nicht mehr als Erfolg gemeldet.
 - Ablehnung, Ein-Schritt-Undo, Element-Original, Save, Wiederöffnung und vollständiger BBM-Neustart wurden geprüft. Das nur für die Abnahme erzeugte PDF-Profil wurde anschließend wieder entfernt. Commit/Push/PR/Merge: keiner.
 - Vier neue native M87-Tests, 37 relevante native Tests, der vollständige native Lauf mit 132 Tests, `npm run pretest`, BBM-M85 mit allen 47 Goldens und den neuen realen Positionsfällen sowie gezieltes ESLint sind grün. Der vollständige Kit-`npm test` bleibt ausschließlich an einer bereits vorher vorhandenen, paketfremden Public-API-Erwartung rot.
+
+## M82.4 – Nativer Operationsvertrag `resizeColumnBoundary`
+
+- Status: `[A]`; der bereits im JavaScript-/ESM-Vertrag vorhandene gekoppelte Spaltenrand ist mit WPF-HostAdapter und Manager-Validierung synchronisiert.
+- `resizeColumnBoundary` verwendet ausschließlich `leftColumnId`, `rightColumnId` und `delta`, akzeptiert nur direkte, breiteneditierbare Nachbarspalten und erhält deren Gesamtbreite innerhalb der registrierten Min-/Max-Grenzen.
+- Der native WPF-Pfad validiert Payload und Tabellenbindung, führt die Änderung über dieselbe Tabellenbreitenquelle aus und lässt bei Ablehnung alle Spalten unverändert.
+- Pflichtprüfungen: M82.4-JavaScript 48/48, native M82.4-Tests 9/9, vollständiges `npm test`, BBM-`prepare:ui-editor`, BBM-Registry-/Acceptance-Regression und `git diff --check` grün.
+- Die wiederholte isolierte Rechnung-Acceptance verband in beiden Läufen, akzeptierte `rechnung.screen` mit 61 nativen Baumzielen und belegte eine echte Direktauswahl ohne Layout- oder Fachaktion. Beide Datenbank-Hashes waren identisch.
+- Commit/Push/PR/Merge: keiner.
