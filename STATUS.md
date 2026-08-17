@@ -408,3 +408,12 @@ M73 bis M82 sind abgenommen. Ein weiterer Meilenstein ist nicht beauftragt.
 - `prepareEditorClose` bleibt nach der Bestätigung und vor `CloseAsync`; `discarded` kann nach einem bestätigten Save nicht anstelle von `saved` ausgelöst werden.
 - Core-Guardrail: `M8624VisibleSaveButtonTests`; die BBM-Abnahme steuert zusätzlich den sichtbaren Dialogbutton physisch und prüft zwei getrennte Ziel-App-Prozesse für den Neustart-Restore.
 - Commit/Push/PR/Merge: keiner.
+
+## M82.4 – Nativer Operationsvertrag `resizeColumnBoundary`
+
+- Status: `[A]`; der bereits im JavaScript-/ESM-Vertrag vorhandene gekoppelte Spaltenrand ist mit WPF-HostAdapter und Manager-Validierung synchronisiert.
+- `resizeColumnBoundary` verwendet ausschließlich `leftColumnId`, `rightColumnId` und `delta`, akzeptiert nur direkte, breiteneditierbare Nachbarspalten und erhält deren Gesamtbreite innerhalb der registrierten Min-/Max-Grenzen.
+- Der native WPF-Pfad validiert Payload und Tabellenbindung, führt die Änderung über dieselbe Tabellenbreitenquelle aus und lässt bei Ablehnung alle Spalten unverändert.
+- Pflichtprüfungen: M82.4-JavaScript 48/48, native M82.4-Tests 9/9, vollständiges `npm test`, BBM-`prepare:ui-editor`, BBM-Registry-/Acceptance-Regression und `git diff --check` grün.
+- Die wiederholte isolierte Rechnung-Acceptance verband in beiden Läufen, akzeptierte `rechnung.screen` mit 61 nativen Baumzielen und belegte eine echte Direktauswahl ohne Layout- oder Fachaktion. Beide Datenbank-Hashes waren identisch.
+- Commit/Push/PR/Merge: keiner.

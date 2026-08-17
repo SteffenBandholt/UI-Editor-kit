@@ -96,7 +96,8 @@ public sealed record TableLayoutDefinition(
     double MaximumRowHeight,
     IReadOnlyList<TableColumnLayoutDefinition> Columns,
     string TopologyPolicy = TableTopologyPolicies.PreserveTarget,
-    bool RequiresDedicatedWrapper = false);
+    bool RequiresDedicatedWrapper = false,
+    string? BoundaryResizePolicy = null);
 
 public sealed record TableLayoutMetrics(
     double ViewportWidth,
@@ -131,6 +132,8 @@ public sealed record TableElementLayoutState(
 
 public static class TableLayoutEngine
 {
+    public const string AdjacentPreserveTotalBoundaryResizePolicy = "adjacentPreserveTotal";
+
     public static IReadOnlyList<string> Validate(TableLayoutDefinition table)
     {
         ArgumentNullException.ThrowIfNull(table);
@@ -143,6 +146,8 @@ public static class TableLayoutEngine
         if (!TableRowHeightModes.All.Contains(table.RowHeightMode)) errors.Add("table_row_height_mode_invalid");
         if (!TableTopologyPolicies.All.Contains(table.TopologyPolicy)) errors.Add("table_topology_policy_invalid");
         if (table.RequiresDedicatedWrapper) errors.Add("table_wrapper_forbidden");
+        if (!string.IsNullOrWhiteSpace(table.BoundaryResizePolicy) && table.BoundaryResizePolicy != AdjacentPreserveTotalBoundaryResizePolicy)
+            errors.Add("table_boundary_resize_policy_invalid");
         if (table.ColumnIds.Count != table.Columns.Count || !table.ColumnIds.SequenceEqual(table.Columns.Select(column => column.ColumnId), StringComparer.Ordinal))
             errors.Add("table_column_order_invalid");
         if (table.Columns.Select(column => column.ColumnId).Distinct(StringComparer.Ordinal).Count() != table.Columns.Count)
@@ -214,6 +219,52 @@ public static class TableLayoutEngine
         var after = Measure(next);
         return new(after.Overflow <= 0.5, before, after, widths);
     }
+
+    public static TableLayoutDefinition ResizeColumnBoundary(
+        TableLayoutDefinition table,
+        string leftColumnId,
+        string rightColumnId,
+        double delta)
+    {
+        var errors = Validate(table);
+        if (errors.Count != 0) throw new InvalidOperationException(string.Join(",", errors));
+        if (table.BoundaryResizePolicy != AdjacentPreserveTotalBoundaryResizePolicy)
+            throw new InvalidOperationException("table_boundary_resize_not_allowed");
+        if (string.IsNullOrWhiteSpace(leftColumnId) || string.IsNullOrWhiteSpace(rightColumnId) ||
+            !double.IsFinite(delta) || Math.Abs(delta) < 0.000001)
+            throw new InvalidOperationException("table_boundary_payload_invalid");
+
+        var leftIndex = table.Columns.ToList().FindIndex(column => column.ColumnId == leftColumnId);
+        var rightIndex = table.Columns.ToList().FindIndex(column => column.ColumnId == rightColumnId);
+        if (leftIndex < 0 || rightIndex != leftIndex + 1)
+            throw new InvalidOperationException("table_boundary_columns_not_adjacent");
+
+        var left = table.Columns[leftIndex];
+        var right = table.Columns[rightIndex];
+        if (!left.Resizable || !right.Resizable)
+            throw new InvalidOperationException("table_boundary_column_locked");
+
+        var leftWidth = left.CurrentWidth + delta;
+        var rightWidth = right.CurrentWidth - delta;
+        if (leftWidth < left.MinimumWidth || leftWidth > left.MaximumWidth ||
+            rightWidth < right.MinimumWidth || rightWidth > right.MaximumWidth)
+            throw new InvalidOperationException("table_boundary_width_out_of_bounds");
+
+        var columns = table.Columns.Select((column, index) => index switch
+        {
+            var current when current == leftIndex => column with { CurrentWidth = leftWidth },
+            var current when current == rightIndex => column with { CurrentWidth = rightWidth },
+            _ => column,
+        }).ToArray();
+        return table with
+        {
+            Columns = columns,
+            ContentBounds = table.ContentBounds with
+            {
+                Width = columns.Where(column => column.Visibility).Sum(column => column.CurrentWidth) + table.ReservedWidth,
+            },
+        };
+    }
 }
 
 public sealed class WpfTableColumnBinding
@@ -230,15 +281,31 @@ public sealed class WpfTableColumnBinding
     public DataGridColumn Column { get; }
     public TableColumnLayoutDefinition Definition { get; private set; }
     public TableColumnLayoutDefinition BaselineDefinition { get; }
-    public double CurrentWidth => Column.ActualWidth > 0 ? Column.ActualWidth : Definition.CurrentWidth;
+    public double CurrentWidth => Column.Width.UnitType == DataGridLengthUnitType.Pixel && double.IsFinite(Column.Width.Value)
+        ? Column.Width.Value
+        : Column.ActualWidth > 0 ? Column.ActualWidth : Definition.CurrentWidth;
 
     public void SetWidth(double width)
+    {
+        SetWidthCore(width, preserveWidthMode: false);
+    }
+
+    internal void SetBoundaryWidth(double width)
+    {
+        SetWidthCore(width, preserveWidthMode: true);
+    }
+
+    private void SetWidthCore(double width, bool preserveWidthMode)
     {
         var clamped = Math.Clamp(width, Definition.MinimumWidth, Definition.MaximumWidth);
         Column.MinWidth = Definition.MinimumWidth;
         Column.MaxWidth = Definition.MaximumWidth;
         Column.Width = new DataGridLength(clamped, DataGridLengthUnitType.Pixel);
-        Definition = Definition with { CurrentWidth = clamped, WidthMode = TableWidthModes.Fixed };
+        Definition = Definition with
+        {
+            CurrentWidth = clamped,
+            WidthMode = preserveWidthMode ? Definition.WidthMode : TableWidthModes.Fixed,
+        };
     }
 
     public void SetWidthMode(string mode)
@@ -315,6 +382,16 @@ public sealed class WpfTableBinding
         foreach (var binding in Columns) binding.SetWidth(preview.ColumnWidths[binding.Definition.ColumnId]);
         Capture();
         return preview;
+    }
+
+    public TableLayoutDefinition ResizeColumnBoundary(string leftColumnId, string rightColumnId, double delta)
+    {
+        var next = TableLayoutEngine.ResizeColumnBoundary(Capture(), leftColumnId, rightColumnId, delta);
+        var widths = next.Columns.ToDictionary(column => column.ColumnId, column => column.CurrentWidth, StringComparer.Ordinal);
+        foreach (var binding in Columns.Where(binding => binding.Definition.ColumnId == leftColumnId || binding.Definition.ColumnId == rightColumnId))
+            binding.SetBoundaryWidth(widths[binding.Definition.ColumnId]);
+        Definition = next with { Columns = Columns.Select(binding => binding.Definition).ToArray() };
+        return Definition;
     }
 
     public void SetHorizontalOverflowMode(string mode)

@@ -57,6 +57,7 @@ internal static class ChangeRequestValidator
             HostAdapterOperations.SetVisibility => ValidateVisibility(request.Payload),
             HostAdapterOperations.SpacingIncrease or HostAdapterOperations.SpacingDecrease or HostAdapterOperations.SpacingSet or HostAdapterOperations.SpacingReset => ValidateSpacing(request.Operation, request.Payload, entry),
             HostAdapterOperations.FitTableToViewport or HostAdapterOperations.ResizeColumnsProportionally or
+            HostAdapterOperations.ResizeColumnBoundary or
             HostAdapterOperations.SetHorizontalOverflowMode or HostAdapterOperations.SetColumnWidthMode or
             HostAdapterOperations.SetColumnWrapMode or HostAdapterOperations.SetColumnOverflowMode or
             HostAdapterOperations.SetRowHeightMode or HostAdapterOperations.ResetTableColumn or HostAdapterOperations.ResetTable => ValidateTable(request.Operation, request.Payload, entry),
@@ -74,6 +75,7 @@ internal static class ChangeRequestValidator
         {
             HostAdapterOperations.FitTableToViewport => ["strategy", "selectedColumnId", "neighborAction", "previewAccepted"],
             HostAdapterOperations.ResizeColumnsProportionally => ["strategy", "previewAccepted"],
+            HostAdapterOperations.ResizeColumnBoundary => ["leftColumnId", "rightColumnId", "delta"],
             HostAdapterOperations.SetHorizontalOverflowMode => ["horizontalOverflowMode"],
             HostAdapterOperations.SetColumnWidthMode => ["widthMode"],
             HostAdapterOperations.SetColumnWrapMode => ["wrapMode"],
@@ -88,12 +90,25 @@ internal static class ChangeRequestValidator
         if (operation == HostAdapterOperations.SetColumnWrapMode && !StringIn("wrapMode", TableWrapModes.All)) return Invalid("Umbruchmodus ist ungültig.");
         if (operation == HostAdapterOperations.SetColumnOverflowMode && !StringIn("overflowMode", TableOverflowModes.All)) return Invalid("Überlaufmodus ist ungültig.");
         if (operation == HostAdapterOperations.SetRowHeightMode && !StringIn("rowHeightMode", TableRowHeightModes.All)) return Invalid("Zeilenhöhenmodus ist ungültig.");
+        var intent = new Dictionary<string, object?>(table, StringComparer.Ordinal);
+        if (operation == HostAdapterOperations.ResizeColumnBoundary)
+        {
+            if (!table.TryGetValue("leftColumnId", out var rawLeft) || rawLeft is not string leftColumnId || string.IsNullOrWhiteSpace(leftColumnId) ||
+                !table.TryGetValue("rightColumnId", out var rawRight) || rawRight is not string rightColumnId || string.IsNullOrWhiteSpace(rightColumnId) ||
+                !TryRequiredFiniteNumber(table, "delta", out var delta) || Math.Abs(delta) < 0.000001)
+                return Invalid("Spaltengrenze erwartet genau zwei Spalten und eine endliche Verschiebung ungleich null.");
+            if (entry.WpfTableBinding is null)
+                return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "WPF-Tabellenbindung fehlt.");
+            intent["leftColumnId"] = leftColumnId.Trim();
+            intent["rightColumnId"] = rightColumnId.Trim();
+            intent["delta"] = delta;
+        }
         if (operation is HostAdapterOperations.FitTableToViewport or HostAdapterOperations.ResizeColumnsProportionally &&
             (!table.TryGetValue("previewAccepted", out var accepted) || accepted is not true))
             return ValidationOutcome.Fail("table_preview_confirmation_required", "Tabellenanpassung braucht eine bestätigte Vorschau.");
         if (entry.WpfTableBinding is null && entry.WpfTableColumnBinding is null)
             return ValidationOutcome.Fail(HostAdapterErrorCodes.ElementReferenceMissing, "WPF-Tabellenbindung fehlt.");
-        return ValidationOutcome.Ok(new(operation, TableIntent: new Dictionary<string, object?>(table, StringComparer.Ordinal)));
+        return ValidationOutcome.Ok(new(operation, TableIntent: intent));
     }
 
     private static ValidationOutcome ValidateMove(IReadOnlyDictionary<string, object?> payload)

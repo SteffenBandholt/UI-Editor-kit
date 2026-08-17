@@ -15,6 +15,7 @@ public static class HostAdapterOperations
     public const string SpacingReset = "spacingReset";
     public const string FitTableToViewport = "fitTableToViewport";
     public const string ResizeColumnsProportionally = "resizeColumnsProportionally";
+    public const string ResizeColumnBoundary = "resizeColumnBoundary";
     public const string SetHorizontalOverflowMode = "setHorizontalOverflowMode";
     public const string SetColumnWidthMode = "setColumnWidthMode";
     public const string SetColumnWrapMode = "setColumnWrapMode";
@@ -24,7 +25,7 @@ public static class HostAdapterOperations
     public const string ResetTable = "resetTable";
 
     public static readonly IReadOnlySet<string> TableOperations = new HashSet<string>([
-        FitTableToViewport, ResizeColumnsProportionally, SetHorizontalOverflowMode, SetColumnWidthMode,
+        FitTableToViewport, ResizeColumnsProportionally, ResizeColumnBoundary, SetHorizontalOverflowMode, SetColumnWidthMode,
         SetColumnWrapMode, SetColumnOverflowMode, SetRowHeightMode, ResetTableColumn, ResetTable
     ], StringComparer.Ordinal);
 }

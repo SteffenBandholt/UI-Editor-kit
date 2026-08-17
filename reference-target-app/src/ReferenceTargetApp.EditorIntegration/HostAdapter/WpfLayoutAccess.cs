@@ -101,6 +101,12 @@ internal sealed class WpfLayoutAccess : IWpfLayoutAccess
             case HostAdapterOperations.ResizeColumnsProportionally:
                 entry.WpfTableBinding?.Fit();
                 break;
+            case HostAdapterOperations.ResizeColumnBoundary:
+                entry.WpfTableBinding?.ResizeColumnBoundary(
+                    (string)change.TableIntent!["leftColumnId"]!,
+                    (string)change.TableIntent["rightColumnId"]!,
+                    (double)change.TableIntent["delta"]!);
+                break;
             case HostAdapterOperations.SetHorizontalOverflowMode:
                 entry.WpfTableBinding?.SetHorizontalOverflowMode((string)change.TableIntent!["horizontalOverflowMode"]!);
                 break;
