@@ -33,7 +33,7 @@ public static class PdfRegistryValidator
             [PdfElementKind.Value] = PdfCapability.Position | PdfCapability.Width | PdfCapability.Height | PdfCapability.TextPosition | PdfCapability.FontSize | PdfCapability.TextAlignment | PdfCapability.LineSpacing | PdfCapability.Visibility,
             [PdfElementKind.Image] = PdfCapability.Position | PdfCapability.Width | PdfCapability.Height | PdfCapability.Visibility,
             [PdfElementKind.Table] = PdfCapability.Position | PdfCapability.Width | PdfCapability.Visibility,
-            [PdfElementKind.TableColumn] = PdfCapability.Width,
+            [PdfElementKind.TableColumn] = PdfCapability.Position | PdfCapability.Width | PdfCapability.Visibility,
             [PdfElementKind.RepeatingArea] = PdfCapability.Position | PdfCapability.Width | PdfCapability.Height | PdfCapability.LineSpacing | PdfCapability.Visibility
         };
 

@@ -65,7 +65,9 @@ const editorWindow = fs.readFileSync(path.join(__dirname, "../../reference-targe
 assert.match(uiViewModel, /HasTableOverview => IsTableLayout && TableColumns\.Count > 0/);
 assert.match(uiViewModel, /wirksam \{EffectiveWidth:0\.###\} DIP · gespeichert \{LogicalWidth:0\.###\}/);
 assert.match(uiViewModel, /Direkte Eingabe ist im proportionalen Modus nicht eindeutig/);
-assert.match(pdfViewModel, /HasTableOverview => selected\?\.Kind == PdfElementKind\.Table && TableColumns\.Count > 0/);
+assert.match(pdfViewModel, /HasTableOverview => selected\?\.Kind is PdfElementKind\.Table or PdfElementKind\.TableColumn && TableColumns\.Count > 0/);
+assert.match(pdfViewModel, /CanWidth => selected\?\.Kind != PdfElementKind\.TableColumn/);
+assert.match(pdfViewModel, /HasDirectModes => HasElementModes \|\| HasTextModes/);
 assert.match(pdfViewModel, /FriendlyTableColumnName[\s\S]*column\.Role == PdfElementRole\.Meta[\s\S]*\? "Meta rechts"/);
 assert.match(uiView, /AutomationProperties\.Name="Spaltengrenze nach links"[\s\S]*CommandParameter="left"/);
 assert.match(uiView, /AutomationProperties\.Name="Spaltengrenze nach rechts"[\s\S]*CommandParameter="right"/);
@@ -75,6 +77,7 @@ assert.match(uiView, /Text="\{Binding RuntimeLabel\}"/);
 assert.match(uiView, /Text="\{Binding ColumnWidthInputStatus\}"/);
 assert.match(editorWindow, /AutomationProperties\.Name="PDF-Spaltengrenze nach links"[\s\S]*AutomationProperties\.Name="PDF-Spaltengrenze nach rechts"/);
 assert.match(editorWindow, /<ListBox ItemsSource="\{Binding TableBoundaries\}"[\s\S]*DisplayMemberPath="DisplayName"/);
+assert.match(editorWindow, /Header="Bearbeitung in Millimetern" Visibility="\{Binding HasDirectModes/);
 assert.match(editorWindow, /Content="R&#x00FC;ckg&#x00E4;ngig"[\s\S]*Content="Tabelle Original"/);
 
 console.log("TESTS OK: K17 atomare, app-neutrale Spaltengrenzen-Bedienung");

@@ -169,6 +169,8 @@ public sealed class PdfLayoutSession
             failures.Add(new(result.ElementId, result.Operation, result.ErrorCode ?? PdfErrorCodes.BatchFailed, result.Message));
             var rollbackFailures = await RollbackAsync(original, source + "-rollback", cancellationToken).ConfigureAwait(false);
             failures.AddRange(rollbackFailures);
+            if (rollbackFailures.Count == 0 && requests.Count == 1)
+                return new(false, failures[0].Code, failures[0].Message, true, failures);
             return new(false, rollbackFailures.Count == 0 ? PdfErrorCodes.BatchFailed : PdfErrorCodes.RollbackFailed,
                 rollbackFailures.Count == 0 ? "PDF-Batch fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "PDF-Batch und Rollback sind fehlgeschlagen.",
                 rollbackFailures.Count == 0, failures);
@@ -196,8 +198,55 @@ public sealed class PdfLayoutSession
     {
         var now = DateTimeOffset.UtcNow;
         var currentById = current.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+        var desiredById = desired.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
         var requests = new List<(int Phase, int Order, PdfChangeRequest Request)>();
+        var boundaryManagedColumnIds = new HashSet<string>(StringComparer.Ordinal);
+        var atomicOuterResizeTableIds = new HashSet<string>(StringComparer.Ordinal);
         var order = 0;
+        if (registry is not null)
+        {
+            foreach (var table in registry.Entries.Where(entry => entry.Kind == PdfElementKind.Table &&
+                         entry.BoundaryResizePolicy == PdfTableBoundaryResizePolicies.AdjacentPreserveTotal))
+            {
+                var columns = registry.Entries.Where(entry => entry.Kind == PdfElementKind.TableColumn && entry.ParentId == table.ElementId)
+                    .OrderBy(entry => entry.StableOrder).ToArray();
+                if (columns.Length < 2 || !currentById.TryGetValue(table.ElementId, out var currentTable) ||
+                    !desiredById.TryGetValue(table.ElementId, out var desiredTable) ||
+                    columns.Any(column => !currentById.ContainsKey(column.ElementId) || !desiredById.ContainsKey(column.ElementId))) continue;
+
+                var currentWidths = columns.Select(column => currentById[column.ElementId].Width!.Value).ToArray();
+                var desiredWidths = columns.Select(column => desiredById[column.ElementId].Width!.Value).ToArray();
+                var tableDelta = desiredTable.Width!.Value - currentTable.Width!.Value;
+                if (!Same(tableDelta, 0) && Same(desiredWidths[^1] - currentWidths[^1], tableDelta))
+                {
+                    currentWidths[^1] += tableDelta;
+                    atomicOuterResizeTableIds.Add(table.ElementId);
+                }
+                if (!Same(currentWidths.Sum(), desiredWidths.Sum()) || !Same(desiredWidths.Sum(), desiredTable.Width)) continue;
+
+                var currentPrefix = 0d;
+                var desiredPrefix = 0d;
+                for (var index = 0; index + 1 < columns.Length; index++)
+                {
+                    currentPrefix += currentWidths[index];
+                    desiredPrefix += desiredWidths[index];
+                    var delta = desiredPrefix - currentPrefix;
+                    if (Same(delta, 0)) continue;
+                    requests.Add((3, order++, new(Guid.NewGuid().ToString("N"), table.ElementId,
+                        PdfLayoutOperations.ResizeColumnBoundary, new Dictionary<string, object?>
+                        {
+                            ["table"] = new Dictionary<string, object?>
+                            {
+                                ["leftColumnId"] = columns[index].ElementId,
+                                ["rightColumnId"] = columns[index + 1].ElementId,
+                                ["delta"] = delta,
+                            },
+                        }, now, source, current.ScopeId)));
+                }
+                foreach (var column in columns.Where((column, index) => !Same(currentById[column.ElementId].Width, desiredWidths[index])))
+                    boundaryManagedColumnIds.Add(column.ElementId);
+            }
+        }
         foreach (var target in desired.Elements)
         {
             var existing = currentById[target.ElementId];
@@ -208,7 +257,8 @@ public sealed class PdfLayoutSession
                 var definition = registry?.FindById(target.ElementId);
                 var isTable = definition?.Kind == PdfElementKind.Table || target.ElementId == PdfRegistryIds.Table;
                 var isColumn = definition?.Kind == PdfElementKind.TableColumn || PdfRegistryIds.Columns.Contains(target.ElementId);
-                var phase = isTable ? target.Width > existing.Width ? 0 : 5
+                if (isColumn && boundaryManagedColumnIds.Contains(target.ElementId)) continue;
+                var phase = isTable ? atomicOuterResizeTableIds.Contains(target.ElementId) || target.Width > existing.Width ? 0 : 5
                     : isColumn ? target.Width < existing.Width ? 1 : 4 : 3;
                 Add(phase, PdfLayoutOperations.ResizeWidth, new Dictionary<string, object?> { ["width"] = target.Width });
             }

@@ -175,8 +175,11 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public string SelectedArea => selected?.PageArea.ToString() ?? "–";
     public string SelectedCapabilities => selected?.Capabilities.ToString() ?? "None";
     public string SelectedPageText => SelectedPage is null ? "Seitentemplate" : $"Seite {SelectedPage.PageNumber}";
-    public string Position => Current is { } value ? Pair(value.X, value.Y) + " mm" : "–";
-    public string Size => Current is { } value ? Pair(value.Width, value.Height) + " mm" : "–";
+    public string Position => selected is { } definition && Current is { } value
+        ? Pair(InspectorHorizontalPosition(definition, value), InspectorBox(definition, value).Y) + " mm"
+        : "–";
+    public string Width => selected is { } definition && Current is { } value ? InspectorBox(definition, value).Width.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
+    public string Height => selected is { } definition && Current is { } value ? InspectorBox(definition, value).Height.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
     public string TextPosition => Current is { } value ? Pair(value.TextOffsetX, value.TextOffsetY) + " mm" : "–";
     public string FontSize => Current?.FontSize is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) + " pt" : "–";
     public string StepLabel => mode == "fontSize" ? "Schrittweite (pt)" : "Schrittweite (mm)";
@@ -188,7 +191,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         get => selectedTableBoundary;
         set { if (Set(ref selectedTableBoundary, value)) { OnPropertyChanged(nameof(CanMoveTableBoundary)); RaiseCommandStates(); } }
     }
-    public bool HasTableOverview => selected?.Kind == PdfElementKind.Table && TableColumns.Count > 0;
+    public bool HasTableOverview => selected?.Kind is PdfElementKind.Table or PdfElementKind.TableColumn && TableColumns.Count > 0;
     public string TableEditorTitle => CurrentTable()?.Name ?? "PDF-Tabelle";
     public bool CanMoveTableBoundary => CanOperate && stepValid && HasTableOverview && SelectedTableBoundary is not null && CurrentTable()?.AllowedOperations.Contains(PdfLayoutOperations.ResizeColumnBoundary, StringComparer.Ordinal) == true;
     public string ActiveLayer => layer;
@@ -201,17 +204,22 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public bool TextPositionModeActive => mode == "textPosition";
     public bool FontSizeModeActive => mode == "fontSize";
     public bool CanPosition => selected?.Capabilities.HasFlag(PdfCapability.Position) == true;
-    public bool CanWidth => selected?.Capabilities.HasFlag(PdfCapability.Width) == true;
+    public bool CanWidth => selected?.Kind != PdfElementKind.TableColumn && selected?.Capabilities.HasFlag(PdfCapability.Width) == true;
     public bool CanHeight => selected?.Capabilities.HasFlag(PdfCapability.Height) == true;
     public bool CanTextPosition => selected?.Capabilities.HasFlag(PdfCapability.TextPosition) == true;
     public bool CanFontSize => selected?.Capabilities.HasFlag(PdfCapability.FontSize) == true;
+    public bool HasElementModes => CanPosition || CanWidth || CanHeight;
+    public bool HasTextModes => CanTextPosition || CanFontSize;
+    public bool HasDirectModes => HasElementModes || HasTextModes;
     public bool CanTextAlignment => selected?.Capabilities.HasFlag(PdfCapability.TextAlignment) == true;
     public bool CanLineSpacing => selected?.Capabilities.HasFlag(PdfCapability.LineSpacing) == true;
     public bool CanVisibility => selected?.Capabilities.HasFlag(PdfCapability.Visibility) == true;
     public bool CanPageMargins => selected?.Capabilities.HasFlag(PdfCapability.PageMargins) == true;
     public string TextAlignment => Current?.TextAlignment ?? "–";
     public string LineSpacing => Current?.LineSpacing is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) : "–";
-    public string Visibility => Current?.Visible is bool value ? (value ? "sichtbar" : "ausgeblendet") : "–";
+    public string Visibility => selected is { } definition && Current is { } current
+        ? ((current.Visible ?? definition.BaselineLayout.Visible ?? true) ? "sichtbar" : "ausgeblendet")
+        : "–";
     public string StepText { get => stepText; set { if (Set(ref stepText, value)) ValidateStep(); } }
     public PdfPageViewModel? SelectedPage { get => selectedPage; set { if (Set(ref selectedPage, value)) { OnPropertyChanged(nameof(SelectedPageText)); UpdateOverlay(lastViewportWidth, lastViewportHeight); } } }
     public BitmapSource? SelectedPageImage => SelectedPage?.Image;
@@ -277,10 +285,13 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     {
         lastViewportWidth = width;
         lastViewportHeight = height;
-        var bound = SelectedPage is null ? null : bounds.Where(item => item.PageNumber == SelectedPage.PageNumber && item.ElementId == SelectedId)
-            .OrderBy(item => item.Box.Width * item.Box.Height).FirstOrDefault();
-        if (bound is null) { OverlayWidth = OverlayHeight = 0; return; }
-        var mapped = PdfPreviewCoordinateMapper.ToViewport(bound.Box, width, height);
+        var selectedBounds = SelectedPage is null ? [] : bounds
+            .Where(item => item.PageNumber == SelectedPage.PageNumber && item.ElementId == SelectedId).ToArray();
+        var box = selected?.Kind == PdfElementKind.TableColumn
+            ? UnionBoxes(selectedBounds.Select(item => item.Box))
+            : selectedBounds.OrderBy(item => item.Box.Width * item.Box.Height).FirstOrDefault()?.Box;
+        if (box is null) { OverlayWidth = OverlayHeight = 0; return; }
+        var mapped = PdfPreviewCoordinateMapper.ToViewport(box, width, height);
         OverlayLeft = mapped.Left; OverlayTop = mapped.Top; OverlayWidth = mapped.Width; OverlayHeight = mapped.Height;
     }
 
@@ -505,8 +516,13 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private bool ModeAllowed(string value) => value switch { "position" => CanPosition, "width" => CanWidth, "height" => CanHeight, "textPosition" => CanTextPosition, "fontSize" => CanFontSize, _ => false };
     private void NormalizeMode()
     {
-        if (layer == "text" && !CanTextPosition && !CanFontSize) layer = "element";
-        if (!ModeAllowed(mode)) mode = layer == "text" ? (CanTextPosition ? "textPosition" : "fontSize") : CanPosition ? "position" : CanWidth ? "width" : "height";
+        var hasElementMode = HasElementModes;
+        var hasTextMode = HasTextModes;
+        if (layer == "element" && !hasElementMode && hasTextMode) layer = "text";
+        if (layer == "text" && !hasTextMode && hasElementMode) layer = "element";
+        if (!ModeAllowed(mode)) mode = layer == "text"
+            ? (CanTextPosition ? "textPosition" : "fontSize")
+            : CanPosition ? "position" : CanWidth ? "width" : "height";
     }
 
     private async Task LayoutActionAsync(Func<Task<PdfLayoutOperationResult>> action, string success)
@@ -565,13 +581,51 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private PdfElementLayoutState? Current => selected is null ? null : State(selected.ElementId);
     private PdfElementLayoutState State(string id) => adapter.GetCurrentLayoutState().Elements.Single(element => element.ElementId == id);
     private static string Pair(double? x, double? y) => x.HasValue && y.HasValue ? $"{x:0.###} / {y:0.###}" : "–";
+    private static PdfBox InspectorBox(PdfElementDefinition definition, PdfElementLayoutState state) => new(
+        state.X ?? definition.BaselineLayout.X,
+        state.Y ?? definition.BaselineLayout.Y,
+        state.Width ?? definition.BaselineLayout.Width,
+        state.Height ?? definition.BaselineLayout.Height,
+        state.TextOffsetX ?? definition.BaselineLayout.TextOffsetX,
+        state.TextOffsetY ?? definition.BaselineLayout.TextOffsetY,
+        state.FontSize ?? definition.BaselineLayout.FontSize,
+        state.TextAlignment ?? definition.BaselineLayout.TextAlignment,
+        state.LineSpacing ?? definition.BaselineLayout.LineSpacing,
+        state.Visible ?? definition.BaselineLayout.Visible);
+    internal static PdfBox InspectorBoxForDiagnostic(PdfElementDefinition definition, PdfElementLayoutState state) => InspectorBox(definition, state);
+    private double InspectorHorizontalPosition(PdfElementDefinition definition, PdfElementLayoutState state) =>
+        InspectorHorizontalPositionForDiagnostic(definition, state, runtimeBounds);
+    internal static double InspectorHorizontalPositionForDiagnostic(PdfElementDefinition definition, PdfElementLayoutState state,
+        IEnumerable<ElectronPdfRenderBound> measuredBounds) =>
+        definition.Kind == PdfElementKind.TableColumn
+            ? measuredBounds.FirstOrDefault(bound => bound.ElementId == definition.ElementId && bound.Part == "track")?.Box.X
+                ?? InspectorBox(definition, state).X
+            : InspectorBox(definition, state).X;
+    internal static bool HasTableOverviewForDiagnostic(PdfElementDefinition? definition, int columnCount) =>
+        definition?.Kind is PdfElementKind.Table or PdfElementKind.TableColumn && columnCount > 0;
+    internal static bool CanUseDirectWidthModeForDiagnostic(PdfElementDefinition? definition) =>
+        definition?.Kind != PdfElementKind.TableColumn && definition?.Capabilities.HasFlag(PdfCapability.Width) == true;
+    private static PdfBox? UnionBoxes(IEnumerable<PdfBox> boxes)
+    {
+        var values = boxes.ToArray();
+        if (values.Length == 0) return null;
+        var left = values.Min(box => box.X);
+        var top = values.Min(box => box.Y);
+        var right = values.Max(box => box.X + box.Width);
+        var bottom = values.Max(box => box.Y + box.Height);
+        return new(left, top, right - left, bottom - top);
+    }
+    internal static PdfBox? UnionBoxesForDiagnostic(IEnumerable<PdfBox> boxes) => UnionBoxes(boxes);
     private string CreateTableInfo()
     {
         var table = selected?.Kind == PdfElementKind.Table ? selected : selected?.Kind == PdfElementKind.TableColumn
             ? registry.FindById(selected.ParentId ?? string.Empty) : registry.Entries.FirstOrDefault(element => element.Kind == PdfElementKind.Table);
         if (table is null) return "Keine Tabelle registriert";
         var columns = registry.Entries.Where(element => element.Kind == PdfElementKind.TableColumn && element.ParentId == table.ElementId).ToArray();
-        return $"Tabellenbreite {State(table.ElementId).Width:0.###} mm · Spaltensumme {columns.Sum(column => State(column.ElementId).Width ?? 0):0.###} mm · Mindestbreite 5 mm";
+        var prefix = selected?.Kind == PdfElementKind.TableColumn
+            ? $"{table.Name} · aktuelle Spaltenbreite {(State(selected.ElementId).Width ?? selected.BaselineLayout.Width):0.###} mm · "
+            : string.Empty;
+        return $"{prefix}Tabellenbreite {State(table.ElementId).Width:0.###} mm · Spaltensumme {columns.Sum(column => State(column.ElementId).Width ?? column.BaselineLayout.Width):0.###} mm · Mindestbreite 5 mm";
     }
     private PdfElementDefinition? CurrentTable() => selected?.Kind == PdfElementKind.Table ? selected : selected?.Kind == PdfElementKind.TableColumn
         ? registry.FindById(selected.ParentId ?? string.Empty) : null;
@@ -670,7 +724,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private void RaiseAll()
     {
         OnPropertyChanged(nameof(CanUndo));
-        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Size), nameof(TextPosition), nameof(FontSize), nameof(StepLabel), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(HasTableOverview), nameof(TableEditorTitle), nameof(CanMoveTableBoundary), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
+        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Width), nameof(Height), nameof(TextPosition), nameof(FontSize), nameof(StepLabel), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(HasTableOverview), nameof(TableEditorTitle), nameof(CanMoveTableBoundary), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(HasElementModes), nameof(HasTextModes), nameof(HasDirectModes), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
         RaiseCommandStates();
     }
     private void RaiseCommandStates()

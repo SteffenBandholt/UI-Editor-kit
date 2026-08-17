@@ -1,8 +1,22 @@
 # STATUS - UI-Editor-kit
 
+### K17.9 - Atomarer Tabellen-Restore und konkrete Hostablehnung
+
+- Status: `[A]`; der appneutrale native PDF-Sitzungsweg stellt Tabellen mit `adjacentPreserveTotal` ueber atomare Grenzoperationen wieder her, statt zwischenzeitlich ungueltige Einzelbreiten an den Host zu senden. Undo der realen BBM-Teilnehmergrenze ist damit erfolgreich und lueckenlos.
+- Eine einzelne abgelehnte Hostoperation reicht nach erfolgreichem Rollback ihren konkreten Fehlercode und ihre Meldung unveraendert an die Bedienoberflaeche weiter. Echte Mehrfachbatches behalten die zusammengefasste Batchfehlermeldung.
+- Native BBM-Abnahme: 72/18 mm -> 73/17 mm -> Undo 72/18 mm -> 71/19 mm; Save und zweiter Start stellen 71/19 mm wieder her. Der Versuch 186 -> 187 mm wurde ohne Teilzustand mit der konkreten Seitenrandmeldung abgewiesen. Gezielte M76-Regressionen 14/14 gruen. Commit und Push: keiner.
+
 > **VERBINDLICHE PRODUKTGRENZE**
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
+### K17.8 – PDF-Tabellenspalte als vollständige Bedieneinheit
+
+- Status: `[A]`; native Bedienlogik, BBM-Rendererwirkung, Persistenz und sichtbare Zwei-Start-Abnahme abgeschlossen.
+- Der appneutrale Vertrag unterstützt weiterhin capability-gesteuerte `TableColumn`-Zustände. In der nativen PDF-Bedienung wird eine ausgewählte `TableColumn` horizontal jedoch nicht als frei verschiebbares Rechteck und nicht über einen direkten Breitenmodus behandelt: Sie öffnet die vorhandene Tabellenübersicht und bedient innere Grenzen ausschließlich über `resizeColumnBoundary` mit `adjacentPreserveTotal`. `resizeWidth` bleibt für Zustand, Restore und den atomaren Grenzablauf verfügbar.
+- Der Auswahlrahmen vereinigt alle vom Host gemeldeten Bounds einer Spalte. Reine Überschriftenziele wechseln automatisch auf die Textebene; capability-fremde Ebenen, Modi und Eigenschaftsgruppen werden nicht angezeigt.
+- Sichtbare BBM-Abnahme: Baseline `Gegenstand 120,9 / Meta 40,92 mm`; Grenze `+1 mm` ergibt `121,9 / 39,92 mm`, Undo die Baseline und Grenze `−1 mm` `119,9 / 41,92 mm`. Tabellensumme und Außenkanten bleiben fest, Kopf und Zellen lückenlos. Save und separater zweiter Programmstart stellen `119,9 / 41,92 mm` exakt wieder her; die echte zweiseitige PDF verwendet dieselben Tracks.
+- Grün: gezielte K17-/M87-Regressionen, M81 und M85 mit allen 47 Golden-Fixtures sowie reale Zwei-Start-Abnahme. Der zu hohe Auswahlrahmen beziehungsweise die vertikale Abweichung `Registry-y = 91 mm` gegenüber realem DOM-y bleibt als getrennter Readback-/Overlaypunkt offen. Der vollständige `npm test` bleibt an der paketfremden vorhandenen Public-API-Erwartung für `normalizeTableColumnRuntimeMetrics` und `validateTableColumnRuntimeMetrics` rot; die betroffene Erwartungsdatei wurde nicht geändert. Commit und Push: keiner.
 
 ## 1. Zweck
 

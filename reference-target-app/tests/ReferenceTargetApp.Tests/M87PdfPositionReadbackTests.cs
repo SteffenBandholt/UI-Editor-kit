@@ -2,6 +2,7 @@ using System.IO;
 using ReferenceTargetApp.EditorIntegration.Electron;
 using ReferenceTargetApp.EditorIntegration.Pdf;
 using ReferenceTargetApp.EditorIntegration.Persistence;
+using ReferenceTargetApp.UI.ViewModels;
 
 namespace ReferenceTargetApp.Tests;
 
@@ -9,6 +10,68 @@ namespace ReferenceTargetApp.Tests;
 [DoNotParallelize]
 public sealed class M87PdfPositionReadbackTests
 {
+    [TestMethod]
+    public void InspectorShowsRegisteredGeometryEvenWhenAValueIsNotEditable()
+    {
+        var registry = PdfOrderDocumentRegistryFactory.Create();
+        var column = registry.FindById(PdfRegistryIds.TotalPriceColumn)!;
+        var state = new PdfHostAdapter(registry).GetCurrentLayoutState().Elements
+            .Single(element => element.ElementId == column.ElementId);
+
+        Assert.IsNull(state.X);
+        Assert.IsNull(state.Height);
+        var inspected = PdfEditorWorkspaceViewModel.InspectorBoxForDiagnostic(column, state);
+        Assert.AreEqual(column.BaselineLayout.X, inspected.X, 0.001);
+        Assert.AreEqual(column.BaselineLayout.Width, inspected.Width, 0.001);
+        Assert.AreEqual(column.BaselineLayout.Height, inspected.Height, 0.001);
+    }
+
+    [TestMethod]
+    public void WholeColumnOverlayUnitesHeadingAndAllCellBounds()
+    {
+        var union = PdfEditorWorkspaceViewModel.UnionBoxesForDiagnostic([
+            new PdfBox(157, 91, 41, 8),
+            new PdfBox(157, 99, 41, 18),
+            new PdfBox(157, 117, 41, 20),
+        ]);
+
+        Assert.IsNotNull(union);
+        Assert.AreEqual(157, union.X, 0.001);
+        Assert.AreEqual(91, union.Y, 0.001);
+        Assert.AreEqual(41, union.Width, 0.001);
+        Assert.AreEqual(46, union.Height, 0.001);
+    }
+
+    [TestMethod]
+    public void TableColumnSelectionUsesBoundaryOverviewInsteadOfDirectWidthMode()
+    {
+        var registry = PdfOrderDocumentRegistryFactory.Create();
+        var table = registry.FindById(PdfRegistryIds.Table)!;
+        var column = registry.FindById(PdfRegistryIds.TotalPriceColumn)!;
+
+        Assert.IsTrue(PdfEditorWorkspaceViewModel.HasTableOverviewForDiagnostic(column, PdfRegistryIds.Columns.Count));
+        Assert.IsTrue(PdfEditorWorkspaceViewModel.HasTableOverviewForDiagnostic(table, PdfRegistryIds.Columns.Count));
+        Assert.IsFalse(PdfEditorWorkspaceViewModel.CanUseDirectWidthModeForDiagnostic(column));
+        Assert.IsTrue(PdfEditorWorkspaceViewModel.CanUseDirectWidthModeForDiagnostic(table));
+    }
+
+    [TestMethod]
+    public void TableColumnInspectorUsesHorizontalTrackReadbackButKeepsRegisteredVerticalValue()
+    {
+        var registry = PdfOrderDocumentRegistryFactory.Create();
+        var column = registry.FindById(PdfRegistryIds.TotalPriceColumn)!;
+        var state = new PdfHostAdapter(registry).GetCurrentLayoutState().Elements
+            .Single(element => element.ElementId == column.ElementId);
+        var measured = new ElectronPdfRenderBound(column.ElementId, 1,
+            new PdfBox(column.BaselineLayout.X + 1, column.BaselineLayout.Y - 12, column.BaselineLayout.Width - 1, column.BaselineLayout.Height),
+            Part: "track");
+
+        Assert.AreEqual(column.BaselineLayout.X + 1,
+            PdfEditorWorkspaceViewModel.InspectorHorizontalPositionForDiagnostic(column, state, [measured]), 0.001);
+        Assert.AreEqual(column.BaselineLayout.Y,
+            PdfEditorWorkspaceViewModel.InspectorBoxForDiagnostic(column, state).Y, 0.001);
+    }
+
     [TestMethod]
     public void ElectronMoveReadbackRequiresMatchingIdentityPreviousStateAndRequestedCoordinates()
     {

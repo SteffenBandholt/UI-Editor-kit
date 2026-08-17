@@ -12,6 +12,29 @@ namespace ReferenceTargetApp.Tests;
 public sealed class M76PdfModelTests
 {
     [TestMethod]
+    public void TableColumnRegistryAllowsWholeUnitPositionWidthAndVisibility()
+    {
+        var registry = PdfOrderDocumentRegistryFactory.Create();
+        var capabilities = PdfCapability.Position | PdfCapability.Width | PdfCapability.Visibility;
+        var operations = new[] { PdfLayoutOperations.Inspect, PdfLayoutOperations.Move, PdfLayoutOperations.ResizeWidth, PdfLayoutOperations.SetVisibility };
+        var entries = registry.Entries.Select(entry => entry.ElementId == PdfRegistryIds.TotalPriceColumn
+            ? entry with
+            {
+                Capabilities = capabilities,
+                AllowedOperations = operations,
+                LockedOperations = entry.LockedOperations.Except(operations, StringComparer.Ordinal).ToArray(),
+            }
+            : entry).ToArray();
+        var document = registry.Document;
+        var candidate = new PdfDocumentDefinition(document.DocumentId, document.ApplicationId, document.DocumentType,
+            document.PageFormat, document.Orientation, document.Unit, document.Margins, document.DefaultFont,
+            document.PageTemplate, entries);
+
+        var validation = PdfRegistryValidator.Validate(candidate);
+        Assert.IsTrue(validation.Success, string.Join("; ", validation.Errors.Select(error => $"{error.ElementId}: {error.Message}")));
+    }
+
+    [TestMethod]
     public void RegistryIsNeutralCompleteAndCapabilitySafe()
     {
         var registry = PdfOrderDocumentRegistryFactory.Create();
@@ -91,6 +114,7 @@ public sealed class M76PdfModelTests
         {
             var adapter = new PdfHostAdapter(PdfOrderDocumentRegistryFactory.Create());
             var session = new PdfLayoutSession(adapter, new AtomicJsonPdfLayoutProfileStore(root));
+            var before = adapter.GetCurrentLayoutState();
             var beforeTotal = PdfRegistryIds.Columns.Sum(id => State(adapter, id).Width!.Value);
             var result = await session.ApplyBatchAsync([Request(PdfRegistryIds.Table, PdfLayoutOperations.ResizeColumnBoundary,
                 new() { ["table"] = new Dictionary<string, object?>
@@ -104,6 +128,10 @@ public sealed class M76PdfModelTests
             Assert.AreEqual(13, State(adapter, PdfRegistryIds.QuantityColumn).Width!.Value, 0.001);
             Assert.AreEqual(beforeTotal, PdfRegistryIds.Columns.Sum(id => State(adapter, id).Width!.Value), 0.001);
             Assert.IsTrue(session.CanUndo);
+            var undoRequests = PdfLayoutSession.CreateRequests(adapter.GetCurrentLayoutState(), before, "pdf-undo", adapter.GetRegistry());
+            Assert.HasCount(1, undoRequests);
+            Assert.AreEqual(PdfLayoutOperations.ResizeColumnBoundary, undoRequests[0].Operation);
+            Assert.AreEqual(PdfRegistryIds.Table, undoRequests[0].ElementId);
             Assert.IsTrue((await session.UndoAsync()).Success);
             Assert.AreEqual(70, State(adapter, PdfRegistryIds.DescriptionColumn).Width!.Value, 0.001);
             Assert.AreEqual(18, State(adapter, PdfRegistryIds.QuantityColumn).Width!.Value, 0.001);
@@ -297,6 +325,24 @@ public sealed class M76PdfModelTests
             Assert.AreEqual(PdfErrorCodes.BatchFailed, result.Code);
             Assert.IsTrue(result.RollbackSucceeded);
             Assert.IsTrue(Equivalent(before, inner.GetCurrentLayoutState()));
+        }
+        finally { Delete(root); }
+    }
+
+    [TestMethod]
+    public async Task SingleRejectedPdfRequestPreservesConcreteHostError()
+    {
+        var root = NewRoot();
+        try
+        {
+            var adapter = new PdfHostAdapter(PdfOrderDocumentRegistryFactory.Create());
+            var session = new PdfLayoutSession(adapter, new AtomicJsonPdfLayoutProfileStore(root));
+            var result = await session.ApplyBatchAsync([
+                Request(PdfRegistryIds.DescriptionColumn, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 90d })
+            ]);
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(PdfErrorCodes.InvalidTableWidth, result.Code);
+            Assert.AreEqual("Spaltensumme überschreitet die Tabellenbreite.", result.Message);
         }
         finally { Delete(root); }
     }
