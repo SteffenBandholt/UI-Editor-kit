@@ -1,14 +1,21 @@
 # STATUS - UI-Editor-kit
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
 ### K17.9 - Atomarer Tabellen-Restore und konkrete Hostablehnung
 
 - Status: `[A]`; der appneutrale native PDF-Sitzungsweg stellt Tabellen mit `adjacentPreserveTotal` ueber atomare Grenzoperationen wieder her, statt zwischenzeitlich ungueltige Einzelbreiten an den Host zu senden. Undo der realen BBM-Teilnehmergrenze ist damit erfolgreich und lueckenlos.
 - Eine einzelne abgelehnte Hostoperation reicht nach erfolgreichem Rollback ihren konkreten Fehlercode und ihre Meldung unveraendert an die Bedienoberflaeche weiter. Echte Mehrfachbatches behalten die zusammengefasste Batchfehlermeldung.
 - Native BBM-Abnahme: 72/18 mm -> 73/17 mm -> Undo 72/18 mm -> 71/19 mm; Save und zweiter Start stellen 71/19 mm wieder her. Der Versuch 186 -> 187 mm wurde ohne Teilzustand mit der konkreten Seitenrandmeldung abgewiesen. Gezielte M76-Regressionen 14/14 gruen. Commit und Push: keiner.
 
-> **VERBINDLICHE PRODUKTGRENZE**
->
-> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+### K17.11 - Seitenbezogener PDF-TableColumn-Readback
+
+- Status: `[A]`; der native PDF-Arbeitsbereich verwendet fuer eine ausgewaehlte `TableColumn` eine gemeinsame beobachtete Rendererbox fuer Inspector und Overlay. Die Registry-Baseline bleibt unveraendert Layout-/Resetquelle.
+- Ursache: Der Electron-Adapter uebertrug die realen mehrseitigen Bounds vollstaendig, der Inspector las aber nur `x` aus einem `track` und nahm `y`, Breite und Hoehe aus LayoutState/Registry. Das Overlay arbeitete getrennt mit einer Bounds-Union.
+- Der appneutrale Readback bevorzugt nun den positiven Track der ausgewaehlten Seite und faellt ohne Track auf die Union aus Kopf und Datenzellen derselben Seite zurueck. Seitenwechsel benachrichtigen Position, Breite und Hoehe gemeinsam. Frische Render-Metadaten aktualisieren zugleich die bestehende Tabellenuebersicht. Andere Elementarten bleiben unveraendert.
+- Native M87-Regressionen belegen vollstaendige Trackwerte, seitenbezogene Auswahl und den Kopf-/Zellen-Fallback; ReferenceTargetApp 141/141 gruen. Reale BBM-Abnahme mit vier Seiten, Grenzschritt und Undo gruen. Kein Commit und kein Push.
 
 ### K17.8 – PDF-Tabellenspalte als vollständige Bedieneinheit
 

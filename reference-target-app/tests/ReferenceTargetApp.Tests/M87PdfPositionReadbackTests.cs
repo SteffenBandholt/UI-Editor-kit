@@ -56,20 +56,47 @@ public sealed class M87PdfPositionReadbackTests
     }
 
     [TestMethod]
-    public void TableColumnInspectorUsesHorizontalTrackReadbackButKeepsRegisteredVerticalValue()
+    public void TableColumnInspectorUsesCompleteTrackReadbackForSelectedPage()
     {
         var registry = PdfOrderDocumentRegistryFactory.Create();
         var column = registry.FindById(PdfRegistryIds.TotalPriceColumn)!;
         var state = new PdfHostAdapter(registry).GetCurrentLayoutState().Elements
             .Single(element => element.ElementId == column.ElementId);
-        var measured = new ElectronPdfRenderBound(column.ElementId, 1,
-            new PdfBox(column.BaselineLayout.X + 1, column.BaselineLayout.Y - 12, column.BaselineLayout.Width - 1, column.BaselineLayout.Height),
+        var firstPage = new ElectronPdfRenderBound(column.ElementId, 1,
+            new PdfBox(column.BaselineLayout.X + 1, column.BaselineLayout.Y - 12, column.BaselineLayout.Width - 1, 185.91),
+            Part: "track");
+        var secondPage = new ElectronPdfRenderBound(column.ElementId, 2,
+            new PdfBox(column.BaselineLayout.X + 1, 22.301, column.BaselineLayout.Width - 1, 154.585),
             Part: "track");
 
-        Assert.AreEqual(column.BaselineLayout.X + 1,
-            PdfEditorWorkspaceViewModel.InspectorHorizontalPositionForDiagnostic(column, state, [measured]), 0.001);
-        Assert.AreEqual(column.BaselineLayout.Y,
-            PdfEditorWorkspaceViewModel.InspectorBoxForDiagnostic(column, state).Y, 0.001);
+        var inspected = PdfEditorWorkspaceViewModel.InspectorDisplayBoxForDiagnostic(column, state, [firstPage, secondPage], 1);
+
+        Assert.AreEqual(firstPage.Box.X, inspected.X, 0.001);
+        Assert.AreEqual(firstPage.Box.Y, inspected.Y, 0.001);
+        Assert.AreEqual(firstPage.Box.Width, inspected.Width, 0.001);
+        Assert.AreEqual(firstPage.Box.Height, inspected.Height, 0.001);
+    }
+
+    [TestMethod]
+    public void TableColumnReadbackIsPageRelativeAndFallsBackToVisibleHeaderAndCells()
+    {
+        const string elementId = "pdf.table.column.meta";
+        ElectronPdfRenderBound[] measured = [
+            new(elementId, 1, new PdfBox(157.08, 79, 40.92, 14.8), Part: "header"),
+            new(elementId, 1, new PdfBox(157.08, 93.8, 40.92, 20), Part: "data"),
+            new(elementId, 2, new PdfBox(157.08, 22.3, 40.92, 14.8), Part: "header"),
+            new(elementId, 2, new PdfBox(157.08, 37.1, 40.92, 30), Part: "data"),
+        ];
+
+        var firstPage = PdfEditorWorkspaceViewModel.TableColumnReadbackBox(elementId, 1, measured);
+        var secondPage = PdfEditorWorkspaceViewModel.TableColumnReadbackBox(elementId, 2, measured);
+
+        Assert.IsNotNull(firstPage);
+        Assert.AreEqual(79, firstPage.Y, 0.001);
+        Assert.AreEqual(34.8, firstPage.Height, 0.001);
+        Assert.IsNotNull(secondPage);
+        Assert.AreEqual(22.3, secondPage.Y, 0.001);
+        Assert.AreEqual(44.8, secondPage.Height, 0.001);
     }
 
     [TestMethod]

@@ -176,10 +176,10 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public string SelectedCapabilities => selected?.Capabilities.ToString() ?? "None";
     public string SelectedPageText => SelectedPage is null ? "Seitentemplate" : $"Seite {SelectedPage.PageNumber}";
     public string Position => selected is { } definition && Current is { } value
-        ? Pair(InspectorHorizontalPosition(definition, value), InspectorBox(definition, value).Y) + " mm"
+        ? Pair(InspectorDisplayBox(definition, value).X, InspectorDisplayBox(definition, value).Y) + " mm"
         : "–";
-    public string Width => selected is { } definition && Current is { } value ? InspectorBox(definition, value).Width.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
-    public string Height => selected is { } definition && Current is { } value ? InspectorBox(definition, value).Height.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
+    public string Width => selected is { } definition && Current is { } value ? InspectorDisplayBox(definition, value).Width.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
+    public string Height => selected is { } definition && Current is { } value ? InspectorDisplayBox(definition, value).Height.ToString("0.###", CultureInfo.CurrentCulture) + " mm" : "–";
     public string TextPosition => Current is { } value ? Pair(value.TextOffsetX, value.TextOffsetY) + " mm" : "–";
     public string FontSize => Current?.FontSize is double value ? value.ToString("0.###", CultureInfo.CurrentCulture) + " pt" : "–";
     public string StepLabel => mode == "fontSize" ? "Schrittweite (pt)" : "Schrittweite (mm)";
@@ -221,7 +221,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         ? ((current.Visible ?? definition.BaselineLayout.Visible ?? true) ? "sichtbar" : "ausgeblendet")
         : "–";
     public string StepText { get => stepText; set { if (Set(ref stepText, value)) ValidateStep(); } }
-    public PdfPageViewModel? SelectedPage { get => selectedPage; set { if (Set(ref selectedPage, value)) { OnPropertyChanged(nameof(SelectedPageText)); UpdateOverlay(lastViewportWidth, lastViewportHeight); } } }
+    public PdfPageViewModel? SelectedPage { get => selectedPage; set { if (Set(ref selectedPage, value)) { OnPropertyChanged(nameof(SelectedPageText)); OnPropertyChanged(nameof(Position)); OnPropertyChanged(nameof(Width)); OnPropertyChanged(nameof(Height)); UpdateOverlay(lastViewportWidth, lastViewportHeight); } } }
     public BitmapSource? SelectedPageImage => SelectedPage?.Image;
     public bool HasOverlay => overlayWidth > 0 && overlayHeight > 0;
     public double OverlayLeft { get => overlayLeft; private set => Set(ref overlayLeft, value); }
@@ -287,8 +287,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         lastViewportHeight = height;
         var selectedBounds = SelectedPage is null ? [] : bounds
             .Where(item => item.PageNumber == SelectedPage.PageNumber && item.ElementId == SelectedId).ToArray();
-        var box = selected?.Kind == PdfElementKind.TableColumn
-            ? UnionBoxes(selectedBounds.Select(item => item.Box))
+        var box = selected?.Kind == PdfElementKind.TableColumn && SelectedPage is not null
+            ? TableColumnReadbackBox(selected.ElementId, SelectedPage.PageNumber, runtimeBounds)
             : selectedBounds.OrderBy(item => item.Box.Width * item.Box.Height).FirstOrDefault()?.Box;
         if (box is null) { OverlayWidth = OverlayHeight = 0; return; }
         var mapped = PdfPreviewCoordinateMapper.ToViewport(box, width, height);
@@ -593,14 +593,13 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         state.LineSpacing ?? definition.BaselineLayout.LineSpacing,
         state.Visible ?? definition.BaselineLayout.Visible);
     internal static PdfBox InspectorBoxForDiagnostic(PdfElementDefinition definition, PdfElementLayoutState state) => InspectorBox(definition, state);
-    private double InspectorHorizontalPosition(PdfElementDefinition definition, PdfElementLayoutState state) =>
-        InspectorHorizontalPositionForDiagnostic(definition, state, runtimeBounds);
-    internal static double InspectorHorizontalPositionForDiagnostic(PdfElementDefinition definition, PdfElementLayoutState state,
-        IEnumerable<ElectronPdfRenderBound> measuredBounds) =>
-        definition.Kind == PdfElementKind.TableColumn
-            ? measuredBounds.FirstOrDefault(bound => bound.ElementId == definition.ElementId && bound.Part == "track")?.Box.X
-                ?? InspectorBox(definition, state).X
-            : InspectorBox(definition, state).X;
+    private PdfBox InspectorDisplayBox(PdfElementDefinition definition, PdfElementLayoutState state) =>
+        InspectorDisplayBoxForDiagnostic(definition, state, runtimeBounds, SelectedPage?.PageNumber);
+    internal static PdfBox InspectorDisplayBoxForDiagnostic(PdfElementDefinition definition, PdfElementLayoutState state,
+        IEnumerable<ElectronPdfRenderBound> measuredBounds, int? pageNumber) =>
+        definition.Kind == PdfElementKind.TableColumn && pageNumber.HasValue
+            ? TableColumnReadbackBox(definition.ElementId, pageNumber.Value, measuredBounds) ?? InspectorBox(definition, state)
+            : InspectorBox(definition, state);
     internal static bool HasTableOverviewForDiagnostic(PdfElementDefinition? definition, int columnCount) =>
         definition?.Kind is PdfElementKind.Table or PdfElementKind.TableColumn && columnCount > 0;
     internal static bool CanUseDirectWidthModeForDiagnostic(PdfElementDefinition? definition) =>
@@ -616,6 +615,15 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         return new(left, top, right - left, bottom - top);
     }
     internal static PdfBox? UnionBoxesForDiagnostic(IEnumerable<PdfBox> boxes) => UnionBoxes(boxes);
+    internal static PdfBox? TableColumnReadbackBox(string elementId, int pageNumber,
+        IEnumerable<ElectronPdfRenderBound> measuredBounds)
+    {
+        var pageBounds = measuredBounds.Where(bound => bound.ElementId == elementId && bound.PageNumber == pageNumber &&
+            bound.Box.Width > 0 && bound.Box.Height > 0).ToArray();
+        var tracks = pageBounds.Where(bound => bound.Part == "track").Select(bound => bound.Box).ToArray();
+        if (tracks.Length > 0) return UnionBoxes(tracks);
+        return UnionBoxes(pageBounds.Where(bound => bound.Part is "header" or "data").Select(bound => bound.Box));
+    }
     private string CreateTableInfo()
     {
         var table = selected?.Kind == PdfElementKind.Table ? selected : selected?.Kind == PdfElementKind.TableColumn
@@ -705,6 +713,8 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
             registry.FindById(bound.ElementId)?.Editable == true)).ToArray();
         previewStale = metadata.Stale;
         OnPropertyChanged(nameof(OutputPath));
+        RefreshTableEditor();
+        RaiseAll();
     }
     private void ValidateStep()
     {
