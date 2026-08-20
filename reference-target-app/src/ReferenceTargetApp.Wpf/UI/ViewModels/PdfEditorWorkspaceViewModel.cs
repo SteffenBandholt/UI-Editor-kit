@@ -72,6 +72,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private string layer = "element";
     private string mode = "position";
     private string stepText = "1";
+    private string tableColumnWidthText = string.Empty;
     private double step = 1;
     private bool stepValid = true;
     private bool busy;
@@ -115,6 +116,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         SetModeCommand = new AsyncCommand(p => SetModeAsync(p as string), p => CanOperate && p is string);
         DirectionCommand = new AsyncCommand(p => ApplyDirectionAsync(p as string), p => CanDirection(p as string));
         PropertyCommand = new AsyncCommand(p => ApplyPropertyAsync(p as string), p => CanProperty(p as string));
+        ApplyTableColumnWidthCommand = new AsyncCommand(_ => ApplyTableColumnWidthTextAsync(), _ => CanApplyTableColumnWidth);
         MoveTableBoundaryCommand = new AsyncCommand(MoveTableBoundaryAsync, p => CanMoveTableBoundary && p is string);
         ResetTableCommand = new AsyncCommand(_ => ResetCurrentTableAsync(), _ => CanOperate && CurrentTable() is not null);
     }
@@ -144,10 +146,12 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public ICommand SetModeCommand { get; }
     public ICommand DirectionCommand { get; }
     public ICommand PropertyCommand { get; }
+    public ICommand ApplyTableColumnWidthCommand { get; }
     public ICommand MoveTableBoundaryCommand { get; }
     public ICommand ResetTableCommand { get; }
     public string ProfileId => PdfLayoutProfileDocumentValidator.ProfileId;
     public int RegistryElementCount => registry.Entries.Count;
+    public PdfPageDefinition PageDefinition => registry.Document.PageTemplate;
     public string OutputPath => outputPath;
     public bool IsBusy { get => busy; private set { if (Set(ref busy, value)) RaiseAll(); } }
     public bool CanOperate => !busy;
@@ -204,7 +208,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public bool TextPositionModeActive => mode == "textPosition";
     public bool FontSizeModeActive => mode == "fontSize";
     public bool CanPosition => selected?.Capabilities.HasFlag(PdfCapability.Position) == true;
-    public bool CanWidth => selected?.Kind != PdfElementKind.TableColumn && selected?.Capabilities.HasFlag(PdfCapability.Width) == true;
+    public bool CanWidth => selected?.Capabilities.HasFlag(PdfCapability.Width) == true;
     public bool CanHeight => selected?.Capabilities.HasFlag(PdfCapability.Height) == true;
     public bool CanTextPosition => selected?.Capabilities.HasFlag(PdfCapability.TextPosition) == true;
     public bool CanFontSize => selected?.Capabilities.HasFlag(PdfCapability.FontSize) == true;
@@ -221,18 +225,24 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         ? ((current.Visible ?? definition.BaselineLayout.Visible ?? true) ? "sichtbar" : "ausgeblendet")
         : "–";
     public string StepText { get => stepText; set { if (Set(ref stepText, value)) ValidateStep(); } }
+    public string TableColumnWidthText { get => tableColumnWidthText; set => Set(ref tableColumnWidthText, value); }
+    public bool CanApplyTableColumnWidth => CanOperate && selected?.Kind == PdfElementKind.TableColumn && CanWidth;
     public PdfPageViewModel? SelectedPage { get => selectedPage; set { if (Set(ref selectedPage, value)) { OnPropertyChanged(nameof(SelectedPageText)); OnPropertyChanged(nameof(Position)); OnPropertyChanged(nameof(Width)); OnPropertyChanged(nameof(Height)); UpdateOverlay(lastViewportWidth, lastViewportHeight); } } }
     public BitmapSource? SelectedPageImage => SelectedPage?.Image;
     public bool HasOverlay => overlayWidth > 0 && overlayHeight > 0;
-    public double OverlayLeft { get => overlayLeft; private set => Set(ref overlayLeft, value); }
+    public double OverlayLeft { get => overlayLeft; private set { if (Set(ref overlayLeft, value)) OnPropertyChanged(nameof(OverlayResizeHandleLeft)); } }
     public double OverlayTop { get => overlayTop; private set => Set(ref overlayTop, value); }
-    public double OverlayWidth { get => overlayWidth; private set { if (Set(ref overlayWidth, value)) OnPropertyChanged(nameof(HasOverlay)); } }
-    public double OverlayHeight { get => overlayHeight; private set { if (Set(ref overlayHeight, value)) OnPropertyChanged(nameof(HasOverlay)); } }
+    public double OverlayWidth { get => overlayWidth; private set { if (Set(ref overlayWidth, value)) { OnPropertyChanged(nameof(HasOverlay)); OnPropertyChanged(nameof(OverlayResizeHandleLeft)); OnPropertyChanged(nameof(HasColumnResizeHandle)); } } }
+    public double OverlayHeight { get => overlayHeight; private set { if (Set(ref overlayHeight, value)) { OnPropertyChanged(nameof(HasOverlay)); OnPropertyChanged(nameof(HasColumnResizeHandle)); } } }
+    public double OverlayResizeHandleLeft => Math.Max(0, OverlayLeft + OverlayWidth - 2.5);
+    public bool HasColumnResizeHandle => HasOverlay && CanApplyTableColumnWidth;
     internal IReadOnlyList<PdfRenderBound> RenderBounds => bounds;
     internal PdfLayoutSessionStatus LayoutStatus => session.GetStatus();
     internal Task SetLayerForDiagnosticAsync(string value) => SetLayerAsync(value);
     internal Task SetModeForDiagnosticAsync(string value) => SetModeAsync(value);
     internal Task ApplyDirectionForDiagnosticAsync(string value) => ApplyDirectionAsync(value);
+    internal Task ApplyTableColumnWidthForDiagnosticAsync() => ApplyTableColumnWidthTextAsync();
+    internal Task ApplyTableColumnDragForDiagnosticAsync(double width) => ApplyTableColumnWidthAsync(width, "Mausziehen");
     internal Task DiscardElementForDiagnosticAsync() => LayoutActionAsync(() => session.DiscardElementAsync(SelectedId, lifetimeToken), "PDF-Elementänderung verworfen.");
     internal Task DiscardAllForDiagnosticAsync() => LayoutActionAsync(() => session.DiscardAsync(lifetimeToken), "Alle PDF-Änderungen verworfen.");
     internal Task ResetElementForDiagnosticAsync() => LayoutActionAsync(() => session.ResetElementAsync(SelectedId, lifetimeToken), "PDF-Element zurückgesetzt.");
@@ -258,6 +268,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         var page = bounds.FirstOrDefault(bound => bound.ElementId == elementId)?.PageNumber;
         if (page.HasValue) SelectedPage = Pages.FirstOrDefault(item => item.PageNumber == page.Value) ?? SelectedPage;
         NormalizeMode();
+        SynchronizeTableColumnWidthText();
         RefreshTableEditor();
         StatusMessage = $"PDF-Element {selected.Name} ausgewählt.";
         RaiseAll();
@@ -274,7 +285,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     public void SelectAtPreview(double x, double y, double width, double height)
     {
         if (SelectedPage is null) return;
-        var point = PdfPreviewCoordinateMapper.ToPdf(x, y, width, height);
+        var point = PdfPreviewCoordinateMapper.ToPdf(PageDefinition, x, y, width, height);
         if (!point.Success) { StatusMessage = "Klick liegt außerhalb der PDF-Seite."; return; }
         var hit = PdfPreviewCoordinateMapper.HitTest(bounds, SelectedPage.PageNumber, point.X, point.Y);
         if (hit is null) { StatusMessage = "An dieser Stelle ist kein registriertes PDF-Element."; return; }
@@ -291,7 +302,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
             ? TableColumnReadbackBox(selected.ElementId, SelectedPage.PageNumber, runtimeBounds)
             : selectedBounds.OrderBy(item => item.Box.Width * item.Box.Height).FirstOrDefault()?.Box;
         if (box is null) { OverlayWidth = OverlayHeight = 0; return; }
-        var mapped = PdfPreviewCoordinateMapper.ToViewport(box, width, height);
+        var mapped = PdfPreviewCoordinateMapper.ToViewport(PageDefinition, box, width, height);
         OverlayLeft = mapped.Left; OverlayTop = mapped.Top; OverlayWidth = mapped.Width; OverlayHeight = mapped.Height;
     }
 
@@ -400,6 +411,61 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         if (table is null) return;
         await LayoutActionAsync(() => session.ResetTableAsync(table.ElementId, lifetimeToken),
             "Die vollständige PDF-Tabelle verwendet wieder ihr ursprüngliches Layout.");
+    }
+
+    private async Task ApplyTableColumnWidthTextAsync()
+    {
+        if (!CanApplyTableColumnWidth) return;
+        if (!TryParseTableColumnWidth(TableColumnWidthText, out var width))
+        {
+            ShowError(PdfErrorCodes.InvalidNumber, "Breite muss eine endliche Zahl ab 0 mm sein, zum Beispiel 3,5.");
+            return;
+        }
+        await ApplyTableColumnWidthAsync(width, "Direkteingabe");
+    }
+
+    internal async Task ApplyTableColumnWidthAsync(double width, string source)
+    {
+        if (!CanApplyTableColumnWidth || !double.IsFinite(width) || width < 0)
+        {
+            ShowError(PdfErrorCodes.InvalidNumber, "Breite muss endlich und mindestens 0 mm sein.");
+            UpdateOverlay(lastViewportWidth, lastViewportHeight);
+            return;
+        }
+        var definition = selected!;
+        var request = new PdfChangeRequest(Guid.NewGuid().ToString("N"), definition.ElementId, PdfLayoutOperations.ResizeWidth,
+            new Dictionary<string, object?> { ["width"] = width }, DateTimeOffset.UtcNow, "native-pdf-editor", registry.Document.DocumentId);
+        var recommended = definition.LayoutBounds is { } limits &&
+            (width < limits.MinWidth - 0.000001 || width > limits.MaxWidth + 0.000001)
+            ? " Der Wert liegt außerhalb der registrierten Empfehlung, wurde aber bewusst angewandt."
+            : string.Empty;
+        await LayoutActionAsync(() => session.ApplyBatchAsync([request], lifetimeToken),
+            $"{definition.Name}: Breite durch {source} exakt auf {width:G} mm gesetzt; Nachbarbreiten blieben unverändert.{recommended}");
+    }
+
+    internal void PreviewTableColumnWidthDrag(double width)
+    {
+        if (!CanApplyTableColumnWidth) return;
+        OverlayWidth = Math.Max(0, width);
+    }
+
+    internal static bool TryParseTableColumnWidth(string? text, out double width)
+    {
+        width = 0;
+        var normalized = text?.Trim().Replace(',', '.');
+        return !string.IsNullOrWhiteSpace(normalized) &&
+            double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out width) &&
+            double.IsFinite(width) && width >= 0;
+    }
+
+    internal static double TableColumnWidthFromDrag(double startWidth, double delta) =>
+        Math.Max(0, startWidth + delta);
+
+    private void SynchronizeTableColumnWidthText()
+    {
+        if (selected?.Kind == PdfElementKind.TableColumn)
+            TableColumnWidthText = (State(selected.ElementId).Width ?? selected.BaselineLayout.Width).ToString("0.###", CultureInfo.CurrentCulture);
+        else TableColumnWidthText = string.Empty;
     }
 
     private async Task ApplyDirectionAsync(string? direction)
@@ -603,7 +669,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     internal static bool HasTableOverviewForDiagnostic(PdfElementDefinition? definition, int columnCount) =>
         definition?.Kind is PdfElementKind.Table or PdfElementKind.TableColumn && columnCount > 0;
     internal static bool CanUseDirectWidthModeForDiagnostic(PdfElementDefinition? definition) =>
-        definition?.Kind != PdfElementKind.TableColumn && definition?.Capabilities.HasFlag(PdfCapability.Width) == true;
+        definition?.Capabilities.HasFlag(PdfCapability.Width) == true;
     private static PdfBox? UnionBoxes(IEnumerable<PdfBox> boxes)
     {
         var values = boxes.ToArray();
@@ -633,7 +699,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         var prefix = selected?.Kind == PdfElementKind.TableColumn
             ? $"{table.Name} · aktuelle Spaltenbreite {(State(selected.ElementId).Width ?? selected.BaselineLayout.Width):0.###} mm · "
             : string.Empty;
-        return $"{prefix}Tabellenbreite {State(table.ElementId).Width:0.###} mm · Spaltensumme {columns.Sum(column => State(column.ElementId).Width ?? column.BaselineLayout.Width):0.###} mm · Mindestbreite 5 mm";
+        return $"{prefix}registrierte Tabellenbreite {State(table.ElementId).Width:0.###} mm · aktuelle Spaltensumme {columns.Sum(column => State(column.ElementId).Width ?? column.BaselineLayout.Width):0.###} mm · Min/Max sind Empfehlungen für direkte Spaltenbreiten";
     }
     private PdfElementDefinition? CurrentTable() => selected?.Kind == PdfElementKind.Table ? selected : selected?.Kind == PdfElementKind.TableColumn
         ? registry.FindById(selected.ParentId ?? string.Empty) : null;
@@ -723,7 +789,7 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
         if (stepValid) { step = value; ClearError(); } else ShowError(PdfErrorCodes.InvalidNumber, "Schrittweite muss positiv und endlich sein; letzter gültiger Wert bleibt aktiv.");
         RaiseAll();
     }
-    private void RefreshState() { RefreshTableEditor(); RaiseAll(); }
+    private void RefreshState() { SynchronizeTableColumnWidthText(); RefreshTableEditor(); RaiseAll(); }
     private void ClearError() { ErrorMessage = string.Empty; ErrorCode = string.Empty; TechnicalDetails = string.Empty; OnPropertyChanged(nameof(ErrorCodeDisplay)); OnPropertyChanged(nameof(HasTechnicalDetails)); }
     private void ShowError(string code, string message, string? hostDetails = null)
     {
@@ -734,13 +800,13 @@ internal sealed class PdfEditorWorkspaceViewModel : INotifyPropertyChanged, IPdf
     private void RaiseAll()
     {
         OnPropertyChanged(nameof(CanUndo));
-        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Width), nameof(Height), nameof(TextPosition), nameof(FontSize), nameof(StepLabel), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(HasTableOverview), nameof(TableEditorTitle), nameof(CanMoveTableBoundary), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(HasElementModes), nameof(HasTextModes), nameof(HasDirectModes), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
+        foreach (var name in new[] { nameof(CanOperate), nameof(IsDirty), nameof(CanDiscardElement), nameof(DirtyStatus), nameof(IsPreviewStale), nameof(PreviewStatus), nameof(SelectedId), nameof(SelectedName), nameof(SelectedKind), nameof(SelectedRole), nameof(SelectedParent), nameof(SelectedScope), nameof(SelectedArea), nameof(SelectedCapabilities), nameof(Position), nameof(Width), nameof(Height), nameof(TextPosition), nameof(FontSize), nameof(StepLabel), nameof(TextAlignment), nameof(LineSpacing), nameof(Visibility), nameof(TableInfo), nameof(HasTableOverview), nameof(TableEditorTitle), nameof(CanMoveTableBoundary), nameof(CanApplyTableColumnWidth), nameof(HasColumnResizeHandle), nameof(ElementLayerActive), nameof(TextLayerActive), nameof(PositionModeActive), nameof(WidthModeActive), nameof(HeightModeActive), nameof(TextPositionModeActive), nameof(FontSizeModeActive), nameof(CanPosition), nameof(CanWidth), nameof(CanHeight), nameof(CanTextPosition), nameof(CanFontSize), nameof(HasElementModes), nameof(HasTextModes), nameof(HasDirectModes), nameof(CanTextAlignment), nameof(CanLineSpacing), nameof(CanVisibility), nameof(CanPageMargins), nameof(SelectedPageImage) }) OnPropertyChanged(name);
         RaiseCommandStates();
     }
     private void RaiseCommandStates()
     {
         (UndoCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-        foreach (var command in new[] { SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, RenderCommand, RefreshPreviewCommand, SetLayerCommand, SetModeCommand, DirectionCommand, PropertyCommand, MoveTableBoundaryCommand, ResetTableCommand }) (command as AsyncCommand)?.RaiseCanExecuteChanged();
+        foreach (var command in new[] { SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, RenderCommand, RefreshPreviewCommand, SetLayerCommand, SetModeCommand, DirectionCommand, PropertyCommand, ApplyTableColumnWidthCommand, MoveTableBoundaryCommand, ResetTableCommand }) (command as AsyncCommand)?.RaiseCanExecuteChanged();
     }
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null) { if (EqualityComparer<T>.Default.Equals(field, value)) return false; field = value; OnPropertyChanged(name); return true; }
     private void OnPropertyChanged(string? name) => PropertyChanged?.Invoke(this, new(name));

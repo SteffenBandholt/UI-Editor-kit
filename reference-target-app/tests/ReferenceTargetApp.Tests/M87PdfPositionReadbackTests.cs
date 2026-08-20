@@ -43,7 +43,7 @@ public sealed class M87PdfPositionReadbackTests
     }
 
     [TestMethod]
-    public void TableColumnSelectionUsesBoundaryOverviewInsteadOfDirectWidthMode()
+    public void TableColumnSelectionKeepsBoundaryOverviewAndAlsoOffersDirectWidthMode()
     {
         var registry = PdfOrderDocumentRegistryFactory.Create();
         var table = registry.FindById(PdfRegistryIds.Table)!;
@@ -51,7 +51,7 @@ public sealed class M87PdfPositionReadbackTests
 
         Assert.IsTrue(PdfEditorWorkspaceViewModel.HasTableOverviewForDiagnostic(column, PdfRegistryIds.Columns.Count));
         Assert.IsTrue(PdfEditorWorkspaceViewModel.HasTableOverviewForDiagnostic(table, PdfRegistryIds.Columns.Count));
-        Assert.IsFalse(PdfEditorWorkspaceViewModel.CanUseDirectWidthModeForDiagnostic(column));
+        Assert.IsTrue(PdfEditorWorkspaceViewModel.CanUseDirectWidthModeForDiagnostic(column));
         Assert.IsTrue(PdfEditorWorkspaceViewModel.CanUseDirectWidthModeForDiagnostic(table));
     }
 

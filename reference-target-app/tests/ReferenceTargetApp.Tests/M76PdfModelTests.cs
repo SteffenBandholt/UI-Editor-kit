@@ -98,9 +98,9 @@ public sealed class M76PdfModelTests
         AssertRejected(adapter, Request(PdfRegistryIds.Title, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 0d }), PdfErrorCodes.InvalidNumber);
         AssertRejected(adapter, Request(PdfRegistryIds.Title, PdfLayoutOperations.Move, new() { ["x"] = 200d }), PdfErrorCodes.OutOfPageBounds);
         AssertRejected(adapter, Request(PdfRegistryIds.Title, PdfLayoutOperations.Move, new() { ["y"] = 70d }), PdfErrorCodes.InvalidPageZone);
-        AssertRejected(adapter, Request(PdfRegistryIds.DescriptionColumn, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 4d }), PdfErrorCodes.InvalidColumnWidth);
-        AssertRejected(adapter, Request(PdfRegistryIds.DescriptionColumn, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 90d }), PdfErrorCodes.InvalidTableWidth);
-        AssertRejected(adapter, Request(PdfRegistryIds.Table, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 170d }), PdfErrorCodes.InvalidTableWidth);
+        AssertSuccess(adapter, Request(PdfRegistryIds.DescriptionColumn, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 4d }));
+        AssertRejected(adapter, Request(PdfRegistryIds.DescriptionColumn, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 90d }), PdfErrorCodes.InvalidPageZone);
+        AssertRejected(adapter, Request(PdfRegistryIds.Table, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 100d }), PdfErrorCodes.InvalidTableWidth);
         AssertRejected(adapter, Request(PdfRegistryIds.Header, PdfLayoutOperations.ResizeHeight, new() { ["height"] = 30d }), PdfErrorCodes.InvalidPageZone);
         AssertRejected(adapter, Request(PdfRegistryIds.Title, PdfLayoutOperations.Move,
             new() { ["x"] = 123d, ["orderNumber"] = "changed" }), PdfErrorCodes.ProfileInvalid);
@@ -341,8 +341,8 @@ public sealed class M76PdfModelTests
                 Request(PdfRegistryIds.DescriptionColumn, PdfLayoutOperations.ResizeWidth, new() { ["width"] = 90d })
             ]);
             Assert.IsFalse(result.Success);
-            Assert.AreEqual(PdfErrorCodes.InvalidTableWidth, result.Code);
-            Assert.AreEqual("Spaltensumme überschreitet die Tabellenbreite.", result.Message);
+            Assert.AreEqual(PdfErrorCodes.InvalidPageZone, result.Code);
+            StringAssert.Contains(result.Message, "rechte Arbeitsbereichsgrenze");
         }
         finally { Delete(root); }
     }

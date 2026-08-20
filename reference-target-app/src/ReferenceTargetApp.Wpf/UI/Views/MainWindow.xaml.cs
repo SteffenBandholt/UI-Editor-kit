@@ -247,7 +247,7 @@ public partial class MainWindow : Window
         if (pdf.Pages.Count < 2 || pdf.SelectedPageImage is null || pdf.RenderBounds.Count != pdf.Pages.Count * 26) return 185;
         pdf.SelectElement(PdfRegistryIds.Title);
         var hit = pdf.RenderBounds.First(bound => bound.PageNumber == 1 && bound.ElementId == PdfRegistryIds.Title);
-        var mapped = ReferenceTargetApp.PdfPreview.PdfPreviewCoordinateMapper.ToViewport(hit.Box, 700, 700);
+        var mapped = ReferenceTargetApp.PdfPreview.PdfPreviewCoordinateMapper.ToViewport(pdf.PageDefinition, hit.Box, 700, 700);
         pdf.SelectAtPreview(mapped.Left + mapped.Width / 2, mapped.Top + mapped.Height / 2, 700, 700);
         if (pdf.SelectedId != PdfRegistryIds.Title) return 186;
         var pageCount = pdf.Pages.Count;

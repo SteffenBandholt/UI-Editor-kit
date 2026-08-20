@@ -79,8 +79,9 @@ Die sechs Tabellenspalten besitzen die Rollen `structureColumn`, `contentColumn`
 
 ## Tabellen-, Text- und Umbruchregeln
 
-- Tabellenbreite ist fest im LayoutState. Jede Spaltenbreite ist positiv und begrenzt.
-- Die Summe der Spaltenbreiten darf die Tabellenbreite nicht ueberschreiten. Kleinere Summen lassen einen expliziten freien Rest; es erfolgt keine automatische Umverteilung.
+- Die registrierte Tabellenbreite bleibt ein eigener Layoutwert. Eine direkte `TableColumn.resizeWidth`-Änderung verändert ausschließlich die gewählte Spalte; folgende Spalten verschieben sich, Nachbarbreiten werden nicht umverteilt.
+- Direkte Spaltenbreiten sind endlich und mindestens 0 mm. 0 mm blendet Track, Kopf, Daten und Lücke reversibel aus; Registry-ID und Profilwert bleiben erhalten. Registrierte Min-/Max-Werte sind dabei Empfehlungen. Die resultierende Spaltensumme darf wachsen oder schrumpfen, endet aber spätestens an der tatsächlichen rechten PDF-Arbeitsbereichsgrenze.
+- `resizeColumnBoundary` ist die getrennte konstant-summige Zwei-Nachbar-Operation und darf registrierte Min-/Max-Grenzen weiterhin verbindlich prüfen.
 - Text verwendet die zentral festgelegte Windows-Schrift Arial, einen deterministischen Breitenfaktor von 0,52 und Zeilenhoehe 1,2 mal Schriftgroesse. Ist Arial nicht aufloesbar, wird die Erzeugung strukturiert als `pdf_render_failed` abgewiesen; es gibt keinen geometrisch abweichenden stillen Fallback.
 - Umbruch erfolgt an Wortgrenzen; ein zu langes Einzelwort wird deterministisch in passende Segmente geteilt.
 - Tabellenkopf und Header/Footer werden auf jeder Seite wiederholt.

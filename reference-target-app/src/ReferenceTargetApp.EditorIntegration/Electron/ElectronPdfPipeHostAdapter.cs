@@ -59,7 +59,7 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
                 remote.AffectedStates?.Select(item => ToLocal(item, registry)).ToArray());
             if (result.Success)
             {
-                var readbackFailure = ValidateSuccessfulChangeReadback(request, result, before);
+                var readbackFailure = ValidateSuccessfulChangeReadback(request, result, before, registry);
                 if (readbackFailure is not null)
                 {
                     await RefreshStateFromTargetAsync(cancellationToken).ConfigureAwait(false);
@@ -145,7 +145,7 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
     }
 
     internal static PdfChangeResult? ValidateSuccessfulChangeReadback(
-        PdfChangeRequest request, PdfChangeResult result, PdfLayoutState before)
+        PdfChangeRequest request, PdfChangeResult result, PdfLayoutState before, PdfElementRegistry? registry = null)
     {
         if (!result.Success) return null;
         PdfChangeResult Failure(string detail) => new(false, request.ChangeId, request.ElementId, request.Operation,
@@ -175,6 +175,16 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
                 !Same(result.NewState.X, expectedX) || !Same(result.NewState.Y, expectedY))
                 return Failure("angewendete X-/Y-Position stimmt nicht mit dem Auftrag ueberein.");
         }
+        if (request.Operation == PdfLayoutOperations.ResizeWidth)
+        {
+            if (request.Payload is null || !RequestedNumber(request.Payload, "width", out var expectedWidth) || expectedWidth < 0 ||
+                !Same(result.NewState.Width, expectedWidth) || !Equivalent(result.PreviousState with { Width = expectedWidth }, result.NewState))
+                return Failure("angewendete Breite stimmt nicht mit dem Auftrag ueberein oder ein weiteres Feld wurde veraendert.");
+            if (registry?.FindById(request.ElementId)?.Kind == PdfElementKind.TableColumn &&
+                result.AffectedStates?.Any(affected => affected.ElementId != request.ElementId ||
+                    !Same(affected.Width, expectedWidth) || !Equivalent(result.NewState, affected)) == true)
+                return Failure("resizeWidth hat einen fremden Zustand oder eine abweichende Breite gemeldet.");
+        }
         return null;
     }
 
@@ -184,10 +194,26 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
         foreach (var element in current.Elements)
         {
             var definition = registry.FindById(element.ElementId);
-            if (definition is null || !definition.Capabilities.HasFlag(PdfCapability.Position) || element.Visible == false ||
-                !element.X.HasValue || !element.Y.HasValue ||
-                Same(element.X, definition.BaselineLayout.X) && Same(element.Y, definition.BaselineLayout.Y)) continue;
+            if (definition is null || element.Visible == false) continue;
             var bounds = metadata.RenderBounds.Where(bound => bound.ElementId == element.ElementId).ToArray();
+            if (definition.Kind == PdfElementKind.TableColumn && element.Width.HasValue &&
+                !Same(element.Width, definition.BaselineLayout.Width))
+            {
+                if (Math.Abs(element.Width.Value) <= 0.001)
+                {
+                    if (bounds.Any(bound => bound.Box.Width > 0.001))
+                        return $"Renderer-Readback fuer ausgeblendete Spalte {element.ElementId} ist noch sichtbar.";
+                }
+                else
+                {
+                    if (bounds.Length == 0)
+                        return $"Renderer-Readback fuer {element.ElementId} fehlt.";
+                    if (bounds.Any(bound => Math.Abs(bound.Box.Width - element.Width.Value) > 0.05))
+                        return $"Renderer-Readback fuer {element.ElementId} weicht von Breite {element.Width:G} mm ab.";
+                }
+            }
+            if (!definition.Capabilities.HasFlag(PdfCapability.Position) || !element.X.HasValue || !element.Y.HasValue ||
+                Same(element.X, definition.BaselineLayout.X) && Same(element.Y, definition.BaselineLayout.Y)) continue;
             if (bounds.Length == 0)
                 return $"Renderer-Readback fuer {element.ElementId} fehlt.";
             if (bounds.Any(bound => !Same(bound.AppliedX, element.X) || !Same(bound.AppliedY, element.Y)))

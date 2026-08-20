@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using ReferenceTargetApp.UI.Editor;
 using ReferenceTargetApp.UI.ViewModels;
@@ -12,6 +13,9 @@ public partial class EditorWindow : Window
     private readonly EditorWindowCoordinator lifecycle;
     private bool closeAllowed;
     private int pdfColumnMode;
+    private PdfEditorWorkspaceViewModel? pdfColumnDragViewModel;
+    private double pdfColumnDragStartX;
+    private double pdfColumnDragStartWidth;
 
     internal EditorWindow(EditorWindowViewModel viewModel, EditorWindowCoordinator lifecycle)
     {
@@ -83,6 +87,45 @@ public partial class EditorWindow : Window
     {
         if (DataContext is EditorWindowViewModel viewModel && viewModel.PdfBinding is PdfEditorWorkspaceViewModel pdf)
             pdf.UpdateOverlay(PdfPageSurface.Width, PdfPageSurface.Height);
+    }
+
+    private void PdfColumnResizeThumb_DragStarted(object sender, DragStartedEventArgs e)
+    {
+        if (DataContext is not EditorWindowViewModel viewModel || viewModel.PdfBinding is not PdfEditorWorkspaceViewModel pdf ||
+            !pdf.CanApplyTableColumnWidth || !PdfEditorWorkspaceViewModel.TryParseTableColumnWidth(pdf.TableColumnWidthText, out var width))
+        {
+            e.Handled = true;
+            return;
+        }
+        pdfColumnDragViewModel = pdf;
+        pdfColumnDragStartX = Mouse.GetPosition(PdfPageSurface).X;
+        pdfColumnDragStartWidth = width;
+        e.Handled = true;
+    }
+
+    private void PdfColumnResizeThumb_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (pdfColumnDragViewModel is null) return;
+        var delta = Mouse.GetPosition(PdfPageSurface).X - pdfColumnDragStartX;
+        pdfColumnDragViewModel.PreviewTableColumnWidthDrag(
+            PdfEditorWorkspaceViewModel.TableColumnWidthFromDrag(pdfColumnDragStartWidth, delta));
+        e.Handled = true;
+    }
+
+    private async void PdfColumnResizeThumb_DragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        var pdf = pdfColumnDragViewModel;
+        pdfColumnDragViewModel = null;
+        if (pdf is null) return;
+        if (e.Canceled)
+        {
+            pdf.UpdateOverlay(PdfPageSurface.Width, PdfPageSurface.Height);
+            return;
+        }
+        var delta = Mouse.GetPosition(PdfPageSurface).X - pdfColumnDragStartX;
+        var width = PdfEditorWorkspaceViewModel.TableColumnWidthFromDrag(pdfColumnDragStartWidth, delta);
+        await pdf.ApplyTableColumnWidthAsync(width, "Mausziehen an der rechten Spaltenkante");
+        e.Handled = true;
     }
 
     internal int UiColumnMode => CompactUiWorkspace.ColumnMode;

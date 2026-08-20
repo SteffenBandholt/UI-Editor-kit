@@ -99,7 +99,7 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
 
     public PdfElementRegistry GetRegistry() => registry;
 
-    public PdfLayoutState GetCurrentLayoutState() => new(PdfRegistryIds.Scope, DateTimeOffset.UtcNow,
+    public PdfLayoutState GetCurrentLayoutState() => new(registry.Document.DocumentId, DateTimeOffset.UtcNow,
         registry.Entries.OrderBy(element => element.StableOrder).Select(element => PdfLayoutStateFactory.FromBox(element, current[element.ElementId])).ToArray());
 
     public PdfChangeResult SubmitChangeRequest(PdfChangeRequest request)
@@ -109,7 +109,7 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
             return PdfChangeResult.Reject(request, PdfErrorCodes.ProfileInvalid, "PDF-Änderungsauftrag ist unvollständig.");
         var element = registry.FindById(request.ElementId);
         if (element is null) return PdfChangeResult.Reject(request, PdfErrorCodes.UnknownElement, "PDF-Element ist nicht registriert.");
-        if (request.ScopeId != PdfRegistryIds.Scope || element.ScopeId != request.ScopeId)
+        if (request.ScopeId != registry.Document.DocumentId || element.ScopeId != request.ScopeId)
             return PdfChangeResult.Reject(request, PdfErrorCodes.LayoutIncompatible, "PDF-Scope passt nicht zum Element.");
         if (request.Operation == PdfLayoutOperations.ResizeColumnBoundary)
             return ResizeColumnBoundary(request, element);
@@ -173,7 +173,7 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
         if (nextRight.Width > rightMaximum + Epsilon) return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidColumnWidth, $"{right.Name} kann nicht breiter als {rightMaximum:G} mm werden.");
         var beforeTotal = columns.Sum(candidate => current[candidate.ElementId].Width);
         var afterTotal = beforeTotal - leftBox.Width - rightBox.Width + nextLeft.Width + nextRight.Width;
-        if (Math.Abs(beforeTotal - afterTotal) > Epsilon || afterTotal > current[table.ElementId].Width + Epsilon)
+        if (Math.Abs(beforeTotal - afterTotal) > Epsilon)
             return PdfChangeResult.Reject(request, PdfErrorCodes.InvalidTableWidth, "Die feste PDF-Tabellenbreite würde sich ändern.");
         var previousTable = PdfLayoutStateFactory.FromBox(table, current[table.ElementId]);
         current[left.ElementId] = nextLeft;
@@ -192,7 +192,8 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
         {
             PdfLayoutOperations.Move when Only(payload, "x", "y") && (payload.ContainsKey("x") || payload.ContainsKey("y")) &&
                 Optional(payload, "x", out var x) && Optional(payload, "y", out var y) => ParseResult.Ok(currentBox with { X = x ?? currentBox.X, Y = y ?? currentBox.Y }),
-            PdfLayoutOperations.ResizeWidth when Only(payload, "width") && Required(payload, "width", out var width) && width > 0 => ParseResult.Ok(currentBox with { Width = width }),
+            PdfLayoutOperations.ResizeWidth when Only(payload, "width") && Required(payload, "width", out var width) &&
+                (element.Kind == PdfElementKind.TableColumn ? width >= 0 : width > 0) => ParseResult.Ok(currentBox with { Width = width }),
             PdfLayoutOperations.ResizeHeight when Only(payload, "height") && Required(payload, "height", out var height) && height > 0 => ParseResult.Ok(currentBox with { Height = height }),
             PdfLayoutOperations.Resize when Only(payload, "width", "height") && (payload.ContainsKey("width") || payload.ContainsKey("height")) &&
                 Optional(payload, "width", out var rw) && Optional(payload, "height", out var rh) && rw is null or > 0 && rh is null or > 0 &&
@@ -210,8 +211,21 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
 
     private (string Code, string Message)? ValidateCandidate(PdfElementDefinition element, PdfBox box)
     {
-        if (!Finite(box.X, box.Y, box.Width, box.Height) || box.Width <= 0 || box.Height <= 0 || box.FontSize is <= 0)
-            return (PdfErrorCodes.InvalidNumber, "PDF-Layoutwerte müssen endlich und positiv sein.");
+        var hiddenColumn = element.Kind == PdfElementKind.TableColumn && Math.Abs(box.Width) <= Epsilon;
+        if (!Finite(box.X, box.Y, box.Width, box.Height) || box.Width < 0 || box.Height <= 0 || box.FontSize is <= 0 ||
+            element.Kind != PdfElementKind.TableColumn && box.Width <= 0)
+            return (PdfErrorCodes.InvalidNumber, "PDF-Layoutwerte müssen endlich sein; Breiten sind positiv, bei Tabellenspalten auch 0 mm.");
+        if (element.Kind == PdfElementKind.TableColumn)
+        {
+            var parent = registry.FindById(element.ParentId ?? string.Empty);
+            if (parent?.Kind != PdfElementKind.Table)
+                return (PdfErrorCodes.InvalidTableWidth, "PDF-Tabellenspalte besitzt keinen gültigen Tabellenparent.");
+            var actualX = current[parent.ElementId].X + registry.Entries
+                .Where(candidate => candidate.Kind == PdfElementKind.TableColumn && candidate.ParentId == parent.ElementId &&
+                    candidate.StableOrder < element.StableOrder)
+                .Sum(candidate => current[candidate.ElementId].Width);
+            box = box with { X = actualX };
+        }
         var page = registry.Document.PageTemplate;
         if (box.X < -Epsilon || box.Y < -Epsilon || box.X + box.Width > page.Width + Epsilon || box.Y + box.Height > page.Height + Epsilon)
             return (PdfErrorCodes.OutOfPageBounds, "PDF-Element überschreitet die Seitengrenze.");
@@ -221,19 +235,28 @@ public sealed class PdfHostAdapter : IPdfHostAdapter
         if (box.X < zone.X - Epsilon || box.Y < zone.Y - Epsilon || box.X + box.Width > zone.X + zone.Width + Epsilon ||
             box.Y + box.Height > zone.Y + zone.Height + Epsilon)
             return (PdfErrorCodes.InvalidPageZone, "PDF-Element verlässt seinen Seitenbereich.");
-        if (box.TextOffsetX is < 0 || box.TextOffsetY is < 0 || box.TextOffsetX >= box.Width || box.TextOffsetY >= box.Height)
+        if (!hiddenColumn && (box.TextOffsetX is < 0 || box.TextOffsetY is < 0 || box.TextOffsetX >= box.Width || box.TextOffsetY >= box.Height))
             return (PdfErrorCodes.InvalidPageZone, "Textposition liegt außerhalb des Elements.");
 
         if (element.Kind == PdfElementKind.TableColumn)
         {
-            if (box.Width < 5) return (PdfErrorCodes.InvalidColumnWidth, "PDF-Spaltenbreite muss mindestens 5 mm betragen.");
-            var tableWidth = current[PdfRegistryIds.Table].Width;
-            var sum = PdfRegistryIds.Columns.Sum(id => id == element.ElementId ? box.Width : current[id].Width);
-            if (sum > tableWidth + Epsilon) return (PdfErrorCodes.InvalidTableWidth, "Spaltensumme überschreitet die Tabellenbreite.");
+            var table = registry.FindById(element.ParentId ?? string.Empty);
+            if (table?.Kind != PdfElementKind.Table)
+                return (PdfErrorCodes.InvalidTableWidth, "PDF-Tabellenspalte besitzt keinen gültigen Tabellenparent.");
+            var tableBox = current[table.ElementId];
+            var columns = registry.Entries.Where(candidate => candidate.Kind == PdfElementKind.TableColumn && candidate.ParentId == table.ElementId)
+                .OrderBy(candidate => candidate.StableOrder).ToArray();
+            var total = columns.Sum(column => column.ElementId == element.ElementId ? box.Width : current[column.ElementId].Width);
+            var tableZone = PdfRegistryValidator.Zone(page, table.PageArea);
+            var actualRightBoundary = Math.Min(page.Width, tableZone.X + tableZone.Width);
+            if (tableBox.X + total > actualRightBoundary + Epsilon)
+                return (PdfErrorCodes.InvalidPageZone,
+                    $"Die resultierende PDF-Tabelle endet bei {tableBox.X + total:G} mm und überschreitet die rechte Arbeitsbereichsgrenze {actualRightBoundary:G} mm.");
         }
         if (element.Kind == PdfElementKind.Table)
         {
-            var sum = PdfRegistryIds.Columns.Sum(id => current[id].Width);
+            var sum = registry.Entries.Where(candidate => candidate.Kind == PdfElementKind.TableColumn && candidate.ParentId == element.ElementId)
+                .Sum(column => current[column.ElementId].Width);
             if (sum > box.Width + Epsilon) return (PdfErrorCodes.InvalidTableWidth, "Tabellenbreite ist kleiner als die Spaltensumme.");
         }
         if (element.Kind is PdfElementKind.Header or PdfElementKind.Footer && !DescendantsFit(element, box))

@@ -217,9 +217,15 @@
             <GroupBox x:Name="PdfPreviewColumn" Grid.Column="2" Header="Native Vorschau · Seite einpassen">
               <Grid Background="#CBD1DA" ClipToBounds="True" x:Name="PdfPreviewViewport" SizeChanged="PdfPreviewViewport_SizeChanged" MouseLeftButtonDown="PdfPreviewViewport_MouseLeftButtonDown">
                 <Viewbox Margin="14" Stretch="Uniform">
-                  <Grid x:Name="PdfPageSurface" Width="210" Height="297" Background="White">
-                    <Border BorderBrush="#707783" BorderThickness="0.5"><Image Source="{Binding SelectedPageImage}" Stretch="Fill"/></Border>
-                    <Canvas IsHitTestVisible="False"><Rectangle Stroke="#E03030" StrokeThickness="0.8" Fill="#20E03030" Canvas.Left="{Binding OverlayLeft}" Canvas.Top="{Binding OverlayTop}" Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}"/></Canvas>
+                  <Grid x:Name="PdfPageSurface" AutomationProperties.AutomationId="PdfPageSurface" Width="{Binding PageDefinition.Width}" Height="{Binding PageDefinition.Height}" Background="White">
+                    <Border BorderBrush="#707783" BorderThickness="0.5"><Image AutomationProperties.AutomationId="PdfPageImage" Source="{Binding SelectedPageImage}" Stretch="Fill"/></Border>
+                    <Canvas>
+                      <Rectangle IsHitTestVisible="False" Stroke="#E03030" StrokeThickness="0.8" Fill="#20E03030" Canvas.Left="{Binding OverlayLeft}" Canvas.Top="{Binding OverlayTop}" Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}"/>
+                      <Thumb x:Name="PdfColumnResizeThumb" AutomationProperties.AutomationId="PdfColumnResizeThumb" AutomationProperties.Name="Rechte PDF-Spaltenkante ziehen" Cursor="SizeWE" Width="5" Background="#E03030"
+                             Canvas.Left="{Binding OverlayResizeHandleLeft}" Canvas.Top="{Binding OverlayTop}" Height="{Binding OverlayHeight}"
+                             Visibility="{Binding HasColumnResizeHandle, Converter={StaticResource BoolToVisibility}}"
+                             DragStarted="PdfColumnResizeThumb_DragStarted" DragDelta="PdfColumnResizeThumb_DragDelta" DragCompleted="PdfColumnResizeThumb_DragCompleted"/>
+                    </Canvas>
                   </Grid>
                 </Viewbox>
               </Grid>
@@ -273,6 +279,16 @@
                       </ItemsControl>
                     </ScrollViewer>
                     <ItemsControl ItemsSource="{Binding TableColumns}" Margin="0,7,0,4"><ItemsControl.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/><StackPanel Grid.Column="1" Margin="8,0,0,0"><TextBlock Text="{Binding WidthLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding RuntimeLabel}" Foreground="#64748B" TextWrapping="Wrap"/></StackPanel></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <StackPanel Visibility="{Binding CanApplyTableColumnWidth, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,8">
+                      <TextBlock Text="Ausgewählte Spalte unabhängig skalieren" FontWeight="SemiBold"/>
+                      <WrapPanel Margin="0,5,0,3">
+                        <TextBlock Text="Breite:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox AutomationProperties.Name="PDF-Spaltenbreite in Millimetern" Text="{Binding TableColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="82" Height="31"/>
+                        <TextBlock Text="mm" VerticalAlignment="Center" Margin="6,0"/>
+                        <Button AutomationProperties.Name="PDF-Spaltenbreite anwenden" Content="Anwenden" Command="{Binding ApplyTableColumnWidthCommand}"/>
+                      </WrapPanel>
+                      <TextBlock Text="Nur diese Spalte ändert ihre Breite. Nachfolgende Spalten verschieben sich; 0 mm blendet die Spalte reversibel aus. Min/Max bleiben Empfehlungen." Foreground="#475569" TextWrapping="Wrap"/>
+                    </StackPanel>
                     <TextBlock Text="Spaltengrenze verschieben" FontWeight="SemiBold" Margin="0,6,0,0"/>
                     <ListBox ItemsSource="{Binding TableBoundaries}" SelectedItem="{Binding SelectedTableBoundary, Mode=TwoWay}" DisplayMemberPath="DisplayName" Margin="0,5,0,4" MaxHeight="66"/>
                     <TextBlock Text="{Binding SelectedTableBoundary.PositionLabel}" Foreground="#475569"/>

@@ -48,7 +48,7 @@ public static class PdfRegistryValidator
         var expectedHeight = document.Orientation == PdfPageOrientation.Portrait ? 297 : 210;
         if (document.Unit != PdfLayoutUnit.Millimeter || document.PageFormat != PdfPageFormat.A4 ||
             !Same(document.PageTemplate.Width, expectedWidth) || !Same(document.PageTemplate.Height, expectedHeight))
-            errors.Add(new("pdf_registry_invalid", "M76 erwartet A4 Hochformat mit Millimeter als Einheit."));
+            errors.Add(new("pdf_registry_invalid", "M76 erwartet A4 mit zur Orientierung passender Seitengröße und Millimeter als Einheit."));
 
         var entries = document.RegisteredElements;
         var byId = new Dictionary<string, PdfElementDefinition>(StringComparer.Ordinal);

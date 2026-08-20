@@ -48,7 +48,8 @@ public static class PdfLayoutProfileDocumentValidator
             if (state.ScopeId != registry.Document.DocumentId || state.ElementId.StartsWith("ui.", StringComparison.Ordinal)) return Fail("UI-ID oder falscher Scope im PDF-Profil.");
             if (!AllowedFieldsMatch(definition, state) || !Finite(state)) return Fail("PDF-Layoutfelder passen nicht zu den Capabilities: " + definition.ElementId);
             var resolved = PdfLayoutStateFactory.Resolve(definition, state);
-            if (resolved.Width <= 0 || resolved.Height <= 0 || resolved.FontSize is <= 0 || resolved.TextOffsetX is < 0 || resolved.TextOffsetY is < 0)
+            if (resolved.Width < 0 || definition.Kind != PdfElementKind.TableColumn && resolved.Width <= 0 ||
+                resolved.Height <= 0 || resolved.FontSize is <= 0 || resolved.TextOffsetX is < 0 || resolved.TextOffsetY is < 0)
                 return Fail("PDF-Layoutwerte sind ungültig: " + definition.ElementId);
         }
         var layoutValidation = PdfLayoutStateValidator.Validate(document.LayoutState, registry);
@@ -106,6 +107,8 @@ public static class PdfLayoutStateValidator
         {
             var box = boxes[element.ElementId];
             var page = registry.Document.PageTemplate;
+            if (element.Kind == PdfElementKind.TableColumn && box.Width < 0)
+                return (false, PdfErrorCodes.InvalidColumnWidth, "PDF-Spaltenbreite darf nicht negativ sein: " + element.ElementId);
             if (box.X < -Epsilon || box.Y < -Epsilon || box.X + box.Width > page.Width + Epsilon || box.Y + box.Height > page.Height + Epsilon)
                 return (false, PdfErrorCodes.OutOfPageBounds, "PDF-Element überschreitet die Seitengrenze: " + element.ElementId);
             var zone = element.Kind == PdfElementKind.Header
@@ -114,37 +117,22 @@ public static class PdfLayoutStateValidator
             if (box.X < zone.X - Epsilon || box.Y < zone.Y - Epsilon || box.X + box.Width > zone.X + zone.Width + Epsilon ||
                 box.Y + box.Height > zone.Y + zone.Height + Epsilon)
                 return (false, PdfErrorCodes.InvalidPageZone, "PDF-Element verlässt seinen Seitenbereich: " + element.ElementId);
-            if (box.TextOffsetX is < 0 || box.TextOffsetY is < 0 || box.TextOffsetX >= box.Width || box.TextOffsetY >= box.Height)
+            var hiddenColumn = element.Kind == PdfElementKind.TableColumn && Math.Abs(box.Width) <= Epsilon;
+            if (!hiddenColumn && (box.TextOffsetX is < 0 || box.TextOffsetY is < 0 || box.TextOffsetX >= box.Width || box.TextOffsetY >= box.Height))
                 return (false, PdfErrorCodes.InvalidPageZone, "PDF-Textposition liegt außerhalb des Elements: " + element.ElementId);
-            if (element.Kind == PdfElementKind.TableColumn && box.Width < 5)
-                return (false, PdfErrorCodes.InvalidColumnWidth, "PDF-Spaltenbreite ist kleiner als 5 mm: " + element.ElementId);
-        }
-        if (registry.Document.DocumentId != PdfRegistryIds.Scope)
-        {
-            foreach (var table in registry.Entries.Where(element => element.Kind == PdfElementKind.Table))
-            {
-                var columns = registry.Entries.Where(element => element.Kind == PdfElementKind.TableColumn && element.ParentId == table.ElementId);
-                if (columns.Sum(column => boxes[column.ElementId].Width) > boxes[table.ElementId].Width + Epsilon)
-                    return (false, PdfErrorCodes.InvalidTableWidth, "Spaltensumme ueberschreitet die PDF-Tabellenbreite.");
-            }
-            return (true, "pdf_layout_valid", "PDF-LayoutState ist gueltig.");
         }
         if (registry.Document.DocumentId == PdfRegistryIds.Scope)
         {
-        var tableWidth = boxes[PdfRegistryIds.Table].Width;
-        if (PdfRegistryIds.Columns.Sum(id => boxes[id].Width) > tableWidth + Epsilon)
-            return (false, PdfErrorCodes.InvalidTableWidth, "Spaltensumme überschreitet die PDF-Tabellenbreite.");
-        foreach (var parentId in new[] { PdfRegistryIds.Header, PdfRegistryIds.Footer })
-        {
-            var parent = boxes[parentId];
-            var descendants = registry.Entries.Where(element => IsDescendant(element, parentId, registry));
-            if (descendants.Any(element => boxes[element.ElementId].Y < parent.Y - Epsilon ||
-                                           boxes[element.ElementId].Y + boxes[element.ElementId].Height > parent.Y + parent.Height + Epsilon))
-                return (false, PdfErrorCodes.InvalidPageZone, "PDF-Bereichshöhe schneidet registrierte Kinder ab: " + parentId);
+            foreach (var parentId in new[] { PdfRegistryIds.Header, PdfRegistryIds.Footer })
+            {
+                var parent = boxes[parentId];
+                var descendants = registry.Entries.Where(element => IsDescendant(element, parentId, registry));
+                if (descendants.Any(element => boxes[element.ElementId].Y < parent.Y - Epsilon ||
+                                               boxes[element.ElementId].Y + boxes[element.ElementId].Height > parent.Y + parent.Height + Epsilon))
+                    return (false, PdfErrorCodes.InvalidPageZone, "PDF-Bereichshöhe schneidet registrierte Kinder ab: " + parentId);
+            }
         }
         return (true, "pdf_layout_valid", "PDF-LayoutState ist gültig.");
-        }
-        return (false, PdfErrorCodes.ProfileInvalid, "PDF-LayoutState gehoert zu einer unbekannten Registry.");
     }
 
     private static bool IsDescendant(PdfElementDefinition element, string parentId, PdfElementRegistry registry)

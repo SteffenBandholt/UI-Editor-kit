@@ -4,6 +4,12 @@
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
+### K17.12 – Unabhängige menschenverständliche PDF-Spaltenbreite
+
+- Status: `[A]`; `TableColumn.resizeWidth` ist im gemeinsamen nativen Core und im generischen Electron-Adapter unabhängig. Direkte Millimeterwerte und der sichtbare Mauszug ändern exakt die gewählte Spalte; folgende Spalten verschieben sich, Nachbarbreiten bleiben unverändert. Die Tabellensumme darf bis zur tatsächlichen rechten Arbeitsbereichsgrenze wachsen oder schrumpfen.
+- 0 mm entfernt Track, Kopf, Datenzellen und Lücke aus dem Renderbild, erhält aber Registry-/Baumidentität, Undo und den vorhandenen Profilweg. Negative und nicht endliche Werte bleiben ungültig. Min/Max sind beim direkten Spalten-Resize Empfehlungen; `resizeColumnBoundary` bleibt die getrennte konstant-summige Zwei-Nachbar-Operation mit harten Grenzen.
+- Grün: neutrale A20/B30/C40-Nachweise, Werte 9/5/3,5/20/0, 0-mm-Save/Load/Reaktivierung, nativer Renderer, Electron-Readback, angrenzende M76/M77/M87-Regressionen sowie sichtbarer realer Restarbeiten-Lauf mit Nr 9→5 bei Klasse 10, physischem Kanten-Mauszug, Nr 0 samt Baum-/Neustartnachweis und Reaktivierung auf 9. Keine neue Operation, Registry oder Profilarchitektur; Commit und Push: keiner.
+
 ### K17.9 - Atomarer Tabellen-Restore und konkrete Hostablehnung
 
 - Status: `[A]`; der appneutrale native PDF-Sitzungsweg stellt Tabellen mit `adjacentPreserveTotal` ueber atomare Grenzoperationen wieder her, statt zwischenzeitlich ungueltige Einzelbreiten an den Host zu senden. Undo der realen BBM-Teilnehmergrenze ist damit erfolgreich und lueckenlos.

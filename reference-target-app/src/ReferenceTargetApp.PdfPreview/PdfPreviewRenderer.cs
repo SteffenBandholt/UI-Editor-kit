@@ -76,30 +76,32 @@ public sealed record PdfPreviewTransform(double Left, double Top, double Width, 
 
 public static class PdfPreviewCoordinateMapper
 {
-    public const double PageWidthMm = 210;
-    public const double PageHeightMm = 297;
-
-    public static PdfPreviewTransform Fit(double viewportWidth, double viewportHeight)
+    public static PdfPreviewTransform Fit(PdfPageDefinition pageDefinition, double viewportWidth, double viewportHeight)
     {
-        if (!double.IsFinite(viewportWidth) || !double.IsFinite(viewportHeight) || viewportWidth <= 0 || viewportHeight <= 0)
+        ArgumentNullException.ThrowIfNull(pageDefinition);
+        if (!double.IsFinite(pageDefinition.Width) || !double.IsFinite(pageDefinition.Height) ||
+            pageDefinition.Width <= 0 || pageDefinition.Height <= 0 ||
+            !double.IsFinite(viewportWidth) || !double.IsFinite(viewportHeight) || viewportWidth <= 0 || viewportHeight <= 0)
             return new(0, 0, 0, 0, 0);
-        var scale = Math.Min(viewportWidth / PageWidthMm, viewportHeight / PageHeightMm);
-        var width = PageWidthMm * scale;
-        var height = PageHeightMm * scale;
+        var scale = Math.Min(viewportWidth / pageDefinition.Width, viewportHeight / pageDefinition.Height);
+        var width = pageDefinition.Width * scale;
+        var height = pageDefinition.Height * scale;
         return new((viewportWidth - width) / 2, (viewportHeight - height) / 2, width, height, scale);
     }
 
-    public static (bool Success, double X, double Y) ToPdf(double x, double y, double viewportWidth, double viewportHeight)
+    public static (bool Success, double X, double Y) ToPdf(PdfPageDefinition pageDefinition, double x, double y,
+        double viewportWidth, double viewportHeight)
     {
-        var fit = Fit(viewportWidth, viewportHeight);
+        var fit = Fit(pageDefinition, viewportWidth, viewportHeight);
         if (fit.Scale <= 0 || x < fit.Left || y < fit.Top || x > fit.Left + fit.Width || y > fit.Top + fit.Height)
             return (false, 0, 0);
         return (true, (x - fit.Left) / fit.Scale, (y - fit.Top) / fit.Scale);
     }
 
-    public static PdfPreviewTransform ToViewport(PdfBox box, double viewportWidth, double viewportHeight)
+    public static PdfPreviewTransform ToViewport(PdfPageDefinition pageDefinition, PdfBox box,
+        double viewportWidth, double viewportHeight)
     {
-        var fit = Fit(viewportWidth, viewportHeight);
+        var fit = Fit(pageDefinition, viewportWidth, viewportHeight);
         return new(fit.Left + box.X * fit.Scale, fit.Top + box.Y * fit.Scale,
             box.Width * fit.Scale, box.Height * fit.Scale, fit.Scale);
     }

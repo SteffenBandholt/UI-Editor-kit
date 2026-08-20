@@ -66,7 +66,9 @@ assert.match(uiViewModel, /HasTableOverview => IsTableLayout && TableColumns\.Co
 assert.match(uiViewModel, /wirksam \{EffectiveWidth:0\.###\} DIP · gespeichert \{LogicalWidth:0\.###\}/);
 assert.match(uiViewModel, /Direkte Eingabe ist im proportionalen Modus nicht eindeutig/);
 assert.match(pdfViewModel, /HasTableOverview => selected\?\.Kind is PdfElementKind\.Table or PdfElementKind\.TableColumn && TableColumns\.Count > 0/);
-assert.match(pdfViewModel, /CanWidth => selected\?\.Kind != PdfElementKind\.TableColumn/);
+assert.match(pdfViewModel, /CanWidth => selected\?\.Capabilities\.HasFlag\(PdfCapability\.Width\)/);
+assert.match(pdfViewModel, /CanApplyTableColumnWidth => CanOperate && selected\?\.Kind == PdfElementKind\.TableColumn && CanWidth/);
+assert.match(pdfViewModel, /TryParseTableColumnWidth[\s\S]*width >= 0/);
 assert.match(pdfViewModel, /HasDirectModes => HasElementModes \|\| HasTextModes/);
 assert.match(pdfViewModel, /FriendlyTableColumnName[\s\S]*column\.Role == PdfElementRole\.Meta[\s\S]*\? "Meta rechts"/);
 assert.match(uiView, /AutomationProperties\.Name="Spaltengrenze nach links"[\s\S]*CommandParameter="left"/);
@@ -76,6 +78,8 @@ assert.match(uiView, /Text="\{Binding StepText, UpdateSourceTrigger=PropertyChan
 assert.match(uiView, /Text="\{Binding RuntimeLabel\}"/);
 assert.match(uiView, /Text="\{Binding ColumnWidthInputStatus\}"/);
 assert.match(editorWindow, /AutomationProperties\.Name="PDF-Spaltengrenze nach links"[\s\S]*AutomationProperties\.Name="PDF-Spaltengrenze nach rechts"/);
+assert.match(editorWindow, /AutomationProperties\.Name="PDF-Spaltenbreite in Millimetern"[\s\S]*AutomationProperties\.Name="PDF-Spaltenbreite anwenden"/);
+assert.match(editorWindow, /AutomationProperties\.Name="Rechte PDF-Spaltenkante ziehen"/);
 assert.match(editorWindow, /<ListBox ItemsSource="\{Binding TableBoundaries\}"[\s\S]*DisplayMemberPath="DisplayName"/);
 assert.match(editorWindow, /Header="Bearbeitung in Millimetern" Visibility="\{Binding HasDirectModes/);
 assert.match(editorWindow, /Content="R&#x00FC;ckg&#x00E4;ngig"[\s\S]*Content="Tabelle Original"/);

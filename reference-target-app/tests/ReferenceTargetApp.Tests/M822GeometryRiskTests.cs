@@ -192,8 +192,8 @@ public sealed class M822GeometryRiskTests
             string.Equals((string?)element.Attribute("Content"), "Sichtbarkeit EIN/AUS", StringComparison.Ordinal)));
         var pageSurface = pdfTab.Descendants().Single(element =>
             string.Equals((string?)element.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")), "PdfPageSurface", StringComparison.Ordinal));
-        Assert.AreEqual("210", (string?)pageSurface.Attribute("Width"));
-        Assert.AreEqual("297", (string?)pageSurface.Attribute("Height"));
+        Assert.AreEqual("{Binding PageDefinition.Width}", (string?)pageSurface.Attribute("Width"));
+        Assert.AreEqual("{Binding PageDefinition.Height}", (string?)pageSurface.Attribute("Height"));
         Assert.IsTrue(pageSurface.Ancestors().Any(element => element.Name.LocalName == "Viewbox"));
     }
 

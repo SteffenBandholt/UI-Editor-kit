@@ -130,7 +130,7 @@ public sealed class PdfOrderDocumentRenderer
         {
             cancellationToken.ThrowIfCancellationRequested();
             pageNumber++;
-            var page = AddPage(document);
+            var page = AddPage(document, registry.Document.PageTemplate);
             using var graphics = XGraphics.FromPdfPage(page);
             DrawHeader(graphics, registry, Box, order, pageNumber, traces);
             var y = table.Y;
@@ -138,7 +138,10 @@ public sealed class PdfOrderDocumentRenderer
             y += 8;
             while (rowIndex < rows.Length)
             {
-                var rowHeight = Math.Max(8, DeterministicPdfTextMeasurer.RequiredHeight(rows[rowIndex].Description, columnWidths[1] - 2, 3.1));
+                var descriptionWidth = columnWidths.Length > 1 && columnWidths[1] > 0 ? Math.Max(0.1, columnWidths[1] - 2) : 0;
+                var rowHeight = descriptionWidth > 0
+                    ? Math.Max(8, DeterministicPdfTextMeasurer.RequiredHeight(rows[rowIndex].Description, descriptionWidth, 3.1))
+                    : 8;
                 if (rowHeight > body.Height - 8) throw new InvalidOperationException("Eine Tabellenzeile ist höher als ein leerer PDF-Body.");
                 var remainingAfter = rows.Length - rowIndex - 1;
                 var reserveSummary = remainingAfter == 0 ? summaryHeight + 4 : 0;
@@ -153,7 +156,7 @@ public sealed class PdfOrderDocumentRenderer
                 {
                     DrawFooter(graphics, registry, Box, pageNumber, -1, traces);
                     pageNumber++;
-                    var summaryPage = AddPage(document);
+                    var summaryPage = AddPage(document, registry.Document.PageTemplate);
                     using var summaryGraphics = XGraphics.FromPdfPage(summaryPage);
                     DrawHeader(summaryGraphics, registry, Box, order, pageNumber, traces);
                     DrawTableHeader(summaryGraphics, table.X, table.Y, columnWidths, pageNumber, traces);
@@ -179,11 +182,11 @@ public sealed class PdfOrderDocumentRenderer
         return document;
     }
 
-    private static PdfPage AddPage(PdfDocument document)
+    private static PdfPage AddPage(PdfDocument document, PdfPageDefinition pageDefinition)
     {
         var page = document.AddPage();
-        page.Width = Mm(210);
-        page.Height = Mm(297);
+        page.Width = Mm(pageDefinition.Width);
+        page.Height = Mm(pageDefinition.Height);
         return page;
     }
 
@@ -216,6 +219,7 @@ public sealed class PdfOrderDocumentRenderer
         var cursor = x;
         for (var index = 0; index < widths.Count; index++)
         {
+            if (widths[index] <= 0) continue;
             var cell = new PdfBox(cursor, y, widths[index], 8);
             graphics.DrawRectangle(new XSolidBrush(XColor.FromArgb(225, 232, 240)), Rect(cell));
             graphics.DrawRectangle(new XPen(XColors.Gray, 0.5), Rect(cell));
@@ -236,6 +240,7 @@ public sealed class PdfOrderDocumentRenderer
         var cursor = x;
         for (var index = 0; index < widths.Count; index++)
         {
+            if (widths[index] <= 0) continue;
             var cell = new PdfBox(cursor, y, widths[index], height);
             graphics.DrawRectangle(new XPen(XColors.LightGray, 0.4), Rect(cell));
             DrawWrappedText(graphics, values[index], Inset(cell, 1), 3.1, index >= 2 ? XStringFormats.TopRight : XStringFormats.TopLeft);

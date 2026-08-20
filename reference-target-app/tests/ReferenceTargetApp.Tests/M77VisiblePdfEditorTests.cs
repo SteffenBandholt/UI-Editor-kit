@@ -22,16 +22,66 @@ public sealed class M77VisiblePdfEditorTests
     }
 
     [TestMethod]
-    public void CoordinateMappingRoundTripsA4AndRejectsOutside()
+    public void CoordinateMappingUsesPortraitLandscapeAndNeutralPageDefinitions()
     {
-        var fit = PdfPreviewCoordinateMapper.Fit(800, 600);
-        var source = new PdfBox(15, 20, 80, 30);
-        var view = PdfPreviewCoordinateMapper.ToViewport(source, 800, 600);
-        var point = PdfPreviewCoordinateMapper.ToPdf(view.Left + view.Width / 2, view.Top + view.Height / 2, 800, 600);
-        Assert.IsTrue(point.Success);
-        Assert.AreEqual(55, point.X, 0.0001);
-        Assert.AreEqual(35, point.Y, 0.0001);
-        Assert.IsFalse(PdfPreviewCoordinateMapper.ToPdf(fit.Left - 1, fit.Top, 800, 600).Success);
+        foreach (var page in new[] { Page(210, 297), Page(297, 210), Page(200, 200) })
+        {
+            var fit = PdfPreviewCoordinateMapper.Fit(page, 800, 600);
+            Assert.AreEqual(page.Width / page.Height, fit.Width / fit.Height, 0.000001);
+            Assert.IsLessThanOrEqualTo(800.000001, fit.Left + fit.Width);
+            Assert.IsLessThanOrEqualTo(600.000001, fit.Top + fit.Height);
+            Assert.IsFalse(PdfPreviewCoordinateMapper.ToPdf(page, fit.Left - 1, fit.Top, 800, 600).Success);
+        }
+    }
+
+    [TestMethod]
+    public void CoordinateMappingRoundTripsPointsAndRectanglesForEveryPageShape()
+    {
+        foreach (var page in new[] { Page(210, 297), Page(297, 210), Page(200, 200) })
+        {
+            var boxes = new[]
+            {
+                new PdfBox(0, 0, page.Width, page.Height),
+                new PdfBox(12, 18, Math.Min(35, page.Width - 12), Math.Min(24, page.Height - 18)),
+                new PdfBox(page.Width * 0.62, page.Height * 0.71, page.Width * 0.11, page.Height * 0.08),
+            };
+            foreach (var source in boxes)
+            {
+                var view = PdfPreviewCoordinateMapper.ToViewport(page, source, 800, 600);
+                var topLeft = PdfPreviewCoordinateMapper.ToPdf(page, view.Left, view.Top, 800, 600);
+                var bottomRight = PdfPreviewCoordinateMapper.ToPdf(page, view.Left + view.Width, view.Top + view.Height, 800, 600);
+                Assert.IsTrue(topLeft.Success);
+                Assert.IsTrue(bottomRight.Success);
+                Assert.AreEqual(source.X, topLeft.X, 0.0001);
+                Assert.AreEqual(source.Y, topLeft.Y, 0.0001);
+                Assert.AreEqual(source.X + source.Width, bottomRight.X, 0.0001);
+                Assert.AreEqual(source.Y + source.Height, bottomRight.Y, 0.0001);
+            }
+        }
+    }
+
+    [TestMethod]
+    public void LandscapeAdjacentElementsRemainAdjacentAndSelectIndependently()
+    {
+        var page = Page(297, 210);
+        var number = new PdfBox(12, 40, 9, 12);
+        var classification = new PdfBox(21, 40, 24, 12);
+        var numberView = PdfPreviewCoordinateMapper.ToViewport(page, number, 800, 600);
+        var classificationView = PdfPreviewCoordinateMapper.ToViewport(page, classification, 800, 600);
+
+        Assert.AreEqual(numberView.Left + numberView.Width, classificationView.Left, 0.0001);
+
+        var bounds = new[]
+        {
+            new PdfRenderBound("nr", 1, number, 10, true),
+            new PdfRenderBound("klasse", 1, classification, 20, true),
+        };
+        var numberPoint = PdfPreviewCoordinateMapper.ToPdf(page,
+            numberView.Left + numberView.Width / 2, numberView.Top + numberView.Height / 2, 800, 600);
+        var classificationPoint = PdfPreviewCoordinateMapper.ToPdf(page,
+            classificationView.Left + classificationView.Width / 2, classificationView.Top + classificationView.Height / 2, 800, 600);
+        Assert.AreEqual("nr", PdfPreviewCoordinateMapper.HitTest(bounds, 1, numberPoint.X, numberPoint.Y)?.ElementId);
+        Assert.AreEqual("klasse", PdfPreviewCoordinateMapper.HitTest(bounds, 1, classificationPoint.X, classificationPoint.Y)?.ElementId);
     }
 
     [TestMethod]
@@ -164,6 +214,8 @@ public sealed class M77VisiblePdfEditorTests
     private static PdfChangeRequest Move(string id, double x) => new(Guid.NewGuid().ToString("N"), id,
         PdfLayoutOperations.Move, new Dictionary<string, object?> { ["x"] = x, ["y"] = 17d }, DateTimeOffset.UtcNow, "m77-test", PdfRegistryIds.Scope);
     private static PdfElementLayoutState State(IPdfHostAdapter adapter, string id) => adapter.GetCurrentLayoutState().Elements.Single(element => element.ElementId == id);
+    private static PdfPageDefinition Page(double width, double height) => new("pdf.test.page", width, height,
+        new(0, 0, width, height), new(0, 0, width, height), new(0, 0, width, height), new(0, 0, width, height));
     private static string TemporaryRoot() { var path = Path.Combine(Path.GetTempPath(), "m77-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(path); return path; }
     private static string RepositoryRoot() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
 }
