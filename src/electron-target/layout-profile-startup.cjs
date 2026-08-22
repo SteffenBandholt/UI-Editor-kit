@@ -41,6 +41,7 @@ function own(value, key) { return Object.prototype.hasOwnProperty.call(value, ke
 function sha256(value) { return crypto.createHash("sha256").update(value).digest("hex").toUpperCase(); }
 function profilePath(profileRoot, profileId) { return path.join(profileRoot, `${profileId}.layout-profile.json`); }
 function markerPath(profileRoot) { return path.join(profileRoot, "startup-profile-recovery.json"); }
+function ordinalCompare(left, right) { return left < right ? -1 : left > right ? 1 : 0; }
 
 function capabilities(entry) {
   if (entry?.editable !== true) return [];
@@ -53,7 +54,7 @@ function capabilities(entry) {
   if (ops.has("textResize")) result.push("FontSize");
   if (ops.has("setVisibility")) result.push("Visibility");
   if (SPACING_OPERATIONS.some((operation) => ops.has(operation))) result.push("Spacing");
-  return result.sort();
+  return result.sort(ordinalCompare);
 }
 
 function kind(type) {
@@ -79,7 +80,7 @@ function createUiScopeFingerprint(scope) {
       kind: kind(entry?.type),
       capabilities: capabilities(entry),
     }))
-    .sort((left, right) => left.elementId.localeCompare(right.elementId));
+    .sort((left, right) => ordinalCompare(left.elementId, right.elementId));
   return `sha256:${crypto.createHash("sha256").update(JSON.stringify(canonical), "utf8").digest("hex")}`;
 }
 
