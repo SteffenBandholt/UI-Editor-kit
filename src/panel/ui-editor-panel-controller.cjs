@@ -200,12 +200,17 @@ function createUiEditorPanelController(options) {
     );
   }
 
-  function minFor(field) {
+  function geometryBoundFor(field) {
     const elementResult = safeRegistryGet(state.selectedElementId);
     if (!elementResult.ok) return elementResult;
-    const limits = elementResult.value && elementResult.value.limits;
-    const value = elementResult.value && (elementResult.value[field] ?? (limits && limits[field]));
-    return { ok: true, value: Number.isFinite(value) ? value : undefined };
+    const element = elementResult.value;
+    for (const source of [element?.limits, element?.baseline, element]) {
+      if (!source || !Object.prototype.hasOwnProperty.call(source, field)) continue;
+      if (source[field] == null) return { ok: true, value: undefined };
+      if (typeof source[field] === "number" && Number.isFinite(source[field])) return { ok: true, value: source[field] };
+      return blocked(RUNTIME_ERROR_CODES.INVALID_REGISTRY, `${field} is not a finite registered limit.`);
+    }
+    return { ok: true, value: undefined };
   }
 
   function prepareDirectionChange(direction) {
@@ -237,9 +242,10 @@ function createUiEditorPanelController(options) {
     if (state.mode === PANEL_MODES.WIDTH) {
       if (!["left", "right"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for width.");
       if (!Number.isFinite(elementLayout.width)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current width is unavailable.", { field: "width" });
-      const min = minFor("minWidth");
+      const min = geometryBoundFor("minWidth");
       if (!min.ok) return min;
-      const max = minFor("maxWidth");
+      const max = geometryBoundFor("maxWidth");
+      if (!max.ok) return max;
       const step = resolveOperationStep({ registryElement, operation: "resize", axis: "width", panelStepSize: state.stepSize });
       const width = elementLayout.width + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && width < min.value) return blocked("MIN_SIZE_REACHED", "minimum width reached.", { field: "width", min: min.value });
@@ -252,9 +258,10 @@ function createUiEditorPanelController(options) {
     if (state.mode === PANEL_MODES.HEIGHT) {
       if (!["up", "down"].includes(direction)) return blocked(RUNTIME_ERROR_CODES.OPERATION_NOT_ALLOWED, "direction is not allowed for height.");
       if (!Number.isFinite(elementLayout.height)) return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current height is unavailable.", { field: "height" });
-      const min = minFor("minHeight");
+      const min = geometryBoundFor("minHeight");
       if (!min.ok) return min;
-      const max = minFor("maxHeight");
+      const max = geometryBoundFor("maxHeight");
+      if (!max.ok) return max;
       const step = resolveOperationStep({ registryElement, operation: "resize", axis: "height", panelStepSize: state.stepSize });
       const height = elementLayout.height + (direction === "up" ? -step : step);
       if (Number.isFinite(min.value) && height < min.value) return blocked("MIN_SIZE_REACHED", "minimum height reached.", { field: "height", min: min.value });
@@ -291,7 +298,9 @@ function createUiEditorPanelController(options) {
         return blocked(PANEL_ERROR_CODES.CURRENT_VALUE_UNAVAILABLE, "current font size is unavailable.", { field: "fontSize" });
       }
       const current = textLayout.fontSize;
-      const min = minFor("minFontSize"), max = minFor("maxFontSize");
+      const min = geometryBoundFor("minFontSize"), max = geometryBoundFor("maxFontSize");
+      if (!min.ok) return min;
+      if (!max.ok) return max;
       const step = resolveOperationStep({ registryElement, operation: "fontSize", panelStepSize: state.stepSize });
       const fontSize = current + (direction === "left" ? -step : step);
       if (Number.isFinite(min.value) && fontSize < min.value) return blocked("MIN_SIZE_REACHED", "minimum font size reached.");

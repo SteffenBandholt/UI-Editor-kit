@@ -12,6 +12,8 @@ Dieser Adapter verbindet eine lokale Electron-Ziel-App mit dem vorhandenen nativ
 
 Der Adapter kennt keine DOM-Knoten und keine BBM-Fachdaten. Eine Ziel-App liefert ausschließlich explizite Registryeinträge, neutrale Layoutzustände und validierte ChangeResults. Fachaktionen bleiben gesperrt; ein Fehler stellt den vollständigen Ausgangszustand wieder her.
 
+Geometriegrenzen sind im allgemeinen UI-Vertrag optional und richtungsweise unabhängig. Fehlende oder auf `null` gesetzte `minX`-/`maxX`-, `minY`-/`maxY`-, `minWidth`-/`maxWidth`- und `minHeight`-/`maxHeight`-Werte bedeuten unbegrenzt. Nur tatsächlich deklarierte endliche Grenzen werden geprüft; der Profilstart erzeugt keine Ersatzgrenze. Die expliziten Altangaben `geometry.maximumStoredOffset` und `geometry.maximumOffset` bleiben lesbar.
+
 Der Adapter enthält keinen Browser-, HTTP-, WebSocket-, Webserver-, Netzwerk- oder Cloudpfad. Der native Editor und sein Node-Core bleiben das einzige Editorprodukt.
 
 ## Additive PDF-Capability M81

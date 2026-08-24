@@ -102,9 +102,31 @@ const requiredMove = completeComponent();
 requiredMove.slots[1].element = element("sample.title", "sample.root", { allowedOps: ["textResize", "setVisibility"] });
 assert.equal(hasCode(validateUiComponentContracts({ components: [requiredMove], supportedOperations: SUPPORTED }), "component_required_move_missing"), true);
 
-const missingBounds = completeComponent();
-missingBounds.slots[1].element = element("sample.title", "sample.root", { allowedOps: ["move", "resizeWidth", "textResize"], baseline: { minWidth: null, maxWidth: null } });
-assert.equal(hasCode(validateUiComponentContracts({ components: [missingBounds], supportedOperations: SUPPORTED }), "component_resize_bounds_missing"), true);
+const unboundedGeometry = completeComponent();
+unboundedGeometry.slots[1].element = element("sample.title", "sample.root", {
+  allowedOps: ["move", "resizeWidth", "resizeHeight", "textResize"],
+  baseline: { x: 0, y: 0, width: 100, height: 24, minWidth: null, maxHeight: null },
+});
+assert.equal(validateUiComponentContracts({ components: [unboundedGeometry], supportedOperations: SUPPORTED }).ok, true);
+
+const oneSidedBounds = completeComponent();
+oneSidedBounds.slots[1].element = element("sample.title", "sample.root", {
+  allowedOps: ["move", "resizeWidth", "resizeHeight", "textResize"],
+  baseline: { x: 0, y: 0, width: 100, height: 24, minX: -500, maxY: 800, minWidth: 0, maxHeight: 500 },
+});
+assert.equal(validateUiComponentContracts({ components: [oneSidedBounds], supportedOperations: SUPPORTED }).ok, true);
+
+const reversedBounds = completeComponent();
+reversedBounds.slots[1].element = element("sample.title", "sample.root", {
+  allowedOps: ["move", "resizeWidth", "textResize"], baseline: { minWidth: 200, maxWidth: 100 },
+});
+assert.equal(hasCode(validateUiComponentContracts({ components: [reversedBounds], supportedOperations: SUPPORTED }), "component_geometry_bounds_invalid"), true);
+
+const nonFiniteBound = completeComponent();
+nonFiniteBound.slots[1].element = element("sample.title", "sample.root", {
+  allowedOps: ["move", "textResize"], baseline: { minX: Number.NaN },
+});
+assert.equal(hasCode(validateUiComponentContracts({ components: [nonFiniteBound], supportedOperations: SUPPORTED }), "component_geometry_bound_invalid"), true);
 
 assert.deepEqual(orderUiComponentSelectionTargetIds(aggregated.elements, ["sample.root", "sample.title"]), ["sample.title", "sample.root"]);
 

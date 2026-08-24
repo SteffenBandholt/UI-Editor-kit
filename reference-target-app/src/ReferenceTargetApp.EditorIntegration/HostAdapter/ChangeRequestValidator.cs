@@ -125,8 +125,8 @@ internal static class ChangeRequestValidator
         string field,
         string operation)
     {
-        if (!HasOnlyKeys(payload, field) || !TryRequiredFiniteNumber(payload, field, out var value) || value <= 0)
-            return Invalid($"{operation} erwartet ausschließlich eine positive endliche Zahl in {field}.");
+        if (!HasOnlyKeys(payload, field) || !TryRequiredFiniteNumber(payload, field, out var value) || value < 0)
+            return Invalid($"{operation} erwartet ausschließlich eine nicht-negative endliche Zahl in {field}.");
         return operation == HostAdapterOperations.ResizeWidth
             ? ValidationOutcome.Ok(new ValidatedLayoutChange(operation, Width: value))
             : ValidationOutcome.Ok(new ValidatedLayoutChange(operation, Height: value));
@@ -138,8 +138,8 @@ internal static class ChangeRequestValidator
     {
         if (!HasOnlyKeys(payload, "width", "height") || (!payload.ContainsKey("width") && !payload.ContainsKey("height")) ||
             !TryOptionalFiniteNumber(payload, "width", out var width) || !TryOptionalFiniteNumber(payload, "height", out var height) ||
-            width <= 0 || height <= 0)
-            return Invalid("resize erwartet ausschließlich positive endliche Werte in width und/oder height.");
+            width < 0 || height < 0)
+            return Invalid("resize erwartet ausschließlich nicht-negative endliche Werte in width und/oder height.");
         if (width is not null && !entry.Capabilities.HasFlag(UiCapability.Width) ||
             height is not null && !entry.Capabilities.HasFlag(UiCapability.Height))
             return ValidationOutcome.Fail(HostAdapterErrorCodes.OperationNotAllowed, "resize enthält eine nicht freigegebene Größenachse.");

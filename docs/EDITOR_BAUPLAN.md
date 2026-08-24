@@ -77,9 +77,18 @@ Je nach Elementtyp koennen weitere Angaben erforderlich sein, zum Beispiel:
 - actionKind
 - componentKind
 - width
+- height
+- minX
+- maxX
+- minY
+- maxY
 - minWidth
 - maxWidth
+- minHeight
+- maxHeight
 - layoutArea
+
+Geometriegrenzen sind optional. Eine fehlende oder mit `null` deklarierte Einzelgrenze bedeutet unbegrenzt; nur eine tatsächlich deklarierte endliche Grenze darf Position oder Größe begrenzen. Der Editor setzt keine Ersatzgrenzen ein.
 
 ## 6. Grundstruktur der UI
 

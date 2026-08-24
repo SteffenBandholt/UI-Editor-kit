@@ -12,7 +12,11 @@ function text(value) {
 }
 
 function finite(value) {
-  return Number.isFinite(Number(value));
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function own(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function error(code, message, details = {}) {
@@ -76,15 +80,30 @@ function validateBounds(element, component, slot, errors) {
   const operations = Array.isArray(element.allowedOps) ? element.allowedOps : [];
   const baseline = isObject(element.baseline) ? element.baseline : {};
   const context = { componentId: component.componentId, slotId: slot.slotId, elementId: text(element.id) };
+  const move = operations.includes("move");
   const width = operations.includes("resize") || operations.includes("resizeWidth");
   const height = operations.includes("resize") || operations.includes("resizeHeight");
-  const validRange = (minimum, maximum) => finite(minimum) && finite(maximum) && Number(minimum) > 0 && Number(maximum) >= Number(minimum);
-  if (width && !validRange(baseline.minWidth, baseline.maxWidth)) {
-    errors.push(error("component_resize_bounds_missing", "Breitenziel braucht gueltige minWidth/maxWidth-Grenzen.", { ...context, dimension: "width" }));
+
+  function validateOptionalRange(minKey, maxKey, dimension) {
+    const minimumDeclared = own(baseline, minKey) && baseline[minKey] != null;
+    const maximumDeclared = own(baseline, maxKey) && baseline[maxKey] != null;
+    if (minimumDeclared && !finite(baseline[minKey])) {
+      errors.push(error("component_geometry_bound_invalid", `${minKey} muss eine endliche Zahl oder unbegrenzt sein.`, { ...context, dimension, bound: minKey }));
+    }
+    if (maximumDeclared && !finite(baseline[maxKey])) {
+      errors.push(error("component_geometry_bound_invalid", `${maxKey} muss eine endliche Zahl oder unbegrenzt sein.`, { ...context, dimension, bound: maxKey }));
+    }
+    if (minimumDeclared && maximumDeclared && finite(baseline[minKey]) && finite(baseline[maxKey]) && baseline[maxKey] < baseline[minKey]) {
+      errors.push(error("component_geometry_bounds_invalid", `${maxKey} darf nicht unter ${minKey} liegen.`, { ...context, dimension, minKey, maxKey }));
+    }
   }
-  if (height && !validRange(baseline.minHeight, baseline.maxHeight)) {
-    errors.push(error("component_resize_bounds_missing", "Hoehenziel braucht gueltige minHeight/maxHeight-Grenzen.", { ...context, dimension: "height" }));
+
+  if (move) {
+    validateOptionalRange("minX", "maxX", "x");
+    validateOptionalRange("minY", "maxY", "y");
   }
+  if (width) validateOptionalRange("minWidth", "maxWidth", "width");
+  if (height) validateOptionalRange("minHeight", "maxHeight", "height");
 }
 
 function validateRequirements(element, component, slot, errors) {

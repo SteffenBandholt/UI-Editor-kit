@@ -90,6 +90,15 @@ function assertFields(value, allowed, field, errors) {
   for (const key of Object.keys(value)) if (!allowed.has(key)) errors.push(error("forbidden_field", `Feld '${key}' ist nicht erlaubt.`, `${field}.${key}`));
 }
 function finite(value) { return typeof value === "number" && Number.isFinite(value); }
+function optionalFinite(source, key) {
+  if (!isObject(source) || !own(source, key) || source[key] == null) return undefined;
+  return finite(source[key]) ? source[key] : undefined;
+}
+function declaredOptionalBound(source, key) {
+  if (!isObject(source) || !own(source, key)) return { declared: false, valid: true, value: undefined };
+  if (source[key] == null) return { declared: true, valid: true, value: undefined };
+  return { declared: true, valid: finite(source[key]), value: optionalFinite(source, key) };
+}
 
 function validateTableState(saved, entry, prefix, errors) {
   const allowed = TABLE_LAYOUT_OPERATIONS.some((operation) => Array.isArray(entry?.allowedOps) && entry.allowedOps.includes(operation));
@@ -149,17 +158,43 @@ function validateElement(saved, entry, scopeId, errors) {
     }
   }
   const baseline = entry?.baseline || {};
-  for (const [field, minimum, maximum] of [
-    ["width", baseline.minWidth, baseline.maxWidth], ["height", baseline.minHeight, baseline.maxHeight],
+  for (const [field, minKey, maxKey] of [
+    ["width", "minWidth", "maxWidth"],
+    ["height", "minHeight", "maxHeight"],
   ]) {
     const value = saved?.[field];
     if (value == null) continue;
-    if (value <= 0 || finite(minimum) && value < minimum - 0.01 || finite(maximum) && value > maximum + 0.01)
-      errors.push(error("invalid_layout_geometry", `${field} liegt außerhalb der sicheren Grenzen.`, `${prefix}.${field}`));
+    const minimum = declaredOptionalBound(baseline, minKey);
+    const maximum = declaredOptionalBound(baseline, maxKey);
+    if (!minimum.valid || !maximum.valid || (finite(minimum.value) && finite(maximum.value) && maximum.value < minimum.value)) {
+      errors.push(error("incompatible_registry", `${field} besitzt ungültige explizite Grenzen.`, `${prefix}.${field}`));
+      continue;
+    }
+    if (value < 0) errors.push(error("invalid_layout_geometry", `${field} ist technisch nicht darstellbar.`, `${prefix}.${field}`));
+    else if ((finite(minimum.value) && value < minimum.value - 0.01) || (finite(maximum.value) && value > maximum.value + 0.01))
+      errors.push(error("invalid_layout_geometry", `${field} verletzt eine explizit deklarierte Grenze.`, `${prefix}.${field}`));
   }
-  const maximumOffset = Number(entry?.geometry?.maximumStoredOffset ?? entry?.geometry?.maximumOffset ?? 240);
-  if (saved?.x != null && Math.abs(saved.x) > maximumOffset || saved?.y != null && Math.abs(saved.y) > maximumOffset)
-    errors.push(error("invalid_layout_geometry", "Position liegt außerhalb der sicheren Grenzen.", prefix));
+  const geometry = isObject(entry?.geometry) ? entry.geometry : {};
+  const storedOffset = declaredOptionalBound(geometry, "maximumStoredOffset");
+  const ordinaryOffset = declaredOptionalBound(geometry, "maximumOffset");
+  const legacyMaximumOffset = finite(storedOffset.value) ? storedOffset.value : ordinaryOffset.value;
+  if (!storedOffset.valid || !ordinaryOffset.valid || (finite(storedOffset.value) && storedOffset.value < 0) || (finite(ordinaryOffset.value) && ordinaryOffset.value < 0)) {
+    errors.push(error("incompatible_registry", "Die explizite Legacy-Positionsgrenze ist ungültig.", `${prefix}.position`));
+  }
+  for (const [field, minKey, maxKey] of [["x", "minX", "maxX"], ["y", "minY", "maxY"]]) {
+    const value = saved?.[field];
+    if (value == null) continue;
+    const declaredMinimum = declaredOptionalBound(baseline, minKey);
+    const declaredMaximum = declaredOptionalBound(baseline, maxKey);
+    if (!declaredMinimum.valid || !declaredMaximum.valid || (finite(declaredMinimum.value) && finite(declaredMaximum.value) && declaredMaximum.value < declaredMinimum.value)) {
+      errors.push(error("incompatible_registry", `${field} besitzt ungültige explizite Grenzen.`, `${prefix}.${field}`));
+      continue;
+    }
+    const minimum = declaredMinimum.declared ? declaredMinimum.value : (finite(legacyMaximumOffset) ? -legacyMaximumOffset : undefined);
+    const maximum = declaredMaximum.declared ? declaredMaximum.value : legacyMaximumOffset;
+    if ((finite(minimum) && value < minimum - 0.01) || (finite(maximum) && value > maximum + 0.01))
+      errors.push(error("invalid_layout_geometry", `${field} verletzt eine explizit deklarierte Grenze.`, `${prefix}.${field}`));
+  }
   if (saved?.textOffsetX != null && saved.textOffsetX < 0 || saved?.textOffsetY != null && saved.textOffsetY < 0)
     errors.push(error("invalid_layout_geometry", "Textposition darf nicht negativ sein.", prefix));
   if (saved?.fontSize != null && (saved.fontSize <= 0 || saved.fontSize > 512))

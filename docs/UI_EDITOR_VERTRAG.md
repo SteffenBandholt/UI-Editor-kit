@@ -162,6 +162,22 @@ Erlaubt sind nur neutrale Layoutwerte wie `x`, `y`, `width`, `height`, `spacing`
 
 Verboten sind Fachwerte, Datensatz-IDs, SQL-/DB-Inhalte, fachliches Speichern/Loeschen/Upload/Import/Export, Statuswerte aus Fachmodulen, Kunden-/Projekt-/Personendaten, automatische DOM-Analyse, automatische UI-Erkennung und automatische Registry-Befuellung.
 
+## Optionale Geometriegrenzen
+
+Die allgemeinen Geometriegrenzen `minX`, `maxX`, `minY`, `maxY`, `minWidth`, `maxWidth`, `minHeight` und `maxHeight` sind optional. Jede Richtung wird unabhängig behandelt:
+
+- fehlt eine Grenze oder ist sie `null`, ist diese Richtung unbegrenzt;
+- eine einzelne deklarierte Unter- oder Obergrenze ist zulässig und verbindlich;
+- zwei deklarierte Grenzen müssen endlich sein und in der richtigen Reihenfolge liegen;
+- fehlende Grenzen dürfen weder beim Validieren noch bei Save, Load, Restore, Undo oder Reset durch Ersatzwerte simuliert werden;
+- `Infinity`, `Number.MAX_SAFE_INTEGER` oder große Fantasiezahlen sind keine Darstellung für „unbegrenzt“.
+
+Anzuwendende Geometriewerte müssen weiterhin endlich sein. Allgemeine Breiten und Höhen müssen technisch nicht-negativ sein; ein konkreter Renderer darf eine strengere technische Darstellbarkeitsregel nur in seinem eigenen Adapter prüfen und darf daraus keine allgemeine Registry-Mindestgröße ableiten.
+
+Die vorhandenen expliziten Altangaben `geometry.maximumStoredOffset` und `geometry.maximumOffset` bleiben als symmetrische Positionsgrenze lesbar, wenn eine Ziel-App sie tatsächlich deklariert. Ohne eine solche Deklaration gibt es keinen Positionsfallback. Ein ausdrücklich `null` gesetztes `minX`, `maxX`, `minY` oder `maxY` bezeichnet für diese Richtung unbegrenzt und wird nicht durch die Altangabe ersetzt.
+
+Spezielle Tabellenoperationen wie `resizeColumnBoundary` mit `adjacentPreserveTotal` behalten ihre eigenen ausdrücklich deklarierten Spalten- und Summengrenzen. Sie sind nicht Teil der allgemeinen Geometrieentgrenzung.
+
 ## Sichtbarkeit und Feldtrennung ab M80
 
 `setVisibility` ist eine neutrale Layoutoperation. Sie ist getrennt von `disabled`, Berechtigungen und Fachzustand. Ein unsichtbares Element bleibt in Registry und Editorbaum vorhanden. Save/Load/Discard/Reset und Rollback behandeln Sichtbarkeit wie jeden anderen Layoutwert.

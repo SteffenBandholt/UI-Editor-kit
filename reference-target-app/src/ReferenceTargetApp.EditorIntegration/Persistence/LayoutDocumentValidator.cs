@@ -123,8 +123,8 @@ public static class LayoutDocumentValidator
             errors.Add(new("wrong_scope", "Element verwendet einen unzulässigen Scope.", $"{prefix}.scopeId"));
 
         ValidateCapabilityPair(element.X, element.Y, entry.Capabilities.HasFlag(UiCapability.Position), "position", prefix, errors);
-        ValidateCapabilityValue(element.Width, entry.Capabilities.HasFlag(UiCapability.Width), "width", prefix, errors, positive: true);
-        ValidateCapabilityValue(element.Height, entry.Capabilities.HasFlag(UiCapability.Height), "height", prefix, errors, positive: true);
+        ValidateCapabilityValue(element.Width, entry.Capabilities.HasFlag(UiCapability.Width), "width", prefix, errors, nonNegative: true);
+        ValidateCapabilityValue(element.Height, entry.Capabilities.HasFlag(UiCapability.Height), "height", prefix, errors, nonNegative: true);
         ValidateCapabilityPair(element.TextOffsetX, element.TextOffsetY, entry.Capabilities.HasFlag(UiCapability.TextPosition), "textOffset", prefix, errors, nonNegative: true);
         ValidateCapabilityValue(element.FontSize, entry.Capabilities.HasFlag(UiCapability.FontSize), "fontSize", prefix, errors, positive: true, maximum: MaximumFontSize);
         ValidateCapabilityBoolean(element.Visible, entry.Capabilities.HasFlag(UiCapability.Visibility), "visible", prefix, errors);
@@ -214,6 +214,7 @@ public static class LayoutDocumentValidator
         string prefix,
         ICollection<LayoutPersistenceError> errors,
         bool positive = false,
+        bool nonNegative = false,
         double? maximum = null)
     {
         if (!allowed)
@@ -227,7 +228,7 @@ public static class LayoutDocumentValidator
             errors.Add(new("invalid_layout_value", $"{field} fehlt.", $"{prefix}.{field}"));
             return;
         }
-        ValidateNumber(value.Value, $"{prefix}.{field}", errors, positive: positive, maximum: maximum);
+        ValidateNumber(value.Value, $"{prefix}.{field}", errors, positive: positive, nonNegative: nonNegative, maximum: maximum);
     }
 
     private static void ValidateNumber(

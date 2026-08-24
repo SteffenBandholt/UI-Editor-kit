@@ -121,8 +121,17 @@ const UI_ELEMENT_OPTIONAL_FIELDS = Object.freeze([
   "actionKind",
   "componentKind",
   "width",
+  "height",
+  "minX",
+  "maxX",
+  "minY",
+  "maxY",
   "minWidth",
   "maxWidth",
+  "minHeight",
+  "maxHeight",
+  "baseline",
+  "limits",
   "layoutArea",
   "selectionKind",
   "selectionLevels",
@@ -138,7 +147,11 @@ const UI_ELEMENT_OPTIONAL_FIELDS = Object.freeze([
 
 const UI_ELEMENT_ARRAY_FIELDS = Object.freeze(["allowedOps", "lockedOps", "selectionLevels", "spacingTargets"]);
 const UI_ELEMENT_BOOLEAN_FIELDS = Object.freeze(["visible", "editable"]);
-const UI_ELEMENT_NUMERIC_FIELDS = Object.freeze(["order", "width", "minWidth", "maxWidth"]);
+const UI_ELEMENT_NUMERIC_FIELDS = Object.freeze([
+  "order", "width", "height",
+  "minX", "maxX", "minY", "maxY",
+  "minWidth", "maxWidth", "minHeight", "maxHeight",
+]);
 const UI_ELEMENT_FIELDS = Object.freeze([...UI_ELEMENT_REQUIRED_FIELDS, ...UI_ELEMENT_OPTIONAL_FIELDS]);
 
 function hasOwn(source, key) {
@@ -150,7 +163,7 @@ function cloneFieldValue(fieldName, value) {
     return value.slice();
   }
 
-  if (["tableLayout", "tableColumnLayout", "tableBinding", "rowLayout"].includes(fieldName) && value && typeof value === "object") {
+  if (["baseline", "limits", "geometry", "tableLayout", "tableColumnLayout", "tableBinding", "rowLayout"].includes(fieldName) && value && typeof value === "object") {
     return JSON.parse(JSON.stringify(value));
   }
 

@@ -20,7 +20,11 @@ const TARGET_REGISTRATION_STATUSES = Object.freeze([
 const REGISTRY_SCOPE_STATUSES = Object.freeze(["incomplete", "complete", "changed", "incompatible", "blocked"]);
 const BASELINE_KEYS = Object.freeze([
   "x", "y", "width", "height", "textOffsetX", "textOffsetY", "fontSize", "visible",
-  "minWidth", "maxWidth", "minHeight", "maxHeight",
+  "minX", "maxX", "minY", "maxY", "minWidth", "maxWidth", "minHeight", "maxHeight",
+]);
+const GEOMETRY_BOUND_PAIRS = Object.freeze([
+  ["minX", "maxX"], ["minY", "maxY"],
+  ["minWidth", "maxWidth"], ["minHeight", "maxHeight"],
 ]);
 
 function isObject(value) {
@@ -29,6 +33,14 @@ function isObject(value) {
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function own(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function sortedText(values) {
@@ -43,7 +55,7 @@ function canonicalBaseline(value) {
     const current = value[key];
     if (key === "visible") result[key] = current !== false;
     else if (current === null) result[key] = null;
-    else if (Number.isFinite(Number(current))) result[key] = Number(current);
+    else if (finiteNumber(current)) result[key] = current;
   }
   if (Object.prototype.hasOwnProperty.call(value, "spacing")) result.spacing = normalizeSpacingValues(value.spacing);
   return result;
@@ -184,6 +196,22 @@ function validateRegistrationSnapshot(snapshot) {
         errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.registrationStatus`));
       if (!text(element.refKey)) errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_REFERENCE_MISSING, `${elementPrefix}.refKey`));
       if (!isObject(element.baseline)) errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_BASELINE_MISSING, `${elementPrefix}.baseline`));
+      for (const [minKey, maxKey] of GEOMETRY_BOUND_PAIRS) {
+        const minimumDeclared = own(element.baseline, minKey) && element.baseline[minKey] != null;
+        const maximumDeclared = own(element.baseline, maxKey) && element.baseline[maxKey] != null;
+        const minimum = element.baseline?.[minKey];
+        const maximum = element.baseline?.[maxKey];
+        if (minimumDeclared && !finiteNumber(minimum))
+          errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.baseline.${minKey}`, "invalid_geometry_bound"));
+        if (maximumDeclared && !finiteNumber(maximum))
+          errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.baseline.${maxKey}`, "invalid_geometry_bound"));
+        if (minimumDeclared && maximumDeclared && finiteNumber(minimum) && finiteNumber(maximum) && maximum < minimum)
+          errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.baseline.${maxKey}`, "invalid_geometry_bounds"));
+      }
+      for (const key of ["maximumStoredOffset", "maximumOffset"]) {
+        if (own(element.geometry, key) && element.geometry[key] != null && (!finiteNumber(element.geometry[key]) || element.geometry[key] < 0))
+          errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.geometry.${key}`, "invalid_geometry_bound"));
+      }
       if (element.referenceResolved !== true && scope.status === "complete")
         errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_REFERENCE_MISSING, `${elementPrefix}.referenceResolved`));
       const allowed = sortedText(element.capabilities || element.allowedOps);
@@ -193,13 +221,13 @@ function validateRegistrationSnapshot(snapshot) {
       const baseline = element.baseline || {};
       const capturedBaseline = element.capturedBaseline || {};
       const baselineDimensionAvailable = (value, captured) =>
-        value === null ? Number.isFinite(Number(captured)) && Number(captured) > 0 : Number.isFinite(Number(value)) && Number(value) > 0;
+        value === null ? finiteNumber(captured) && captured >= 0 : finiteNumber(value) && value >= 0;
       const baselineMissing = [
-        allowed.includes("move") && (!Number.isFinite(Number(baseline.x)) || !Number.isFinite(Number(baseline.y))),
+        allowed.includes("move") && (!finiteNumber(baseline.x) || !finiteNumber(baseline.y)),
         (allowed.includes("resize") || allowed.includes("resizeWidth")) && !baselineDimensionAvailable(baseline.width, capturedBaseline.width),
         (allowed.includes("resize") || allowed.includes("resizeHeight")) && !baselineDimensionAvailable(baseline.height, capturedBaseline.height),
-        allowed.includes("textMove") && (!Number.isFinite(Number(baseline.textOffsetX)) || !Number.isFinite(Number(baseline.textOffsetY))),
-        allowed.includes("textResize") && !Number.isFinite(Number(baseline.fontSize)),
+        allowed.includes("textMove") && (!finiteNumber(baseline.textOffsetX) || !finiteNumber(baseline.textOffsetY)),
+        allowed.includes("textResize") && !finiteNumber(baseline.fontSize),
         allowed.includes("setVisibility") && typeof baseline.visible !== "boolean",
         allowed.some((operation) => SPACING_OPERATIONS.includes(operation)) && (!isObject(baseline.spacing) || sortedText(element.spacingTargets).some((target) => !SPACING_TARGETS.includes(target))),
       ].some(Boolean);

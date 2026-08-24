@@ -109,6 +109,8 @@ Der Host-Adapter hat folgende Aufgaben:
 
 Der Host-Adapter darf keine Fachlogik fuer den Editor freigeben.
 
+Allgemeine Geometriegrenzen sind richtungsweise optional. Eine Ziel-App darf `minX`, `maxX`, `minY`, `maxY`, `minWidth`, `maxWidth`, `minHeight` und `maxHeight` deklarieren, muss dies aber nicht. Fehlend oder `null` bedeutet unbegrenzt; der Adapter darf dafür keine Fantasiezahl einsetzen. Er weist weiterhin nicht endliche beziehungsweise konkret technisch nicht darstellbare Werte zurück. Spezielle Tabellenverträge behalten ihre eigenen expliziten Grenzen.
+
 ## 7. Aenderungen durch den Editor
 
 Der Editor erstellt Aenderungsauftraege.

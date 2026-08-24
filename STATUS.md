@@ -4,6 +4,13 @@
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
+### Gemeinsamer Geometrievertrag – optionale Grenzen
+
+- Status: `[T] umgesetzt`; allgemeine Grenzen für X/Y/Breite/Höhe sind richtungsweise optional. Fehlend oder `null` bedeutet unbegrenzt, ohne `Infinity`, große Ersatzwerte oder versteckte Fallbacks. Nur ausdrücklich deklarierte endliche Grenzen werden angewandt; widersprüchliche oder nicht endliche Deklarationen bleiben ungültig.
+- Komponenten-, Registry-, Runtime-, Panel- und Profilstartvertrag verwenden dieselbe Semantik. Der frühere Positionsfallback `±240` ist entfernt; ausdrücklich vorhandene Altangaben `geometry.maximumStoredOffset` beziehungsweise `geometry.maximumOffset` bleiben kompatibel. Endliche Nutzwerte und nicht-negative allgemeine Größen werden getrennt als technische Wertgültigkeit geprüft.
+- Save/Load, Neustart-Restore, Discard, Original/Reset und natives mehrstufiges Undo erhalten unbegrenzte Werte exakt. Spezielle Tabellenoperationen und ihre ausdrücklich deklarierten Spalten-/Summengrenzen wurden nicht entgrenzt. Es wurden keine BBM-Dateien, Ziel-App-IDs, zweite Editorlogik oder zweite Persistenz ergänzt.
+- Nachweis: neuer appneutraler JS-Regressionssatz einschließlich ausgeliefertem ESM-Vertrag grün; vollständige npm-Vorkette und alle nach dem bekannten Snapshotfehler verbleibenden JS-Testgruppen grün; nativer Build `0` Warnungen/`0` Fehler und ReferenceTargetApp `148/148`; Release-Check, Pack-Dry-Run und `git diff --check` grün. Der vollständige `npm test` stoppt weiterhin ausschließlich an der vorbestehenden Public-API-Erwartung, in der `normalizeTableColumnRuntimeMetrics` und `validateTableColumnRuntimeMetrics` fehlen. Commit und Push: keiner.
+
 ### K17.12 – Unabhängige menschenverständliche PDF-Spaltenbreite
 
 - Status: `[A]`; `TableColumn.resizeWidth` ist im gemeinsamen nativen Core und im generischen Electron-Adapter unabhängig. Direkte Millimeterwerte und der sichtbare Mauszug ändern exakt die gewählte Spalte; folgende Spalten verschieben sich, Nachbarbreiten bleiben unverändert. Die Tabellensumme darf bis zur tatsächlichen rechten Arbeitsbereichsgrenze wachsen oder schrumpfen.

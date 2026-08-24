@@ -64,6 +64,46 @@ public sealed class M825SimpleModeTests
     }
 
     [TestMethod]
+    public void SessionUndoRestoresUnboundedZeroAndLargeWidth()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), $"ui-editor-unbounded-geometry-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(root);
+            try
+            {
+                var field = new TextBox { Width = 100, Height = 24 };
+                var scope = new Grid { Width = 600, Height = 300 };
+                scope.Children.Add(field);
+                var registry = new UiElementRegistry([
+                    new("scope", "scope", null, UiElementKind.Scope, "Bereich", 0, UiCapability.None, scope),
+                    new("field", "scope", "scope", UiElementKind.InputField, "Inhalt", 10, UiCapability.Width, field,
+                        ProtocolType: "field", AllowedOperations: [HostAdapterOperations.ResizeWidth]),
+                ]);
+                var adapter = new WpfHostAdapter(registry);
+                var baseline = adapter.GetCurrentLayoutState();
+                var session = new LayoutProfileSession(
+                    new Dictionary<string, IHostAdapter>(StringComparer.Ordinal) { ["scope"] = adapter },
+                    new Dictionary<string, LayoutState>(StringComparer.Ordinal) { ["scope"] = baseline },
+                    new AtomicJsonLayoutProfileStore(root, "app"), new ActiveLayoutProfileStore(root),
+                    LayoutProfileCatalog.StandardId);
+
+                ApplyWidth(session, adapter, 5000, "Breite 5000");
+                ApplyWidth(session, adapter, 0, "Breite 0");
+                Assert.AreEqual(0, CurrentWidth(adapter), 0.001);
+                Assert.IsTrue(session.UndoAsync().GetAwaiter().GetResult().Success);
+                Assert.AreEqual(5000, CurrentWidth(adapter), 0.001);
+                Assert.IsTrue(session.UndoAsync().GetAwaiter().GetResult().Success);
+                Assert.AreEqual(100, CurrentWidth(adapter), 0.001);
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [TestMethod]
     public void NativeWorkspaceStartsSimpleAndKeepsTechnicalControlsClosed()
     {
         var root = FindRepositoryRoot();

@@ -330,7 +330,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         double? X, double? Y, double? Width, double? Height,
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool? Visible,
         double? MinWidth, double? MaxWidth, double? MinHeight, double? MaxHeight,
-        IReadOnlyDictionary<string, double>? Spacing = null);
+        IReadOnlyDictionary<string, double>? Spacing = null,
+        double? MinX = null, double? MaxX = null, double? MinY = null, double? MaxY = null);
     internal sealed record RemoteScopeLayoutState(string ScopeId, DateTimeOffset CapturedAt, IReadOnlyList<RemoteElementLayoutState> Elements);
     internal sealed record RemoteElementLayoutState(
         string ElementId, double X, double Y, double Width, double Height,

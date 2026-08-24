@@ -159,6 +159,16 @@ function isOperationAllowed(element, operation) {
   return !lockedOps.includes(operation) && getAllowedOps(element).includes(operation);
 }
 
+function declaredGeometryBound(registryElement, key) {
+  for (const source of [registryElement?.limits, registryElement?.baseline, registryElement]) {
+    if (!source || !Object.prototype.hasOwnProperty.call(source, key)) continue;
+    if (source[key] == null) return { declared: true, valid: true, value: undefined };
+    if (typeof source[key] === "number" && Number.isFinite(source[key])) return { declared: true, valid: true, value: source[key] };
+    return { declared: true, valid: false, value: undefined };
+  }
+  return { declared: false, valid: true, value: undefined };
+}
+
 function validateLayoutEntryForElement(entry, registryElement) {
   const normalized = normalizeLayoutEntry(entry);
   if (!normalized) {
@@ -170,7 +180,6 @@ function validateLayoutEntryForElement(entry, registryElement) {
   }
   const elementValues = normalized.element || normalized;
   const textValues = normalized.text || {};
-  const limits = registryElement.limits || registryElement;
   const bounds = [
     [elementValues, "x", "minX", "maxX"], [elementValues, "y", "minY", "maxY"],
     [elementValues, "width", "minWidth", "maxWidth"], [elementValues, "height", "minHeight", "maxHeight"],
@@ -180,8 +189,16 @@ function validateLayoutEntryForElement(entry, registryElement) {
   for (const [values, field, minKey, maxKey] of bounds) {
     if (!Object.prototype.hasOwnProperty.call(values, field)) continue;
     if (!Number.isFinite(values[field])) return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, `${field} must be a finite number.`);
-    if ((Number.isFinite(limits[minKey]) && values[field] < limits[minKey]) || (Number.isFinite(limits[maxKey]) && values[field] > limits[maxKey])) {
-      return blockedResult(RUNTIME_ERROR_CODES.VALUE_OUT_OF_RANGE, `${field} exceeds registered limits.`, { value: { field, min: limits[minKey], max: limits[maxKey] } });
+    if ((field === "width" || field === "height") && values[field] < 0) {
+      return blockedResult(RUNTIME_ERROR_CODES.INVALID_LAYOUT_ENTRY, `${field} must be a non-negative number.`);
+    }
+    const minimum = declaredGeometryBound(registryElement, minKey);
+    const maximum = declaredGeometryBound(registryElement, maxKey);
+    if (!minimum.valid || !maximum.valid) {
+      return blockedResult(RUNTIME_ERROR_CODES.INVALID_REGISTRY, `${field} has an invalid registered limit.`);
+    }
+    if ((Number.isFinite(minimum.value) && values[field] < minimum.value) || (Number.isFinite(maximum.value) && values[field] > maximum.value)) {
+      return blockedResult(RUNTIME_ERROR_CODES.VALUE_OUT_OF_RANGE, `${field} exceeds registered limits.`, { value: { field, min: minimum.value, max: maximum.value } });
     }
   }
   if ((Object.prototype.hasOwnProperty.call(elementValues, "x") || Object.prototype.hasOwnProperty.call(elementValues, "y")) && !isOperationAllowed(registryElement, "move")) {
