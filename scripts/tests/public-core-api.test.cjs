@@ -100,6 +100,8 @@ const expectedExports = [
   "updateTableColumnWidthFromCell",
   "validateTableLayoutIntent",
   "measureTableLayout",
+  "normalizeTableColumnRuntimeMetrics",
+  "validateTableColumnRuntimeMetrics",
   "fitTableToViewport",
   "updateTableColumn",
   "resizeTableColumnBoundary",

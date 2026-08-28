@@ -175,8 +175,9 @@ public sealed class LayoutProfileSession
         await ExclusiveAsync(async () =>
         {
             var working = CaptureWorking();
-            if (workingExplicitOperations.Values.Sum(values => values.Count) == 0)
-                workingExplicitOperations = InferOperations(saved, working);
+            workingExplicitOperations = MergeOperations(
+                workingExplicitOperations,
+                InferMissingOperationsForExplicitlyEditedElements(saved, working, workingExplicitOperations));
             var result = await profileStore.SaveAsync(ActiveProfileId, adapters, working, cancellationToken, OperationsForDocument(workingExplicitOperations, adapters.Keys)).ConfigureAwait(false);
             if (!result.Success) return Fail(result.Code, result.Message);
             if (result.Document is null) return Fail("layout_save_snapshot_missing", "Der persistent gespeicherte Layoutsnapshot fehlt.");
@@ -632,6 +633,113 @@ public sealed class LayoutProfileSession
         return result;
     }
 
+    private Dictionary<string, HashSet<string>> InferMissingOperationsForExplicitlyEditedElements(
+        IReadOnlyDictionary<string, LayoutState> current,
+        IReadOnlyDictionary<string, LayoutState> desired,
+        Dictionary<string, HashSet<string>> explicitOperations)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+
+        foreach (var scopePair in adapters)
+        {
+            if (!current.TryGetValue(scopePair.Key, out var currentScope) ||
+                !desired.TryGetValue(scopePair.Key, out var desiredScope) ||
+                !explicitOperations.TryGetValue(scopePair.Key, out var explicitScopeOperations))
+                continue;
+
+            var explicitlyEditedElementIds = explicitScopeOperations
+                .Select(value =>
+                {
+                    var separator = value.IndexOf('\u001f');
+                    return separator > 0 ? value[..separator] : string.Empty;
+                })
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToHashSet(StringComparer.Ordinal);
+
+            if (explicitlyEditedElementIds.Count == 0)
+                continue;
+
+            var desiredById = desiredScope.Elements
+                .ToDictionary(element => element.ElementId, StringComparer.Ordinal);
+
+            foreach (var element in currentScope.Elements)
+            {
+                if (!explicitlyEditedElementIds.Contains(element.ElementId) ||
+                    !desiredById.TryGetValue(element.ElementId, out var target))
+                    continue;
+
+                var entry = scopePair.Value.GetRegistry().FindById(element.ElementId);
+                if (entry is null)
+                    continue;
+
+                var allowed = entry.AllowedOperations ?? [];
+                var inferred = new List<string>();
+
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.Position) &&
+                    (!Same(element.X, target.X) || !Same(element.Y, target.Y)) &&
+                    allowed.Contains(HostAdapterOperations.Move, StringComparer.Ordinal))
+                {
+                    inferred.Add(HostAdapterOperations.Move);
+                }
+
+                var widthChanged =
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Width) &&
+                    !Same(element.Width, target.Width);
+
+                var heightChanged =
+                    entry.Capabilities.HasFlag(Registry.UiCapability.Height) &&
+                    !Same(element.Height, target.Height);
+
+                if ((widthChanged || heightChanged) &&
+                    allowed.Contains(HostAdapterOperations.Resize, StringComparer.Ordinal))
+                {
+                    inferred.Add(HostAdapterOperations.Resize);
+                }
+                else
+                {
+                    if (widthChanged &&
+                        allowed.Contains(HostAdapterOperations.ResizeWidth, StringComparer.Ordinal))
+                        inferred.Add(HostAdapterOperations.ResizeWidth);
+
+                    if (heightChanged &&
+                        allowed.Contains(HostAdapterOperations.ResizeHeight, StringComparer.Ordinal))
+                        inferred.Add(HostAdapterOperations.ResizeHeight);
+                }
+
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.TextPosition) &&
+                    (!Same(element.TextOffsetX, target.TextOffsetX) ||
+                     !Same(element.TextOffsetY, target.TextOffsetY)) &&
+                    allowed.Contains(HostAdapterOperations.TextMove, StringComparer.Ordinal))
+                {
+                    inferred.Add(HostAdapterOperations.TextMove);
+                }
+
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.FontSize) &&
+                    !Same(element.FontSize, target.FontSize) &&
+                    allowed.Contains(HostAdapterOperations.TextResize, StringComparer.Ordinal))
+                {
+                    inferred.Add(HostAdapterOperations.TextResize);
+                }
+
+                if (entry.Capabilities.HasFlag(Registry.UiCapability.Visibility) &&
+                    element.Visible != target.Visible &&
+                    allowed.Contains(HostAdapterOperations.SetVisibility, StringComparer.Ordinal))
+                {
+                    inferred.Add(HostAdapterOperations.SetVisibility);
+                }
+
+                foreach (var operation in inferred)
+                {
+                    if (!result.TryGetValue(scopePair.Key, out var values))
+                        result[scopePair.Key] = values = new(StringComparer.Ordinal);
+
+                    values.Add($"{element.ElementId}\u001f{operation}");
+                }
+            }
+        }
+
+        return result;
+    }
     private Dictionary<string, HashSet<string>> InferOperations(
         IReadOnlyDictionary<string, LayoutState> current,
         IReadOnlyDictionary<string, LayoutState> desired)
