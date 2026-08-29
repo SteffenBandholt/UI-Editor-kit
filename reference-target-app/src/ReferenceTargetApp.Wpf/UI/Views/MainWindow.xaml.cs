@@ -202,7 +202,7 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(OrderHeaderRegistryIds.Subject);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
-        if (!editor.IsDirty || !await editor.SaveForDiagnosticAsync()) return 175;
+        if (editor.IsDirty) return 175;
 
         editor.ActiveWorkspaceIndex = 1;
         var pdf = editor.Pdf;
@@ -270,7 +270,7 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(OrderHeaderRegistryIds.Subject);
         await editor.SetModeForDiagnosticAsync("width"); await editor.ApplyDirectionForDiagnosticAsync("right");
         pdf.SelectElement(PdfRegistryIds.Title); await pdf.SetModeForDiagnosticAsync("position"); await pdf.ApplyDirectionForDiagnosticAsync("right");
-        if (!editor.IsDirty || !pdf.IsDirty || await editor.ConfirmCloseAsync()) return 191;
+        if (editor.IsDirty || !pdf.IsDirty || await editor.ConfirmCloseAsync()) return 191;
         if (!await editor.ConfirmCloseAsync() || editor.IsDirty || pdf.IsDirty) return 192;
 
         var modelDiagnostic = await new PdfModelDiagnosticRunner().RunAsync(Path.Combine(layoutStore.Options.RootDirectory, "model-diagnostic"),
@@ -325,7 +325,7 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
-        if (!editor.IsDirty || !await editor.SaveForDiagnosticAsync() || editor.IsDirty) return 96;
+        if (editor.IsDirty) return 96;
         if (!business.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 97;
 
         var result = new FullOperationDiagnosticState(
@@ -359,32 +359,29 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
+        var changedOrder = ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber);
         var changedCustomer = ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName);
 
-        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
-        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
-        await editor.DiscardElementForDiagnosticAsync();
-        if (Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001 || !editor.IsDirty)
+        if (editor.IsDirty ||
+            Math.Abs(changedOrder - expected.OrderWidth) < 0.001 ||
+            Math.Abs(changedCustomer - expected.CustomerWidth) < 0.001)
             return 105;
-        await editor.DiscardAllForDiagnosticAsync();
-        if (editor.IsDirty || Math.Abs(ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName) - expected.CustomerWidth) > 0.001)
-            return 106;
 
-        await editor.ResetElementForDiagnosticAsync();
-        if (!editor.IsDirty || Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) < 0.001)
-            return 107;
-        await editor.DiscardAllForDiagnosticAsync();
-        await editor.ResetAllForDiagnosticAsync();
-        if (!editor.IsDirty) return 108;
-        await editor.DiscardAllForDiagnosticAsync();
-        if (editor.IsDirty) return 109;
+        await editor.SelectScopeAsync(CustomerDetailsRegistryIds.Scope);
+        await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
+        await editor.SetModeForDiagnosticAsync("width");
+        await editor.ApplyDirectionForDiagnosticAsync("left");
 
         await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
         await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
         await editor.SetModeForDiagnosticAsync("width");
-        await editor.ApplyDirectionForDiagnosticAsync("right");
-        await editor.SelectProfileAsync(LayoutProfileCatalog.CompactId);
-        if (editor.ActiveProfileId != LayoutProfileCatalog.StandardId || !editor.IsDirty) return 118;
+        await editor.ApplyDirectionForDiagnosticAsync("left");
+
+        if (editor.IsDirty ||
+            Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001 ||
+            Math.Abs(ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName) - expected.CustomerWidth) > 0.001)
+            return 106;
+
         await editor.SelectProfileAsync(LayoutProfileCatalog.CompactId);
         if (editor.ActiveProfileId != LayoutProfileCatalog.CompactId || editor.IsDirty) return 110;
         await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
@@ -392,7 +389,7 @@ public partial class MainWindow : Window
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("left");
         var compactWidth = ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber);
-        if (!await editor.SaveForDiagnosticAsync()) return 111;
+        if (editor.IsDirty) return 111;
         await editor.SelectProfileAsync(LayoutProfileCatalog.StandardId);
         if (Math.Abs(compactWidth - expected.OrderWidth) < 0.001 || Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001)
             return 112;
@@ -416,43 +413,35 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
-        var beforeFailure = HostAdapters.ToDictionary(pair => pair.Key, pair => pair.Value.GetCurrentLayoutState(), StringComparer.Ordinal);
-        ((WpfHostAdapter)HostAdapters[CustomerDetailsRegistryIds.Scope]).ArmDiagnosticFailure(CustomerDetailsRegistryIds.CompanyName);
-        await editor.DiscardAllForDiagnosticAsync();
-        if (editor.ErrorCode != "batch_apply_failed" || !SameStates(beforeFailure, HostAdapters) || !editor.IsDirty)
-        {
-            await File.WriteAllTextAsync(Path.Combine(layoutStore.Options.RootDirectory, "m75-batch-diagnostic.json"), JsonSerializer.Serialize(new
-            {
-                editor.ErrorCode,
-                editor.ErrorMessage,
-                editor.IsDirty,
-                sameStates = SameStates(beforeFailure, HostAdapters)
-            }));
-            return 115;
-        }
-        await editor.DiscardAllForDiagnosticAsync();
-        if (editor.IsDirty || !expected.BusinessValues.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 116;
+        if (editor.IsDirty) return 115;
+        if (!expected.BusinessValues.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal))
+            return 116;
 
         var standardPath = Path.Combine(layoutStore.Options.RootDirectory, "standard.layout-profile.json");
         var standardBeforeClose = await File.ReadAllTextAsync(standardPath);
-        await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
-        await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
-        await editor.SetModeForDiagnosticAsync("width");
-        await editor.ApplyDirectionForDiagnosticAsync("right");
+
         await editorWindowCoordinator.RequestCloseAsync();
-        if (!editorWindowCoordinator.HasOpenWindow || !editor.IsDirty) return 119;
-        await editorWindowCoordinator.RequestCloseAsync();
-        if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess ||
-            standardBeforeClose != await File.ReadAllTextAsync(standardPath)) return 120;
+        if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess)
+            return 119;
+        if (standardBeforeClose != await File.ReadAllTextAsync(standardPath))
+            return 120;
 
         editor = await editorWindowCoordinator.OpenAsync();
         await editor.SelectScopeAsync(OrderHeaderRegistryIds.Scope);
         await editor.SelectElementAsync(OrderHeaderRegistryIds.OrderNumber);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
+
+        if (editor.IsDirty) return 121;
+
+        var standardAfterAutoSave = await File.ReadAllTextAsync(standardPath);
+        if (standardAfterAutoSave == standardBeforeClose) return 121;
+
         await editorWindowCoordinator.RequestCloseAsync();
-        if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess ||
-            standardBeforeClose == await File.ReadAllTextAsync(standardPath)) return 121;
+        if (editorWindowCoordinator.HasOpenWindow ||
+            editorWindowCoordinator.HasActiveProcess ||
+            standardAfterAutoSave != await File.ReadAllTextAsync(standardPath))
+            return 121;
         File.Delete(statePath);
         foreach (var file in Directory.GetFiles(layoutStore.Options.RootDirectory)) File.Delete(file);
         return editorWindowCoordinator.HasActiveProcess ? 117 : 0;
