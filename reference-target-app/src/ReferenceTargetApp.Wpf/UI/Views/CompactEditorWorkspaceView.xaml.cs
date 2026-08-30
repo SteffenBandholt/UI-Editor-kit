@@ -21,33 +21,85 @@ public partial class CompactEditorWorkspaceView : UserControl
 
     private void ApplyResponsiveLayout(double width)
     {
-        var mode = width < 860 ? 1 : width < 1260 ? 2 : 3;
+        var mode = width < 900 ? 1 : 2;
         if (mode == columnMode) return;
+
         columnMode = mode;
+
         AdaptiveColumns.ColumnDefinitions.Clear();
         AdaptiveColumns.RowDefinitions.Clear();
+
         if (mode == 1)
         {
-            AdaptiveColumns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            AddRows(3);
-            Place(SelectionColumn, 0, 0); Place(GeometryColumn, 1, 0); Place(GroupColumn, 2, 0);
-            SelectionColumn.Margin = new Thickness(0, 0, 0, 8); GeometryColumn.Margin = new Thickness(0, 0, 0, 8); GroupColumn.Margin = new Thickness(0);
-        }
-        else if (mode == 2)
-        {
-            AddColumns(2); AddRows(2);
-            Place(SelectionColumn, 0, 0, 2); Place(GeometryColumn, 0, 1); Place(GroupColumn, 1, 1);
-            SelectionColumn.Margin = new Thickness(0, 0, 8, 0); GeometryColumn.Margin = new Thickness(0, 0, 0, 4); GroupColumn.Margin = new Thickness(0, 4, 0, 0);
+            AdaptiveColumns.ColumnDefinitions.Add(
+                new ColumnDefinition
+                {
+                    Width = new GridLength(1, GridUnitType.Star),
+                    MinWidth = 250
+                });
+
+            AdaptiveColumns.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = new GridLength(1, GridUnitType.Star),
+                    MinHeight = 220
+                });
+
+            AdaptiveColumns.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = new GridLength(1, GridUnitType.Star),
+                    MinHeight = 220
+                });
+
+            AdaptiveColumns.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = GridLength.Auto
+                });
+
+            Place(SelectionColumn, 0, 0);
+            Place(GeometryColumn, 1, 0);
+            Place(GroupColumn, 2, 0);
+
+            Grid.SetColumnSpan(GroupColumn, 1);
+
+            SelectionColumn.Margin = new Thickness(0, 0, 0, 8);
+            GeometryColumn.Margin = new Thickness(0, 0, 0, 8);
+            GroupColumn.Margin = new Thickness(0);
         }
         else
         {
-            AddColumns(3); AddRows(1);
-            Place(SelectionColumn, 0, 0); Place(GeometryColumn, 0, 1); Place(GroupColumn, 0, 2);
-            SelectionColumn.Margin = new Thickness(0, 0, 8, 0); GeometryColumn.Margin = new Thickness(0, 0, 8, 0); GroupColumn.Margin = new Thickness(0);
-        }
-        AutomationProperties.SetHelpText(this, $"Kompakter Editor: {mode} Spalte{(mode == 1 ? string.Empty : "n")}");
-    }
+            AddColumns(2);
 
+            AdaptiveColumns.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = new GridLength(1, GridUnitType.Star),
+                    MinHeight = 320
+                });
+
+            AdaptiveColumns.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = GridLength.Auto
+                });
+
+            Place(SelectionColumn, 0, 0);
+            Place(GeometryColumn, 0, 1);
+            Place(GroupColumn, 1, 0);
+
+            Grid.SetColumnSpan(GroupColumn, 2);
+
+            SelectionColumn.Margin = new Thickness(0, 0, 8, 0);
+            GeometryColumn.Margin = new Thickness(0);
+            GroupColumn.Margin = new Thickness(0, 8, 0, 0);
+        }
+
+        AutomationProperties.SetHelpText(
+            this,
+            $"Kompakter Editor: {mode} Hauptspalte{(mode == 1 ? string.Empty : "n")}");
+    }
     private void AddColumns(int count)
     {
         for (var index = 0; index < count; index++) AdaptiveColumns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 250 });
