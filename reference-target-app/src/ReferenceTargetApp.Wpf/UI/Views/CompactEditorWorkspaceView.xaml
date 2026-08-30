@@ -28,7 +28,7 @@
           <TextBlock Text="{Binding LastChangeSummary}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"/>
         </StackPanel>
         <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-          <Button Style="{StaticResource SimpleButton}" Content="Ziel in App auswÃ¤hlen" Command="{Binding BeginAppSelectionCommand}"/>
+          <Button Style="{StaticResource SimpleButton}" Content="Ziel in App auswählen" Command="{Binding BeginAppSelectionCommand}"/>
           <Button Style="{StaticResource SimpleButton}" Content="{Binding UndoLabel}" Command="{Binding UndoCommand}"/>
           <Button Style="{StaticResource SimpleButton}" Content="Speichern" Command="{Binding SaveCommand}"/>
         </WrapPanel>
@@ -61,7 +61,7 @@
               <StackPanel Margin="0,8,0,0">
                 <TextBlock Text="Profil"/><ComboBox x:Name="CompactProfileSelector" ItemsSource="{Binding Profiles}" DisplayMemberPath="DisplayName" SelectedValuePath="ProfileId" SelectedValue="{Binding ActiveProfileId, Mode=OneWay}" SelectionChanged="ProfileSelector_SelectionChanged" Margin="0,3,0,8"/>
                 <TextBlock Text="Bereich"/><ComboBox x:Name="CompactScopeSelector" ItemsSource="{Binding Scopes}" DisplayMemberPath="DisplayName" SelectedValuePath="ScopeId" SelectedValue="{Binding ActiveScopeId, Mode=OneWay}" SelectionChanged="ScopeSelector_SelectionChanged" Margin="0,3,0,8"/>
-                <WrapPanel Margin="0,0,0,8"><RadioButton Content="GefÃ¼hrt" GroupName="AdvancedEditMode" IsChecked="{Binding IsGuidedEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="guided" Margin="0,0,14,0"/><RadioButton Content="Frei" GroupName="AdvancedEditMode" IsChecked="{Binding IsFreeEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="free"/></WrapPanel>
+                <WrapPanel Margin="0,0,0,8"><RadioButton Content="Geführt" GroupName="AdvancedEditMode" IsChecked="{Binding IsGuidedEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="guided" Margin="0,0,14,0"/><RadioButton Content="Frei" GroupName="AdvancedEditMode" IsChecked="{Binding IsFreeEditMode, Mode=OneWay}" Command="{Binding SetEditModeCommand}" CommandParameter="free"/></WrapPanel>
                 <GroupBox Header="Elementbaum" MinHeight="190">
                   <TreeView x:Name="CompactElementTree" ItemsSource="{Binding TreeRoots}" SelectedItemChanged="ElementTree_SelectedItemChanged" ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <TreeView.ItemContainerStyle><Style TargetType="TreeViewItem"><Setter Property="IsExpanded" Value="True"/><Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneTime}"/></Style></TreeView.ItemContainerStyle>
@@ -196,7 +196,7 @@
                       Padding="8,3"
                       Margin="0,1,0,4"
                       FontSize="12"
-                      ToolTip="Nur die ausgewÃ¤hlte Box am unteren Fensterrand zentrieren"/>
+                      ToolTip="Nur die ausgewählte Box am unteren Fensterrand zentrieren"/>
 
               <WrapPanel Margin="0,1,0,3">
 
@@ -467,7 +467,7 @@
                   </WrapPanel>
                   <TextBlock Text="Links wird um denselben Betrag breiter, rechts schmaler. Die Tabellenbreite bleibt unverÃ¤ndert." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,7"/>
                 </StackPanel>
-                <Button Style="{StaticResource SimpleButton}" Content="Ganze Spalte auswÃ¤hlen" Command="{Binding SelectWholeColumnCommand}" Visibility="{Binding CanSelectWholeColumn, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Style="{StaticResource SimpleButton}" Content="Ganze Spalte auswählen" Command="{Binding SelectWholeColumnCommand}" Visibility="{Binding CanSelectWholeColumn, Converter={StaticResource BoolToVisibility}}"/>
                 <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><Button Style="{StaticResource SimpleButton}" Content="âˆ’10" Command="{Binding SimpleActionCommand}" CommandParameter="column:-10"/><Button Style="{StaticResource SimpleButton}" Content="âˆ’1" Command="{Binding SimpleActionCommand}" CommandParameter="column:-1"/><Button Style="{StaticResource SimpleButton}" Content="+1" Command="{Binding SimpleActionCommand}" CommandParameter="column:1"/><Button Style="{StaticResource SimpleButton}" Content="+10" Command="{Binding SimpleActionCommand}" CommandParameter="column:10"/></WrapPanel>
                 <WrapPanel Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Gespeicherter Wert" VerticalAlignment="Center" Margin="0,0,6,7"/><TextBox Text="{Binding ColumnWidthText, UpdateSourceTrigger=PropertyChanged}" Width="78" Height="31" Margin="0,0,6,7"/><Button Style="{StaticResource SimpleButton}" Content="Setzen" Command="{Binding ApplyColumnWidthCommand}"/><Button Style="{StaticResource SimpleButton}" Content="Umbruch" Command="{Binding SimpleActionCommand}" CommandParameter="columnWrap"/><Button Style="{StaticResource SimpleButton}" Content="Ellipsis" Command="{Binding SimpleActionCommand}" CommandParameter="columnEllipsis"/><Button Style="{StaticResource SimpleButton}" Content="Original" Command="{Binding SimpleActionCommand}" CommandParameter="columnOriginal"/></WrapPanel>
                 <TextBlock Text="{Binding ColumnWidthInputStatus}" Visibility="{Binding IsTableColumn, Converter={StaticResource BoolToVisibility}}" Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,6"/>
