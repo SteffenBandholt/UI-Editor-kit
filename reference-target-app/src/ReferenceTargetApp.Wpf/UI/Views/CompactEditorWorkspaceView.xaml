@@ -112,6 +112,15 @@
               <WrapPanel Visibility="{Binding ShowSimpleFontSize, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding SimpleFontSizeLabel}" Width="170" VerticalAlignment="Center"/><Button Style="{StaticResource SimpleButton}" Content="Kleiner" Command="{Binding SimpleActionCommand}" CommandParameter="fontSize:left" IsEnabled="{Binding CanSimpleFontSize}"/><Button Style="{StaticResource SimpleButton}" Content="Größer" Command="{Binding SimpleActionCommand}" CommandParameter="fontSize:right" IsEnabled="{Binding CanSimpleFontSize}"/></WrapPanel>
             </StackPanel>
 
+            <Button
+              Style="{StaticResource SimpleButton}"
+              Content="Unten zentrieren"
+              Command="{Binding AlignBottomCenterCommand}"
+              IsEnabled="{Binding CanSimpleMove}"
+              Visibility="{Binding ShowSimpleMove, Converter={StaticResource BoolToVisibility}}"
+              HorizontalAlignment="Left"
+              Margin="0,4,0,4"/>
+
             <TextBlock Text="Schritt" FontWeight="SemiBold" Margin="0,5,0,5"/>
             <WrapPanel><Button Style="{StaticResource SimpleButton}" Content="1" Command="{Binding SetStepPresetCommand}" CommandParameter="1"/><Button Style="{StaticResource SimpleButton}" Content="5" Command="{Binding SetStepPresetCommand}" CommandParameter="5"/><Button Style="{StaticResource SimpleButton}" Content="10" Command="{Binding SetStepPresetCommand}" CommandParameter="10"/><TextBox Text="{Binding StepText, UpdateSourceTrigger=PropertyChanged}" Width="76" Height="31" VerticalContentAlignment="Center" ToolTip="Freie Schrittweite in DIP"/></WrapPanel>
 

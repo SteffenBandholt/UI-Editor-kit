@@ -107,7 +107,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         MoveTableBoundaryCommand = new AsyncCommand(MoveTableBoundaryAsync, parameter => CanMoveTableBoundary && parameter is string);
         SimpleActionCommand = new AsyncCommand(ApplySimpleActionAsync, parameter => CanOperate && parameter is string);
         SetStepPresetCommand = new AsyncCommand(SetStepPresetAsync, parameter => CanOperate && parameter is string);
-        ApplyDirectValueCommand = new AsyncCommand(ApplyDirectValueAsync, parameter => CanOperate && parameter is string);
+        ApplyDirectValueCommand = new AsyncCommand(ApplyDirectValueAsync, parameter => CanOperate && parameter is string);
+        AlignBottomCenterCommand = new AsyncCommand(_ => AlignBottomCenterAsync(), _ => CanOperate && CanSimpleMove);
         UndoCommand = new AsyncCommand(_ => UndoAsync(), _ => CanOperate && CanUndo);
         SelectWholeColumnCommand = new AsyncCommand(_ => SelectWholeColumnAsync(), _ => CanSelectWholeColumn);
         SaveCommand = new AsyncCommand(_ => SaveAsync(), _ => CanOperate && IsDirty);
@@ -153,7 +154,8 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ICommand MoveTableBoundaryCommand { get; }
     public ICommand SimpleActionCommand { get; }
     public ICommand SetStepPresetCommand { get; }
-    public ICommand ApplyDirectValueCommand { get; }
+    public ICommand ApplyDirectValueCommand { get; }
+    public ICommand AlignBottomCenterCommand { get; }
     public ICommand UndoCommand { get; }
     public ICommand SelectWholeColumnCommand { get; }
     public ICommand SaveCommand { get; }
@@ -963,6 +965,34 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             }, "Die Tabelle wurde an den sichtbaren Inhaltsbereich angepasst.", tableId, simple: true);
     }
 
+    private static string FormatEditorNumber(double value)
+    {
+        if (!double.IsFinite(value)) return string.Empty;
+
+        var rounded = Math.Round(value, 1, MidpointRounding.AwayFromZero);
+        var whole = Math.Round(rounded);
+
+        return Math.Abs(rounded - whole) < 0.000001
+            ? whole.ToString("0", CultureInfo.CurrentCulture)
+            : rounded.ToString("0.0", CultureInfo.CurrentCulture);
+    }
+
+    private async Task AlignBottomCenterAsync()
+    {
+        if (!CanSimpleMove || state?.Details is null)
+            return;
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["alignment"] = "viewportBottomCenter",
+            ["margin"] = 8.0,
+        };
+
+        await SubmitDirectChangeAsync(
+            HostAdapterOperations.Move,
+            payload,
+            "am unteren Bildschirmrand zentriert");
+    }
     private async Task ApplyDirectValueAsync(object? parameter)
     {
         if (parameter is not string field) return;
@@ -1343,13 +1373,13 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             : "Keine Spalte ausgewählt";
         columnWidthText = details?.TableColumnLayout is not null && details.CurrentLayout.Element is { } columnSize
             ? columnSize.Width.ToString("G", CultureInfo.CurrentCulture) : string.Empty;
-        directXText = details?.CurrentLayout.Element?.X.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
-        directYText = details?.CurrentLayout.Element?.Y.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
-        directWidthText = details?.CurrentLayout.Element?.Width.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
-        directHeightText = details?.CurrentLayout.Element?.Height.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
-        directTextXText = details?.CurrentLayout.Text?.OffsetX?.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
-        directTextYText = details?.CurrentLayout.Text?.OffsetY?.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
-        directFontSizeText = details?.CurrentLayout.Text?.FontSize?.ToString("G", CultureInfo.CurrentCulture) ?? string.Empty;
+        directXText = details?.CurrentLayout.Element?.X is double directX ? FormatEditorNumber(directX) : string.Empty;
+        directYText = details?.CurrentLayout.Element?.Y is double directY ? FormatEditorNumber(directY) : string.Empty;
+        directWidthText = details?.CurrentLayout.Element?.Width is double directWidth ? FormatEditorNumber(directWidth) : string.Empty;
+        directHeightText = details?.CurrentLayout.Element?.Height is double directHeight ? FormatEditorNumber(directHeight) : string.Empty;
+        directTextXText = details?.CurrentLayout.Text?.OffsetX is double directTextX ? FormatEditorNumber(directTextX) : string.Empty;
+        directTextYText = details?.CurrentLayout.Text?.OffsetY is double directTextY ? FormatEditorNumber(directTextY) : string.Empty;
+        directFontSizeText = details?.CurrentLayout.Text?.FontSize is double directFontSize ? FormatEditorNumber(directFontSize) : string.Empty;
         RaiseDetailsChanged();
         OnPropertyChanged(nameof(ActiveScopeId));
             RaiseCommandStates();
@@ -1495,7 +1525,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private void RaiseCommandStates()
     {
-        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, TableCommand, ApplyColumnWidthCommand, MoveTableBoundaryCommand, SimpleActionCommand, SetStepPresetCommand, ApplyDirectValueCommand, UndoCommand, SelectWholeColumnCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { SetLayerCommand, SetModeCommand, SetEditModeCommand, DirectionCommand, ToggleVisibilityCommand, SpacingCommand, TableCommand, ApplyColumnWidthCommand, MoveTableBoundaryCommand, SimpleActionCommand, SetStepPresetCommand, ApplyDirectValueCommand, AlignBottomCenterCommand, UndoCommand, SelectWholeColumnCommand, SaveCommand, LoadCommand, DiscardElementCommand, DiscardAllCommand, ResetElementCommand, ResetAllCommand, BeginAppSelectionCommand, CancelAppSelectionCommand, CloseCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(CanOperate));
