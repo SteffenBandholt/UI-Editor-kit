@@ -21,7 +21,7 @@ public sealed class PdfFixedLayoutContractTests
     {
         var registry = new PdfElementRegistry(Document());
         Assert.AreEqual(PdfLayoutModel.FixedLayout, registry.Document.LayoutModel);
-        Assert.AreEqual(3, registry.Entries.Count);
+        Assert.HasCount(3, registry.Entries);
         Assert.IsTrue(PdfLayoutStateValidator.Validate(PdfLayoutStateFactory.Baseline(registry), registry).Success);
     }
 
