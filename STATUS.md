@@ -4,6 +4,20 @@
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
+## 2026-09-07 – K16/M81 fixed-layout Vertragspaket
+
+Explizites fixed-layout unterstützt registrierte Text-/Bild-Overlays ohne
+Pflichttabellen und A0–A6/custom, einschließlich A2 quer. JS-Validator und native
+PDF-Vertrags-/Pipe-Seite gemeinsam erweitert; bestehende Tabellen bleiben beim
+Legacy-Vertrag. Profilhashes nur für das neue Modell erweitert.
+Entscheidung/Nachweise: docs/PDF_FIXED_LAYOUT_CONTRACT.md.
+Status: lokal implementiert, JS 8/8 plus M81 grün; native Windows-CI ausstehend.
+Kit-Befehlsvergleich 64/5 -> 65/5 mit denselben fünf Baselinefehlern; BBM 1499/99
+-> 1506/99, keine fehlenden Fälle. Veröffentlichung durch Auto-Review blockiert.
+Lokales Kit-npm-test stoppt bereits auf unveränderter Basis am Pipe-EPERM dieser
+Umgebung. Keine sichtbare PDF-/Windows-Abnahme behauptet.
+
+
 ### Gemeinsamer Geometrievertrag – optionale Grenzen
 
 - Status: `[T] umgesetzt`; allgemeine Grenzen für X/Y/Breite/Höhe sind richtungsweise optional. Fehlend oder `null` bedeutet unbegrenzt, ohne `Infinity`, große Ersatzwerte oder versteckte Fallbacks. Nur ausdrücklich deklarierte endliche Grenzen werden angewandt; widersprüchliche oder nicht endliche Deklarationen bleiben ungültig.

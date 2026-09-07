@@ -3,7 +3,8 @@ using System.Collections.ObjectModel;
 namespace ReferenceTargetApp.EditorIntegration.Pdf;
 
 public enum PdfLayoutUnit { Millimeter }
-public enum PdfPageFormat { A4 }
+public enum PdfPageFormat { A4, A0, A1, A2, A3, A5, A6, Custom }
+public enum PdfLayoutModel { Tabular, FixedLayout }
 public enum PdfPageOrientation { Portrait, Landscape }
 public enum PdfPageArea { Document, Header, Body, Footer }
 public enum PdfElementKind { Document, Page, Area, Group, Text, Label, Value, Image, Table, TableColumn, RepeatingArea, Header, Footer }
@@ -110,8 +111,10 @@ public sealed class PdfDocumentDefinition
         PdfBox margins,
         string defaultFont,
         PdfPageDefinition pageTemplate,
-        IEnumerable<PdfElementDefinition> registeredElements)
+        IEnumerable<PdfElementDefinition> registeredElements,
+        PdfLayoutModel layoutModel = PdfLayoutModel.Tabular)
     {
+        LayoutModel = layoutModel;
         DocumentId = documentId;
         ApplicationId = applicationId;
         DocumentType = documentType;
@@ -124,6 +127,7 @@ public sealed class PdfDocumentDefinition
         RegisteredElements = new ReadOnlyCollection<PdfElementDefinition>(registeredElements.ToArray());
     }
 
+    public PdfLayoutModel LayoutModel { get; }
     public string DocumentId { get; }
     public string ApplicationId { get; }
     public string DocumentType { get; }

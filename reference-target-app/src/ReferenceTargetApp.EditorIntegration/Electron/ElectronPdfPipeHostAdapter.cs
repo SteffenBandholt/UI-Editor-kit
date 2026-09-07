@@ -98,7 +98,25 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
 
     private static PdfElementRegistry BuildRegistry(RemotePdfRegistry remote)
     {
+        var layoutModel = remote.LayoutModel switch
+        {
+            "tabular" => PdfLayoutModel.Tabular,
+            "fixed-layout" => PdfLayoutModel.FixedLayout,
+            _ => throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "PDF-Layoutmodell ist unbekannt.")
+        };
+        var fixedLayout = layoutModel == PdfLayoutModel.FixedLayout;
+        if (fixedLayout && (remote.Unit != "mm" || remote.PageSettings.Orientation is not ("portrait" or "landscape")))
+            throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "PDF-Einheit oder Orientierung ist ungültig.");
+        var format = fixedLayout ? remote.PageSettings.Format switch
+        {
+            "A0" => PdfPageFormat.A0, "A1" => PdfPageFormat.A1, "A2" => PdfPageFormat.A2,
+            "A3" => PdfPageFormat.A3, "A4" => PdfPageFormat.A4, "A5" => PdfPageFormat.A5,
+            "A6" => PdfPageFormat.A6, "custom" => PdfPageFormat.Custom,
+            _ => throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "PDF-Seitenformat ist unbekannt.")
+        } : PdfPageFormat.A4;
         var orientation = remote.PageSettings.Orientation == "landscape" ? PdfPageOrientation.Landscape : PdfPageOrientation.Portrait;
+        if (fixedLayout && remote.Elements.Count(element => element.Kind == "page") != 1)
+            throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Fixed-layout benötigt genau eine Template-Seite.");
         var pageEntry = remote.Elements.Single(element => element.Kind == "page");
         PdfBox Zone(string kind, PdfBox fallback) => remote.Elements.FirstOrDefault(element => element.Kind == kind)?.Baseline.ToBox() ?? fallback;
         var width = remote.PageSettings.Width;
@@ -111,8 +129,8 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
             entry.Id, entry.Name, entry.ScopeId, entry.ParentId, Kind(entry.Kind), Role(entry.Role), Capabilities(entry.Capabilities),
             Area(entry.PageArea), entry.Baseline.ToBox(), entry.Order, entry.Visible, entry.Editable,
             entry.AllowedOps, entry.LockedOps, entry.ColumnRole, entry.RefKey, entry.RendererKey, entry.LayoutBounds.ToLocal(), entry.BoundaryResizePolicy)).ToArray();
-        return new(new(remote.ScopeId, remote.ApplicationId, remote.DocumentTypeId, PdfPageFormat.A4, orientation,
-            PdfLayoutUnit.Millimeter, new(margins.Left, margins.Top, margins.Right, margins.Bottom), "Arial", page, entries));
+        return new(new(remote.ScopeId, remote.ApplicationId, remote.DocumentTypeId, format, orientation,
+            PdfLayoutUnit.Millimeter, new(margins.Left, margins.Top, margins.Right, margins.Bottom), "Arial", page, entries, layoutModel));
     }
 
     private static PdfLayoutState ToLocal(RemotePdfLayoutState remote, PdfElementRegistry registry) => new(remote.ScopeId, remote.CapturedAt,
@@ -288,7 +306,7 @@ public sealed class ElectronPdfPipeHostAdapter : IAsyncPdfHostAdapter
     }
 
     private sealed record RemotePdfRegistry(string ApplicationId, string DocumentTypeId, string DisplayName, string ScopeId, string Unit,
-        int RegistryVersion, string RegistryFingerprint, RemotePageSettings PageSettings, IReadOnlyList<RemotePdfElement> Elements);
+        int RegistryVersion, string RegistryFingerprint, RemotePageSettings PageSettings, IReadOnlyList<RemotePdfElement> Elements, string? LayoutModel = "tabular");
     private sealed record RemotePageSettings(string Format, string Orientation, double Width, double Height, RemoteMargins Margins);
     private sealed record RemoteMargins(double Top, double Right, double Bottom, double Left);
     private sealed record RemotePdfElement(string Id, string Name, string ScopeId, string? ParentId, string Kind, string Role, string PageArea,

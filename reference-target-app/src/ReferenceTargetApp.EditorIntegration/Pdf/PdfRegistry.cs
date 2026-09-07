@@ -44,9 +44,13 @@ public static class PdfRegistryValidator
         if (string.IsNullOrWhiteSpace(document.DocumentId) || !document.DocumentId.StartsWith("pdf.", StringComparison.Ordinal) ||
             string.IsNullOrWhiteSpace(document.ApplicationId) || string.IsNullOrWhiteSpace(document.DocumentType))
             errors.Add(new("pdf_registry_invalid", "Dokument-, App- oder Dokumenttyp-Zuordnung ist ungültig."));
+        if (!Enum.IsDefined(document.LayoutModel))
+            errors.Add(new("pdf_registry_invalid", "PDF-Layoutmodell ist unbekannt."));
+        var fixedLayout = document.LayoutModel == PdfLayoutModel.FixedLayout;
         var expectedWidth = document.Orientation == PdfPageOrientation.Portrait ? 210 : 297;
         var expectedHeight = document.Orientation == PdfPageOrientation.Portrait ? 297 : 210;
-        if (document.Unit != PdfLayoutUnit.Millimeter || document.PageFormat != PdfPageFormat.A4 ||
+        if (fixedLayout) ValidateFixedPage(document, errors);
+        else if (document.Unit != PdfLayoutUnit.Millimeter || document.PageFormat != PdfPageFormat.A4 ||
             !Same(document.PageTemplate.Width, expectedWidth) || !Same(document.PageTemplate.Height, expectedHeight))
             errors.Add(new("pdf_registry_invalid", "M76 erwartet A4 mit zur Orientierung passender Seitengröße und Millimeter als Einheit."));
 
@@ -89,18 +93,85 @@ public static class PdfRegistryValidator
         }
         ValidateCycles(byId, errors);
 
-        foreach (var kind in new[] { PdfElementKind.Document, PdfElementKind.Page, PdfElementKind.Header, PdfElementKind.Footer,
-                     PdfElementKind.Group, PdfElementKind.Table })
+        if (fixedLayout) ValidateFixedTopology(document, byId, errors);
+        var requiredKinds = fixedLayout
+            ? new[] { PdfElementKind.Document, PdfElementKind.Page }
+            : new[] { PdfElementKind.Document, PdfElementKind.Page, PdfElementKind.Header, PdfElementKind.Footer, PdfElementKind.Group, PdfElementKind.Table };
+        foreach (var kind in requiredKinds)
             if (!entries.Any(element => element.Kind == kind)) errors.Add(new("pdf_registry_invalid", $"Elementart {kind} fehlt."));
         var columns = entries.Where(element => element.Kind == PdfElementKind.TableColumn).OrderBy(element => element.StableOrder).ToArray();
-        if (columns.Length < 2) errors.Add(new("pdf_registry_invalid", "Mindestens zwei Tabellenspalten sind erforderlich."));
+        if (!fixedLayout && columns.Length < 2) errors.Add(new("pdf_registry_invalid", "Mindestens zwei Tabellenspalten sind erforderlich."));
         foreach (var table in entries.Where(element => element.Kind == PdfElementKind.Table))
         {
             var tableColumns = columns.Where(column => column.ParentId == table.ElementId).ToArray();
+            if (fixedLayout && tableColumns.Length < 2)
+                errors.Add(new("pdf_registry_invalid", "Jede Tabelle benötigt mindestens zwei Tabellenspalten.", table.ElementId));
             if (tableColumns.Sum(column => column.BaselineLayout.Width) > table.BaselineLayout.Width + Epsilon)
             errors.Add(new("pdf_invalid_table_width", "Spaltenbreiten überschreiten die Tabellenbreite.", table.ElementId));
         }
         return new(errors);
+    }
+
+    private static void ValidateFixedPage(PdfDocumentDefinition document, ICollection<PdfRegistryValidationError> errors)
+    {
+        var width = document.PageTemplate.Width;
+        var height = document.PageTemplate.Height;
+        if (document.Unit != PdfLayoutUnit.Millimeter || !Enum.IsDefined(document.PageFormat) ||
+            !Enum.IsDefined(document.Orientation) || !Finite(width, height) || width <= 0 || height <= 0)
+            errors.Add(new("pdf_registry_invalid", "Fixed-layout benötigt ein gültiges Seitenformat, Orientierung und positive endliche Millimetermaße."));
+        if (document.PageFormat == PdfPageFormat.Custom)
+        {
+            if (document.Orientation == PdfPageOrientation.Portrait && width > height ||
+                document.Orientation == PdfPageOrientation.Landscape && height > width)
+                errors.Add(new("pdf_registry_invalid", "Benutzerdefinierte Seitengröße passt nicht zur Orientierung."));
+        }
+        else
+        {
+            (double shortSide, double longSide) = document.PageFormat switch
+            {
+                PdfPageFormat.A0 => (841, 1189), PdfPageFormat.A1 => (594, 841),
+                PdfPageFormat.A2 => (420, 594), PdfPageFormat.A3 => (297, 420),
+                PdfPageFormat.A4 => (210, 297), PdfPageFormat.A5 => (148, 210),
+                PdfPageFormat.A6 => (105, 148), _ => (0, 0)
+            };
+            var expectedWidth = document.Orientation == PdfPageOrientation.Portrait ? shortSide : longSide;
+            var expectedHeight = document.Orientation == PdfPageOrientation.Portrait ? longSide : shortSide;
+            if (!Same(width, expectedWidth) || !Same(height, expectedHeight))
+                errors.Add(new("pdf_registry_invalid", "Seitengröße passt nicht zu Format und Orientierung."));
+        }
+        // Existing PdfBox margin storage is left/top/right/bottom in X/Y/Width/Height.
+        var margins = document.Margins;
+        if (!Finite(margins.X, margins.Y, margins.Width, margins.Height) ||
+            margins.X < 0 || margins.Y < 0 || margins.Width < 0 || margins.Height < 0 ||
+            margins.X + margins.Width >= width || margins.Y + margins.Height >= height)
+            errors.Add(new("pdf_registry_invalid", "Seitenränder müssen endlich, nicht negativ sein und positive Nutzfläche belassen."));
+    }
+
+    private static void ValidateFixedTopology(PdfDocumentDefinition document,
+        IReadOnlyDictionary<string, PdfElementDefinition> byId, ICollection<PdfRegistryValidationError> errors)
+    {
+        var roots = document.RegisteredElements.Where(element => element.Kind == PdfElementKind.Document).ToArray();
+        var pages = document.RegisteredElements.Where(element => element.Kind == PdfElementKind.Page).ToArray();
+        if (roots.Length != 1 || roots[0].ElementId != document.DocumentId || roots[0].ParentId is not null)
+            errors.Add(new("pdf_registry_invalid", "Fixed-layout benötigt genau eine Dokumentwurzel mit der Scope-ID."));
+        if (pages.Length != 1 || pages[0].ElementId != document.PageTemplate.PageId || pages[0].ParentId != document.DocumentId)
+            errors.Add(new("pdf_registry_invalid", "Fixed-layout benötigt genau eine direkt untergeordnete Template-Seite."));
+        foreach (var element in document.RegisteredElements)
+        {
+            if (element.Kind == PdfElementKind.TableColumn &&
+                (element.ParentId is null || !byId.TryGetValue(element.ParentId, out var parent) || parent.Kind != PdfElementKind.Table))
+                errors.Add(new("pdf_registry_invalid", "Tabellenspalte muss direkt zu einer Tabelle gehören.", element.ElementId));
+            if (element.Kind is PdfElementKind.Document or PdfElementKind.Page) continue;
+            var current = element;
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            while (current.ParentId is not null && visited.Add(current.ElementId) && byId.TryGetValue(current.ParentId, out var ancestor))
+            {
+                current = ancestor;
+                if (current.Kind == PdfElementKind.Page) break;
+            }
+            if (current.Kind != PdfElementKind.Page || current.ElementId != document.PageTemplate.PageId)
+                errors.Add(new("pdf_registry_invalid", "Element muss zur deklarierten Template-Seite gehören.", element.ElementId));
+        }
     }
 
     private static void ValidateBox(PdfElementDefinition element, PdfBox zone, ICollection<PdfRegistryValidationError> errors)
@@ -146,6 +217,14 @@ public static class PdfRegistryFingerprint
             string.Join("|", element.ElementId, element.ScopeId, element.ParentId ?? string.Empty, element.Kind, element.Role,
                 string.Join(",", Enum.GetValues<PdfCapability>().Where(value => value != PdfCapability.None && element.Capabilities.HasFlag(value)).OrderBy(value => value)),
                 element.PageArea, element.StableOrder.ToString(CultureInfo.InvariantCulture), element.BoundaryResizePolicy ?? string.Empty)));
+        if (registry.Document.LayoutModel == PdfLayoutModel.FixedLayout)
+        {
+            var document = registry.Document;
+            var format = document.PageFormat == PdfPageFormat.Custom ? "custom" : document.PageFormat.ToString();
+            canonical = string.Join("|", "fixed-layout", format, document.Orientation.ToString().ToLowerInvariant(),
+                document.PageTemplate.Width.ToString(CultureInfo.InvariantCulture),
+                document.PageTemplate.Height.ToString(CultureInfo.InvariantCulture)) + "\n" + canonical;
+        }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 }
