@@ -3,6 +3,7 @@
 const crypto = require("node:crypto");
 
 const PDF_TARGET_CONTRACT_VERSION = "1.0";
+const PDF_FIXED_PAGE_FORMATS = Object.freeze({ A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210], A6: [105, 148] });
 const PDF_REGISTRY_STATUSES = Object.freeze([
   "available",
   "unavailable",
@@ -89,6 +90,7 @@ function canonicalNumbers(source, keys) {
 function canonicalPdfRegistry(registry) {
   const scopeId = text(registry?.scopeId);
   return {
+    ...(registry?.layoutModel === "fixed-layout" ? { layoutModel: "fixed-layout" } : {}),
     applicationId: text(registry?.applicationId),
     documentTypeId: text(registry?.documentTypeId),
     scopeId,
@@ -132,8 +134,12 @@ function validatePdfRegistry(registry) {
   const requiredText = ["applicationId", "documentTypeId", "displayName", "scopeId", "unit"];
   for (const field of requiredText) if (!text(registry[field])) errors.push({ code: "pdf_registry_missing_field", field });
   if (registry.unit !== "mm") errors.push({ code: "pdf_registry_unit_invalid", field: "unit" });
+  const fixedLayout = registry.layoutModel === "fixed-layout";
+  if (registry.layoutModel !== undefined && !["tabular", "fixed-layout"].includes(registry.layoutModel)) {
+    errors.push({ code: "pdf_registry_layout_model_invalid", field: "layoutModel" });
+  }
   const page = registry.pageSettings;
-  if (!isObject(page) || page.format !== "A4" || !["portrait", "landscape"].includes(page.orientation) ||
+  if (!isObject(page) || (fixedLayout ? !Object.hasOwn(PDF_FIXED_PAGE_FORMATS, page.format) && page.format !== "custom" : page.format !== "A4") || !["portrait", "landscape"].includes(page.orientation) ||
       !Number.isFinite(Number(page.width)) || !Number.isFinite(Number(page.height)) || !isObject(page.margins)) {
     errors.push({ code: "pdf_registry_page_invalid", field: "pageSettings" });
   } else {
@@ -141,6 +147,22 @@ function validatePdfRegistry(registry) {
       if (!Number.isFinite(Number(page.margins[side])) || Number(page.margins[side]) < 0) {
         errors.push({ code: "pdf_registry_page_invalid", field: `pageSettings.margins.${side}` });
       }
+    }
+  }
+  if (fixedLayout && isObject(page)) {
+    const width = page.width;
+    const height = page.height;
+    const expected = PDF_FIXED_PAGE_FORMATS[page.format];
+    const dimensions = expected && (page.orientation === "landscape" ? [...expected].reverse() : expected);
+    if (typeof width !== "number" || typeof height !== "number" || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0 ||
+        (page.orientation === "portrait" ? width > height : width < height) ||
+        (dimensions && (Math.abs(width - dimensions[0]) > 0.000001 || Math.abs(height - dimensions[1]) > 0.000001))) {
+      errors.push({ code: "pdf_registry_page_invalid", field: "pageSettings.dimensions" });
+    }
+    if (isObject(page.margins) &&
+        (["top", "right", "bottom", "left"].some((side) => typeof page.margins[side] !== "number" || !Number.isFinite(page.margins[side])) ||
+         page.margins.left + page.margins.right >= width || page.margins.top + page.margins.bottom >= height)) {
+      errors.push({ code: "pdf_registry_page_invalid", field: "pageSettings.margins" });
     }
   }
   const elements = Array.isArray(registry.elements) ? registry.elements : [];
@@ -180,15 +202,42 @@ function validatePdfRegistry(registry) {
     const seen = new Set();
     let current = element;
     while (current?.parentId && byId.has(text(current.parentId))) {
-      if (!seen.add(text(current.parentId))) { errors.push({ code: "pdf_registry_parent_cycle", field: `${text(element?.id)}.parentId` }); break; }
+      if (seen.has(text(current.parentId))) { errors.push({ code: "pdf_registry_parent_cycle", field: `${text(element?.id)}.parentId` }); break; }
+      seen.add(text(current.parentId));
       current = byId.get(text(current.parentId));
     }
   }
   const kinds = new Set(elements.map((element) => element?.kind));
-  for (const kind of ["document", "page", "area", "header", "footer", "group", "label", "value", "table", "tableColumn", "repeatingArea"]) {
+  for (const kind of (fixedLayout ? ["document", "page"] : ["document", "page", "area", "header", "footer", "group", "label", "value", "table", "tableColumn", "repeatingArea"])) {
     if (!kinds.has(kind)) errors.push({ code: "pdf_registry_kind_missing", field: kind });
   }
-  if (elements.filter((element) => element?.kind === "tableColumn").length < 2) errors.push({ code: "pdf_registry_columns_missing", field: "elements" });
+  if (!fixedLayout && elements.filter((element) => element?.kind === "tableColumn").length < 2) errors.push({ code: "pdf_registry_columns_missing", field: "elements" });
+  if (fixedLayout) {
+    const pages = elements.filter((element) => element?.kind === "page");
+    if (elements.filter((element) => element?.kind === "document").length !== 1 || pages.length !== 1 || pages[0]?.parentId !== registry.scopeId) {
+      errors.push({ code: "pdf_registry_root_invalid", field: "elements" });
+    }
+    for (const element of elements) {
+      if (!["document", "page"].includes(element?.kind)) {
+        const seen = new Set();
+        let current = element;
+        while (current?.parentId && !seen.has(current.id) && byId.has(current.parentId)) {
+          seen.add(current.id);
+          current = byId.get(current.parentId);
+          if (current.kind === "page") break;
+        }
+        if (current?.kind !== "page" || current.id !== pages[0]?.id) {
+          errors.push({ code: "pdf_registry_parent_invalid", field: `${text(element?.id)}.parentId` });
+        }
+      }
+      if (element?.kind === "table" && elements.filter((column) => column?.kind === "tableColumn" && column.parentId === element.id).length < 2) {
+        errors.push({ code: "pdf_registry_columns_missing", field: element.id });
+      }
+      if (element?.kind === "tableColumn" && byId.get(element.parentId)?.kind !== "table") {
+        errors.push({ code: "pdf_registry_parent_invalid", field: `${element.id}.parentId` });
+      }
+    }
+  }
   for (const field of findForbidden(registry)) errors.push({ code: "pdf_registry_domain_data_forbidden", field });
   return { ok: errors.length === 0, errors, fingerprint: createPdfRegistryFingerprint(registry) };
 }

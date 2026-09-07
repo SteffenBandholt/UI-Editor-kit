@@ -1,0 +1,35 @@
+name: PDF contract regression
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference-target-app/**'
+      - 'src/electron-target/pdf-target-contract.cjs'
+      - 'scripts/tests/pdf-fixed-layout-contract.test.cjs'
+      - '.github/workflows/pdf-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native-pdf:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [base, head]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'base' && github.event.pull_request.base.sha || github.event.pull_request.head.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Native PDF contracts and regression
+        run: dotnet test reference-target-app/tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj --configuration Release --filter "FullyQualifiedName~PdfFixedLayoutContractTests|FullyQualifiedName~M76PdfModelTests|FullyQualifiedName~M77VisiblePdfEditorTests|FullyQualifiedName~M87PdfPositionReadbackTests" --logger "trx;LogFileName=pdf-contract.trx"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdf-contract-${{ matrix.revision }}
+          path: '**/TestResults/pdf-contract.trx'

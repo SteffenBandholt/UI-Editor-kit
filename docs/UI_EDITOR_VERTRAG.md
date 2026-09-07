@@ -271,3 +271,11 @@ Details: `docs/M82_5_EINFACHMODUS.md`.
 - Öffnen und Registryrefresh dürfen `display`, `position`, `overflow`, Scrollbesitzer, Haupttracks oder `z-index` nicht verändern. Eine freigegebene Layoutoperation darf ausschließlich ihre deklarierte Wirkung besitzen.
 
 Details: `docs/M82_6_TOPOLOGIENEUTRALES_FEINTUNING.md`.
+
+## PDF fixed-layout (K16/M81)
+
+Die additive fachneutrale PDF-Vertragserweiterung ist in
+[PDF_FIXED_LAYOUT_CONTRACT.md](PDF_FIXED_LAYOUT_CONTRACT.md) festgelegt.
+Explizites `layoutModel: "fixed-layout"` benötigt keine Tabellen oder erfundenen
+Bereiche. Vorhandene Elemente bleiben vollständig klassifiziert und validiert;
+bestehende tabellarische Registrierungen und Profilhashes bleiben unverändert.
