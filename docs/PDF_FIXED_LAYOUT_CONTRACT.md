@@ -78,7 +78,35 @@ Eine vorbestehende fehlerhafte JS-Zyklusprüfung (`!Set.add(...)`) konnte nicht
 terminieren. Dieselbe Parentprüfung verwendet jetzt `has` vor `add`; Selbst- und
 Mehrknotenzyklen werden geprüft (ohne Änderung gültiger Bestandsregistrierungen).
 
-Native Tests: acht neue Prüfungen vorbereitet, lokal nicht ausgeführt (.NET
-fehlt). `.github/workflows/pdf-contract.yml` prüft Basis und Kandidat separat auf
-Windows/.NET 10. Veröffentlichung automatisch abgelehnt; kein CI-Lauf, PR oder
-Merge. Das Gesamtpaket ist daher noch nicht abgenommen.
+Native Tests wurden lokal mangels .NET zunächst nur vorbereitet. Nach
+ausdrücklicher Veröffentlichungsfreigabe lief der getrennte Windows-Basis-/
+Kandidatenvergleich aus `.github/workflows/pdf-contract.yml`; Ergebnis siehe unten.
+
+## CI-Abschluss nach Veröffentlichungsfreigabe
+
+Die Veröffentlichung wurde ausdrücklich freigegeben. Über die GitHub-Anbindung
+wurden die lokal geprüften Trees bytegleich übertragen; der direkte Git-CLI-Push
+hatte keine Anmeldung. Prüf-PRs: UI-Editor-kit #93 / BBM-Produktiv #321.
+
+Nativer Nachweis: https://github.com/SteffenBandholt/UI-Editor-kit/actions/runs/34160014785
+- Basis 0240ef8: 34 bestanden / 1 fehlgeschlagen / 0 übersprungen.
+- Kit-Codehead 689ab1f0ba0be94094edeeccba8dc1cb8522c9ae:
+  42 bestanden / 1 fehlgeschlagen / 0 übersprungen, acht neue Tests bestanden.
+- Identischer Fehlername: VisibleUiPdfEndToEndUsesTwoRealProcessesAndCleansArtifacts.
+  In beiden Jobs derselbe Prozess-Exitcode -1073741811; kein neuer Vertragsfehler.
+- Der zunächst gefundene neue Analyzerfehler MSTEST0037 wurde ausschließlich
+  durch Assert.HasCount im Test korrigiert. Der Folgelauf kompiliert erfolgreich.
+- Der vollständige native Prüflauf ist wegen der genannten Baseline weiterhin rot.
+  Sichtbare Windows-Editorbedienung wird nicht als abgenommen behauptet.
+
+Kit-Standard-CI bleibt bei der schon lokal auf Basis reproduzierten M82.3-
+Quelltextassertion rot (erwartetes altes 860/1260-Dreispaltenlayout).
+BBM-Standard-CI #1041 bleibt bei den acht bekannten Popup-/Lizenzfehlern und
+fehlendem ui-editor-kit im vorhandenen CI-Aufbau rot. Maßgeblicher vollständiger
+BBM-Paketvergleich mit echtem Kit bleibt 1499/99 -> 1506/99 ohne neue Fehler und
+mit vollständigem bisherigen Fallinventar.
+
+Das fachneutrale Vertragspaket ist technisch geprüft. PR-/Mergezuordnung wird
+in BBM #274 dokumentiert. Danach kann S1.4a als eigenes Paket fortgesetzt werden.
+S1.4a ist durch dieses Vertragspaket noch nicht implementiert oder abgenommen;
+S1.5 nicht begonnen, Rechnung #275 bleibt eingefroren.

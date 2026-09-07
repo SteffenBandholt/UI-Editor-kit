@@ -11,11 +11,12 @@ Pflichttabellen und A0–A6/custom, einschließlich A2 quer. JS-Validator und na
 PDF-Vertrags-/Pipe-Seite gemeinsam erweitert; bestehende Tabellen bleiben beim
 Legacy-Vertrag. Profilhashes nur für das neue Modell erweitert.
 Entscheidung/Nachweise: docs/PDF_FIXED_LAYOUT_CONTRACT.md.
-Status: lokal implementiert, JS 8/8 plus M81 grün; native Windows-CI ausstehend.
-Kit-Befehlsvergleich 64/5 -> 65/5 mit denselben fünf Baselinefehlern; BBM 1499/99
--> 1506/99, keine fehlenden Fälle. Veröffentlichung durch Auto-Review blockiert.
-Lokales Kit-npm-test stoppt bereits auf unveränderter Basis am Pipe-EPERM dieser
-Umgebung. Keine sichtbare PDF-/Windows-Abnahme behauptet.
+Status: technisch geprüft; PR #93, BBM-Anschluss #321. Native Windows-CI
+34160014785: 34/1 -> 42/1, identischer vorhandener Prozessfehler; alle acht neuen
+Vertragsprüfungen bestanden. JS 8/8 plus M81 grün. Kit-Befehlsvergleich 64/5 ->
+65/5, BBM 1499/99 -> 1506/99: keine neue Regression, kein fehlender Fall.
+Veröffentlichung ausdrücklich freigegeben. Keine sichtbare Windows-Abnahme;
+Baselines bleiben offen. Nächstes Paket: BBM S1.4a, nicht vorgezogen.
 
 
 ### Gemeinsamer Geometrievertrag – optionale Grenzen
