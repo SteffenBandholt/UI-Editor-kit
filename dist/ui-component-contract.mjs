@@ -58,6 +58,7 @@ function validateStableElementId(element, component, slot, errors) {
 }
 
 function validateBounds(element, component, slot, errors) {
+  if (element?.unboundedGeometry === true) return;
   const operations = Array.isArray(element.allowedOps) ? element.allowedOps : [];
   const baseline = isObject(element.baseline) ? element.baseline : {};
   const context = { componentId: component.componentId, slotId: slot.slotId, elementId: text(element.id) };
