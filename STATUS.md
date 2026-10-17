@@ -1,5 +1,16 @@
 # STATUS - UI-Editor-kit
 
+## Security maintenance – PKCS dependency (2026-10-17)
+
+`PDFsharp 6.2.4` requests vulnerable PKCS 8.0.1. The PdfRendering boundary now
+pins compatible .NET 10 PKCS 10.0.13 for GHSA-2fmv-rv2c-59x7 and
+GHSA-846f-f764-76mx. Full transitive audits, restored graph checks, native
+cross-builds and self-contained publish are green. Windows execution is checked
+by the dedicated native-security CI; no product acceptance is claimed.
+The existing unrelated JavaScript compact-layout assertion remains red.
+Details: [PKCS security repair](docs/PKCS_SECURITY_FIX.md).
+
+
 > **VERBINDLICHE PRODUKTGRENZE**
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**

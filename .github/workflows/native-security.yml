@@ -1,0 +1,70 @@
+name: Native dependency security and builds
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference-target-app/**'
+      - 'windows-manager/**'
+      - 'scripts/check-nuget-security.cjs'
+      - 'scripts/tests/nuget-security.test.cjs'
+      - '.github/workflows/native-security.yml'
+  push:
+    branches: [codex/fix-pkcs-nuget-security]
+
+permissions:
+  contents: read
+
+jobs:
+  windows-native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test security guard failure cases
+        run: node scripts/tests/nuget-security.test.cjs
+      - name: Restore with full NuGet security audit
+        run: |
+          dotnet restore UIEditorKit.slnx -p:NuGetAudit=true -p:NuGetAuditMode=all
+          if ($LASTEXITCODE -ne 0) { throw 'Manager restore failed' }
+          dotnet restore reference-target-app/ReferenceTargetApp.slnx -p:NuGetAudit=true -p:NuGetAuditMode=all
+          if ($LASTEXITCODE -ne 0) { throw 'Reference restore failed' }
+      - name: Verify actual PKCS package resolution
+        run: node scripts/check-nuget-security.cjs
+      - name: Record complete dependency graph and vulnerability audit
+        shell: pwsh
+        run: |
+          foreach ($entry in @(@{Name='manager';Solution='UIEditorKit.slnx'}, @{Name='reference';Solution='reference-target-app/ReferenceTargetApp.slnx'})) {
+            dotnet package list --project $entry.Solution --no-restore --include-transitive --format json | Set-Content -Encoding utf8 ("dependencies-" + $entry.Name + ".json")
+            if ($LASTEXITCODE -ne 0) { throw 'Dependency listing failed' }
+            $audit = "vulnerabilities-" + $entry.Name + ".json"
+            dotnet package list --project $entry.Solution --no-restore --include-transitive --vulnerable --format json | Set-Content -Encoding utf8 $audit
+            if ($LASTEXITCODE -ne 0) { throw 'Vulnerability listing failed' }
+            node scripts/check-nuget-security.cjs --vulnerability-report $audit
+            if ($LASTEXITCODE -ne 0) { throw 'Vulnerabilities detected' }
+          }
+      - name: Build reference application
+        run: dotnet build reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj --configuration Release --no-restore
+      - name: Build manager
+        run: dotnet build windows-manager/src/UiEditorKit.Manager.Wpf/UiEditorKit.Manager.Wpf.csproj --configuration Release --no-restore
+      - name: Test reference application
+        run: dotnet test reference-target-app/tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=reference.trx"
+      - name: Test manager
+        run: dotnet test windows-manager/tests/UiEditorKit.Manager.Tests/UiEditorKit.Manager.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=manager.trx"
+      - name: Publish actual BBMpro manager runtime
+        run: dotnet publish windows-manager/src/UiEditorKit.Manager.Wpf/UiEditorKit.Manager.Wpf.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/manager -p:NuGetAudit=true -p:NuGetAuditMode=all
+      - name: Verify publish package graph
+        run: node scripts/check-nuget-security.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-security-evidence
+          path: |
+            dependencies-*.json
+            vulnerabilities-*.json
+            **/TestResults/*.trx
