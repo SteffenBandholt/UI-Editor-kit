@@ -9,6 +9,7 @@ on:
       - 'scripts/check-nuget-security.cjs'
       - 'scripts/tests/nuget-security.test.cjs'
       - '.github/workflows/native-security.yml'
+      - 'global.json'
   push:
     branches: [codex/fix-pkcs-nuget-security]
 
@@ -26,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify patched SDK selection
+        run: dotnet --version
       - name: Test security guard failure cases
         run: node scripts/tests/nuget-security.test.cjs
       - name: Restore with full NuGet security audit
@@ -68,3 +71,4 @@ jobs:
             dependencies-*.json
             vulnerabilities-*.json
             **/TestResults/*.trx
+            **/obj/project.assets.json

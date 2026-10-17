@@ -17,6 +17,13 @@ boundary keeps the dependency in the native target's runtime family and avoids
 the SDK's pruning of older PKCS references. PDFsharp remains 6.2.4; PDF rendering
 code, editor behavior, contracts and target application domain code are unchanged.
 
+The SDK baseline is 10.0.402 (stable .NET 10, roll-forward within .NET 10).
+WindowsDesktop may prune the separate PKCS package because the patched framework
+provides it. The guard accepts this only with explicit pruning/framework metadata,
+a patched selected SDK and no older explicit WindowsDesktop download override;
+PdfRendering must still resolve the pinned package. The first Windows CI run
+exposed this platform-specific graph distinction and the guard was corrected.
+
 No NoWarn, NuGetAudit suppression, audit disable, or TreatWarningsAsErrors
 exception was introduced. Restore runs with `NuGetAudit=true` and
 `NuGetAuditMode=all`.
