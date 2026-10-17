@@ -47,9 +47,15 @@ Using SDK 10.0.402 / runtime 10.0.13 in an isolated Linux build container:
   (`860/1260` versus current compact view). Neither that test nor view was changed.
 
 The `native-security.yml` Windows CI runs audited restores, complete dependency
-reports, both native builds and test suites, then the same self-contained Manager
-publish used by BBMpro. Its actual run result is tracked in the PR; no Windows
-success is inferred from a Linux build. The existing PDF base/head regression
+reports, both native builds and the same self-contained Manager publish used by
+BBMpro. Both test suites are executed independently after publish: a failing
+interactive test does not prevent the other suite from running, and the job
+still fails. Actual results are tracked in the PR; no Windows success is inferred
+from a Linux build. The real Windows run has confirmed audited restore and both
+native builds. The separate filtered PDF head regression passed 42/43 cases;
+`VisibleUiPdfEndToEndUsesTwoRealProcessesAndCleansArtifacts` terminates a WPF
+child with exit -1073741811. This remains an unresolved Windows diagnostic,
+not a successful UI acceptance. The test and PDF implementation are unchanged. The existing PDF base/head regression
 workflow can still fail on the unpatched base because of the reported dependency;
 base security warnings are not suppressed.
 

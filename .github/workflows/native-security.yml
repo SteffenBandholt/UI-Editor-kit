@@ -54,15 +54,18 @@ jobs:
       - name: Build reference application
         run: dotnet build reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj --configuration Release --no-restore
       - name: Build manager
+        id: native-build
         run: dotnet build windows-manager/src/UiEditorKit.Manager.Wpf/UiEditorKit.Manager.Wpf.csproj --configuration Release --no-restore
-      - name: Test reference application
-        run: dotnet test reference-target-app/tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=reference.trx"
-      - name: Test manager
-        run: dotnet test windows-manager/tests/UiEditorKit.Manager.Tests/UiEditorKit.Manager.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=manager.trx"
       - name: Publish actual BBMpro manager runtime
         run: dotnet publish windows-manager/src/UiEditorKit.Manager.Wpf/UiEditorKit.Manager.Wpf.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/manager -p:NuGetAudit=true -p:NuGetAuditMode=all
       - name: Verify publish package graph
         run: node scripts/check-nuget-security.cjs
+      - name: Test reference application
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        run: dotnet test reference-target-app/tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=reference.trx"
+      - name: Test manager
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        run: dotnet test windows-manager/tests/UiEditorKit.Manager.Tests/UiEditorKit.Manager.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=manager.trx"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
