@@ -58,6 +58,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     private bool diagnosticAutoConfirmGeometry;
     private bool busy;
     private bool closing;
+    private bool connectionLost;
     private string statusMessage = "Editor wird gestartet …";
     private string errorMessage = string.Empty;
     private string errorCode = string.Empty;
@@ -116,7 +117,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         DiscardElementCommand = new AsyncCommand(_ => DiscardElementAsync(), _ => CanOperate && CanDiscardElement);
         DiscardAllCommand = new AsyncCommand(_ => ConfirmAndRunAsync("Alle Änderungen verwerfen", "Alle ungespeicherten Änderungen werden auf die letzte gespeicherte Profilversion zurückgesetzt.", () => layoutSession.DiscardAllAsync(lifetimeToken), layoutSession.AcceptCurrentTargetAsSaved), _ => CanOperate && IsDirty);
         ResetElementCommand = new AsyncCommand(_ => ResetElementAsync(), _ => CanOperate && CanResetElement);
-        ResetAllCommand = new AsyncCommand(_ => ConfirmAndRunAsync("Gesamtes Layout zurücksetzen", "Alle registrierten Elemente werden auf die ursprüngliche Ziel-App-Baseline zurückgesetzt.", () => layoutSession.ResetAllAsync(lifetimeToken), autoSaveOnSuccess: true), _ => CanOperate && CanResetAll);
+        ResetAllCommand = new AsyncCommand(_ => ConfirmAndRunAsync("Gesamtes Layout zurücksetzen", "Alle registrierten Elemente werden auf die ursprüngliche Ziel-App-Baseline zurückgesetzt.", () => layoutSession.ResetAllAsync(lifetimeToken)), _ => CanOperate && CanResetAll);
         BeginAppSelectionCommand = new AsyncCommand(_ => BeginAppSelectionAsync(), _ => CanOperate && !IsAppSelectionActive);
         CancelAppSelectionCommand = new AsyncCommand(_ => CancelAppSelectionAsync(), _ => CanOperate && IsAppSelectionActive);
         CloseCommand = new AsyncCommand(_ => RequestCloseAsync(), _ => !closing);
@@ -167,9 +168,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     public ICommand BeginAppSelectionCommand { get; }
     public ICommand CancelAppSelectionCommand { get; }
     public ICommand CloseCommand { get; }
-    public bool CanInteract => state is not null && !busy && !closing && stepValid;
-    public bool CanOperate => state is not null && !busy && !closing;
-    public bool ControlsEnabled => state is not null && !busy && !closing;
+    public bool CanInteract => state is not null && !busy && !closing && !connectionLost && stepValid;
+    public bool CanOperate => state is not null && !busy && !closing && !connectionLost;
+    public bool ControlsEnabled => state is not null && !busy && !closing && !connectionLost;
     public bool IsBusy { get => busy; private set { if (Set(ref busy, value)) RaiseCommandStates(); } }
     public bool IsClosing { get => closing; private set { if (Set(ref closing, value)) RaiseCommandStates(); } }
     public string StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
@@ -394,7 +395,9 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     internal async Task<bool> ConfirmCloseAsync()
     {
+        if (IsBusy) return false;
         CloseDisposition = EditorCloseDisposition.Unknown;
+        if (connectionLost) return true;
         if (!IsDirty && !pdfWorkspace.IsDirty)
         {
             CloseDisposition = EditorCloseDisposition.Clean;
@@ -607,8 +610,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     OnPropertyChanged(nameof(LastChangeSummary));
                 }
             });
-            if (undoCommitted)
-                await AutoSaveCommittedChangeAsync();
+            if (undoCommitted) RunOnUi(RefreshLayoutStatus);
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
@@ -625,6 +627,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
     {
         RunOnUi(() =>
         {
+            connectionLost = true;
             ShowError(code, message);
             StatusMessage = "Ziel-App-Verbindung getrennt. BBM kann unabhängig weiterlaufen.";
             IsBusy = false;
@@ -661,8 +664,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     OnPropertyChanged(nameof(LastChangeSummary));
                 }
             });
-            if (undoCommitted)
-                await AutoSaveCommittedChangeAsync();
+            if (undoCommitted) RunOnUi(RefreshLayoutStatus);
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
@@ -725,8 +727,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                     StatusMessage = $"{SelectedName}: Layoutabstand geändert.";
                 }
             });
-            if (undoCommitted)
-                await AutoSaveCommittedChangeAsync();
+            if (undoCommitted) RunOnUi(RefreshLayoutStatus);
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
@@ -920,8 +921,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                 StatusMessage = successMessage;
                 OnPropertyChanged(nameof(LastChangeSummary));
             }
-            if (undoCommitted)
-                await AutoSaveCommittedChangeAsync();
+            if (undoCommitted) RunOnUi(RefreshLayoutStatus);
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
@@ -1068,8 +1068,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
                 StatusMessage = summary;
                 OnPropertyChanged(nameof(LastChangeSummary));
             }
-            if (undoCommitted)
-                await AutoSaveCommittedChangeAsync();
+            if (undoCommitted) RunOnUi(RefreshLayoutStatus);
         }
         catch (Exception exception) when (exception is EditorProcessException or InvalidOperationException or OperationCanceledException)
         {
@@ -1094,7 +1093,6 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             RaiseUndoChanged();
             LastChangeSummary = $"Zuletzt: {SelectedName} · Original";
             OnPropertyChanged(nameof(LastChangeSummary));
-            await AutoSaveCommittedChangeAsync();
         }
         else layoutSession.CancelUndoFrame();
         RefreshLayoutStatus();
@@ -1110,34 +1108,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
             RaiseUndoChanged();
             LastChangeSummary = string.IsNullOrWhiteSpace(description) ? "Zuletzt: Änderung rückgängig" : $"Zuletzt rückgängig: {description}";
             OnPropertyChanged(nameof(LastChangeSummary));
-            await AutoSaveCommittedChangeAsync();
         }
-    }
-
-    private async Task<bool> AutoSaveCommittedChangeAsync()
-    {
-        var result = await layoutSession.SaveAsync(lifetimeToken);
-
-        RefreshLayoutStatus();
-
-        if (result.Success)
-        {
-            if (!StatusMessage.Contains("automatisch gespeichert", StringComparison.OrdinalIgnoreCase))
-                StatusMessage = string.IsNullOrWhiteSpace(StatusMessage)
-                    ? "Änderung automatisch gespeichert."
-                    : StatusMessage + " · automatisch gespeichert.";
-
-            return true;
-        }
-
-        ShowError(
-            result.RollbackSucceeded ? result.Code : "rollback_failed",
-            result.Message);
-
-        StatusMessage =
-            "Änderung wurde übernommen, konnte aber nicht automatisch gespeichert werden.";
-
-        return false;
     }
 
     private async Task<bool> SaveAsync()
@@ -1158,31 +1129,26 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
 
     private async Task ResetElementAsync()
     {
-        var result = await RunLayoutActionAsync(
+        await RunLayoutActionAsync(
             () => layoutSession.ResetElementAsync(SelectedScope, SelectedId, lifetimeToken),
             "Element wurde auf die App-Baseline zurückgesetzt.");
 
-        if (result.Success)
-            await AutoSaveCommittedChangeAsync();
     }
 
     private async Task ConfirmAndRunAsync(
         string title,
         string message,
         Func<Task<LayoutOperationResult>> action,
-        Action? acceptRefreshedTargetAsSaved = null,
-        bool autoSaveOnSuccess = false)
+        Action? acceptRefreshedTargetAsSaved = null)
     {
         if (!dialogService.Confirm(getOwner()!, title, message))
             return;
 
-        var result = await RunLayoutActionAsync(
+        await RunLayoutActionAsync(
             action,
             title + " abgeschlossen.",
             acceptRefreshedTargetAsSaved: acceptRefreshedTargetAsSaved);
 
-        if (result.Success && autoSaveOnSuccess)
-            await AutoSaveCommittedChangeAsync();
     }
 
     private async Task<LayoutOperationResult> RunLayoutActionAsync(

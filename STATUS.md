@@ -4,6 +4,12 @@
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
+## Explicit layout session (2026-10-18)
+
+Implementation/test work in progress for explicit Save, Discard and dirty close.
+See [session design and transaction contract](docs/EXPLICIT_LAYOUT_SESSION.md).
+No product acceptance or additional target-scope approval is claimed.
+
 ## Build maintenance – NU1505 (2026-10-18)
 
 The exact BBMpro publish reproduces NU1505 because a global runtime override

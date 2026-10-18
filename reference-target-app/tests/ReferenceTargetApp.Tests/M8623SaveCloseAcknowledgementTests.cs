@@ -64,8 +64,8 @@ public sealed class M8623SaveCloseAcknowledgementTests
 
                 Assert.IsFalse(rejected.Success);
                 Assert.AreEqual("layout_save_acknowledgement_failed", rejected.Code);
-                Assert.IsTrue(File.Exists(fixture.Store.GetFilePath(LayoutProfileCatalog.StandardId)),
-                    "Der atomare Schreibabschluss liegt vor der fehlgeschlagenen BBM-Bestätigung.");
+                Assert.IsFalse(File.Exists(fixture.Store.GetFilePath(LayoutProfileCatalog.StandardId)),
+                    "Ein abgelehnter erster Save darf kein Startprofil hinterlassen.");
                 Assert.IsTrue(fixture.Session.GetStatus().IsDirty, "Ohne Acknowledgement darf der Editor nicht clean werden.");
                 Assert.IsNull(fixture.Session.LastAcknowledgedSaveRequestId);
 
@@ -98,6 +98,82 @@ public sealed class M8623SaveCloseAcknowledgementTests
         Assert.IsGreaterThanOrEqualTo(0, closeGate);
         Assert.IsGreaterThan(closeGate, closePreparation);
         Assert.IsGreaterThan(closePreparation, windowClose);
+    }
+
+    [TestMethod]
+    public void MultipleEditsStayTransientAndDiscardRestoresLastExplicitSave()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Resize(fixture.Adapter, 120);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Resize(fixture.Adapter, 140);
+            Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            Assert.IsFalse(File.Exists(fixture.Store.GetFilePath("standard")));
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(100, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+            Resize(fixture.Adapter, 160);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var bytes = File.ReadAllBytes(fixture.Store.GetFilePath("standard"));
+            Resize(fixture.Adapter, 180);
+            Resize(fixture.Adapter, 200);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(160, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(fixture.Store.GetFilePath("standard")));
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
+    [TestMethod]
+    public void RejectedSaveAndInterruptedSavePreservePreviousProfileBytes()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Resize(fixture.Adapter, 130);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var path = fixture.Store.GetFilePath("standard");
+            var bytes = File.ReadAllBytes(path);
+            Resize(fixture.Adapter, 190);
+            fixture.Session.ConfigureSaveAcknowledgement((_, _) => throw new IOException("connection lost"));
+            Assert.IsFalse(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            fixture.Store.BeginSaveTransactionAsync("standard").GetAwaiter().GetResult();
+            File.WriteAllText(path, "interrupted candidate");
+            var recovered = new AtomicJsonLayoutProfileStore(fixture.Root, "app");
+            recovered.RecoverSaveTransactionAsync("standard").GetAwaiter().GetResult();
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(130, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+        });
+    }
+
+    [TestMethod]
+    public void FailedAtomicWriteKeepsSavedBytesAndCanBeRetried()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var path = fixture.Store.GetFilePath("standard");
+            var bytes = File.ReadAllBytes(path);
+            Resize(fixture.Adapter, 170);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            // Windows denies File.Replace while the saved profile has no delete sharing.
+            using (var locked = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                var result = fixture.Session.SaveAsync().GetAwaiter().GetResult();
+                Assert.IsFalse(result.Success);
+                Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            }
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
     }
 
     private static Fixture CreateFixture()

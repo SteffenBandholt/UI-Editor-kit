@@ -202,7 +202,7 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(OrderHeaderRegistryIds.Subject);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
-        if (editor.IsDirty) return 175;
+        if (!editor.IsDirty || !await editor.SaveForDiagnosticAsync() || editor.IsDirty) return 175;
 
         editor.ActiveWorkspaceIndex = 1;
         var pdf = editor.Pdf;
@@ -325,7 +325,7 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
-        if (editor.IsDirty) return 96;
+        if (!editor.IsDirty || !await editor.SaveForDiagnosticAsync() || editor.IsDirty) return 96;
         if (!business.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal)) return 97;
 
         var result = new FullOperationDiagnosticState(
@@ -362,7 +362,7 @@ public partial class MainWindow : Window
         var changedOrder = ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber);
         var changedCustomer = ElementWidth(HostAdapters[CustomerDetailsRegistryIds.Scope], CustomerDetailsRegistryIds.CompanyName);
 
-        if (editor.IsDirty ||
+        if (!editor.IsDirty ||
             Math.Abs(changedOrder - expected.OrderWidth) < 0.001 ||
             Math.Abs(changedCustomer - expected.CustomerWidth) < 0.001)
             return 105;
@@ -389,7 +389,9 @@ public partial class MainWindow : Window
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("left");
         var compactWidth = ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber);
-        if (editor.IsDirty) return 111;
+        if (!editor.IsDirty) return 111;
+        await editor.SelectProfileAsync(LayoutProfileCatalog.StandardId);
+        if (editor.ActiveProfileId != LayoutProfileCatalog.CompactId || !editor.IsDirty) return 111;
         await editor.SelectProfileAsync(LayoutProfileCatalog.StandardId);
         if (Math.Abs(compactWidth - expected.OrderWidth) < 0.001 || Math.Abs(ElementWidth(HostAdapters[OrderHeaderRegistryIds.Scope], OrderHeaderRegistryIds.OrderNumber) - expected.OrderWidth) > 0.001)
             return 112;
@@ -413,13 +415,16 @@ public partial class MainWindow : Window
         await editor.SelectElementAsync(CustomerDetailsRegistryIds.CompanyName);
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
-        if (editor.IsDirty) return 115;
+        if (!editor.IsDirty) return 115;
         if (!expected.BusinessValues.SequenceEqual(CaptureBusinessValuesForDiagnostic(), StringComparer.Ordinal))
             return 116;
 
         var standardPath = Path.Combine(layoutStore.Options.RootDirectory, "standard.layout-profile.json");
         var standardBeforeClose = await File.ReadAllTextAsync(standardPath);
 
+        await editorWindowCoordinator.RequestCloseAsync();
+        if (!editorWindowCoordinator.HasOpenWindow || !editor.IsDirty) return 118;
+        if (standardBeforeClose != await File.ReadAllTextAsync(standardPath)) return 118;
         await editorWindowCoordinator.RequestCloseAsync();
         if (editorWindowCoordinator.HasOpenWindow || editorWindowCoordinator.HasActiveProcess)
             return 119;
@@ -432,15 +437,12 @@ public partial class MainWindow : Window
         await editor.SetModeForDiagnosticAsync("width");
         await editor.ApplyDirectionForDiagnosticAsync("right");
 
-        if (editor.IsDirty) return 121;
-
-        var standardAfterAutoSave = await File.ReadAllTextAsync(standardPath);
-        if (standardAfterAutoSave == standardBeforeClose) return 121;
+        if (!editor.IsDirty || standardBeforeClose != await File.ReadAllTextAsync(standardPath)) return 121;
 
         await editorWindowCoordinator.RequestCloseAsync();
         if (editorWindowCoordinator.HasOpenWindow ||
             editorWindowCoordinator.HasActiveProcess ||
-            standardAfterAutoSave != await File.ReadAllTextAsync(standardPath))
+            standardBeforeClose == await File.ReadAllTextAsync(standardPath))
             return 121;
         File.Delete(statePath);
         foreach (var file in Directory.GetFiles(layoutStore.Options.RootDirectory)) File.Delete(file);

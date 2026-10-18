@@ -284,11 +284,38 @@ function clearMarker(profileRoot) {
   try { fs.unlinkSync(markerPath(profileRoot)); } catch (error) { if (error?.code !== "ENOENT") throw error; }
 }
 
+// Same durable journal as AtomicJsonLayoutProfileStore. An interrupted Save is
+// never a startup profile, even when the editor process died after File.Replace.
+function recoverInterruptedSave(file) {
+  const journal = file + ".save-transaction.json";
+  if (!fs.existsSync(journal)) return;
+  const transaction = JSON.parse(fs.readFileSync(journal, "utf8"));
+  if (!isObject(transaction) || transaction.schemaVersion !== 1 ||
+      Object.keys(transaction).some(key => !["schemaVersion", "previousProfileBase64"].includes(key)) ||
+      (transaction.previousProfileBase64 != null && (typeof transaction.previousProfileBase64 !== "string" ||
+       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(transaction.previousProfileBase64))))
+    throw new Error("Invalid layout save transaction");
+  if (transaction.previousProfileBase64 == null) {
+    try { fs.unlinkSync(file); } catch (error) { if (error.code !== "ENOENT") throw error; }
+  } else {
+    const temporary = file + "." + crypto.randomUUID() + ".tmp";
+    try {
+      const fd = fs.openSync(temporary, "wx");
+      try { fs.writeFileSync(fd, Buffer.from(transaction.previousProfileBase64, "base64")); fs.fsyncSync(fd); }
+      finally { fs.closeSync(fd); }
+      fs.renameSync(temporary, file);
+    } finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
+  }
+  fs.unlinkSync(journal);
+}
+
 function loadTargetStartupLayout({ profileRoot, applicationId, activeScopes, registryScopes }) {
   const root = path.resolve(profileRoot);
   const profileId = loadActiveProfileId(root);
   const file = profilePath(root, profileId);
   const base = { applicationId, profileId, profilePath: file, editorProcessRequired: false };
+  try { recoverInterruptedSave(file); }
+  catch (cause) { return { ...base, ok: false, found: fs.existsSync(file), applied: false, state: "blocked", code: "storage_recovery_failed", scopes: [], cause }; }
   if (!fs.existsSync(file)) { clearMarker(root); return { ...base, ok: true, found: false, applied: false, state: "missing", code: "layout_profile_not_found", scopes: [] }; }
   let bytes;
   let profileDocument;
