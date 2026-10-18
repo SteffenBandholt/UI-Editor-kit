@@ -17,7 +17,10 @@ publishing a Save candidate, the atomic store writes and flushes a version-1
 `<profile>.layout-profile.json.save-transaction.json` journal containing the exact
 previous file bytes (base64), or no previous file. File.Replace/Move publishes the
 fully flushed candidate. Only successful target acknowledgement removes the
-journal and advances Saved. Rejection, exception or cancellation restores the
+journal and advances Saved. The additive `layoutSaveCommitted` event then
+advances the target rollback boundary using the previously validated snapshot.
+Acknowledgement alone must not advance that boundary. Legacy targets may ignore
+the additive event; new integrations use it to protect an interrupted Save. Rejection, exception or cancellation restores the
 previous bytes; interruption leaves a journal that the official native/JS
 startup loaders recover before loading a profile. Invalid journals block startup
 without applying or overwriting the candidate. Journals contain layout only.

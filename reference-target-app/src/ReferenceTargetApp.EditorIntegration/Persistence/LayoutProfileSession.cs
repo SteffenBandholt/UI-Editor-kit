@@ -49,6 +49,7 @@ public sealed class LayoutProfileSession
     private bool savedHasExplicitOperationMetadata;
     private readonly bool allowCompatibleRegistryReconciliation;
     private Func<LayoutSaveSnapshot, CancellationToken, Task<LayoutSaveAcknowledgement>>? saveAcknowledger;
+    private Func<LayoutSaveSnapshot, CancellationToken, Task>? saveCommitNotifier;
 
     public LayoutProfileSession(
         IReadOnlyDictionary<string, IHostAdapter> adapters,
@@ -106,6 +107,9 @@ public sealed class LayoutProfileSession
     public void ConfigureSaveAcknowledgement(
         Func<LayoutSaveSnapshot, CancellationToken, Task<LayoutSaveAcknowledgement>> acknowledger) =>
         saveAcknowledger = acknowledger ?? throw new ArgumentNullException(nameof(acknowledger));
+
+    public void ConfigureSaveCommitNotification(Func<LayoutSaveSnapshot, CancellationToken, Task> notifier) =>
+        saveCommitNotifier = notifier ?? throw new ArgumentNullException(nameof(notifier));
 
     public async Task<LayoutOperationResult> UndoAsync(CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
@@ -219,6 +223,16 @@ public sealed class LayoutProfileSession
             savedExplicitOperations = CloneOperations(workingExplicitOperations);
             savedHasExplicitOperationMetadata = true;
             LastAcknowledgedSaveRequestId = snapshot.RequestId;
+            if (saveCommitNotifier is not null)
+            {
+                try { await saveCommitNotifier(snapshot, CancellationToken.None).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is not OutOfMemoryException)
+                {
+                    // The acknowledged file is already committed. A delivery failure
+                    // cannot turn it into an unconfirmed candidate or roll it back.
+                    return new(true, "layout_saved_target_disconnected", $"Layout gespeichert; Abschlussmeldung nicht zugestellt: {exception.Message}", SaveRequestId: snapshot.RequestId);
+                }
+            }
             return new(true, "layout_saved", "Änderungen persistent gespeichert und bestätigt.", SaveRequestId: snapshot.RequestId);
         }, cancellationToken).ConfigureAwait(false);
 

@@ -133,6 +133,9 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         return new(true, "layout_save_acknowledged", "BBM hat den persistenten Layoutsnapshot bestätigt.");
     }
 
+    public Task NotifyLayoutSaveCommittedAsync(LayoutSaveSnapshot snapshot, CancellationToken cancellationToken = default) =>
+        connection.SendEventAsync("layoutSaveCommitted", new { saveRequestId = snapshot.RequestId }, cancellationToken);
+
     public Task ShutdownTargetSessionAsync(
         string disposition = "unknown",
         string? saveRequestId = null,

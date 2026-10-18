@@ -32,8 +32,18 @@ public sealed class M8623SaveCloseAcknowledgementTests
                     return Task.FromResult(new LayoutSaveAcknowledgement(true, "layout_save_acknowledged", "bestätigt"));
                 });
 
+                var commitNotified = false;
+                fixture.Session.ConfigureSaveCommitNotification((snapshot, _) =>
+                {
+                    Assert.IsFalse(File.Exists(fixture.Store.GetFilePath("standard") + ".save-transaction.json"));
+                    Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+                    Assert.AreEqual(snapshot.RequestId, fixture.Session.LastAcknowledgedSaveRequestId);
+                    commitNotified = true;
+                    return Task.CompletedTask;
+                });
                 var result = fixture.Session.SaveAsync().GetAwaiter().GetResult();
 
+                Assert.IsTrue(commitNotified);
                 Assert.IsTrue(result.Success, result.Message);
                 Assert.IsTrue(callbackReached);
                 Assert.AreEqual(result.SaveRequestId, fixture.Session.LastAcknowledgedSaveRequestId);
@@ -53,6 +63,8 @@ public sealed class M8623SaveCloseAcknowledgementTests
             {
                 Resize(fixture.Adapter, 164);
                 fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+                var commitNotifications = 0;
+                fixture.Session.ConfigureSaveCommitNotification((_, _) => { commitNotifications++; return Task.CompletedTask; });
                 string? rejectedRequestId = null;
                 fixture.Session.ConfigureSaveAcknowledgement((snapshot, _) =>
                 {
@@ -63,6 +75,7 @@ public sealed class M8623SaveCloseAcknowledgementTests
                 var rejected = fixture.Session.SaveAsync().GetAwaiter().GetResult();
 
                 Assert.IsFalse(rejected.Success);
+                Assert.AreEqual(0, commitNotifications);
                 Assert.AreEqual("layout_save_acknowledgement_failed", rejected.Code);
                 Assert.IsFalse(File.Exists(fixture.Store.GetFilePath(LayoutProfileCatalog.StandardId)),
                     "Ein abgelehnter erster Save darf kein Startprofil hinterlassen.");
@@ -75,6 +88,7 @@ public sealed class M8623SaveCloseAcknowledgementTests
 
                 Assert.IsTrue(retry.Success, retry.Message);
                 Assert.AreNotEqual(rejectedRequestId, retry.SaveRequestId);
+                Assert.AreEqual(1, commitNotifications);
                 Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
             }
             finally { fixture.Dispose(); }
