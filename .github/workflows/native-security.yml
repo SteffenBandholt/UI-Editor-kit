@@ -54,12 +54,12 @@ jobs:
             $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
             $sdkRoot = Join-Path $env:RUNNER_TEMP 'isolated-sdk100'
             Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile $installer
-            & $installer -Version 10.0.100 -InstallDir $sdkRoot -NoPath
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Version 10.0.100 -InstallDir $sdkRoot -NoPath
             if ($LASTEXITCODE -ne 0) { throw 'SDK 10.0.100 install failed' }
             # Patched runtimes are needed to execute framework-dependent tests;
             # they do not install or select a newer SDK/compiler.
             foreach ($runtime in @('dotnet','windowsdesktop')) {
-              & $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath
+              & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath
               if ($LASTEXITCODE -ne 0) { throw 'Patched test runtime install failed' }
             }
             $dotnet = Join-Path $sdkRoot 'dotnet.exe'
