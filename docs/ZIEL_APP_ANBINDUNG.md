@@ -328,3 +328,24 @@ Bei einer Electron-Ziel-App ist der atomare Profil-Schreibabschluss allein noch 
 Erst nach dieser korrelierten Bestätigung wird der Layoutzustand im Editor als gespeichert übernommen. Ein Fehler oder Timeout lässt die Session dirty; „Speichern und schließen“ gibt dann `false` zurück und das native Fenster bleibt offen. Vor dem tatsächlichen Fenster-Close bestätigt die Ziel-App über `prepareEditorClose`, dass `saved`, `clean` oder `discarded` angewandt und alle transienten Marker bereinigt sind. `editorClosed` ist danach nur noch der idempotente Sitzungsabschluss. `discarded` stellt ausschließlich Änderungen seit der letzten bestätigten Save-Grenze zurück. Auswahl-, Hover-, Komponenten- und Diagnosemarker sind niemals Bestandteil des Save-Snapshots.
 
 Die Ziel-App vergleicht beim Acknowledgement die explizit persistierten Operationen mit den tatsächlich angewendeten Rendererwerten. Responsive oder elastische Istwerte nicht bearbeiteter Elemente dürfen die Bestätigung nicht allein durch normale Layoutschwankungen blockieren. Scope-/Elementidentität, erlaubte Snapshotfelder, bekannte Operationen und alle explizit bearbeiteten Werte bleiben verbindlich zu validieren.
+
+## Explizite UI-Bearbeitungssitzung
+
+Layoutoperationen, Undo und Reset bleiben transient. Nur der vorhandene
+Speichern-Befehl (auch im Close-/Profilwechsel-Dialog) darf `SaveAsync` auslösen.
+Die gemeinsame `LayoutProfileSession` verwaltet den zuletzt bestätigten Stand;
+Ziel-Apps entwickeln keine zweite Speicherlogik.
+
+`acknowledgeLayoutSave` validiert den persistenten Kandidaten, ist aber noch kein
+Abschluss der Core-Transaktion. Neue Electron-Anbindungen halten dafür eine
+vorläufige, zur `saveRequestId` gehörige Rücksetzgrenze bereit. Erst das additive
+Ereignis `layoutSaveCommitted` übernimmt diese Grenze. Ohne dieses Ereignis
+behalten Discard und Disconnect die vorherige Grenze. Vorbereitete `saved`-
+Abschlüsse verlangen die bestätigte Commit-ID. Der vorhandene Core sendet das
+Ereignis erst nach Entfernen des dauerhaften Rollbackjournals. Bestehende
+Profilversionen und bisherige Nachrichtentypen bleiben unverändert lesbar.
+
+Der offizielle Startup-Loader stellt ein unterbrochenes Save anhand des Journals
+wieder her, bevor er ein Profil prüft oder anwendet. Ein beschädigtes Journal
+blockiert den Start mit `storage_recovery_failed`. Details und Prüfbefehle:
+[EXPLICIT_LAYOUT_SESSION.md](EXPLICIT_LAYOUT_SESSION.md).

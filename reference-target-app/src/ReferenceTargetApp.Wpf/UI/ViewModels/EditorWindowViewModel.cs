@@ -628,6 +628,7 @@ internal sealed class EditorWindowViewModel : INotifyPropertyChanged
         RunOnUi(() =>
         {
             connectionLost = true;
+            RaiseCommandStates();
             ShowError(code, message);
             StatusMessage = "Ziel-App-Verbindung getrennt. BBM kann unabhängig weiterlaufen.";
             IsBusy = false;
