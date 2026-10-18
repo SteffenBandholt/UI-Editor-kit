@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 
 namespace ReferenceTargetApp.Tests;
 
@@ -217,6 +218,56 @@ public sealed class M8623SaveCloseAcknowledgementTests
         });
     }
 
+    [TestMethod]
+    public void RelativeSpacingEditsDiscardUndoAndLoadAsSavedAbsoluteValues()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            void Spacing(string operation, double value)
+            {
+                var spacing = new Dictionary<string, object?> { ["target"] = SpacingTargets.BeforeElement };
+                if (operation != HostAdapterOperations.SpacingReset) spacing["value"] = value;
+                var result = fixture.Adapter.SubmitChangeRequest(new ChangeRequest(Guid.NewGuid().ToString("N"), "field", operation,
+                    new Dictionary<string, object?> { ["spacing"] = spacing },
+                    DateTimeOffset.UtcNow, "session-test", "scope"));
+                Assert.IsTrue(result.Success, result.Message);
+                fixture.Session.RecordExplicitOperation("scope", "field", operation);
+            }
+            double Current() => fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Spacing![SpacingTargets.BeforeElement];
+            Resize(fixture.Adapter, 150);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Spacing(HostAdapterOperations.SpacingIncrease, 10);
+            Spacing(HostAdapterOperations.SpacingDecrease, 3);
+            Assert.AreEqual(7, Current(), 0.001);
+            var discarded = fixture.Session.DiscardAllAsync().GetAwaiter().GetResult();
+            Assert.IsTrue(discarded.Success, discarded.Message);
+            Assert.AreEqual(0, Current(), 0.001);
+            Assert.AreEqual(100, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+            Spacing(HostAdapterOperations.SpacingIncrease, 5);
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var bytes = File.ReadAllBytes(fixture.Store.GetFilePath("standard"));
+            fixture.Session.BeginUndoFrame("spacing step");
+            Spacing(HostAdapterOperations.SpacingIncrease, 7);
+            fixture.Session.CommitUndoFrame();
+            Assert.IsTrue(fixture.Session.UndoAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            Spacing(HostAdapterOperations.SpacingIncrease, 8);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            Spacing(HostAdapterOperations.SpacingDecrease, 2);
+            Assert.IsTrue(fixture.Session.LoadAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            Spacing(HostAdapterOperations.SpacingReset, 0);
+            Assert.AreEqual(0, Current(), 0.001);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(fixture.Store.GetFilePath("standard")));
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
     private static Fixture CreateFixture()
     {
         var root = Path.Combine(Path.GetTempPath(), $"ui-editor-m86-23-{Guid.NewGuid():N}");
@@ -226,8 +277,10 @@ public sealed class M8623SaveCloseAcknowledgementTests
         scope.Children.Add(field);
         var registry = new UiElementRegistry([
             new("scope", "scope", null, UiElementKind.Scope, "Bereich", 0, UiCapability.None, scope),
-            new("field", "scope", "scope", UiElementKind.InputField, "Inhalt", 10, UiCapability.Width, field,
-                ProtocolType: "field", AllowedOperations: [HostAdapterOperations.ResizeWidth]),
+            new("field", "scope", "scope", UiElementKind.InputField, "Inhalt", 10, UiCapability.Width | UiCapability.Spacing, field,
+                ProtocolType: "field", AllowedOperations: [HostAdapterOperations.ResizeWidth, HostAdapterOperations.SpacingSet,
+                    HostAdapterOperations.SpacingIncrease, HostAdapterOperations.SpacingDecrease, HostAdapterOperations.SpacingReset],
+                SpacingTargets: [SpacingTargets.BeforeElement, SpacingTargets.AfterElement]),
         ]);
         var adapter = new WpfHostAdapter(registry);
         var baseline = adapter.GetCurrentLayoutState();

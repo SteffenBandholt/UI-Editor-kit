@@ -34,3 +34,10 @@ Tests: `node scripts/tests/explicit-layout-session.test.cjs`, all commands via
 `node scripts/run-all-js-tests.cjs`, native `M8623SaveCloseAcknowledgementTests`,
 full Windows native-security matrix and BBMpro's real-native acceptance driver.
 Results and remaining baseline failures are recorded in PR #94 and #69.
+
+Relative spacing edits (`spacingIncrease`, `spacingDecrease`, `spacingReset`)
+are canonicalized to absolute `spacingSet` during Discard, Undo and Load. The
+saved spacing is a value, not an increment to replay. Duplicate operations are
+restored once; an unavailable restore operation also rolls back prior batch
+steps instead of leaving a partially restored layout. Native regression:
+`RelativeSpacingEditsDiscardUndoAndLoadAsSavedAbsoluteValues`.

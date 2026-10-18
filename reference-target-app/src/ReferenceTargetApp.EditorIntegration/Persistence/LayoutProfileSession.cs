@@ -451,21 +451,32 @@ public sealed class LayoutProfileSession
         foreach (var scopePair in operations.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             if (!adapters.TryGetValue(scopePair.Key, out var adapter) || !desired.TryGetValue(scopePair.Key, out var desiredScope))
-                return Fail("unknown_scope", $"Scope '{scopePair.Key}' ist nicht registriert.");
+            {
+                failures.Add(new(scopePair.Key, string.Empty, "unknown_scope", $"Scope '{scopePair.Key}' ist nicht registriert."));
+                break;
+            }
             var desiredById = desiredScope.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
             var currentById = adapter.GetCurrentLayoutState().Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
-            foreach (var token in scopePair.Value.OrderBy(value => value, StringComparer.Ordinal))
+            // Relative spacing commands describe an edit, not a restorable value.
+            // Restore/Discard/Undo always apply the saved absolute spacing once.
+            foreach (var token in scopePair.Value.Select(RestoreOperationToken).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal))
             {
                 var parts = token.Split('\u001f', 2);
                 var elementId = parts[0];
                 var operation = parts.Length == 2 ? parts[1] : string.Empty;
                 var entry = adapter.GetRegistry().FindById(elementId);
                 if (entry is null || !desiredById.TryGetValue(elementId, out var desiredElement))
-                    return Fail("unknown_element", $"Element '{elementId}' ist nicht registriert.");
+                {
+                    failures.Add(new(elementId, operation, "unknown_element", $"Element '{elementId}' ist nicht registriert."));
+                    break;
+                }
                 var requests = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(desiredElement, entry), source, ref sequence)
                     .Where(candidate => string.Equals(candidate.Operation, operation, StringComparison.Ordinal)).ToArray();
                 if (requests.Length == 0)
-                    return Fail("operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden.");
+                {
+                    failures.Add(new(elementId, operation, "operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden."));
+                    break;
+                }
                 foreach (var request in requests)
                 {
                     if (currentById.TryGetValue(elementId, out var current) && TextResizeContract.IsAlreadyApplied(request, current))
@@ -504,6 +515,13 @@ public sealed class LayoutProfileSession
         return new(false, rollbackFailures.Count == 0 ? "batch_apply_failed" : "rollback_failed",
             rollbackFailures.Count == 0 ? "Explizite Layoutoperation ist fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "Explizite Layoutoperation und Rollback sind fehlgeschlagen.",
             rollbackFailures.Count == 0, failures);
+    }
+
+    private static string RestoreOperationToken(string token)
+    {
+        var parts = token.Split('\u001f', 2);
+        return parts.Length == 2 && parts[1] is HostAdapterOperations.SpacingIncrease or HostAdapterOperations.SpacingDecrease or HostAdapterOperations.SpacingReset
+            ? $"{parts[0]}\u001f{HostAdapterOperations.SpacingSet}" : token;
     }
 
     private static string? SpacingTargetOf(ChangeRequest request)
