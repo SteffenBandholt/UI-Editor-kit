@@ -41,3 +41,7 @@ saved spacing is a value, not an increment to replay. Duplicate operations are
 restored once; an unavailable restore operation also rolls back prior batch
 steps instead of leaving a partially restored layout. Native regression:
 `RelativeSpacingEditsDiscardUndoAndLoadAsSavedAbsoluteValues`.
+
+The native window coordinator schedules opening/activation on the owning UI
+dispatcher even if waiting for Close's lifecycle lock resumed on a worker
+thread. The existing loaded-window integration test exercises immediate reopen.
