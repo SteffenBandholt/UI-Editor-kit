@@ -1,0 +1,137 @@
+name: Native dependency security and builds
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference-target-app/**'
+      - 'windows-manager/**'
+      - 'scripts/**'
+      - '.github/workflows/native-security.yml'
+      - 'global.json'
+      - 'Directory.Build.targets'
+  push:
+    branches: [codex/fix-pkcs-nuget-security]
+
+permissions:
+  contents: read
+
+jobs:
+  all-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run every existing JavaScript test command without early exit
+        run: node scripts/run-all-js-tests.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: all-js-results
+          path: artifacts/js-tests
+
+  windows-native:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [installed, isolated-10.0.100]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Select installed or truly isolated SDK
+        shell: pwsh
+        run: |
+          $dotnet = (Get-Command dotnet).Source
+          if ('${{ matrix.sdk }}' -eq 'isolated-10.0.100') {
+            $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+            $sdkRoot = Join-Path $env:RUNNER_TEMP 'isolated-sdk100'
+            Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile $installer
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Version 10.0.100 -InstallDir $sdkRoot -NoPath
+            if ($LASTEXITCODE -ne 0) { throw 'SDK 10.0.100 install failed' }
+            $dotnet = Join-Path $sdkRoot 'dotnet.exe'
+            "DOTNET_ROOT=$sdkRoot" | Add-Content $env:GITHUB_ENV
+          }
+          $version = & $dotnet --version
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot determine selected SDK' }
+          if ('${{ matrix.sdk }}' -eq 'isolated-10.0.100' -and $version -ne '10.0.100') { throw "SDK isolation failed: $version" }
+          "CI_DOTNET=$dotnet" | Add-Content $env:GITHUB_ENV
+          "CI_SDK_VERSION=$version" | Add-Content $env:GITHUB_ENV
+          Write-Output "SELECTED_SDK=$version; executable=$dotnet"
+      - name: Test security and publish guards
+        run: |
+          node scripts/tests/nuget-security.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Security guard test failed' }
+          node scripts/tests/publish-windows-manager.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Publish guard test failed' }
+      - name: Restore both solutions with full security audit
+        shell: pwsh
+        run: |
+          foreach ($solution in @('UIEditorKit.slnx','reference-target-app/ReferenceTargetApp.slnx')) {
+            & $env:CI_DOTNET restore $solution -p:NuGetAudit=true -p:NuGetAuditMode=all
+            if ($LASTEXITCODE -ne 0) { throw 'Audited restore failed' }
+          }
+          node scripts/check-nuget-security.cjs --dotnet-executable $env:CI_DOTNET
+          if ($LASTEXITCODE -ne 0) { throw 'Restored graph check failed' }
+      - name: Audit and record both full dependency graphs
+        shell: pwsh
+        run: |
+          foreach ($entry in @(@{Name='manager';Solution='UIEditorKit.slnx'}, @{Name='reference';Solution='reference-target-app/ReferenceTargetApp.slnx'})) {
+            & $env:CI_DOTNET package list --project $entry.Solution --no-restore --include-transitive --format json | Set-Content -Encoding utf8 ("dependencies-" + $entry.Name + ".json")
+            if ($LASTEXITCODE -ne 0) { throw 'Dependency listing failed' }
+            $audit = "vulnerabilities-" + $entry.Name + ".json"
+            & $env:CI_DOTNET package list --project $entry.Solution --no-restore --include-transitive --vulnerable --format json | Set-Content -Encoding utf8 $audit
+            if ($LASTEXITCODE -ne 0) { throw 'Vulnerability listing failed' }
+            node scripts/check-nuget-security.cjs --vulnerability-report $audit
+            if ($LASTEXITCODE -ne 0) { throw 'Vulnerabilities detected' }
+          }
+      - name: Build both applications
+        id: native-build
+        shell: pwsh
+        run: |
+          foreach ($project in @('reference-target-app/src/ReferenceTargetApp.Wpf/ReferenceTargetApp.Wpf.csproj','windows-manager/src/UiEditorKit.Manager.Wpf/UiEditorKit.Manager.Wpf.csproj')) {
+            & $env:CI_DOTNET build $project --configuration Release --no-restore
+            if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
+          }
+      - name: Publish through the exact consumer entry point and verify runtime
+        id: publish
+        run: node scripts/publish-windows-manager.cjs --dotnet "$env:CI_DOTNET" --output artifacts/manager
+      - name: Install patched runtime hosts only after isolated SDK publish proof
+        if: ${{ matrix.sdk == 'isolated-10.0.100' && !cancelled() && steps.publish.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          # The publish above used exactly the vanilla SDK installed by BBMpro.
+          # These hosts are needed only to execute framework-dependent test apps.
+          $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'isolated-sdk100'
+          # MSBuild servers still hold the original dotnet.exe open. Keep that
+          # unversioned launcher and install only new versioned runtime folders.
+          foreach ($runtime in @('dotnet','windowsdesktop')) {
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath -SkipNonVersionedFiles
+            if ($LASTEXITCODE -ne 0) { throw 'Patched test runtime install failed' }
+          }
+          if ((& $env:CI_DOTNET --version) -ne '10.0.100') { throw 'Test SDK changed unexpectedly' }
+      - name: Test reference application
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        run: '& $env:CI_DOTNET test reference-target-app/tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj --configuration Release --logger "trx;LogFileName=reference.trx"'
+      - name: Test manager
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        run: '& $env:CI_DOTNET test windows-manager/tests/UiEditorKit.Manager.Tests/UiEditorKit.Manager.Tests.csproj --configuration Release --logger "trx;LogFileName=manager.trx"'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-security-${{ matrix.sdk }}
+          path: |
+            dependencies-*.json
+            vulnerabilities-*.json
+            **/TestResults/*.trx
+            **/obj/project.assets.json
+            artifacts/manager/publish-verification.json
+            artifacts/manager/UiEditorManager.runtimeconfig.json

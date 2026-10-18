@@ -56,53 +56,60 @@ internal sealed class EditorWindowCoordinator(
     internal async Task<EditorWindowViewModel> OpenAsync()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
+        var dispatcher = owner?.Dispatcher ?? Application.Current.Dispatcher;
         await lifecycleLock.WaitAsync();
         try
         {
-            if (window is { IsVisible: true } existing && viewModel is not null)
+            ObjectDisposedException.ThrowIf(disposed, this);
+            // A queued reopen may resume after Close released the lock on an
+            // MTA continuation. All native window work belongs to its UI dispatcher.
+            return await dispatcher.InvokeAsync(async () =>
             {
-                if (existing.WindowState == WindowState.Minimized) existing.WindowState = WindowState.Normal;
-                existing.Activate();
-                ExistingWindowActivationCount++;
-                return viewModel;
-            }
+                if (window is { IsVisible: true } existing && viewModel is not null)
+                {
+                    if (existing.WindowState == WindowState.Minimized) existing.WindowState = WindowState.Normal;
+                    existing.Activate();
+                    ExistingWindowActivationCount++;
+                    return viewModel;
+                }
 
-            try
-            {
-                lifetimeCancellation = new CancellationTokenSource();
-                processCoordinator = new EditorProcessCoordinator(hostAdapters, editorProcessOptions ?? EditorProcessPathResolver.ResolveDefault());
-                var pdfWorkspace = pdfWorkspaceOverride ?? new PdfEditorWorkspaceViewModel(
-                    pdfRegistry ?? throw new InvalidOperationException("PDF-Registry fehlt."),
-                    pdfAdapter ?? throw new InvalidOperationException("PDF-HostAdapter fehlt."),
-                    pdfSession ?? throw new InvalidOperationException("PDF-Session fehlt."),
-                    new PdfOrderDocumentRenderer(), new NativePdfPreviewRenderer(),
-                    order ?? throw new InvalidOperationException("PDF-Auftragsmodell fehlt."),
-                    pdfOutputPath ?? throw new InvalidOperationException("PDF-Ausgabepfad fehlt."), lifetimeCancellation.Token);
-                viewModel = new EditorWindowViewModel(
-                    processCoordinator,
-                    layoutSession,
-                    selectionService,
-                    dialogService ?? new NativeEditorDialogService(),
-                    () => window,
-                    CompleteConfirmedCloseAsync,
-                    lifetimeCancellation.Token,
-                    pdfWorkspace);
-                window = new EditorWindow(viewModel, this);
-                if (owner is not null) window.Owner = owner;
-                window.Closed += Window_Closed;
-                WindowCreationCount++;
-                window.Show();
-                await viewModel.InitializeAsync();
-                return viewModel;
-            }
-            catch
-            {
-                if (processCoordinator is not null) await processCoordinator.DisposeAsync();
-                lifetimeCancellation?.Cancel();
-                if (window is not null) window.CompleteClose();
-                ClearCurrentWindow();
-                throw;
-            }
+                try
+                {
+                    lifetimeCancellation = new CancellationTokenSource();
+                    processCoordinator = new EditorProcessCoordinator(hostAdapters, editorProcessOptions ?? EditorProcessPathResolver.ResolveDefault());
+                    var pdfWorkspace = pdfWorkspaceOverride ?? new PdfEditorWorkspaceViewModel(
+                        pdfRegistry ?? throw new InvalidOperationException("PDF-Registry fehlt."),
+                        pdfAdapter ?? throw new InvalidOperationException("PDF-HostAdapter fehlt."),
+                        pdfSession ?? throw new InvalidOperationException("PDF-Session fehlt."),
+                        new PdfOrderDocumentRenderer(), new NativePdfPreviewRenderer(),
+                        order ?? throw new InvalidOperationException("PDF-Auftragsmodell fehlt."),
+                        pdfOutputPath ?? throw new InvalidOperationException("PDF-Ausgabepfad fehlt."), lifetimeCancellation.Token);
+                    viewModel = new EditorWindowViewModel(
+                        processCoordinator,
+                        layoutSession,
+                        selectionService,
+                        dialogService ?? new NativeEditorDialogService(),
+                        () => window,
+                        CompleteConfirmedCloseAsync,
+                        lifetimeCancellation.Token,
+                        pdfWorkspace);
+                    window = new EditorWindow(viewModel, this);
+                    if (owner is not null) window.Owner = owner;
+                    window.Closed += Window_Closed;
+                    WindowCreationCount++;
+                    window.Show();
+                    await viewModel.InitializeAsync();
+                    return viewModel;
+                }
+                catch
+                {
+                    if (processCoordinator is not null) await processCoordinator.DisposeAsync();
+                    lifetimeCancellation?.Cancel();
+                    if (window is not null) window.CompleteClose();
+                    ClearCurrentWindow();
+                    throw;
+                }
+            }).Task.Unwrap();
         }
         finally { lifecycleLock.Release(); }
     }

@@ -35,6 +35,68 @@ public sealed class AtomicJsonLayoutProfileStore
         return Path.Combine(rootDirectory, $"{profileId}.layout-profile.json");
     }
 
+    // The journal is durable before publishing a candidate. Its removal is the
+    // commit point; a crash or missing target acknowledgement restores exact bytes.
+    private string TransactionPath(string profileId) => GetFilePath(profileId) + ".save-transaction.json";
+
+    public async Task BeginSaveTransactionAsync(string profileId, CancellationToken cancellationToken = default)
+    {
+        await RecoverSaveTransactionAsync(profileId, cancellationToken).ConfigureAwait(false);
+        Directory.CreateDirectory(rootDirectory);
+        var path = GetFilePath(profileId);
+        var previous = File.Exists(path) ? Convert.ToBase64String(await File.ReadAllBytesAsync(path, cancellationToken)) : null;
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new SaveTransaction(1, previous, Environment.ProcessId), jsonOptions);
+        await WriteAtomicBytesAsync(TransactionPath(profileId), bytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    public void CommitSaveTransaction(string profileId) => File.Delete(TransactionPath(profileId));
+
+    public async Task RecoverSaveTransactionAsync(string profileId, CancellationToken cancellationToken = default)
+    {
+        var journal = TransactionPath(profileId);
+        if (!File.Exists(journal)) return;
+        var transaction = JsonSerializer.Deserialize<SaveTransaction>(await File.ReadAllBytesAsync(journal, cancellationToken), jsonOptions);
+        if (transaction is null || transaction.SchemaVersion != 1) throw new JsonException("Ungültige Layout-Save-Transaktion.");
+        if (transaction.OwnerProcessId is int owner && owner != Environment.ProcessId)
+        {
+            try
+            {
+                using var process = System.Diagnostics.Process.GetProcessById(owner);
+                if (!process.HasExited) throw new IOException("Eine andere Editorinstanz schließt diesen Save noch ab.");
+            }
+            catch (ArgumentException) { /* Owning process no longer exists. */ }
+        }
+        var path = GetFilePath(profileId);
+        if (transaction.PreviousProfileBase64 is null) File.Delete(path);
+        else
+        {
+            var previous = Convert.FromBase64String(transaction.PreviousProfileBase64);
+            if (!File.Exists(path) || !(await File.ReadAllBytesAsync(path, cancellationToken)).SequenceEqual(previous))
+                await WriteAtomicBytesAsync(path, previous, cancellationToken).ConfigureAwait(false);
+        }
+        File.Delete(journal);
+    }
+
+    private static async Task WriteAtomicBytesAsync(string path, byte[] bytes, CancellationToken cancellationToken)
+    {
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096,
+                             FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await stream.WriteAsync(bytes, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+                stream.Flush(flushToDisk: true);
+            }
+            if (File.Exists(path)) File.Replace(temporary, path, null, ignoreMetadataErrors: true);
+            else File.Move(temporary, path);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    private sealed record SaveTransaction(int SchemaVersion, string? PreviousProfileBase64, int? OwnerProcessId = null);
+
     public async Task<LayoutProfileSaveResult> SaveAsync(
         string profileId,
         IReadOnlyDictionary<string, IHostAdapter> adapters,
@@ -88,6 +150,7 @@ public sealed class AtomicJsonLayoutProfileStore
         bool allowCompatibleRegistryReconciliation = false)
     {
         var path = GetFilePath(profileId);
+        await RecoverSaveTransactionAsync(profileId, cancellationToken).ConfigureAwait(false);
         if (!File.Exists(path))
             return new(true, false, "layout_profile_not_found", "Für dieses Profil ist noch kein Layout gespeichert.", path);
         try

@@ -4,6 +4,39 @@
 >
 > **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
+## Explicit layout session (2026-10-18)
+
+`[T]` Explicit Save/Discard/Cancel, recoverable atomic saves, commit notification,
+absolute spacing restore and dispatcher-safe reopen are implemented in the shared
+core. Functional commit `323c191` is Windows-tested with installed SDK 10.0.402 and
+isolated SDK 10.0.100: new tests pass; reference 159/162, Manager 102/103 and JS
+64/68 retain only the separately documented baseline failures. Restore/audits/
+builds/publish pass, zero vulnerable packages. Full new BBMpro native acceptance
+is still blocked before runner provisioning, not approved or skipped.
+See [design, evidence and open acceptance](docs/EXPLICIT_LAYOUT_SESSION.md).
+No product acceptance or additional target-scope approval is claimed.
+
+## Build maintenance – NU1505 (2026-10-18)
+
+The exact BBMpro publish reproduces NU1505 because a global runtime override
+also reaches the Windows SDK framework. Per-framework .NET/Core/Desktop pack
+metadata now pins 10.0.13 without changing the Windows SDK projection package.
+A single shared publish script is used by consumers and the real Windows matrix
+(installed .NET 10 and isolated SDK 10.0.100). PKCS 10.0.13, audits and warnings
+remain enforced. See [build evidence](docs/NU1505_WINDOWS_PUBLISH.md); actual
+Windows matrix and remaining suite failures are recorded in PR #94.
+
+## Security maintenance – PKCS dependency (2026-10-17)
+
+`PDFsharp 6.2.4` requests vulnerable PKCS 8.0.1. The PdfRendering boundary now
+pins compatible .NET 10 PKCS 10.0.13 for GHSA-2fmv-rv2c-59x7 and
+GHSA-846f-f764-76mx. Full transitive audits, restored graph checks, native
+cross-builds and self-contained publish are green. Windows execution is checked
+by the dedicated native-security CI; no product acceptance is claimed.
+The existing unrelated JavaScript compact-layout assertion remains red.
+Details: [PKCS security repair](docs/PKCS_SECURITY_FIX.md).
+
+
 ## 2026-09-07 – K16/M81 fixed-layout Vertragspaket
 
 Explizites fixed-layout unterstützt registrierte Text-/Bild-Overlays ohne

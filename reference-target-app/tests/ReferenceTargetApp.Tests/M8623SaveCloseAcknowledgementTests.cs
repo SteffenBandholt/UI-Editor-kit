@@ -1,8 +1,10 @@
 using System.IO;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Registry;
+using ReferenceTargetApp.EditorIntegration.Geometry;
 
 namespace ReferenceTargetApp.Tests;
 
@@ -32,8 +34,17 @@ public sealed class M8623SaveCloseAcknowledgementTests
                     return Task.FromResult(new LayoutSaveAcknowledgement(true, "layout_save_acknowledged", "bestätigt"));
                 });
 
+                var commitNotified = false;
+                fixture.Session.ConfigureSaveCommitNotification((snapshot, _) =>
+                {
+                    Assert.IsFalse(File.Exists(fixture.Store.GetFilePath("standard") + ".save-transaction.json"));
+                    Assert.AreEqual(snapshot.RequestId, fixture.Session.LastAcknowledgedSaveRequestId);
+                    commitNotified = true;
+                    return Task.CompletedTask;
+                });
                 var result = fixture.Session.SaveAsync().GetAwaiter().GetResult();
 
+                Assert.IsTrue(commitNotified);
                 Assert.IsTrue(result.Success, result.Message);
                 Assert.IsTrue(callbackReached);
                 Assert.AreEqual(result.SaveRequestId, fixture.Session.LastAcknowledgedSaveRequestId);
@@ -53,6 +64,8 @@ public sealed class M8623SaveCloseAcknowledgementTests
             {
                 Resize(fixture.Adapter, 164);
                 fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+                var commitNotifications = 0;
+                fixture.Session.ConfigureSaveCommitNotification((_, _) => { commitNotifications++; return Task.CompletedTask; });
                 string? rejectedRequestId = null;
                 fixture.Session.ConfigureSaveAcknowledgement((snapshot, _) =>
                 {
@@ -63,9 +76,10 @@ public sealed class M8623SaveCloseAcknowledgementTests
                 var rejected = fixture.Session.SaveAsync().GetAwaiter().GetResult();
 
                 Assert.IsFalse(rejected.Success);
+                Assert.AreEqual(0, commitNotifications);
                 Assert.AreEqual("layout_save_acknowledgement_failed", rejected.Code);
-                Assert.IsTrue(File.Exists(fixture.Store.GetFilePath(LayoutProfileCatalog.StandardId)),
-                    "Der atomare Schreibabschluss liegt vor der fehlgeschlagenen BBM-Bestätigung.");
+                Assert.IsFalse(File.Exists(fixture.Store.GetFilePath(LayoutProfileCatalog.StandardId)),
+                    "Ein abgelehnter erster Save darf kein Startprofil hinterlassen.");
                 Assert.IsTrue(fixture.Session.GetStatus().IsDirty, "Ohne Acknowledgement darf der Editor nicht clean werden.");
                 Assert.IsNull(fixture.Session.LastAcknowledgedSaveRequestId);
 
@@ -75,6 +89,7 @@ public sealed class M8623SaveCloseAcknowledgementTests
 
                 Assert.IsTrue(retry.Success, retry.Message);
                 Assert.AreNotEqual(rejectedRequestId, retry.SaveRequestId);
+                Assert.AreEqual(1, commitNotifications);
                 Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
             }
             finally { fixture.Dispose(); }
@@ -100,6 +115,176 @@ public sealed class M8623SaveCloseAcknowledgementTests
         Assert.IsGreaterThan(closePreparation, windowClose);
     }
 
+    [TestMethod]
+    public void MultipleEditsStayTransientAndDiscardRestoresLastExplicitSave()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Resize(fixture.Adapter, 120);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Resize(fixture.Adapter, 140);
+            Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            Assert.IsFalse(File.Exists(fixture.Store.GetFilePath("standard")));
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(100, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+            Resize(fixture.Adapter, 160);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var bytes = File.ReadAllBytes(fixture.Store.GetFilePath("standard"));
+            Resize(fixture.Adapter, 180);
+            Resize(fixture.Adapter, 200);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(160, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(fixture.Store.GetFilePath("standard")));
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
+    [TestMethod]
+    public void RejectedSaveAndInterruptedSavePreservePreviousProfileBytes()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Resize(fixture.Adapter, 130);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var path = fixture.Store.GetFilePath("standard");
+            var bytes = File.ReadAllBytes(path);
+            Resize(fixture.Adapter, 190);
+            fixture.Session.ConfigureSaveAcknowledgement((_, _) => throw new IOException("connection lost"));
+            Assert.IsFalse(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            fixture.Store.BeginSaveTransactionAsync("standard").GetAwaiter().GetResult();
+            File.WriteAllText(path, "interrupted candidate");
+            var recovered = new AtomicJsonLayoutProfileStore(fixture.Root, "app");
+            recovered.RecoverSaveTransactionAsync("standard").GetAwaiter().GetResult();
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(130, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+        });
+    }
+
+    [TestMethod]
+    public void FailedAtomicWriteKeepsSavedBytesAndCanBeRetried()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var path = fixture.Store.GetFilePath("standard");
+            var bytes = File.ReadAllBytes(path);
+            Resize(fixture.Adapter, 170);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            // Windows denies File.Replace while the saved profile has no delete sharing.
+            using (var locked = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                var result = fixture.Session.SaveAsync().GetAwaiter().GetResult();
+                Assert.IsFalse(result.Success);
+                Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            }
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
+    [TestMethod]
+    public void CancelledAcknowledgementRestoresSavedProfileAndLeavesWorkingDirty()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var path = fixture.Store.GetFilePath("standard");
+            var bytes = File.ReadAllBytes(path);
+            Resize(fixture.Adapter, 175);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            using var cancellation = new CancellationTokenSource();
+            fixture.Session.ConfigureSaveAcknowledgement((_, token) =>
+            {
+                cancellation.Cancel();
+                token.ThrowIfCancellationRequested();
+                throw new InvalidOperationException("Cancellation must stop acknowledgement");
+            });
+            var result = fixture.Session.SaveAsync(cancellation.Token).GetAwaiter().GetResult();
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual("cancelled", result.Code);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
+    [TestMethod]
+    public void RelativeSpacingEditsDiscardUndoAndLoadAsSavedAbsoluteValues()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            void Spacing(string operation, double value)
+            {
+                var spacing = new Dictionary<string, object?> { ["target"] = SpacingTargets.BeforeElement };
+                if (operation != HostAdapterOperations.SpacingReset) spacing["value"] = value;
+                var result = fixture.Adapter.SubmitChangeRequest(new ChangeRequest(Guid.NewGuid().ToString("N"), "field", operation,
+                    new Dictionary<string, object?> { ["spacing"] = spacing },
+                    DateTimeOffset.UtcNow, "session-test", "scope"));
+                Assert.IsTrue(result.Success, result.Message);
+                fixture.Session.RecordExplicitOperation("scope", "field", operation);
+            }
+            double Current() => fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Spacing!.GetValueOrDefault(SpacingTargets.BeforeElement);
+            Resize(fixture.Adapter, 150);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            Spacing(HostAdapterOperations.SpacingIncrease, 10);
+            Spacing(HostAdapterOperations.SpacingDecrease, 3);
+            Assert.AreEqual(7, Current(), 0.001);
+            var discarded = fixture.Session.DiscardAllAsync().GetAwaiter().GetResult();
+            Assert.IsTrue(discarded.Success, discarded.Message);
+            Assert.AreEqual(0, Current(), 0.001);
+            Assert.AreEqual(100, fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Width);
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+            Spacing(HostAdapterOperations.SpacingIncrease, 5);
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var bytes = File.ReadAllBytes(fixture.Store.GetFilePath("standard"));
+            fixture.Session.BeginUndoFrame("spacing step");
+            Spacing(HostAdapterOperations.SpacingIncrease, 7);
+            fixture.Session.CommitUndoFrame();
+            Assert.IsTrue(fixture.Session.UndoAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            Spacing(HostAdapterOperations.SpacingIncrease, 8);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            Spacing(HostAdapterOperations.SpacingDecrease, 2);
+            Assert.IsTrue(Await(fixture.Session.LoadAsync()).Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            Spacing(HostAdapterOperations.SpacingReset, 0);
+            Assert.AreEqual(0, Current(), 0.001);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.AreEqual(5, Current(), 0.001);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(fixture.Store.GetFilePath("standard")));
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
+    // Loading reads the file asynchronously and then dispatches back to the
+    // real WPF target. Pump the STA just as M75FullOperationTests does.
+    private static T Await<T>(Task<T> task)
+    {
+        if (task.IsCompleted) return task.GetAwaiter().GetResult();
+        var frame = new DispatcherFrame();
+        var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        timeout.Tick += (_, _) => frame.Continue = false;
+        _ = task.ContinueWith(_ => frame.Continue = false, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        timeout.Start();
+        try { Dispatcher.PushFrame(frame); }
+        finally { timeout.Stop(); }
+        Assert.IsTrue(task.IsCompleted, "Native session operation must complete within 30 seconds.");
+        return task.GetAwaiter().GetResult();
+    }
+
     private static Fixture CreateFixture()
     {
         var root = Path.Combine(Path.GetTempPath(), $"ui-editor-m86-23-{Guid.NewGuid():N}");
@@ -109,8 +294,10 @@ public sealed class M8623SaveCloseAcknowledgementTests
         scope.Children.Add(field);
         var registry = new UiElementRegistry([
             new("scope", "scope", null, UiElementKind.Scope, "Bereich", 0, UiCapability.None, scope),
-            new("field", "scope", "scope", UiElementKind.InputField, "Inhalt", 10, UiCapability.Width, field,
-                ProtocolType: "field", AllowedOperations: [HostAdapterOperations.ResizeWidth]),
+            new("field", "scope", "scope", UiElementKind.InputField, "Inhalt", 10, UiCapability.Width | UiCapability.Spacing, field,
+                ProtocolType: "field", AllowedOperations: [HostAdapterOperations.ResizeWidth, HostAdapterOperations.SpacingSet,
+                    HostAdapterOperations.SpacingIncrease, HostAdapterOperations.SpacingDecrease, HostAdapterOperations.SpacingReset],
+                SpacingTargets: [SpacingTargets.BeforeElement, SpacingTargets.AfterElement]),
         ]);
         var adapter = new WpfHostAdapter(registry);
         var baseline = adapter.GetCurrentLayoutState();

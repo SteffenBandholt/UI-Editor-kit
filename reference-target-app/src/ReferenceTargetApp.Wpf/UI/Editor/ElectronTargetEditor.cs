@@ -73,6 +73,7 @@ public sealed class ElectronTargetEditorSession : IAsyncDisposable
                 target.DeclaredBaselineStates, target.Contract.StartupLayout?.Applied == true);
             var startup = uiPreparation.Startup;
             startup.Session.ConfigureSaveAcknowledgement(target.AcknowledgeLayoutSaveAsync);
+            startup.Session.ConfigureSaveCommitNotification(target.NotifyLayoutSaveCommittedAsync);
 
             var selection = new TargetAppSelectionService(
                 target.BeginTargetSelectionAsync,

@@ -49,6 +49,7 @@ public sealed class LayoutProfileSession
     private bool savedHasExplicitOperationMetadata;
     private readonly bool allowCompatibleRegistryReconciliation;
     private Func<LayoutSaveSnapshot, CancellationToken, Task<LayoutSaveAcknowledgement>>? saveAcknowledger;
+    private Func<LayoutSaveSnapshot, CancellationToken, Task>? saveCommitNotifier;
 
     public LayoutProfileSession(
         IReadOnlyDictionary<string, IHostAdapter> adapters,
@@ -71,7 +72,7 @@ public sealed class LayoutProfileSession
         this.saved = CloneStates(saved ?? baseline);
         workingExplicitOperations = OperationsFromDocument(savedDocument);
         savedExplicitOperations = CloneOperations(workingExplicitOperations);
-        savedHasExplicitOperationMetadata = HasExplicitOperationMetadata(savedDocument);
+        savedHasExplicitOperationMetadata = savedDocument is null || HasExplicitOperationMetadata(savedDocument);
     }
 
     public string ActiveProfileId { get; private set; }
@@ -106,6 +107,9 @@ public sealed class LayoutProfileSession
     public void ConfigureSaveAcknowledgement(
         Func<LayoutSaveSnapshot, CancellationToken, Task<LayoutSaveAcknowledgement>> acknowledger) =>
         saveAcknowledger = acknowledger ?? throw new ArgumentNullException(nameof(acknowledger));
+
+    public void ConfigureSaveCommitNotification(Func<LayoutSaveSnapshot, CancellationToken, Task> notifier) =>
+        saveCommitNotifier = notifier ?? throw new ArgumentNullException(nameof(notifier));
 
     public async Task<LayoutOperationResult> UndoAsync(CancellationToken cancellationToken = default) =>
         await ExclusiveAsync(async () =>
@@ -178,30 +182,57 @@ public sealed class LayoutProfileSession
             workingExplicitOperations = MergeOperations(
                 workingExplicitOperations,
                 InferMissingOperationsForExplicitlyEditedElements(saved, working, workingExplicitOperations));
-            var result = await profileStore.SaveAsync(ActiveProfileId, adapters, working, cancellationToken, OperationsForDocument(workingExplicitOperations, adapters.Keys)).ConfigureAwait(false);
-            if (!result.Success) return Fail(result.Code, result.Message);
-            if (result.Document is null) return Fail("layout_save_snapshot_missing", "Der persistent gespeicherte Layoutsnapshot fehlt.");
-            var snapshot = new LayoutSaveSnapshot(Guid.NewGuid().ToString("N"), result.Document);
-            if (saveAcknowledger is not null)
+            var committed = false;
+            LayoutSaveSnapshot snapshot;
+            try
             {
-                LayoutSaveAcknowledgement acknowledgement;
-                try
+                await profileStore.BeginSaveTransactionAsync(ActiveProfileId, cancellationToken).ConfigureAwait(false);
+                var result = await profileStore.SaveAsync(ActiveProfileId, adapters, working, cancellationToken, OperationsForDocument(workingExplicitOperations, adapters.Keys)).ConfigureAwait(false);
+                if (!result.Success) return Fail(result.Code, result.Message);
+                if (result.Document is null) return Fail("layout_save_snapshot_missing", "Der persistent gespeicherte Layoutsnapshot fehlt.");
+                snapshot = new LayoutSaveSnapshot(Guid.NewGuid().ToString("N"), result.Document);
+                if (saveAcknowledger is not null)
                 {
-                    acknowledgement = await saveAcknowledger(snapshot, cancellationToken).ConfigureAwait(false);
+                    LayoutSaveAcknowledgement acknowledgement;
+                    try
+                    {
+                        acknowledgement = await saveAcknowledger(snapshot, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception exception)
+                    {
+                        return Fail("layout_save_acknowledgement_failed", $"Die Ziel-App konnte den Save nicht bestätigen: {exception.Message}");
+                    }
+                    if (!acknowledgement.Accepted)
+                        return Fail(string.IsNullOrWhiteSpace(acknowledgement.Code) ? "layout_save_acknowledgement_failed" : acknowledgement.Code,
+                            string.IsNullOrWhiteSpace(acknowledgement.Message) ? "Die Ziel-App hat den persistenten Save nicht bestätigt." : acknowledgement.Message);
                 }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception exception)
-                {
-                    return Fail("layout_save_acknowledgement_failed", $"Layout wurde persistent geschrieben, aber die Ziel-App konnte den Save nicht bestätigen: {exception.Message}");
-                }
-                if (!acknowledgement.Accepted)
-                    return Fail(string.IsNullOrWhiteSpace(acknowledgement.Code) ? "layout_save_acknowledgement_failed" : acknowledgement.Code,
-                        string.IsNullOrWhiteSpace(acknowledgement.Message) ? "Die Ziel-App hat den persistenten Save nicht bestätigt." : acknowledgement.Message);
+                profileStore.CommitSaveTransaction(ActiveProfileId);
+                committed = true;
+            }
+            catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+            {
+                return Fail("storage_write_failed", $"Layoutprofil konnte nicht gespeichert werden: {exception.Message}");
+            }
+            finally
+            {
+                // Cancellation must not prevent restoring the last confirmed profile.
+                if (!committed) await profileStore.RecoverSaveTransactionAsync(ActiveProfileId, CancellationToken.None).ConfigureAwait(false);
             }
             saved = CloneStates(working);
             savedExplicitOperations = CloneOperations(workingExplicitOperations);
             savedHasExplicitOperationMetadata = true;
             LastAcknowledgedSaveRequestId = snapshot.RequestId;
+            if (saveCommitNotifier is not null)
+            {
+                try { await saveCommitNotifier(snapshot, CancellationToken.None).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is not OutOfMemoryException)
+                {
+                    // The acknowledged file is already committed. A delivery failure
+                    // cannot turn it into an unconfirmed candidate or roll it back.
+                    return new(true, "layout_saved_target_disconnected", $"Layout gespeichert; Abschlussmeldung nicht zugestellt: {exception.Message}", SaveRequestId: snapshot.RequestId);
+                }
+            }
             return new(true, "layout_saved", "Änderungen persistent gespeichert und bestätigt.", SaveRequestId: snapshot.RequestId);
         }, cancellationToken).ConfigureAwait(false);
 
@@ -256,6 +287,7 @@ public sealed class LayoutProfileSession
             {
                 saved = CloneStates(CaptureWorking());
                 workingExplicitOperations = CloneOperations(savedExplicitOperations);
+                ClearUndoHistory();
             }
             return result;
         }, cancellationToken).ConfigureAwait(false);
@@ -332,6 +364,10 @@ public sealed class LayoutProfileSession
             return Fail("operation_in_progress", "Eine Layoutoperation wird bereits ausgeführt.");
         try { return await action().ConfigureAwait(false); }
         catch (OperationCanceledException) { return Fail("cancelled", "Layoutoperation wurde abgebrochen."); }
+        catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
+        {
+            return new(false, "storage_recovery_failed", $"Layoutspeicher nicht sicher verfügbar: {exception.Message}", RollbackSucceeded: false);
+        }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {
             return Fail("layout_operation_failed", exception.Message);
@@ -415,21 +451,32 @@ public sealed class LayoutProfileSession
         foreach (var scopePair in operations.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             if (!adapters.TryGetValue(scopePair.Key, out var adapter) || !desired.TryGetValue(scopePair.Key, out var desiredScope))
-                return Fail("unknown_scope", $"Scope '{scopePair.Key}' ist nicht registriert.");
+            {
+                failures.Add(new(scopePair.Key, string.Empty, "unknown_scope", $"Scope '{scopePair.Key}' ist nicht registriert."));
+                break;
+            }
             var desiredById = desiredScope.Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
             var currentById = adapter.GetCurrentLayoutState().Elements.ToDictionary(element => element.ElementId, StringComparer.Ordinal);
-            foreach (var token in scopePair.Value.OrderBy(value => value, StringComparer.Ordinal))
+            // Relative spacing commands describe an edit, not a restorable value.
+            // Restore/Discard/Undo always apply the saved absolute spacing once.
+            foreach (var token in scopePair.Value.Select(RestoreOperationToken).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal))
             {
                 var parts = token.Split('\u001f', 2);
                 var elementId = parts[0];
                 var operation = parts.Length == 2 ? parts[1] : string.Empty;
                 var entry = adapter.GetRegistry().FindById(elementId);
                 if (entry is null || !desiredById.TryGetValue(elementId, out var desiredElement))
-                    return Fail("unknown_element", $"Element '{elementId}' ist nicht registriert.");
+                {
+                    failures.Add(new(elementId, operation, "unknown_element", $"Element '{elementId}' ist nicht registriert."));
+                    break;
+                }
                 var requests = LayoutRestoreCoordinator.CreateRequests(entry, Persisted(desiredElement, entry), source, ref sequence)
                     .Where(candidate => string.Equals(candidate.Operation, operation, StringComparison.Ordinal)).ToArray();
                 if (requests.Length == 0)
-                    return Fail("operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden.");
+                {
+                    failures.Add(new(elementId, operation, "operation_not_restorable", $"Operation '{operation}' für '{elementId}' kann nicht wiederhergestellt werden."));
+                    break;
+                }
                 foreach (var request in requests)
                 {
                     if (currentById.TryGetValue(elementId, out var current) && TextResizeContract.IsAlreadyApplied(request, current))
@@ -468,6 +515,13 @@ public sealed class LayoutProfileSession
         return new(false, rollbackFailures.Count == 0 ? "batch_apply_failed" : "rollback_failed",
             rollbackFailures.Count == 0 ? "Explizite Layoutoperation ist fehlgeschlagen; Ausgangszustand wurde wiederhergestellt." : "Explizite Layoutoperation und Rollback sind fehlgeschlagen.",
             rollbackFailures.Count == 0, failures);
+    }
+
+    private static string RestoreOperationToken(string token)
+    {
+        var parts = token.Split('\u001f', 2);
+        return parts.Length == 2 && parts[1] is HostAdapterOperations.SpacingIncrease or HostAdapterOperations.SpacingDecrease or HostAdapterOperations.SpacingReset
+            ? $"{parts[0]}\u001f{HostAdapterOperations.SpacingSet}" : token;
     }
 
     private static string? SpacingTargetOf(ChangeRequest request)
