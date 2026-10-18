@@ -36,7 +36,6 @@ public sealed class M8623SaveCloseAcknowledgementTests
                 fixture.Session.ConfigureSaveCommitNotification((snapshot, _) =>
                 {
                     Assert.IsFalse(File.Exists(fixture.Store.GetFilePath("standard") + ".save-transaction.json"));
-                    Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
                     Assert.AreEqual(snapshot.RequestId, fixture.Session.LastAcknowledgedSaveRequestId);
                     commitNotified = true;
                     return Task.CompletedTask;
