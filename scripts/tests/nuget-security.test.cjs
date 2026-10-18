@@ -20,6 +20,12 @@ try {
   pruned.project.frameworks['net10.0-windows'].downloadDependencies = [{name: 'Microsoft.WindowsDesktop.App.Ref', version: '[10.0.13, 10.0.13]'}];
   fs.writeFileSync(prunedFile, JSON.stringify(pruned));
   assert.equal(verifyAssets([file, prunedFile], {sdkVersion: '10.0.100'}).patchedFrameworkGraphs, 1);
+  const sdk100 = structuredClone(pruned);
+  sdk100.targets = {'net10.0-windows10.0.19041': {'PDFsharp/6.2.4': {}}};
+  sdk100.project.frameworks['net10.0-windows'].targetAlias = 'net10.0-windows10.0.19041.0';
+  fs.writeFileSync(prunedFile, JSON.stringify(sdk100));
+  assert.equal(verifyAssets([file, prunedFile], {sdkVersion: '10.0.100'}).patchedFrameworkGraphs, 1, 'SDK100 normalizes away the platform revision');
+
   pruned.project.frameworks['net10.0-windows'].downloadDependencies.push({name: 'Microsoft.Windows.SDK.NET.Ref', version: '[10.0.13, 10.0.13]'});
   fs.writeFileSync(prunedFile, JSON.stringify(pruned));
   assert.throws(() => verifyAssets([file, prunedFile], {sdkVersion: '10.0.100'}), /Windows SDK version was replaced/);

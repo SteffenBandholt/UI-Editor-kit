@@ -29,7 +29,9 @@ function verifyAssets(files, {sdkVersion = ''} = {}) {
         // WindowsDesktop prunes PKCS because the framework provides it. A
         // missing package alone is never accepted as a security proof.
         const frameworks = Object.values(assets.project?.frameworks || {});
-        const framework = frameworks.find(item => (item.targetAlias || item.framework) === target.split('/')[0]);
+        // SDK 10.0.100 omits a zero revision in assets target names.
+        const canonical = value => String(value).split('/')[0].replace(/(-windows[0-9.]+)$/, platform => platform.replace(/(?:\.0)+$/, ''));
+        const framework = frameworks.find(item => canonical(item.targetAlias || item.framework) === canonical(target));
         const sdk = /^10\.0\.(\d+)$/.exec(sdkVersion.trim());
         const patchedPack = (framework?.downloadDependencies || []).some(item => item.name === 'Microsoft.WindowsDesktop.App.Ref' && /^\[10\.0\.(1[3-9]|[2-9]\d+),/.test(item.version));
         assert.ok(sdk && (Number(sdk[1]) >= 402 || Number(sdk[1]) >= 100 && patchedPack), `${file}/${target}: pruned PKCS requires patched SDK or explicit patched WindowsDesktop targeting pack`);
