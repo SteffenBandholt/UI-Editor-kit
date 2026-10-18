@@ -34,9 +34,10 @@ Windows SDK framework as well as to the .NET runtime frameworks.
   accepted as the published runtime. global.json permits stable .NET 10 feature
   roll-forward; runtime security is enforced independently.
 - CI installs SDK 10.0.100 into an empty SDK directory, asserts the exact version
-  and invokes that executable explicitly. Patched Core/Desktop runtimes are
-  installed there only to execute framework-dependent native test hosts; no
-  newer SDK/compiler is installed into that directory.
+  and invokes that executable explicitly. Publish is proved with that vanilla
+  SDK before any additional runtime is installed. Patched Core/Desktop runtimes
+  are installed afterwards only to execute framework-dependent native test
+  hosts; no newer SDK/compiler is installed into that directory.
 
 PKCS remains 10.0.13. NuGetAudit=true/Mode=all and existing TreatWarningsAsErrors
 remain active. Reference UI, renderer, PDF implementation and domain code are

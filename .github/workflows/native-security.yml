@@ -56,12 +56,6 @@ jobs:
             Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile $installer
             & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Version 10.0.100 -InstallDir $sdkRoot -NoPath
             if ($LASTEXITCODE -ne 0) { throw 'SDK 10.0.100 install failed' }
-            # Patched runtimes are needed to execute framework-dependent tests;
-            # they do not install or select a newer SDK/compiler.
-            foreach ($runtime in @('dotnet','windowsdesktop')) {
-              & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath
-              if ($LASTEXITCODE -ne 0) { throw 'Patched test runtime install failed' }
-            }
             $dotnet = Join-Path $sdkRoot 'dotnet.exe'
             "DOTNET_ROOT=$sdkRoot" | Add-Content $env:GITHUB_ENV
           }
@@ -109,6 +103,19 @@ jobs:
       - name: Publish through the exact consumer entry point and verify runtime
         id: publish
         run: node scripts/publish-windows-manager.cjs --dotnet "$env:CI_DOTNET" --output artifacts/manager
+      - name: Install patched runtime hosts only after isolated SDK publish proof
+        if: ${{ matrix.sdk == 'isolated-10.0.100' && !cancelled() && steps.publish.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          # The publish above used exactly the vanilla SDK installed by BBMpro.
+          # These hosts are needed only to execute framework-dependent test apps.
+          $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'isolated-sdk100'
+          foreach ($runtime in @('dotnet','windowsdesktop')) {
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath
+            if ($LASTEXITCODE -ne 0) { throw 'Patched test runtime install failed' }
+          }
+          if ((& $env:CI_DOTNET --version) -ne '10.0.100') { throw 'Test SDK changed unexpectedly' }
       - name: Test reference application
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: '& $env:CI_DOTNET test reference-target-app/tests/ReferenceTargetApp.Tests/ReferenceTargetApp.Tests.csproj --configuration Release --logger "trx;LogFileName=reference.trx"'
