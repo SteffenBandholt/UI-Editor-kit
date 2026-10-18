@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using ReferenceTargetApp.EditorIntegration.HostAdapter;
 using ReferenceTargetApp.EditorIntegration.Persistence;
 using ReferenceTargetApp.EditorIntegration.Registry;
@@ -257,7 +258,7 @@ public sealed class M8623SaveCloseAcknowledgementTests
             Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
             Assert.AreEqual(5, Current(), 0.001);
             Spacing(HostAdapterOperations.SpacingDecrease, 2);
-            Assert.IsTrue(fixture.Session.LoadAsync().GetAwaiter().GetResult().Success);
+            Assert.IsTrue(Await(fixture.Session.LoadAsync()).Success);
             Assert.AreEqual(5, Current(), 0.001);
             Spacing(HostAdapterOperations.SpacingReset, 0);
             Assert.AreEqual(0, Current(), 0.001);
@@ -266,6 +267,22 @@ public sealed class M8623SaveCloseAcknowledgementTests
             CollectionAssert.AreEqual(bytes, File.ReadAllBytes(fixture.Store.GetFilePath("standard")));
             Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
         });
+    }
+
+    // Loading reads the file asynchronously and then dispatches back to the
+    // real WPF target. Pump the STA just as M75FullOperationTests does.
+    private static T Await<T>(Task<T> task)
+    {
+        if (task.IsCompleted) return task.GetAwaiter().GetResult();
+        var frame = new DispatcherFrame();
+        var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        timeout.Tick += (_, _) => frame.Continue = false;
+        _ = task.ContinueWith(_ => frame.Continue = false, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        timeout.Start();
+        try { Dispatcher.PushFrame(frame); }
+        finally { timeout.Stop(); }
+        Assert.IsTrue(task.IsCompleted, "Native session operation must complete within 30 seconds.");
+        return task.GetAwaiter().GetResult();
     }
 
     private static Fixture CreateFixture()
