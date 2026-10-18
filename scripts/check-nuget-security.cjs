@@ -13,6 +13,15 @@ function verifyAssets(files, {sdkVersion = ''} = {}) {
   for (const file of files) {
     const assets = JSON.parse(fs.readFileSync(file, 'utf8'));
     for (const log of assets.logs || []) assert.notEqual(log.level, 'Error', `${file}: ${log.code} ${log.message}`);
+    for (const framework of Object.values(assets.project?.frameworks || {})) {
+      const downloads = new Map();
+      for (const dependency of framework.downloadDependencies || []) {
+        const id = dependency.name.toLowerCase();
+        assert.ok(!downloads.has(id) || downloads.get(id) === dependency.version, `${file}: conflicting PackageDownload ${dependency.name}`);
+        downloads.set(id, dependency.version);
+        if (id === 'microsoft.windows.sdk.net.ref') assert.match(dependency.version, /^\[10\.0\.\d{5}\./, `${file}: Windows SDK version was replaced by a runtime version`);
+      }
+    }
     for (const [target, packages] of Object.entries(assets.targets || {})) {
       const keys = Object.keys(packages);
       const pkcs = keys.filter(key => key.toLowerCase().startsWith(PACKAGE.toLowerCase() + '/'));
@@ -22,7 +31,8 @@ function verifyAssets(files, {sdkVersion = ''} = {}) {
         const frameworks = Object.values(assets.project?.frameworks || {});
         const framework = frameworks.find(item => (item.targetAlias || item.framework) === target.split('/')[0]);
         const sdk = /^10\.0\.(\d+)$/.exec(sdkVersion.trim());
-        assert.ok(sdk && Number(sdk[1]) >= 402, `${file}/${target}: pruned PKCS requires patched .NET 10 SDK >= 10.0.402`);
+        const patchedPack = (framework?.downloadDependencies || []).some(item => item.name === 'Microsoft.WindowsDesktop.App.Ref' && /^\[10\.0\.(1[3-9]|[2-9]\d+),/.test(item.version));
+        assert.ok(sdk && (Number(sdk[1]) >= 402 || Number(sdk[1]) >= 100 && patchedPack), `${file}/${target}: pruned PKCS requires patched SDK or explicit patched WindowsDesktop targeting pack`);
         assert.ok(framework?.packagesToPrune?.[PACKAGE] && Object.keys(framework.frameworkReferences || {}).some(name => name.startsWith('Microsoft.WindowsDesktop.App')), `${file}/${target}: missing verified WindowsDesktop PKCS pruning metadata`);
         for (const dependency of framework.downloadDependencies || []) {
           if (!dependency.name.startsWith('Microsoft.WindowsDesktop.App.')) continue;
@@ -61,7 +71,7 @@ function assetsIn(directory) {
     return entry.isDirectory() ? assetsIn(file) : entry.name === 'project.assets.json' ? [file] : [];
   });
 }
-module.exports = {verifyAssets, verifyAudit};
+module.exports = {verifyAssets, verifyAudit, assetsIn};
 if (require.main === module) {
   try {
     const index = process.argv.indexOf('--vulnerability-report');

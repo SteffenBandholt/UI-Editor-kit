@@ -1,5 +1,19 @@
 # STATUS - UI-Editor-kit
 
+> **VERBINDLICHE PRODUKTGRENZE**
+>
+> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
+
+## Build maintenance – NU1505 (2026-10-18)
+
+The exact BBMpro publish reproduces NU1505 because a global runtime override
+also reaches the Windows SDK framework. Per-framework .NET/Core/Desktop pack
+metadata now pins 10.0.13 without changing the Windows SDK projection package.
+A single shared publish script is used by consumers and the real Windows matrix
+(installed .NET 10 and isolated SDK 10.0.100). PKCS 10.0.13, audits and warnings
+remain enforced. See [build evidence](docs/NU1505_WINDOWS_PUBLISH.md); actual
+Windows matrix and remaining suite failures are recorded in PR #94.
+
 ## Security maintenance – PKCS dependency (2026-10-17)
 
 `PDFsharp 6.2.4` requests vulnerable PKCS 8.0.1. The PdfRendering boundary now
@@ -10,10 +24,6 @@ by the dedicated native-security CI; no product acceptance is claimed.
 The existing unrelated JavaScript compact-layout assertion remains red.
 Details: [PKCS security repair](docs/PKCS_SECURITY_FIX.md).
 
-
-> **VERBINDLICHE PRODUKTGRENZE**
->
-> **DAS UI-EDITOR-KIT WIRD NIEMALS IM BROWSER STATTFINDEN.**
 
 ## 2026-09-07 – K16/M81 fixed-layout Vertragspaket
 

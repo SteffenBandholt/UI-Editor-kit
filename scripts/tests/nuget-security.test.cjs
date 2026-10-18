@@ -17,6 +17,15 @@ try {
   fs.writeFileSync(prunedFile, JSON.stringify(pruned));
   assert.throws(() => verifyAssets([file, prunedFile]), /requires patched/);
   assert.equal(verifyAssets([file, prunedFile], {sdkVersion: '10.0.402'}).patchedFrameworkGraphs, 1);
+  pruned.project.frameworks['net10.0-windows'].downloadDependencies = [{name: 'Microsoft.WindowsDesktop.App.Ref', version: '[10.0.13, 10.0.13]'}];
+  fs.writeFileSync(prunedFile, JSON.stringify(pruned));
+  assert.equal(verifyAssets([file, prunedFile], {sdkVersion: '10.0.100'}).patchedFrameworkGraphs, 1);
+  pruned.project.frameworks['net10.0-windows'].downloadDependencies.push({name: 'Microsoft.Windows.SDK.NET.Ref', version: '[10.0.13, 10.0.13]'});
+  fs.writeFileSync(prunedFile, JSON.stringify(pruned));
+  assert.throws(() => verifyAssets([file, prunedFile], {sdkVersion: '10.0.100'}), /Windows SDK version was replaced/);
+  pruned.project.frameworks['net10.0-windows'].downloadDependencies = [{name: 'Microsoft.Windows.SDK.NET.Ref', version: '[10.0.19041.57, 10.0.19041.57]'}, {name: 'Microsoft.Windows.SDK.NET.Ref', version: '[10.0.19041.58, 10.0.19041.58]'}];
+  fs.writeFileSync(prunedFile, JSON.stringify(pruned));
+  assert.throws(() => verifyAssets([file, prunedFile], {sdkVersion: '10.0.100'}), /conflicting PackageDownload/);
   pruned.project.frameworks['net10.0-windows'].downloadDependencies = [{name: 'Microsoft.WindowsDesktop.App.Ref', version: '[10.0.0, 10.0.0]'}];
   fs.writeFileSync(prunedFile, JSON.stringify(pruned));
   assert.throws(() => verifyAssets([file, prunedFile], {sdkVersion: '10.0.402'}), /unpatched WindowsDesktop/);

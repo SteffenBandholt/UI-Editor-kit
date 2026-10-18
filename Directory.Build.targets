@@ -1,0 +1,15 @@
+<Project>
+  <!-- Runtime patches are per framework. A global RuntimeFrameworkVersion also
+       reaches Microsoft.Windows.SDK.NET.Ref and creates NU1505 downloads. -->
+  <Target Name="UiEditorPinRuntimeFrameworks" BeforeTargets="ProcessFrameworkReferences"
+          Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and '$(TargetFrameworkVersion)' == 'v10.0'">
+    <Error Condition="'$(RuntimeFrameworkVersion)' != ''"
+           Text="Do not set global RuntimeFrameworkVersion: it also overrides the Windows SDK framework. Use the repository's per-framework runtime policy." />
+    <ItemGroup>
+      <KnownFrameworkReference Condition="'%(KnownFrameworkReference.TargetFramework)' == 'net10.0' and ('%(KnownFrameworkReference.Identity)' == 'Microsoft.NETCore.App' or '%(KnownFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App' or '%(KnownFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App.WPF' or '%(KnownFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App.WindowsForms')"
+                               DefaultRuntimeFrameworkVersion="10.0.13" LatestRuntimeFrameworkVersion="10.0.13" TargetingPackVersion="10.0.13" />
+      <FrameworkReference Condition="'%(FrameworkReference.Identity)' == 'Microsoft.NETCore.App' or '%(FrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App' or '%(FrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App.WPF' or '%(FrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App.WindowsForms'"
+                          RuntimeFrameworkVersion="10.0.13" TargetingPackVersion="10.0.13" />
+    </ItemGroup>
+  </Target>
+</Project>

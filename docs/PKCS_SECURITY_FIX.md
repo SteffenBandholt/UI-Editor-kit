@@ -17,7 +17,9 @@ boundary keeps the dependency in the native target's runtime family and avoids
 the SDK's pruning of older PKCS references. PDFsharp remains 6.2.4; PDF rendering
 code, editor behavior, contracts and target application domain code are unchanged.
 
-The SDK baseline is 10.0.402 (stable .NET 10, roll-forward within .NET 10).
+The compiler/bootstrap baseline now also supports isolated stable SDK 10.0.100;
+patched runtime and targeting packs remain fixed independently at 10.0.13.
+See [NU1505 follow-up](NU1505_WINDOWS_PUBLISH.md).
 WindowsDesktop may prune the separate PKCS package because the patched framework
 provides it. The guard accepts this only with explicit pruning/framework metadata,
 a patched selected SDK and no older explicit WindowsDesktop download override;
