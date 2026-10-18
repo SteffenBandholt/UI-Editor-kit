@@ -176,6 +176,34 @@ public sealed class M8623SaveCloseAcknowledgementTests
         });
     }
 
+    [TestMethod]
+    public void CancelledAcknowledgementRestoresSavedProfileAndLeavesWorkingDirty()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = CreateFixture();
+            Assert.IsTrue(fixture.Session.SaveAsync().GetAwaiter().GetResult().Success);
+            var path = fixture.Store.GetFilePath("standard");
+            var bytes = File.ReadAllBytes(path);
+            Resize(fixture.Adapter, 175);
+            fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
+            using var cancellation = new CancellationTokenSource();
+            fixture.Session.ConfigureSaveAcknowledgement((_, token) =>
+            {
+                cancellation.Cancel();
+                token.ThrowIfCancellationRequested();
+                throw new InvalidOperationException("Cancellation must stop acknowledgement");
+            });
+            var result = fixture.Session.SaveAsync(cancellation.Token).GetAwaiter().GetResult();
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual("cancelled", result.Code);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path));
+            Assert.IsTrue(fixture.Session.GetStatus().IsDirty);
+            Assert.IsTrue(fixture.Session.DiscardAllAsync().GetAwaiter().GetResult().Success);
+            Assert.IsFalse(fixture.Session.GetStatus().IsDirty);
+        });
+    }
+
     private static Fixture CreateFixture()
     {
         var root = Path.Combine(Path.GetTempPath(), $"ui-editor-m86-23-{Guid.NewGuid():N}");
