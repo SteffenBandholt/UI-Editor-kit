@@ -6,8 +6,14 @@
 
 ## Explicit layout session (2026-10-18)
 
-Implementation/test work in progress for explicit Save, Discard and dirty close.
-See [session design and transaction contract](docs/EXPLICIT_LAYOUT_SESSION.md).
+`[T]` Explicit Save/Discard/Cancel, recoverable atomic saves, commit notification,
+absolute spacing restore and dispatcher-safe reopen are implemented in the shared
+core. Functional commit `323c191` is Windows-tested with installed SDK 10.0.402 and
+isolated SDK 10.0.100: new tests pass; reference 159/162, Manager 102/103 and JS
+64/68 retain only the separately documented baseline failures. Restore/audits/
+builds/publish pass, zero vulnerable packages. Full new BBMpro native acceptance
+is still blocked before runner provisioning, not approved or skipped.
+See [design, evidence and open acceptance](docs/EXPLICIT_LAYOUT_SESSION.md).
 No product acceptance or additional target-scope approval is claimed.
 
 ## Build maintenance – NU1505 (2026-10-18)

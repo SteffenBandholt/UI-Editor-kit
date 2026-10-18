@@ -45,3 +45,38 @@ steps instead of leaving a partially restored layout. Native regression:
 The native window coordinator schedules opening/activation on the owning UI
 dispatcher even if waiting for Close's lifecycle lock resumed on a worker
 thread. The existing loaded-window integration test exercises immediate reopen.
+
+## Actual verification and open acceptance (2026-10-18)
+
+Functional commit: `323c1918ff770e2a4a7eabbe291bf5430e52dd6d`.
+[Complete Windows matrix 39156021248](https://github.com/SteffenBandholt/UI-Editor-kit/actions/runs/39156021248):
+
+| Check | Installed SDK 10.0.402 | Isolated SDK 10.0.100 |
+| --- | --- | --- |
+| Both solutions restored, full transitive audits | passed, 0 vulnerable packages | passed, 0 vulnerable packages |
+| Both native applications built | passed | passed |
+| Shared real self-contained WPF publish | passed, runtime 10.0.13 | passed, runtime 10.0.13 |
+| New session/spacing tests and existing immediate-reopen integration | passed | passed |
+| Full reference suite, no tests skipped | 159/162 | 159/162 |
+| Full Manager suite, no tests skipped | 102/103 | 102/103 |
+
+All 68 JavaScript commands ran independently: 64 passed. The same four baseline
+source-snapshot cases fail: m82-3-spacing-compact-ui, m82-5-simple-editor-mode,
+m82-7-capability-guided-simple-mode, m82-7-3-text-resize-current-value.
+Native baseline failures remain CompactWorkspaceUsesAvailableWidthAndKeepsToolbarOutsideColumns,
+DefaultPathIsUserLocalAndAtomicStoreWritesVersionedNeutralDocument,
+VisibleUiPdfEndToEndUsesTwoRealProcessesAndCleansArtifacts (child -1073741811),
+and Manager Existing_Electron_reference_is_detected_without_second_bridge_or_registry
+(the external BBM reference repository is absent). No assertions were weakened.
+Cross-build: zero warnings/errors; contract self-test, security/publish guards,
+pack dry-run and release check pass. NuGetAudit and TreatWarningsAsErrors remain on.
+
+BBMpro's actual WPF/pipe/UIA run confirmed transient edits and the real Win32
+Discard confirmation, then exposed the relative-spacing restore bug fixed here.
+The complete new BBMpro Save/Discard/Cancel/failure/restart/disconnect scenario
+must still be rerun. Its next run
+[39154946232](https://github.com/SteffenBandholt/BBMpro/actions/runs/39154946232)
+and retry failed before provisioning any runner: zero steps, runner_id 0, no job
+log. This is not a passed acceptance test; the platform's annotation is required
+from the account owner. Physical DPI/monitor review and production approval
+remain separate. No merge or release.
