@@ -234,7 +234,7 @@ public sealed class M8623SaveCloseAcknowledgementTests
                 Assert.IsTrue(result.Success, result.Message);
                 fixture.Session.RecordExplicitOperation("scope", "field", operation);
             }
-            double Current() => fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Spacing![SpacingTargets.BeforeElement];
+            double Current() => fixture.Adapter.GetCurrentLayoutState().Elements.Single(e => e.ElementId == "field").Spacing!.GetValueOrDefault(SpacingTargets.BeforeElement);
             Resize(fixture.Adapter, 150);
             fixture.Session.RecordExplicitOperation("scope", "field", HostAdapterOperations.ResizeWidth);
             Spacing(HostAdapterOperations.SpacingIncrease, 10);
