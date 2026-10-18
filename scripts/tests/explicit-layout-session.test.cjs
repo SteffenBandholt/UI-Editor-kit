@@ -7,6 +7,10 @@ const load=()=>loadTargetStartupLayout({profileRoot:root,applicationId:'app',act
 try{
  const previous=Buffer.from('{"schemaVersion":2,"applicationId":"app","profileId":"standard","savedAt":"2026-10-18T00:00:00Z","scopes":[]}');
  fs.writeFileSync(file,'interrupted candidate');
+ fs.writeFileSync(journal,JSON.stringify({schemaVersion:1,previousProfileBase64:previous.toString('base64'),ownerProcessId:process.pid}));
+ assert.equal(load().code,'storage_recovery_failed','A second startup must not roll back a live Save');
+ assert.equal(fs.readFileSync(file,'utf8'),'interrupted candidate');
+
  fs.writeFileSync(journal,JSON.stringify({schemaVersion:1,previousProfileBase64:previous.toString('base64')}));
  assert.equal(load().ok,true);assert.deepEqual(fs.readFileSync(file),previous);assert.equal(fs.existsSync(journal),false);
  fs.writeFileSync(journal,JSON.stringify({schemaVersion:1}));

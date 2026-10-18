@@ -14,7 +14,7 @@ Cancel in the close dialog leaves the window and edits open.
 
 The existing version-2 profile JSON and acknowledgement stay compatible. Before
 publishing a Save candidate, the atomic store writes and flushes a version-1
-`<profile>.layout-profile.json.save-transaction.json` journal containing the exact
+`<profile>.layout-profile.json.save-transaction.json` journal containing the owning process ID and the exact
 previous file bytes (base64), or no previous file. File.Replace/Move publishes the
 fully flushed candidate. Only successful target acknowledgement removes the
 journal and advances Saved. The additive `layoutSaveCommitted` event then
@@ -23,7 +23,8 @@ Acknowledgement alone must not advance that boundary. Legacy targets may ignore
 the additive event; new integrations use it to protect an interrupted Save. Rejection, exception or cancellation restores the
 previous bytes; interruption leaves a journal that the official native/JS
 startup loaders recover before loading a profile. Invalid journals block startup
-without applying or overwriting the candidate. Journals contain layout only.
+without applying or overwriting the candidate. A live owning process also blocks
+concurrent startup recovery; it must not roll back an in-flight Save. Journals contain layout only.
 
 Disconnect outside Save does not write any profile. The app's existing official
 host boundary restores transient styles; the native editor reports connection

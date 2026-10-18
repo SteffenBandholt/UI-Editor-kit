@@ -291,10 +291,15 @@ function recoverInterruptedSave(file) {
   if (!fs.existsSync(journal)) return;
   const transaction = JSON.parse(fs.readFileSync(journal, "utf8"));
   if (!isObject(transaction) || transaction.schemaVersion !== 1 ||
-      Object.keys(transaction).some(key => !["schemaVersion", "previousProfileBase64"].includes(key)) ||
+      Object.keys(transaction).some(key => !["schemaVersion", "previousProfileBase64", "ownerProcessId"].includes(key)) ||
       (transaction.previousProfileBase64 != null && (typeof transaction.previousProfileBase64 !== "string" ||
        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(transaction.previousProfileBase64))))
     throw new Error("Invalid layout save transaction");
+  if (transaction.ownerProcessId != null) {
+    if (!Number.isSafeInteger(transaction.ownerProcessId) || transaction.ownerProcessId <= 0) throw new Error("Invalid save owner");
+    try { process.kill(transaction.ownerProcessId, 0); throw new Error("Layout save transaction is still active"); }
+    catch (error) { if (error.code !== "ESRCH") throw error; }
+  }
   if (transaction.previousProfileBase64 == null) {
     try { fs.unlinkSync(file); } catch (error) { if (error.code !== "ENOENT") throw error; }
   } else {
