@@ -111,8 +111,10 @@ jobs:
           # These hosts are needed only to execute framework-dependent test apps.
           $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
           $sdkRoot = Join-Path $env:RUNNER_TEMP 'isolated-sdk100'
+          # MSBuild servers still hold the original dotnet.exe open. Keep that
+          # unversioned launcher and install only new versioned runtime folders.
           foreach ($runtime in @('dotnet','windowsdesktop')) {
-            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -Runtime $runtime -Version 10.0.13 -InstallDir $sdkRoot -NoPath -SkipNonVersionedFiles
             if ($LASTEXITCODE -ne 0) { throw 'Patched test runtime install failed' }
           }
           if ((& $env:CI_DOTNET --version) -ne '10.0.100') { throw 'Test SDK changed unexpectedly' }
