@@ -56,6 +56,7 @@ const expectedExports = [
   "compareRegistrySnapshots",
   "reconcileRegistryProfile",
   "createRegistryRefreshCoordinator",
+  "createMultiRefTemplateTarget",
   "PDF_TARGET_CONTRACT_VERSION",
   "PDF_REGISTRY_STATUSES",
   "PDF_TARGET_OPERATIONS",

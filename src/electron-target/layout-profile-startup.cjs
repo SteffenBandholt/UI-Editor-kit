@@ -79,6 +79,7 @@ function createUiScopeFingerprint(scope) {
       parentId: entry?.parentId == null ? null : text(entry.parentId),
       kind: kind(entry?.type),
       capabilities: capabilities(entry),
+      ...(entry?.referenceKind === "multi" ? { referenceKind: "multi" } : {}),
     }))
     .sort((left, right) => ordinalCompare(left.elementId, right.elementId));
   return `sha256:${crypto.createHash("sha256").update(JSON.stringify(canonical), "utf8").digest("hex")}`;

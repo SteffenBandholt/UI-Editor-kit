@@ -30,4 +30,5 @@ public sealed record UiRegistryEntry(
     IReadOnlyDictionary<string, string>? TableBinding = null,
     IReadOnlyDictionary<string, object?>? RowLayout = null,
     WpfTableColumnBinding? WpfTableColumnBinding = null,
-    WpfTableBinding? WpfTableBinding = null);
+    WpfTableBinding? WpfTableBinding = null,
+    string ReferenceKind = "single");

@@ -25,6 +25,8 @@ internal static class UiRegistryValidator
                 Add(errors, UiRegistryValidationErrorCode.EmptyScopeId, entry, "Scope-ID must not be empty.");
             if (string.IsNullOrWhiteSpace(entry.DisplayName))
                 Add(errors, UiRegistryValidationErrorCode.EmptyDisplayName, entry, "Display name must not be empty.");
+            if (entry.ReferenceKind is not ("single" or "multi"))
+                Add(errors, UiRegistryValidationErrorCode.MissingNativeReference, entry, "Reference kind must be single or multi.");
             if (entry.NativeElement is null)
                 Add(errors, UiRegistryValidationErrorCode.MissingNativeReference, entry, "Native WPF reference is required.");
 

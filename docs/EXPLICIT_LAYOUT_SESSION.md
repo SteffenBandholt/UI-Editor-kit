@@ -80,3 +80,7 @@ and retry failed before provisioning any runner: zero steps, runner_id 0, no job
 log. This is not a passed acceptance test; the platform's annotation is required
 from the account owner. Physical DPI/monitor review and production approval
 remain separate. No merge or release.
+
+Multi-ref template targets use the same logical state/session/store and commit
+handshake. Native and host contracts, empty-list behavior and acceptance limits
+are specified in [NATIVE_MULTI_REF_TEMPLATES.md](NATIVE_MULTI_REF_TEMPLATES.md).

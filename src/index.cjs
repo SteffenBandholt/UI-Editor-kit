@@ -33,6 +33,7 @@ const electronTargetContract = require("./electron-target/electron-target-contra
 const localTargetProtocol = require("./electron-target/local-target-protocol.cjs");
 const electronErrorCodes = require("./electron-target/electron-error-codes.cjs");
 const namedPipeClient = require("./electron-target/named-pipe-client.cjs");
+const multiRefTemplate = require("./electron-target/multi-ref-template.cjs");
 const targetRegistration = require("./electron-target/target-registration.cjs");
 const pdfTargetContract = require("./electron-target/pdf-target-contract.cjs");
 const layoutProfileStartup = require("./electron-target/layout-profile-startup.cjs");
@@ -64,6 +65,7 @@ module.exports = Object.freeze({
   ...electronErrorCodes,
   ...namedPipeClient,
   ...targetRegistration,
+  ...multiRefTemplate,
   ...pdfTargetContract,
   ...layoutProfileStartup,
   ...geometryRiskContract,
