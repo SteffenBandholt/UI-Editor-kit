@@ -204,7 +204,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         foreach (var scope in scopes) ValidateScope(scope);
     }
 
-    private static void ValidateScope(RemoteRegistryScope scope)
+    internal static void ValidateScope(RemoteRegistryScope scope)
     {
         if (string.IsNullOrWhiteSpace(scope.ScopeId) || scope.Status is not ("complete" or "incomplete" or "changed" or "incompatible" or "blocked"))
             throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registry-Scope ist leer.");
@@ -217,11 +217,13 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             if (string.IsNullOrWhiteSpace(element.Id) || !byId.TryAdd(element.Id, element) ||
                 string.IsNullOrWhiteSpace(element.Name) || string.IsNullOrWhiteSpace(element.Type) || string.IsNullOrWhiteSpace(element.Role) ||
                 string.IsNullOrWhiteSpace(element.SemanticKey) || element.RegistrationStatus is not ("editorEnabled" or "editorContainer" or "locked") ||
-                string.IsNullOrWhiteSpace(element.RefKey) || !element.ReferenceResolved || element.Baseline is null ||
+                string.IsNullOrWhiteSpace(element.RefKey) || !TemplateTargetContract.ValidReference(element.ReferenceKind, element.ReferenceResolved, element.MountedInstanceCount) || element.Baseline is null ||
                 element.AllowedOps.Intersect(element.LockedOps, StringComparer.Ordinal).Any() ||
                 element.AllowedOps.Any(SpacingOperations.All.Contains) &&
                     (element.SpacingTargets is null || element.SpacingTargets.Count == 0 || element.SpacingTargets.Any(target => !SpacingTargets.All.Contains(target))))
                 throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Registryelement ist ungültig oder doppelt.");
+            if (element.ReferenceKind == "multi" && element.AllowedOps.Any(operation => !TemplateTargetContract.Operations.Contains(operation)))
+                throw new ElectronEditorException(ElectronEditorErrorCodes.RegistryInvalid, "Template erlaubt nur Geometrie und Abstand.");
             var supported = new HashSet<string>(["move", "resize", "resizeWidth", "resizeHeight", "textMove", "textResize", "setVisibility", "spacingIncrease", "spacingDecrease", "spacingSet", "spacingReset", .. HostAdapterOperations.TableOperations], StringComparer.Ordinal);
             if (element.AllowedOps.Any(operation => !supported.Contains(operation)) ||
                 element.LockedOps.Any(operation => operation is not ("executeTargetAction" or "modifyDomainData" or "createRecord" or "deleteRecord")))
@@ -328,7 +330,8 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         TableLayoutDefinition? TableLayout = null,
         TableColumnLayoutDefinition? TableColumnLayout = null,
         IReadOnlyDictionary<string, string>? TableBinding = null,
-        IReadOnlyDictionary<string, object?>? RowLayout = null);
+        IReadOnlyDictionary<string, object?>? RowLayout = null,
+        string ReferenceKind = "single", int? MountedInstanceCount = null);
     internal sealed record RemoteRegistryBaseline(
         double? X, double? Y, double? Width, double? Height,
         double? TextOffsetX, double? TextOffsetY, double? FontSize, bool? Visible,
@@ -346,21 +349,33 @@ public sealed class ElectronTargetSession : IAsyncDisposable
         RemoteElementLayoutState? PreviousState, RemoteElementLayoutState? NewState, bool RollbackSucceeded,
         GeometryRiskAssessment? GeometryRisk = null,
         IReadOnlyList<RemoteElementLayoutState>? AffectedStates = null,
-        TextResizeReadback? TextResize = null);
+        TextResizeReadback? TextResize = null,
+        TemplateChangeReadback? TemplateReadback = null);
 
     internal sealed class ElectronPipeHostAdapter : IGeometryRiskHostAdapter
     {
-        private readonly LocalTargetPipeConnection connection;
+        private readonly Func<string, object?, CancellationToken, Task<JsonElement>> requestAsync;
+        private readonly Func<CancellationToken, Task> clearPreviewAsync;
         private readonly IReadOnlyDictionary<string, RemoteRegistrationEntry> entries;
         private readonly UiElementRegistry registry;
         private readonly string scopeId;
         private readonly object stateLock = new();
         private LayoutState state;
         private readonly LayoutState declaredBaseline;
+        private volatile bool templateStateUncertain;
 
         internal ElectronPipeHostAdapter(LocalTargetPipeConnection connection, RemoteRegistryScope scope, RemoteScopeLayoutState remoteState)
+            : this((action, payload, token) => connection.RequestAsync(action, payload, TimeSpan.FromSeconds(10), token),
+                scope, remoteState, token => connection.SendEventAsync("clearGeometryPreview", cancellationToken: token)) { }
+
+        internal ElectronPipeHostAdapter(
+            Func<string, object?, CancellationToken, Task<JsonElement>> requestAsync,
+            RemoteRegistryScope scope, RemoteScopeLayoutState remoteState,
+            Func<CancellationToken, Task>? clearPreviewAsync = null)
         {
-            this.connection = connection;
+            ValidateScope(scope);
+            this.requestAsync = requestAsync;
+            this.clearPreviewAsync = clearPreviewAsync ?? (_ => Task.CompletedTask);
             scopeId = scope.ScopeId;
             entries = scope.Elements.ToDictionary(item => item.Id, StringComparer.Ordinal);
             registry = new UiElementRegistry(scope.Elements.Select(item => new UiRegistryEntry(
@@ -369,13 +384,21 @@ public sealed class ElectronTargetSession : IAsyncDisposable
                  item.AllowedOps.ToArray(), item.LockedOps.ToArray(), item.ColumnRole, item.FieldKind,
                  item.ActionKind, item.ComponentKind, item.SelectionKind, item.SelectionLevels,
                   item.OperationEffects, item.OperationAffectedIds, item.SpacingTargets,
-                  item.TableLayout, item.TableColumnLayout, item.TableBinding, item.RowLayout)));
+                  item.TableLayout, item.TableColumnLayout, item.TableBinding, item.RowLayout, ReferenceKind: item.ReferenceKind)));
+            TemplateTargetContract.ValidateState(scope, remoteState);
             state = ToLocal(remoteState);
             declaredBaseline = CreateDeclaredBaseline(scope, state);
         }
 
         public IUiElementRegistry GetRegistry() => registry;
-        public LayoutState GetCurrentLayoutState() { lock (stateLock) return Clone(state); }
+        public LayoutState GetCurrentLayoutState()
+        {
+            lock (stateLock)
+            {
+                if (templateStateUncertain) throw new InvalidOperationException("Template-Zustand ist nach einem Readback-/Rollbackfehler unbestätigt. Ziel-App neu verbinden.");
+                return Clone(state);
+            }
+        }
         internal LayoutState GetDeclaredBaselineLayoutState() => Clone(declaredBaseline);
         public ChangeResult SubmitChangeRequest(ChangeRequest changeRequest) => ChangeResult.Rejected(
             changeRequest, "async_transport_required", "Electron-Ziel-App-Änderungen werden ausschließlich asynchron übertragen.");
@@ -391,7 +414,7 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             => await SubmitRemoteAsync(changeRequest, GeometryEditModes.Normalize(editMode), confirmation, cancellationToken).ConfigureAwait(false);
 
         public Task ClearGeometryPreviewAsync(CancellationToken cancellationToken = default) =>
-            connection.SendEventAsync("clearGeometryPreview", cancellationToken: cancellationToken);
+            clearPreviewAsync(cancellationToken);
 
         private async Task<ChangeResult> SubmitRemoteAsync(
             ChangeRequest changeRequest,
@@ -399,20 +422,39 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             GeometryRiskConfirmation? confirmation,
             CancellationToken cancellationToken)
         {
+            if (templateStateUncertain)
+                return new(false, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
+                    "template_state_uncertain", "Ziel-App muss neu verbunden werden.", null, null, false);
             if (!entries.TryGetValue(changeRequest.ElementId, out var entry))
                 return Rejected(changeRequest, ElectronEditorErrorCodes.ElementNotFound, "Element ist nicht registriert.");
             if (entry.LockedOps.Contains(changeRequest.Operation, StringComparer.Ordinal))
                 return Rejected(changeRequest, ElectronEditorErrorCodes.OperationLocked, "Operation ist gesperrt.");
             if (!entry.AllowedOps.Contains(changeRequest.Operation, StringComparer.Ordinal))
                 return Rejected(changeRequest, ElectronEditorErrorCodes.OperationNotAllowed, "Operation ist nicht erlaubt.");
+            if (entry.ReferenceKind == "multi")
+            {
+                var validation = ChangeRequestValidator.Validate(changeRequest, registry);
+                if (!validation.Success) return Rejected(changeRequest, validation.ErrorCode!, validation.Message!);
+                if (!TemplateTargetContract.Operations.Contains(changeRequest.Operation))
+                    return Rejected(changeRequest, ElectronEditorErrorCodes.OperationNotAllowed, "Template erlaubt nur Geometrie und Abstand.");
+            }
             try
             {
-                var response = await connection.RequestAsync("submitChange", new { scopeId, changeRequest, editMode, riskConfirmation = confirmation },
-                    TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                var response = await requestAsync("submitChange", new { scopeId, changeRequest, editMode, riskConfirmation = confirmation },
+                    cancellationToken).ConfigureAwait(false);
                 if (!response.TryGetProperty("changeResult", out var resultElement))
                     throw new ElectronEditorException(ElectronEditorErrorCodes.MessageInvalid, "ChangeResult fehlt.");
                 var remote = resultElement.Deserialize<RemoteChangeResult>(JsonOptions)
                              ?? throw new ElectronEditorException(ElectronEditorErrorCodes.MessageInvalid, "ChangeResult ist ungültig.");
+                if (entry.ReferenceKind == "multi" && !TemplateTargetContract.ValidResult(changeRequest, remote, entry, GetCurrentLayoutState().Elements.Single(element => element.ElementId == entry.Id)))
+                {
+                    lock (stateLock) templateStateUncertain = true;
+                    return new(false, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
+                        "template_readback_invalid", "Die atomare Template-Änderung wurde nicht vollständig bestätigt.",
+                        null, null, false);
+                }
+                if (entry.ReferenceKind == "multi" && !remote.Success && !remote.RollbackSucceeded)
+                    lock (stateLock) templateStateUncertain = true;
                 var result = new ChangeResult(remote.Success, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
                     remote.ErrorCode, remote.Message, remote.PreviousState is null ? null : ToLocal(remote.PreviousState, registry.Entries[0].ScopeId),
                     remote.NewState is null ? null : ToLocal(remote.NewState, registry.Entries[0].ScopeId), remote.RollbackSucceeded,
@@ -424,7 +466,24 @@ public sealed class ElectronTargetSession : IAsyncDisposable
             }
             catch (ElectronEditorException exception)
             {
+                if (entry.ReferenceKind == "multi")
+                {
+                    lock (stateLock) templateStateUncertain = true;
+                    return new(false, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
+                        exception.Code, exception.Message, null, null, false);
+                }
                 return Rejected(changeRequest, exception.Code, exception.Message);
+            }
+            catch (JsonException) when (entry.ReferenceKind == "multi")
+            {
+                lock (stateLock) templateStateUncertain = true;
+                return new(false, changeRequest.ChangeId, changeRequest.ElementId, changeRequest.Operation,
+                    "template_readback_invalid", "Template-Antwort ist unvollständig oder ungültig.", null, null, false);
+            }
+            catch (OperationCanceledException) when (entry.ReferenceKind == "multi")
+            {
+                lock (stateLock) templateStateUncertain = true;
+                throw;
             }
         }
 

@@ -37,6 +37,31 @@ The existing unrelated JavaScript compact-layout assertion remains red.
 Details: [PKCS security repair](docs/PKCS_SECURITY_FIX.md).
 
 
+## 2026-10-23 – Issue #95: native Multi-Ref-Template-Ziele
+
+- Separate Erweiterung auf der Session-/Store-Basis aus Draft-PR #94. Native
+  Registry und Adapter behalten eine deklarative Template-ID bei 0/1/N Refs;
+  der bestehende Baum und die bestehende LayoutProfileSession verwenden logische
+  Geometrie-/Spacingwerte, explizite Operationen und denselben atomaren Store.
+- Der gemeinsame Hosthelfer wendet Templatewerte auf explizite aktuelle Refs an,
+  prüft Readback und Referenzstabilität und rollt Teilfehler zurück. Native
+  Readback-/Rollbackfehler sperren weitere Änderungen und Save bis Reconnect.
+  Schema 2 und Savejournal 1 bleiben erhalten; Single-Ref-Hashes unverändert,
+  Multi-Ref-Hashes sind zwischen nativem Store und offiziellem JS-Loader synchron.
+- JS: neuer Multi-Ref-Satz grün; alle 69 Paket-Testbefehle unabhängig ausgeführt:
+  65 grün, dieselben vier Fehler wie unveränderte PR-94-Basis (64/68).
+  Zusätzliche Security-/Publish-Tests grün; `m70-panel-boundary` scheitert auch auf
+  unveränderter Basis. `npm test` meldet den bestehenden M82.3-Fehler; keine
+  Assertion oder Fehlermeldung unterdrückt. Pack-Dry-Run und Release-Check grün.
+- Beide nativen Lösungen bauen unter Linux mit SDK 10.0.100 und 10.0.402 ohne Warnung/Fehler.
+  Beide vollständigen nativen Testaufrufe wurden gestartet und wegen fehlender
+  WindowsDesktop-Runtime abgebrochen. Neue WPF-Tests sind kompiliert, nicht als
+  bestanden gewertet. Windows-/BBMpro-Abnahme mit echtem Rechnungsentwurf,
+  Katalogtreffern und 100/125/150 % Anzeige bleibt offen; Scope `incomplete`.
+- Keine Änderungen an BBMpro, Rechnungsfachlogik, PrintCore oder produktiven Daten.
+  Kein Merge. Details, Host-Anschluss und Abnahmegrenzen:
+  `docs/NATIVE_MULTI_REF_TEMPLATES.md`.
+
 ## 2026-09-07 – K16/M81 fixed-layout Vertragspaket
 
 Explizites fixed-layout unterstützt registrierte Text-/Bild-Overlays ohne

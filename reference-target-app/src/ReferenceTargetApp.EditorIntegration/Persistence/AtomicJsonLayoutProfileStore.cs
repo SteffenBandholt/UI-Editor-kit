@@ -162,7 +162,10 @@ public sealed class AtomicJsonLayoutProfileStore
                 ["incompatible_registry", "unknown_element", "missing_element", "operation_not_allowed", "missing_scope", "unknown_scope"],
                 StringComparer.Ordinal);
             if (!validation.Success && allowCompatibleRegistryReconciliation && document is not null &&
-                validation.Errors.All(error => compatibleRegistryErrors.Contains(error.Code)))
+                validation.Errors.All(error => compatibleRegistryErrors.Contains(error.Code)) &&
+                // Schema 2 has no old reference semantics to prove a safe
+                // single-to-template migration. Never reconcile that implicitly.
+                !adapters.Values.Any(adapter => adapter.GetRegistry().Entries.Any(entry => entry.ReferenceKind == "multi")))
             {
                 var reconciled = ReconcileRegistry(document, adapters);
                 var reconciledValidation = LayoutProfileDocumentValidator.Validate(reconciled, documentApplicationId, profileId, adapters);

@@ -212,7 +212,14 @@ function validateRegistrationSnapshot(snapshot) {
         if (own(element.geometry, key) && element.geometry[key] != null && (!finiteNumber(element.geometry[key]) || element.geometry[key] < 0))
           errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.geometry.${key}`, "invalid_geometry_bound"));
       }
-      if (element.referenceResolved !== true && scope.status === "complete")
+      if (element.referenceKind != null && !["single", "multi"].includes(element.referenceKind))
+        errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.referenceKind`));
+      if (element.referenceKind === "multi" && sortedText(element.allowedOps).some(op => !["move", "resize", "resizeWidth", "resizeHeight", ...SPACING_OPERATIONS].includes(op)))
+        errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_INCOMPATIBLE, `${elementPrefix}.allowedOps`));
+      const emptyTemplate = element.referenceKind === "multi" && element.mountedInstanceCount === 0;
+      if (element.referenceKind === "multi" && (!Number.isInteger(element.mountedInstanceCount) || element.mountedInstanceCount < 0))
+        errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_REFERENCE_MISSING, `${elementPrefix}.mountedInstanceCount`));
+      if (element.referenceResolved !== true && !emptyTemplate && scope.status === "complete")
         errors.push(error(ELECTRON_EDITOR_ERROR_CODES.REGISTRY_REFERENCE_MISSING, `${elementPrefix}.referenceResolved`));
       const allowed = sortedText(element.capabilities || element.allowedOps);
       const locked = sortedText(element.lockedOps);
@@ -340,7 +347,7 @@ function compareRegistrySnapshots(previous, next) {
   const removedCapabilities = {};
   for (const id of stableElementIds) {
     const left = before.get(id); const right = after.get(id);
-    if (left.parentId !== right.parentId || left.scopeId !== right.scopeId || left.type !== right.type || left.role !== right.role || left.semanticKey !== right.semanticKey || left.refKey !== right.refKey)
+    if (left.parentId !== right.parentId || left.scopeId !== right.scopeId || left.type !== right.type || left.role !== right.role || left.semanticKey !== right.semanticKey || left.refKey !== right.refKey || (left.referenceKind || "single") !== (right.referenceKind || "single"))
       migrationRequiredIds.push(id);
     const removed = left.capabilities.filter((capability) => !right.capabilities.includes(capability));
     if (removed.length) removedCapabilities[id] = removed;
